@@ -1,0 +1,696 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <assert.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/mman.h>
+
+#include <linux/input-event-codes.h>
+
+#include <wayland-client.h>
+#include <blend2d/blend2d.h>
+
+#include "wayland-util.h"
+#include "wlr-layer-shell-unstable-v1.h"
+#include "cursor-shape-v1.h"
+#include "wayland-client-protocol.h"
+
+#include "state.h"
+
+// TODO:
+//   * Find out how to check whether a given event handler is required.
+//   * Go through every listener and make sure we have all desired events handled
+// 
+
+#define SOCKNAME "wayland-1"
+#define SOCKPATH "/run/user/1000/" SOCKNAME
+
+static void
+noop(/* ... */)
+{
+}
+
+static void
+normalize_rect_i(struct BLRectI *rect)
+{
+    if (rect->w < 0) {
+        rect->w = -rect->w;
+        rect->x -= rect->w;
+    }
+
+    if (rect->h < 0) {
+        rect->h = -rect->h;
+        rect->y -= rect->h;
+    }
+}
+
+static inline struct client_state_surface_buffer *
+get_free_double_buffer(struct client_state *state)
+{
+    struct client_state_surface_buffer *buffer =
+        state->surface.double_buffer[0].busy
+        ? &state->surface.double_buffer[1]
+        : &state->surface.double_buffer[0]
+    ;
+
+    // fprintf(
+    //     stderr, "get_free_double_buffer(): busy? buf_0=%d, buf_1=%d\n",
+    //     state->surface.double_buffer[0].busy,
+    //     state->surface.double_buffer[1].busy
+    // );
+
+    if (buffer->busy) {
+        return NULL;
+    }
+
+    return buffer;
+}
+
+static void
+reset_selection(struct client_state *state)
+{
+    // TODO !!
+}
+
+static void
+handle_pointer_enter(
+    void *data,
+    struct wl_pointer *pointer,
+    uint32_t serial,
+    struct wl_surface *surface_entered,
+    wl_fixed_t x,
+    wl_fixed_t y
+) {
+    struct client_state *state = data;
+    struct client_state_seat_pointer *st_pointer = &state->seat.pointer;
+
+    // "When a seat's focus enters a surface, the pointer image is undefined..."
+    wp_cursor_shape_device_v1_set_shape(
+        st_pointer->cursor_shape_device,
+        serial,
+        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR
+    );
+
+    if (surface_entered == state->surface.surface) {
+        state->surface.is_focused = true;
+    }
+}
+
+static void
+handle_pointer_leave(
+    void *data,
+    struct wl_pointer *pointer,
+    uint32_t serial,
+    struct wl_surface *surface_left
+) {
+    struct client_state *state = data;
+
+    // TODO: reset_selection((struct client_state *)data);
+
+    if (surface_left == state->surface.surface) {
+        state->surface.is_focused = false;
+    }
+}
+
+static void
+handle_pointer_motion(
+    void *data,
+    struct wl_pointer *pointer,
+    uint32_t time,
+    wl_fixed_t x,
+    wl_fixed_t y
+) {
+    struct client_state *state = data;
+
+    state->seat.pointer.x = x;
+    state->seat.pointer.y = y;
+
+    if (state->selection.selection_started) {
+        // XXX: Document this and helper function...
+        int32_t _x = (int)wl_fixed_to_double(state->seat.pointer.x);
+        int32_t _y = (int)wl_fixed_to_double(state->seat.pointer.y);
+
+        state->selection.bl.box.x1 = _x;
+        state->selection.bl.box.y1 = _y;
+    }
+
+    // TODO: Dynamically resize visual selection
+}
+    
+
+static void
+handle_pointer_button(
+    void *data,
+    struct wl_pointer *pointer,
+    uint32_t serial,
+    uint32_t time,
+    uint32_t button,
+    enum wl_pointer_button_state button_state
+) {
+    struct client_state *state = data;
+    struct client_state_seat_pointer *st_pointer = &state->seat.pointer;
+    struct client_state_selection_blend2d *bl = &state->selection.bl;
+
+    // TODO: Implement dragging
+
+    // XXX: Not needed when we only have one surface.
+    if (!state->surface.is_focused) {
+        return;
+    }
+
+    // XXX: This should probably be a helper function.
+    int32_t x = (int)wl_fixed_to_double(state->seat.pointer.x);
+    int32_t y = (int)wl_fixed_to_double(state->seat.pointer.y);
+
+    if (button == BTN_LEFT && button_state == WL_POINTER_BUTTON_STATE_PRESSED) {
+        if (!state->selection.selection_started) {
+            state->selection.bl.box.x0 = x;
+            state->selection.bl.box.y0 = y;
+
+            // XXX TEST: Might keep, though..
+            state->selection.bl.box.x1 = x;
+            state->selection.bl.box.y1 = y;
+
+            state->selection.selection_started = true;
+        } else {
+            state->selection.bl.box.x1 = x;
+            state->selection.bl.box.y1 = y;
+
+            // state->selection.bl.box = (BLBoxI){ 0 };
+            state->selection.selection_started = false;
+        }
+    }
+}
+
+struct wl_pointer_listener pointer_listener = {
+    // TODO: motion etc
+    .enter = handle_pointer_enter,
+    .leave = handle_pointer_leave,
+    .button = handle_pointer_button,
+    .motion = handle_pointer_motion,
+    .frame = noop, // TODO?
+};
+
+static void
+handle_seat_capabilities(
+    void *data,
+    struct wl_seat *seat,
+    uint32_t capability
+) {
+    // TODO: Read through seat documentation properly
+    //         esp. the v4 vs v5 things
+    //       Improve capability bitfield/enum documentation?
+    //          Unclear language wrt. the arg being a bitfield
+    struct client_state *state = data;
+
+    if (capability & WL_SEAT_CAPABILITY_POINTER) {
+        state->seat.pointer.pointer = wl_seat_get_pointer(seat);
+        state->seat.pointer.cursor_shape_device = wp_cursor_shape_manager_v1_get_pointer(
+            state->globals.cursor_shape_manager,
+            state->seat.pointer.pointer
+        );
+        wl_pointer_add_listener(state->seat.pointer.pointer, &pointer_listener, state);
+    }
+    if (capability & WL_SEAT_CAPABILITY_KEYBOARD) {
+        state->seat.keyboard.keyboard = wl_seat_get_keyboard(seat);
+    }
+    if (capability & WL_SEAT_CAPABILITY_TOUCH) {
+        // TODO
+    }
+
+    state->seat.capabilities |= capability;
+}
+
+static struct
+wl_seat_listener seat_listener = {
+    .name = noop, // Seems to be required..?
+    .capabilities = handle_seat_capabilities,
+};
+
+static void
+registry_handle_global(
+    void *data,
+    struct wl_registry *registry,
+    uint32_t name,
+    const char *interface,
+    uint32_t version // of interface
+    )
+{
+    struct client_state *state = data;
+    struct client_state_globals *globals = &state->globals;
+
+    #define _INTERFACE_IS(desired) (strcmp(interface, desired.name) == 0)
+
+    // TODO: Determine desired minimum versions.
+    if (_INTERFACE_IS(wl_compositor_interface)) {
+        globals->compositor = wl_registry_bind(registry, name, &wl_compositor_interface, version);
+    } else if (_INTERFACE_IS(wl_seat_interface)) {
+        if (globals->seat != NULL) {
+            // TODO: wl_list of seats
+            fprintf(stderr, "Ignoring additional wl_seat global.\n");
+        } else {
+            fprintf(stderr, "Adding seat... ");
+            globals->seat    = wl_registry_bind(registry, name, &wl_seat_interface, version);
+            // TODO: Do this elsewhere? De-spaghetti everything later...
+            wl_seat_add_listener(globals->seat, &seat_listener, state);
+            fprintf(stderr, "added seat listener.\n");
+        }
+    } else if (_INTERFACE_IS(wl_shm_interface)) {
+        globals->shm         = wl_registry_bind(registry, name, &wl_shm_interface, version);
+    } else if (_INTERFACE_IS(zwlr_layer_shell_v1_interface)) {
+        // XXX: version 4 cus nixpkgs
+        globals->layer_shell = wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 4);
+    } else if (_INTERFACE_IS(wp_cursor_shape_manager_v1_interface)) {
+        // sway only has version 1 at the time of writing.
+        globals->cursor_shape_manager = wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, 1);
+    }
+
+    #undef _EVENT_INTERFACE_IS
+}
+
+static struct
+wl_registry_listener registry_listener = {
+    .global = registry_handle_global,
+    .global_remove = NULL,
+};
+
+// TODO: Split this up into more atomic parts?
+//           F.ex. the roundtrip doesn't actually need to happen in here,
+//           but putting it outside the function entirely means you have to
+//           assume it was wasn't called earlier (to not roundtip more than
+//           necesssary).
+static inline bool
+init_wayland_globals(struct client_state *state)
+{
+    struct client_state_globals *globals = &state->globals;
+
+    // TODO: #ifdef DEBUG for prints?
+
+    fprintf(stderr, "Connecting to wayland socket '%s'.\n", SOCKNAME);
+
+    globals->display = wl_display_connect(SOCKNAME);
+    if (globals->display == NULL) {
+        fprintf(stderr, "Failed to connect to wayland socket.\n");
+        return false;
+    }
+
+    globals->registry = wl_display_get_registry(globals->display);
+    if (globals->registry == NULL) {
+        fprintf(stderr, "Failed to get wayland registry.\n");
+        return false;
+    }
+
+    
+    if ( wl_registry_add_listener(globals->registry, &registry_listener, (void *)state)
+         == -1
+    ) {
+        fprintf(stderr, "Failed to add registry listener.\n");
+        return false;
+    }
+
+
+
+    // wl_display_roundtrip runs wl_display_sync internally, and polls wl_callback
+    // until all done-events are received and handled handled.
+    //   (spec doesn't actually dictate implementation through wl_display_sync etc.,
+    //    but libwayland does it like this at the time of writing.)
+    if (wl_display_roundtrip(globals->display) == -1) {
+        fprintf(stderr, "Display roundtrip after adding registry listener failed.\n");
+        return false;
+    }
+
+    // TEST:
+    fprintf(stderr, "Display roundtripped.\n");
+
+    // TODO: Validate globals?
+
+    return true;
+}
+
+static inline void
+exit_wayland(struct client_state *state)
+{
+    wl_display_disconnect(state->globals.display);
+    fprintf(stderr, "Disconnected from wayland server (%s)\n", SOCKNAME);
+}
+
+static inline void
+handle_layer_surface_configure(
+    void *data,
+    struct zwlr_layer_surface_v1 *layer_surface,
+    uint32_t serial,
+    uint32_t width,
+    uint32_t height
+) {
+    struct client_state *state = data;
+
+    // TODO: Handle 0 height/width
+    state->surface.height = height;
+    state->surface.width = width;
+
+    // TEST:
+    state->surface.curr_height = height;
+    state->surface.curr_width = width;
+
+    zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
+}
+
+static inline void
+handle_layer_surface_closed(void *data, struct zwlr_layer_surface_v1 *layer_surface)
+{
+    struct client_state *state = data;
+
+    for (int i = 0; i < BUF_COUNT; i++) {
+        struct client_state_surface_buffer *buffer = &state->surface.double_buffer[i];
+
+        munmap(buffer->data, state->surface.buf_size);
+        wl_buffer_destroy(buffer->buffer);
+    }
+}
+
+static struct zwlr_layer_surface_v1_listener layer_surface_listener = {
+    .configure = handle_layer_surface_configure,
+    .closed = handle_layer_surface_closed
+};
+
+static inline int
+shm_open_anon(void)
+{
+    int fd = shm_open(SHM_FILENAME, O_CREAT | O_RDWR | O_EXCL, 0600);
+
+    if (fd >= 0) {
+        // The underlying file/fd survives until all processes close/unmap it
+        shm_unlink(SHM_FILENAME);
+    }
+
+    return fd;
+}
+
+static void
+handle_buffer_release(void *data, struct wl_buffer *buffer)
+{
+    struct client_state_surface_buffer *st_surface_buffer = data;
+
+    st_surface_buffer->busy = false;
+}
+
+static struct
+wl_buffer_listener buffer_listener = {
+    .release = handle_buffer_release
+};
+
+static inline bool
+init_surface_shm_buffers(
+    // TODO: Either switch this back to just state, or do this narrowing everywhere
+    struct client_state_surface *st_surface,
+    struct wl_shm *wl_shm_global
+) {
+    // TODO: Is this more efficient to create in handle_global and/or layer_surface ack_configure?
+    // TODO: Close this.
+    int shm_fd = shm_open_anon();
+    // TODO: Graphics library needs to take part in this..
+    st_surface->buf_size = BUF_PIXEL_BYTES * st_surface->width * st_surface->height;
+    st_surface->shm_pool_size = BUF_COUNT * st_surface->buf_size;
+
+    if (-1 == ftruncate(shm_fd, st_surface->shm_pool_size)) {
+        fprintf(stderr, "Failed to resize shm file to %d\n", st_surface->shm_pool_size);
+        return false;
+    }
+
+    fprintf(stderr, "Resized shm file to %d\n", st_surface->shm_pool_size);
+
+    st_surface->shm_pool = wl_shm_create_pool(
+        wl_shm_global,
+        shm_fd,
+        st_surface->shm_pool_size
+    );
+
+    for (int i = 0; i < BUF_COUNT; i++) {
+        fprintf(stderr, "Creating buffer %d\n", i);
+        assert(i * st_surface->buf_size <= st_surface->shm_pool_size);
+
+        int _pool_offset = i * st_surface->buf_size;
+
+        // TODO: Don't mmap per buffer...
+        st_surface->double_buffer[i].data = mmap(
+            NULL, st_surface->shm_pool_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, _pool_offset
+        );
+
+        st_surface->double_buffer[i].buffer = wl_shm_pool_create_buffer(
+            st_surface->shm_pool,
+            _pool_offset,
+            st_surface->width,
+            st_surface->height,
+            BUF_PIXEL_BYTES * st_surface->width,
+            BUF_FORMAT
+        );
+
+        wl_buffer_add_listener(
+            st_surface->double_buffer[i].buffer,
+            &buffer_listener,
+            &st_surface->double_buffer[i]
+        );
+
+    }
+
+    wl_surface_attach(st_surface->surface, st_surface->double_buffer[0].buffer, 0, 0);
+
+    return true;
+}
+
+static inline bool
+init_surface(struct client_state *state)
+{
+    // Must add role to surface and ack its configure event before adding a buffer.
+    state->surface.surface = wl_compositor_create_surface(state->globals.compositor);
+    state->surface.layer_surface = zwlr_layer_shell_v1_get_layer_surface(
+        state->globals.layer_shell,
+        state->surface.surface,
+        NULL,
+        ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,
+        "test_client_namespace" // TODO: Figure out a namespace name?
+    );
+
+    zwlr_layer_surface_v1_set_exclusive_zone(state->surface.layer_surface, -1);
+    // Need to set at least anchors before configure event,
+    // so that the compositor knows what width/height to give us.
+    zwlr_layer_surface_v1_set_anchor(
+        state->surface.layer_surface,
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
+        | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT
+        | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP
+        | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
+    );
+
+    zwlr_layer_surface_v1_add_listener(state->surface.layer_surface, &layer_surface_listener, state);
+    // Initial bufferless commit to trigger configure event
+    wl_surface_commit(state->surface.surface);
+
+    // XXX: This also triggers initial wl_seat listener events at the moment,
+    //      due to nested add_listener functions
+    //          seat_listener --> pointer_listener, keyboard_listener ...
+    if (-1 == wl_display_roundtrip(state->globals.display)) {
+        fprintf(stderr, "Display roundtrip after adding zwlr_layer_surface_v1 listener failed.\n");
+        return false;
+    }
+
+    return true;
+}
+
+static bool
+init_seat(struct client_state *state)
+{
+    // wl_seat_
+
+    return true;
+}
+
+static void
+surface_frame_callback_handler(
+    void *data,
+    struct wl_callback *callback,
+    uint32_t time_ms
+) {
+    // TODO: create_frame, create_something, ... ?
+
+    struct client_state *state = data;
+    struct client_state_surface_buffer *st_buffer = get_free_double_buffer(state);
+
+    // fprintf(stderr, "surface_frame_callback_handler\n");
+
+    if (st_buffer == NULL) {
+        // TODO: Don't print this...
+        //       Figure out the intended dynamics and handle accordingly
+        fprintf(stderr, "Both buffers busy...\n");
+        return;
+    }
+    // XXX TEST: This will likely end up staying, though...
+    if (!state->selection.selection_started) {
+        return;
+    }
+
+    st_buffer->busy = true;
+
+/*
+    {
+        // TEST
+        state->surface.curr_color -= 0x01010101;
+
+        state->surface.curr_width -= 2;
+        if (state->surface.curr_width > state->surface.width) {
+            state->surface.curr_width = state->surface.width;
+        }
+        state->surface.curr_height -= 4;
+        if (state->surface.curr_height > state->surface.height) {
+            state->surface.curr_height = state->surface.height;
+        }
+
+        memset(
+            st_buffer->data,
+            state->surface.curr_color,
+            state->surface.buf_size
+        );
+        // fprintf(stderr, "surface_frame_callback_handler: Did memset\n");
+    }
+*/
+    struct client_state_selection_blend2d *bl = &state->selection.bl;
+
+    // XXX TEST TODO: Improve this
+    bl_context_begin(&bl->ctx, &st_buffer->bl_img, NULL);
+    memset(st_buffer->data, 0, state->surface.buf_size);
+
+    // XXX TEST
+    state->selection.bl.rect.x = bl->box.x0;
+    state->selection.bl.rect.y = bl->box.y0;
+    bl->rect.w = bl->box.x1 - bl->box.x0;
+    bl->rect.h = bl->box.y1 - bl->box.y0;
+    normalize_rect_i(&bl->rect);
+    fprintf(
+        stderr, "box: x0=%d, x1=%d, y0=%d, y1=%d\n",
+        bl->box.x0, bl->box.x1, bl->box.y0, bl->box.y1
+    );
+    fprintf(
+        stderr, "Rect: x=%d, y=%d, w=%d, h=%d\n",
+        bl->rect.x, bl->rect.y, bl->rect.w, bl->rect.h
+    );
+    bl_context_fill_rect_i_rgba32(&bl->ctx, &bl->rect, 0x88888888);
+    bl_context_end(&bl->ctx);
+
+    wl_surface_attach(state->surface.surface, st_buffer->buffer, 0, 0);
+    // TODO: Calculate damage area to not re-draw entire surface every frame
+    wl_surface_damage_buffer(
+        state->surface.surface,
+        0,
+        0,
+        state->surface.width,
+        state->surface.height
+    );
+    wl_surface_commit(state->surface.surface);
+
+    // fprintf(stderr, "Committed buffer %p\n", st_buffer->buffer);
+    // fprintf(stderr, "Color: %x\n", state->surface.curr_color);
+}
+
+struct wl_callback_listener surface_frame_callback_listener = {
+    .done = surface_frame_callback_handler
+};
+
+static inline bool
+init_selection_and_blend2d(struct client_state *state)
+{
+    struct client_state_selection *selection = &state->selection;
+    struct client_state_selection_blend2d *bl = &selection->bl;
+
+    bl_context_init(&bl->ctx);
+    bl_path_init(&bl->path);
+
+    // TODO: Should maybe be a separate function, f.ex. init_surface_buffers_blend2d
+    //       and called directly from main, after init_surface_shm_buffers
+    for (int i = 0; i < BUF_COUNT; ++i) {
+        struct client_state_surface_buffer *st_buffer = &state->surface.double_buffer[i];
+        // Shared memory must already be allocated.
+        assert(st_buffer->data != NULL);
+
+        bl_image_init_as_from_data(
+            &st_buffer->bl_img,
+            state->surface.width,
+            state->surface.height,
+            BUF_FORMAT_BL,
+            st_buffer->data,
+            BUF_PIXEL_BYTES * state->surface.width,
+            BL_DATA_ACCESS_RW,
+            NULL, // TODO: - Let blend2d destroy our data?
+            NULL  //       - Ditto
+        );
+    }
+
+    return true;
+}
+
+int main(void)
+{
+    // TODO: memset? or explicit zeroing where required?
+    // struct client_state state = { 0 };
+    struct client_state state;
+    memset(&state, 0, sizeof(struct client_state));
+
+    // First roundtrip:
+    if (!init_wayland_globals(&state)) {
+        return EXIT_FAILURE;
+    }
+    fprintf(stderr, "Finished: init_wayland_globals()\n");
+
+    // Second roundtrip:
+    if (!init_surface(&state)) {
+        return EXIT_FAILURE;
+    }
+    fprintf(stderr, "Finished: init_surface()\n");
+
+    if (!init_surface_shm_buffers(&state.surface, state.globals.shm)) {
+        return EXIT_FAILURE;
+    }
+    fprintf(stderr, "Finished: init_surface_shm_buffers()\n");
+
+    if (!init_seat(&state)) {
+        return EXIT_FAILURE;
+    }
+    fprintf(stderr, "Finished: init_seat()\n");
+
+    if (!init_selection_and_blend2d(&state)) {
+        return EXIT_FAILURE;
+    }
+    fprintf(stderr, "Finished: init_selection()\n");
+
+
+    // // TEST
+    // state.surface.curr_color = 0x88888888;
+    // memset(
+    //     state.surface.double_buffer[0].data,
+    //     state.surface.curr_color,
+    //     state.surface.buf_size
+    // );
+    // state.surface.double_buffer[0].busy = true;
+
+    while (true) { // TODO: state->running
+        // wl_display_roundtrip(state.globals.display);
+        wl_callback_add_listener(
+            wl_surface_frame(state.surface.surface),
+            &surface_frame_callback_listener,
+            &state
+        );
+        // TODO: Proper way to do this to prevent double commit (listener + here)?
+        wl_surface_commit(state.surface.surface);
+
+        wl_display_dispatch(state.globals.display);
+    }
+
+
+    // todo: destroy wl_proxy and wl_event_queue objects when created
+    exit_wayland(&state);
+
+    return 0;
+}
+
