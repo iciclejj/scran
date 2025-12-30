@@ -274,15 +274,6 @@ int main(void)
     fprintf(stderr, "Finished: init_selection()\n");
 
 
-    // // TEST
-    // state.surface.curr_color = 0x88888888;
-    // memset(
-    //     state.surface.double_buffer[0].data,
-    //     state.surface.curr_color,
-    //     state.surface.buf_size
-    // );
-    // state.surface.double_buffer[0].busy = true;
-
     while (true) { // TODO: state->running
         // wl_display_roundtrip(state.globals.display);
         wl_callback_add_listener(
