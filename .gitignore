@@ -5,3 +5,5 @@ main
 wayland-protocols/*
 
 compile_commands.json
+
+.cache/
