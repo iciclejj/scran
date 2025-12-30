@@ -7,6 +7,7 @@ SRCS = main.c
 SRCS += $(addprefix $(WAYLAND_PROTOCOLS_DIR_LOCAL)/, $(WAYLAND_PROTOCOLS_REQUIRED_C_FILENAMES))
 OBJS = $(SRCS:.c=.o)
 
+# TODO: Ensure package versions. Flake?
 WAYLAND_SCANNER = $(shell pkg-config --variable=wayland_scanner wayland-scanner)
 WAYLAND_PROTOCOLS_DIR = $(shell pkg-config --variable=pkgdatadir wayland-protocols)
 WAYLAND_PROTOCOLS_DIR_WLR = $(shell pkg-config --variable=pkgdatadir wlr-protocols)
