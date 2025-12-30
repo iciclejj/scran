@@ -33,7 +33,7 @@ WAYLAND_PROTOCOLS_REQUIRED_H_FILENAMES = $(patsubst %, %.h, $(WAYLAND_PROTOCOLS_
 
 
 
-.PHONY: all protocols
+.PHONY: all clean protocols
 
 
 $(foreach path, $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS), $(eval $(call WAYLAND_PROTOCOL_GEN_RULE, $(path))))
@@ -86,4 +86,7 @@ $(PROG): $(OBJS) protocols
 
 
 all: $(PROG)
+
+clean: 
+	rm $(OBJS)
 
