@@ -3,7 +3,8 @@ LDLIBS = -lwayland-client -lblend2d
 INCDIRS = include/
 INCDIRS += $(WAYLAND_PROTOCOLS_DIR_LOCAL)
 CFLAGS = $(addprefix -I, $(INCDIRS))
-SRCS = main.c
+SRCDIR = src
+SRCS = $(addprefix $(SRCDIR)/, main.c)
 SRCS += $(addprefix $(WAYLAND_PROTOCOLS_DIR_LOCAL)/, $(WAYLAND_PROTOCOLS_REQUIRED_C_FILENAMES))
 OBJS = $(SRCS:.c=.o)
 
