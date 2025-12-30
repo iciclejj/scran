@@ -63,6 +63,8 @@ handle_pointer_motion(
         int32_t _x = (int)wl_fixed_to_double(state->seat.pointer.x);
         int32_t _y = (int)wl_fixed_to_double(state->seat.pointer.y);
 
+        // TODO: Make this explicitly either output pixel coordinates or
+        //       surface-local coordinates
         state->selection.bl.box.x1 = _x;
         state->selection.bl.box.y1 = _y;
     }
