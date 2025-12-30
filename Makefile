@@ -49,41 +49,7 @@ protocols: $(addprefix \
 $(OBJS): %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS): $($(WAYLAND_PROTOCOLS_REQUIRED_H_FILENAMES): %.xml $(WAYLAND_PROTOCOLS_DIR_LOCAL)
-# 	$(WAYLAND_SCANNER) client-header $< $(WAYLAND_PROTOCOLS_DIR_LOCAL)/$@
-#
-# $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS): %.c: %.xml $(WAYLAND_PROTOCOLS_DIR_LOCAL)
-# 	$(WAYLAND_SCANNER) private-code $< $(WAYLAND_PROTOCOLS_DIR_LOCAL)/$@
-#
-# wlr-layer-shell-unstable-v1.h:
-# 	$(WAYLAND_SCANNER) client-header $(WAYLAND_PROTOCOLS_DIR_WLR)/unstable/wlr-layer-shell-unstable-v1.xml $@
-# wlr-layer-shell-unstable-v1.c:
-# 	$(WAYLAND_SCANNER) private-code $(WAYLAND_PROTOCOLS_DIR_WLR)/unstable/wlr-layer-shell-unstable-v1.xml $@
-# wlr-layer-shell-unstable-v1.o: wlr-layer-shell-unstable-v1.h wlr-layer-shell-unstable-v1.c
-#
-# xdg-shell-protocol.h:
-# 	$(WAYLAND_SCANNER) client-header $(WAYLAND_PROTOCOLS_DIR)/stable/xdg-shell/xdg-shell.xml $@
-# xdg-shell-protocol.c:
-# 	$(WAYLAND_SCANNER) private-code $(WAYLAND_PROTOCOLS_DIR)/stable/xdg-shell/xdg-shell.xml $@
-# xdg-shell-protocol.o: xdg-shell-protocol.c xdg-shell-protocol.h
-#
-# cursor-shape-v1.h:
-# 	$(WAYLAND_SCANNER) client-header $(WAYLAND_PROTOCOLS_DIR)/staging/cursor-shape/cursor-shape-v1.xml $@
-# cursor-shape-v1.c:
-# 	$(WAYLAND_SCANNER) private-code $(WAYLAND_PROTOCOLS_DIR)/staging/cursor-shape/cursor-shape-v1.xml $@
-# cursor-shape-v1.o: cursor-shape-v1.h cursor-shape-v1.c
-#
-# # TODO: Get version supported by sway
-# tablet-v1.h:
-# 	$(WAYLAND_SCANNER) client-header $(WAYLAND_PROTOCOLS_DIR)/stable/tablet/tablet-v2.xml $@
-# tablet-v1.c:
-# 	$(WAYLAND_SCANNER) private-code $(WAYLAND_PROTOCOLS_DIR)/stable/tablet/tablet-v2.xml $@
-# tablet-v1.o: tablet-v1.h tablet-v1.c
-#
-# protocols: wlr-layer-shell-unstable-v1.o xdg-shell-protocol.o cursor-shape-v1.o tablet-v1.o
-
 $(PROG): $(OBJS) protocols
-	# gcc $(SRC) -o main $(LDLIBS)
 	$(CC) $(OBJS) $(CFLAGS) -o $(PROG) $(LDLIBS)
 
 
