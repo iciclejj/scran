@@ -91,4 +91,5 @@ all: $(PROG)
 
 clean: 
 	rm $(OBJS)
+	rm $(PROG)
 
