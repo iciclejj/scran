@@ -112,6 +112,7 @@ surface_frame_callback_handler(
     wl_surface_attach(state->surface.surface, st_buffer->buffer, 0, 0);
 
     // TODO: Calculate damage area to not re-draw entire surface every frame
+    //       Probably call this within draw_frame?
     wl_surface_damage_buffer(
         state->surface.surface,
         0,
