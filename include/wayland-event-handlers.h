@@ -17,5 +17,6 @@ extern struct wl_seat_listener seat_listener;
 extern struct wl_registry_listener registry_listener;
 extern struct zwlr_layer_surface_v1_listener layer_surface_listener;
 extern struct wl_buffer_listener buffer_listener;
+extern struct wl_callback_listener surface_frame_callback_listener;
 
 #endif
