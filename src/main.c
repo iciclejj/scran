@@ -289,6 +289,9 @@ int main(void)
     }
 
 
+    // TODO: Remember to fix off-by-one bug when selecting corner to corner
+    //           F.ex. 2559x1599 rect width/height
+
     // todo: destroy wl_proxy and wl_event_queue objects when created
     exit_wayland(&state);
 
