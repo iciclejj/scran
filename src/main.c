@@ -274,17 +274,18 @@ int main(void)
     fprintf(stderr, "Finished: init_selection()\n");
 
 
-    while (true) { // TODO: state->running
-        // wl_display_roundtrip(state.globals.display);
-        wl_callback_add_listener(
-            wl_surface_frame(state.surface.surface),
-            &surface_frame_callback_listener,
-            &state
-        );
-        // TODO: Proper way to do this to prevent double commit (listener + here)?
-        wl_surface_commit(state.surface.surface);
+    // Initial frame callback request.
+    // All subsequent requests are done "recursively" from within the listener's
+    // 'done' event handler
+    wl_callback_add_listener(
+        wl_surface_frame(state.surface.surface),
+        &surface_frame_callback_listener,
+        &state
+    );
+    wl_surface_commit(state.surface.surface);
 
-        wl_display_dispatch(state.globals.display);
+    while (wl_display_dispatch(state.globals.display)) {
+        // TODO: state->running
     }
 
 

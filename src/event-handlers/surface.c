@@ -3,6 +3,7 @@
 #include <wayland-client.h>
 
 #include "state.h"
+#include "wayland-event-handlers.h"
 
 static inline void
 normalize_rect_i(struct BLRectI *rect)
@@ -51,16 +52,28 @@ surface_frame_callback_handler(
     struct client_state *state = data;
     struct client_state_surface_buffer *st_buffer = get_free_double_buffer(state);
 
-    // fprintf(stderr, "surface_frame_callback_handler\n");
+    // Destroy callback manually and request new frame "recursively"
+    // TODO: Should this be done from main?
+    wl_callback_destroy(callback);
+    wl_callback_add_listener(
+        wl_surface_frame(state->surface.surface),
+        &surface_frame_callback_listener,
+        state
+    );
 
     if (st_buffer == NULL) {
         // TODO: Don't print this...
         //       Figure out the intended dynamics and handle accordingly
         fprintf(stderr, "Both buffers busy...\n");
+        // TODO: Restructure to not need to remember this for every fail condition
+        wl_surface_commit(state->surface.surface);
         return;
     }
     // XXX TEST: This will likely end up staying, though...
     if (!state->selection.selection_started) {
+        fprintf(stderr, "Selection not started yet...\n");
+        // TODO: Restructure to not need to remember this for every fail condition
+        wl_surface_commit(state->surface.surface);
         return;
     }
 
