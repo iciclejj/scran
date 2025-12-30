@@ -216,6 +216,15 @@ init_selection_and_blend2d(struct client_state *state)
     bl_context_init(&bl->ctx);
     bl_path_init(&bl->path);
 
+    // XXX: Maybe handle this assert more robustly
+    assert(state->surface.width != 0);
+    bl->box_outer = (struct BLBoxI) {
+        .x0 = 0,
+        .y0 = 0,
+        .x1 = state->surface.width,
+        .y1 = state->surface.height,
+    };
+
     // TODO: Should maybe be a separate function, f.ex. init_surface_buffers_blend2d
     //       and called directly from main, after init_surface_shm_buffers
     for (int i = 0; i < BUF_COUNT; ++i) {

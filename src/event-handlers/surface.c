@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include <wayland-client.h>
+#include <blend2d/blend2d.h>
 
 #include "state.h"
 #include "wayland-event-handlers.h"
@@ -49,27 +50,26 @@ draw_frame(
     // XXX TEST TODO: Improve draw_frame
 
     struct client_state_selection_blend2d *bl = &state->selection.bl;
+    struct BLPoint origin = { 0, 0 };
 
-    bl_context_begin(&bl->ctx, &st_buffer->bl_img, NULL);
+    // TODO: Only write and mark damage where needed
     memset(st_buffer->data, 0, state->surface.buf_size);
 
-    bl->rect.x = bl->box.x0;
-    bl->rect.y = bl->box.y0;
-    bl->rect.w = bl->box.x1 - bl->box.x0;
-    bl->rect.h = bl->box.y1 - bl->box.y0;
-    normalize_rect_i(&bl->rect);
+    bl_context_begin(&bl->ctx, &st_buffer->bl_img, NULL);
+
+    bl_path_add_box_i(&bl->path, &bl->box_outer, BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&bl->path, &bl->box, BL_GEOMETRY_DIRECTION_NONE);
+    bl_context_set_fill_rule(&bl->ctx, BL_FILL_RULE_EVEN_ODD);
+    bl_context_set_fill_style_rgba32(&bl->ctx, 0x88888888);
+    bl_context_fill_path_d(&bl->ctx, &origin, &bl->path);
 
     fprintf(
         stderr, "box: x0=%d, x1=%d, y0=%d, y1=%d\n",
         bl->box.x0, bl->box.x1, bl->box.y0, bl->box.y1
     );
-    fprintf(
-        stderr, "Rect: x=%d, y=%d, w=%d, h=%d\n",
-        bl->rect.x, bl->rect.y, bl->rect.w, bl->rect.h
-    );
 
-    bl_context_fill_rect_i_rgba32(&bl->ctx, &bl->rect, 0x88888888);
     bl_context_end(&bl->ctx);
+    bl_path_reset(&bl->path);
 }
 
 void
@@ -100,7 +100,6 @@ surface_frame_callback_handler(
     }
     // XXX TEST: This will likely end up staying, though...
     if (state->selection.selection_state == SELECTION_NONE) {
-        fprintf(stderr, "Selection not started yet...\n");
         // TODO: Restructure to not need to remember this for every fail condition
         wl_surface_commit(state->surface.surface);
         return;

@@ -85,7 +85,7 @@ struct client_state_selection_blend2d {
 
     struct BLBoxI box;
     struct BLBoxI box_before_rebase;
-    struct BLRectI rect;
+    struct BLBoxI box_outer;
 };
 
 enum selection_state {
