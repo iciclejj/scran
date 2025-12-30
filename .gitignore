@@ -3,3 +3,5 @@ main
 **/*.o
 
 wayland-protocols/*
+
+compile_commands.json
