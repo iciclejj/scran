@@ -99,7 +99,7 @@ surface_frame_callback_handler(
         return;
     }
     // XXX TEST: This will likely end up staying, though...
-    if (!state->selection.selection_started) {
+    if (state->selection.selection_state == SELECTION_NONE) {
         fprintf(stderr, "Selection not started yet...\n");
         // TODO: Restructure to not need to remember this for every fail condition
         wl_surface_commit(state->surface.surface);

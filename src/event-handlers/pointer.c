@@ -58,7 +58,7 @@ handle_pointer_motion(
     state->seat.pointer.x = x;
     state->seat.pointer.y = y;
 
-    if (state->selection.selection_started) {
+    if (state->selection.selection_state == SELECTION_IN_PROGRESS) {
         // XXX: Document this and helper function...
         int32_t _x = (int)wl_fixed_to_double(state->seat.pointer.x);
         int32_t _y = (int)wl_fixed_to_double(state->seat.pointer.y);
@@ -89,13 +89,16 @@ handle_pointer_button(
     if (!state->surface.is_focused) {
         return;
     }
+    if (state->selection.selection_state == SELECTION_COMPLETE) {
+        return;
+    }
 
     // XXX: This should probably be a helper function.
     int32_t x = (int)wl_fixed_to_double(state->seat.pointer.x);
     int32_t y = (int)wl_fixed_to_double(state->seat.pointer.y);
 
     if (button == BTN_LEFT && button_state == WL_POINTER_BUTTON_STATE_PRESSED) {
-        if (!state->selection.selection_started) {
+        if (state->selection.selection_state == SELECTION_NONE) {
             state->selection.bl.box.x0 = x;
             state->selection.bl.box.y0 = y;
 
@@ -103,13 +106,13 @@ handle_pointer_button(
             state->selection.bl.box.x1 = x;
             state->selection.bl.box.y1 = y;
 
-            state->selection.selection_started = true;
+            state->selection.selection_state = SELECTION_IN_PROGRESS;
         } else {
             state->selection.bl.box.x1 = x;
             state->selection.bl.box.y1 = y;
 
             // state->selection.bl.box = (BLBoxI){ 0 };
-            state->selection.selection_started = false;
+            state->selection.selection_state = SELECTION_COMPLETE;
         }
     }
 }

@@ -87,8 +87,15 @@ struct client_state_selection_blend2d {
     struct BLRectI rect;
 };
 
+enum selection_state {
+    SELECTION_NONE,
+    SELECTION_IN_PROGRESS,
+    SELECTION_COMPLETE,
+};
+
 struct client_state_selection {
-    bool selection_started;
+    // bool selection_started;
+    enum selection_state selection_state;
 
     struct client_state_selection_blend2d bl;
 
