@@ -84,6 +84,7 @@ struct client_state_selection_blend2d {
     BLPathCore path;
 
     struct BLBoxI box;
+    struct BLBoxI box_before_rebase;
     struct BLRectI rect;
 };
 
@@ -91,6 +92,7 @@ enum selection_state {
     SELECTION_NONE,
     SELECTION_IN_PROGRESS,
     SELECTION_COMPLETE,
+    SELECTION_REBASING,
 };
 
 struct client_state_selection {
@@ -98,6 +100,9 @@ struct client_state_selection {
     enum selection_state selection_state;
 
     struct client_state_selection_blend2d bl;
+
+    wl_fixed_t rebase_origin_pointer_x;
+    wl_fixed_t rebase_origin_pointer_y;
 
     // TODO: Not needed? Just use box only?
     // BLPoint bl_point_top_left;

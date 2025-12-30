@@ -58,15 +58,28 @@ handle_pointer_motion(
     state->seat.pointer.x = x;
     state->seat.pointer.y = y;
 
-    if (state->selection.selection_state == SELECTION_IN_PROGRESS) {
-        // XXX: Document this and helper function...
-        int32_t _x = (int)wl_fixed_to_double(state->seat.pointer.x);
-        int32_t _y = (int)wl_fixed_to_double(state->seat.pointer.y);
+    if (state->selection.selection_state == SELECTION_NONE) {
+        return;
+    }
 
+    int32_t pointer_x_pxl = (int32_t)wl_fixed_to_double(state->seat.pointer.x);
+    int32_t pointer_y_pxl = (int32_t)wl_fixed_to_double(state->seat.pointer.y);
+
+    if (state->selection.selection_state == SELECTION_IN_PROGRESS) {
         // TODO: Make this explicitly either output pixel coordinates or
         //       surface-local coordinates
-        state->selection.bl.box.x1 = _x;
-        state->selection.bl.box.y1 = _y;
+        //       Also document the behavior/conversion (and make helper function?).
+        state->selection.bl.box.x1 = pointer_x_pxl;
+        state->selection.bl.box.y1 = pointer_y_pxl;
+    } else if (state->selection.selection_state == SELECTION_REBASING) {
+        int32_t x_diff_pxl = pointer_x_pxl - (int32_t)wl_fixed_to_double(state->selection.rebase_origin_pointer_x);
+        int32_t y_diff_pxl = pointer_y_pxl - (int32_t)wl_fixed_to_double(state->selection.rebase_origin_pointer_y);
+
+        // TODO: Make this a bit prettier?
+        state->selection.bl.box.x0 = state->selection.bl.box_before_rebase.x0 + x_diff_pxl;
+        state->selection.bl.box.y0 = state->selection.bl.box_before_rebase.y0 + y_diff_pxl;
+        state->selection.bl.box.x1 = state->selection.bl.box_before_rebase.x1 + x_diff_pxl;
+        state->selection.bl.box.y1 = state->selection.bl.box_before_rebase.y1 + y_diff_pxl;
     }
 
     // TODO: Dynamically resize visual selection
@@ -91,11 +104,9 @@ handle_pointer_button(
     if (!state->surface.is_focused) {
         return;
     }
-    if (state->selection.selection_state == SELECTION_COMPLETE) {
-        return;
-    }
 
     // XXX: This should probably be a helper function.
+    // TODO: Rename to make it clear whether it's pixel or logical
     int32_t x = (int)wl_fixed_to_double(state->seat.pointer.x);
     int32_t y = (int)wl_fixed_to_double(state->seat.pointer.y);
 
@@ -109,11 +120,18 @@ handle_pointer_button(
             state->selection.bl.box.y1 = y;
 
             state->selection.selection_state = SELECTION_IN_PROGRESS;
-        } else {
+        } else if (state->selection.selection_state == SELECTION_IN_PROGRESS) {
             state->selection.bl.box.x1 = x;
             state->selection.bl.box.y1 = y;
 
-            // state->selection.bl.box = (BLBoxI){ 0 };
+            state->selection.selection_state = SELECTION_COMPLETE;
+        } else if (state->selection.selection_state == SELECTION_COMPLETE) {
+            state->selection.selection_state = SELECTION_REBASING;
+
+            state->selection.rebase_origin_pointer_x = state->seat.pointer.x;
+            state->selection.rebase_origin_pointer_y = state->seat.pointer.y;
+            state->selection.bl.box_before_rebase = state->selection.bl.box;
+        } else if (state->selection.selection_state == SELECTION_REBASING) {
             state->selection.selection_state = SELECTION_COMPLETE;
         }
     }
