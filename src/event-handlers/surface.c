@@ -62,8 +62,6 @@ surface_frame_callback_handler(
     );
 
     if (st_buffer == NULL) {
-        // TODO: Don't print this...
-        //       Figure out the intended dynamics and handle accordingly
         fprintf(stderr, "Both buffers busy...\n");
         // TODO: Restructure to not need to remember this for every fail condition
         wl_surface_commit(state->surface.surface);
@@ -79,28 +77,6 @@ surface_frame_callback_handler(
 
     st_buffer->busy = true;
 
-/*
-    {
-        // TEST
-        state->surface.curr_color -= 0x01010101;
-
-        state->surface.curr_width -= 2;
-        if (state->surface.curr_width > state->surface.width) {
-            state->surface.curr_width = state->surface.width;
-        }
-        state->surface.curr_height -= 4;
-        if (state->surface.curr_height > state->surface.height) {
-            state->surface.curr_height = state->surface.height;
-        }
-
-        memset(
-            st_buffer->data,
-            state->surface.curr_color,
-            state->surface.buf_size
-        );
-        // fprintf(stderr, "surface_frame_callback_handler: Did memset\n");
-    }
-*/
     struct client_state_selection_blend2d *bl = &state->selection.bl;
 
     // XXX TEST TODO: Improve this
