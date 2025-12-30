@@ -1,10 +1,12 @@
+# TODO: THIS IS ALL A MESS
+
 PROG = main
 LDLIBS = -lwayland-client -lblend2d
 INCDIRS = include/
 INCDIRS += $(WAYLAND_PROTOCOLS_DIR_LOCAL)
 CFLAGS = $(addprefix -I, $(INCDIRS))
-SRCDIR = src
-SRCS = $(addprefix $(SRCDIR)/, main.c)
+SRCDIRS = src src/event-handlers
+SRCS = $(foreach dir, $(SRCDIRS), $(wildcard $(dir)/*.c))
 SRCS += $(addprefix $(WAYLAND_PROTOCOLS_DIR_LOCAL)/, $(WAYLAND_PROTOCOLS_REQUIRED_C_FILENAMES))
 OBJS = $(SRCS:.c=.o)
 

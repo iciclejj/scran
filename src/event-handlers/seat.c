@@ -1,0 +1,41 @@
+#include <wayland-client.h>
+
+#include "state.h"
+
+#include "wayland-event-handlers.h"
+
+void
+handle_seat_capabilities(
+    void *data,
+    struct wl_seat *seat,
+    uint32_t capability
+) {
+    // TODO: Read through seat documentation properly
+    //         esp. the v4 vs v5 things
+    //       Improve capability bitfield/enum documentation?
+    //          Unclear language wrt. the arg being a bitfield
+    struct client_state *state = data;
+
+    if (capability & WL_SEAT_CAPABILITY_POINTER) {
+        state->seat.pointer.pointer = wl_seat_get_pointer(seat);
+        state->seat.pointer.cursor_shape_device = wp_cursor_shape_manager_v1_get_pointer(
+            state->globals.cursor_shape_manager,
+            state->seat.pointer.pointer
+        );
+        wl_pointer_add_listener(state->seat.pointer.pointer, &pointer_listener, state);
+    }
+    if (capability & WL_SEAT_CAPABILITY_KEYBOARD) {
+        state->seat.keyboard.keyboard = wl_seat_get_keyboard(seat);
+    }
+    if (capability & WL_SEAT_CAPABILITY_TOUCH) {
+        // TODO
+    }
+
+    state->seat.capabilities |= capability;
+}
+
+struct wl_seat_listener seat_listener = {
+    .name = noop, // Seems to be required..?
+    .capabilities = handle_seat_capabilities,
+};
+

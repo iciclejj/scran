@@ -13,25 +13,14 @@
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 
-#include "wayland-util.h"
 #include "wlr-layer-shell-unstable-v1.h"
-#include "cursor-shape-v1.h"
 #include "wayland-client-protocol.h"
 
 #include "state.h"
-
-// TODO:
-//   * Find out how to check whether a given event handler is required.
-//   * Go through every listener and make sure we have all desired events handled
-// 
+#include "wayland-event-handlers.h"
 
 #define SOCKNAME "wayland-1"
 #define SOCKPATH "/run/user/1000/" SOCKNAME
-
-static void
-noop(/* ... */)
-{
-}
 
 static void
 normalize_rect_i(struct BLRectI *rect)
@@ -74,208 +63,6 @@ reset_selection(struct client_state *state)
 {
     // TODO !!
 }
-
-static void
-handle_pointer_enter(
-    void *data,
-    struct wl_pointer *pointer,
-    uint32_t serial,
-    struct wl_surface *surface_entered,
-    wl_fixed_t x,
-    wl_fixed_t y
-) {
-    struct client_state *state = data;
-    struct client_state_seat_pointer *st_pointer = &state->seat.pointer;
-
-    // "When a seat's focus enters a surface, the pointer image is undefined..."
-    wp_cursor_shape_device_v1_set_shape(
-        st_pointer->cursor_shape_device,
-        serial,
-        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR
-    );
-
-    if (surface_entered == state->surface.surface) {
-        state->surface.is_focused = true;
-    }
-}
-
-static void
-handle_pointer_leave(
-    void *data,
-    struct wl_pointer *pointer,
-    uint32_t serial,
-    struct wl_surface *surface_left
-) {
-    struct client_state *state = data;
-
-    // TODO: reset_selection((struct client_state *)data);
-
-    if (surface_left == state->surface.surface) {
-        state->surface.is_focused = false;
-    }
-}
-
-static void
-handle_pointer_motion(
-    void *data,
-    struct wl_pointer *pointer,
-    uint32_t time,
-    wl_fixed_t x,
-    wl_fixed_t y
-) {
-    struct client_state *state = data;
-
-    state->seat.pointer.x = x;
-    state->seat.pointer.y = y;
-
-    if (state->selection.selection_started) {
-        // XXX: Document this and helper function...
-        int32_t _x = (int)wl_fixed_to_double(state->seat.pointer.x);
-        int32_t _y = (int)wl_fixed_to_double(state->seat.pointer.y);
-
-        state->selection.bl.box.x1 = _x;
-        state->selection.bl.box.y1 = _y;
-    }
-
-    // TODO: Dynamically resize visual selection
-}
-    
-
-static void
-handle_pointer_button(
-    void *data,
-    struct wl_pointer *pointer,
-    uint32_t serial,
-    uint32_t time,
-    uint32_t button,
-    enum wl_pointer_button_state button_state
-) {
-    struct client_state *state = data;
-    struct client_state_seat_pointer *st_pointer = &state->seat.pointer;
-    struct client_state_selection_blend2d *bl = &state->selection.bl;
-
-    // TODO: Implement dragging
-
-    // XXX: Not needed when we only have one surface.
-    if (!state->surface.is_focused) {
-        return;
-    }
-
-    // XXX: This should probably be a helper function.
-    int32_t x = (int)wl_fixed_to_double(state->seat.pointer.x);
-    int32_t y = (int)wl_fixed_to_double(state->seat.pointer.y);
-
-    if (button == BTN_LEFT && button_state == WL_POINTER_BUTTON_STATE_PRESSED) {
-        if (!state->selection.selection_started) {
-            state->selection.bl.box.x0 = x;
-            state->selection.bl.box.y0 = y;
-
-            // XXX TEST: Might keep, though..
-            state->selection.bl.box.x1 = x;
-            state->selection.bl.box.y1 = y;
-
-            state->selection.selection_started = true;
-        } else {
-            state->selection.bl.box.x1 = x;
-            state->selection.bl.box.y1 = y;
-
-            // state->selection.bl.box = (BLBoxI){ 0 };
-            state->selection.selection_started = false;
-        }
-    }
-}
-
-struct wl_pointer_listener pointer_listener = {
-    // TODO: motion etc
-    .enter = handle_pointer_enter,
-    .leave = handle_pointer_leave,
-    .button = handle_pointer_button,
-    .motion = handle_pointer_motion,
-    .frame = noop, // TODO?
-};
-
-static void
-handle_seat_capabilities(
-    void *data,
-    struct wl_seat *seat,
-    uint32_t capability
-) {
-    // TODO: Read through seat documentation properly
-    //         esp. the v4 vs v5 things
-    //       Improve capability bitfield/enum documentation?
-    //          Unclear language wrt. the arg being a bitfield
-    struct client_state *state = data;
-
-    if (capability & WL_SEAT_CAPABILITY_POINTER) {
-        state->seat.pointer.pointer = wl_seat_get_pointer(seat);
-        state->seat.pointer.cursor_shape_device = wp_cursor_shape_manager_v1_get_pointer(
-            state->globals.cursor_shape_manager,
-            state->seat.pointer.pointer
-        );
-        wl_pointer_add_listener(state->seat.pointer.pointer, &pointer_listener, state);
-    }
-    if (capability & WL_SEAT_CAPABILITY_KEYBOARD) {
-        state->seat.keyboard.keyboard = wl_seat_get_keyboard(seat);
-    }
-    if (capability & WL_SEAT_CAPABILITY_TOUCH) {
-        // TODO
-    }
-
-    state->seat.capabilities |= capability;
-}
-
-static struct
-wl_seat_listener seat_listener = {
-    .name = noop, // Seems to be required..?
-    .capabilities = handle_seat_capabilities,
-};
-
-static void
-registry_handle_global(
-    void *data,
-    struct wl_registry *registry,
-    uint32_t name,
-    const char *interface,
-    uint32_t version // of interface
-    )
-{
-    struct client_state *state = data;
-    struct client_state_globals *globals = &state->globals;
-
-    #define _INTERFACE_IS(desired) (strcmp(interface, desired.name) == 0)
-
-    // TODO: Determine desired minimum versions.
-    if (_INTERFACE_IS(wl_compositor_interface)) {
-        globals->compositor = wl_registry_bind(registry, name, &wl_compositor_interface, version);
-    } else if (_INTERFACE_IS(wl_seat_interface)) {
-        if (globals->seat != NULL) {
-            // TODO: wl_list of seats
-            fprintf(stderr, "Ignoring additional wl_seat global.\n");
-        } else {
-            fprintf(stderr, "Adding seat... ");
-            globals->seat    = wl_registry_bind(registry, name, &wl_seat_interface, version);
-            // TODO: Do this elsewhere? De-spaghetti everything later...
-            wl_seat_add_listener(globals->seat, &seat_listener, state);
-            fprintf(stderr, "added seat listener.\n");
-        }
-    } else if (_INTERFACE_IS(wl_shm_interface)) {
-        globals->shm         = wl_registry_bind(registry, name, &wl_shm_interface, version);
-    } else if (_INTERFACE_IS(zwlr_layer_shell_v1_interface)) {
-        // XXX: version 4 cus nixpkgs
-        globals->layer_shell = wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 4);
-    } else if (_INTERFACE_IS(wp_cursor_shape_manager_v1_interface)) {
-        // sway only has version 1 at the time of writing.
-        globals->cursor_shape_manager = wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, 1);
-    }
-
-    #undef _EVENT_INTERFACE_IS
-}
-
-static struct
-wl_registry_listener registry_listener = {
-    .global = registry_handle_global,
-    .global_remove = NULL,
-};
 
 // TODO: Split this up into more atomic parts?
 //           F.ex. the roundtrip doesn't actually need to happen in here,
@@ -337,45 +124,6 @@ exit_wayland(struct client_state *state)
     fprintf(stderr, "Disconnected from wayland server (%s)\n", SOCKNAME);
 }
 
-static inline void
-handle_layer_surface_configure(
-    void *data,
-    struct zwlr_layer_surface_v1 *layer_surface,
-    uint32_t serial,
-    uint32_t width,
-    uint32_t height
-) {
-    struct client_state *state = data;
-
-    // TODO: Handle 0 height/width
-    state->surface.height = height;
-    state->surface.width = width;
-
-    // TEST:
-    state->surface.curr_height = height;
-    state->surface.curr_width = width;
-
-    zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
-}
-
-static inline void
-handle_layer_surface_closed(void *data, struct zwlr_layer_surface_v1 *layer_surface)
-{
-    struct client_state *state = data;
-
-    for (int i = 0; i < BUF_COUNT; i++) {
-        struct client_state_surface_buffer *buffer = &state->surface.double_buffer[i];
-
-        munmap(buffer->data, state->surface.buf_size);
-        wl_buffer_destroy(buffer->buffer);
-    }
-}
-
-static struct zwlr_layer_surface_v1_listener layer_surface_listener = {
-    .configure = handle_layer_surface_configure,
-    .closed = handle_layer_surface_closed
-};
-
 static inline int
 shm_open_anon(void)
 {
@@ -388,19 +136,6 @@ shm_open_anon(void)
 
     return fd;
 }
-
-static void
-handle_buffer_release(void *data, struct wl_buffer *buffer)
-{
-    struct client_state_surface_buffer *st_surface_buffer = data;
-
-    st_surface_buffer->busy = false;
-}
-
-static struct
-wl_buffer_listener buffer_listener = {
-    .release = handle_buffer_release
-};
 
 static inline bool
 init_surface_shm_buffers(
