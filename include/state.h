@@ -1,3 +1,6 @@
+#ifndef STATE_H
+#define STATE_H
+
 #include <stdbool.h>
 
 #include <wayland-client.h>
@@ -101,3 +104,5 @@ struct client_state {
 
     struct client_state_selection selection;
 };
+
+#endif
