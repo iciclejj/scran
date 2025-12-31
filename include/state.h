@@ -84,25 +84,40 @@ struct client_state_selection_blend2d {
     BLPathCore path;
 
     struct BLBoxI box;
+    // TODO: Maybe move this somewhere together with rebase_origin_pointer ?
     struct BLBoxI box_before_rebase;
+    struct BLBoxI box_before_resize;
     struct BLBoxI box_outer;
 };
 
 enum selection_state {
+    // TODO: Bitmask and allow simultaneous f.ex. rebasing + resizing?
     SELECTION_NONE,
     SELECTION_IN_PROGRESS,
     SELECTION_COMPLETE,
     SELECTION_REBASING,
+    SELECTION_RESIZING,
+};
+
+enum selection_resize_direction {
+    SELECTION_RESIZE_NONE,
+    SELECTION_RESIZE_TOP_LEFT,
+    SELECTION_RESIZE_TOP_RIGHT,
+    SELECTION_RESIZE_BOTTOM_LEFT,
+    SELECTION_RESIZE_BOTTOM_RIGHT,
 };
 
 struct client_state_selection {
     // bool selection_started;
     enum selection_state selection_state;
+    enum selection_resize_direction selection_resize_direction;
 
     struct client_state_selection_blend2d bl;
 
     wl_fixed_t rebase_origin_pointer_x;
     wl_fixed_t rebase_origin_pointer_y;
+    wl_fixed_t resize_origin_pointer_x;
+    wl_fixed_t resize_origin_pointer_y;
 
     // TODO: Not needed? Just use box only?
     // BLPoint bl_point_top_left;
