@@ -292,6 +292,61 @@ init_selection_and_blend2d(struct client_state *state)
     return true;
 }
 
+static inline bool
+init_image_copy_capture_shm_buffer(struct client_state *state)
+{
+    // frame
+    int shm_fd = shm_open_anon();
+    // TODO: Assert buf_size is initialized
+    //           And rest of state->surface dependencies
+    state->capture.shm_pool_size = state->surface.buf_size;
+    state->capture.buf_size = state->surface.buf_size;
+
+    if (-1 == ftruncate(shm_fd, state->capture.shm_pool_size)) {
+        fprintf(stderr, "Failed to resize shm file to %d\n", state->capture.shm_pool_size);
+        close(shm_fd);
+        return false;
+    }
+
+    // TODO: Use same pool as surface?
+    state->capture.shm_pool = wl_shm_create_pool(
+        state->globals.shm,
+        shm_fd,
+        state->capture.shm_pool_size
+    );
+
+    state->capture.buffer.buffer = wl_shm_pool_create_buffer(
+        state->capture.shm_pool,
+        0,
+        state->surface.width,
+        state->surface.height,
+        BUF_PIXEL_BYTES * state->surface.width,
+        BUF_FORMAT
+    );
+
+    state->capture.buffer.data = mmap(
+        0, state->capture.buf_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0
+    );
+
+    close(shm_fd);
+    wl_shm_pool_destroy(state->capture.shm_pool);
+
+    if (state->capture.buffer.data == NULL) {
+        return false;
+    }
+
+    return true;
+}
+
+static bool
+destroy_capture_shm_buffers(struct client_state_capture *st_capture)
+{
+    wl_buffer_destroy(st_capture->buffer.buffer);
+
+    return true;
+}
+
+
 int main(void)
 {
     // TODO: memset? or explicit zeroing where required?
@@ -328,6 +383,10 @@ int main(void)
     }
     fprintf(stderr, "Finished: init_selection()\n");
 
+    if (!init_image_copy_capture_shm_buffer(&state)) {
+        return EXIT_FAILURE;
+    }
+    fprintf(stderr, "Finished: init_image_copy_capture_shm_buffer()\n");
 
     // Initial frame callback request.
     // All subsequent requests are done "recursively" from within the listener's
@@ -350,6 +409,7 @@ int main(void)
 
     // todo: destroy wl_proxy and wl_event_queue objects when created
     destroy_surface_shm_buffers(&state.surface);
+    destroy_capture_shm_buffers(&state.capture);
     destroy_wayland_globals(&state);
 
     wl_display_disconnect(state.globals.display);

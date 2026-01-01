@@ -44,7 +44,7 @@ struct client_state_surface {
     struct zwlr_layer_surface_v1 *layer_surface;
 
     struct wl_shm_pool *shm_pool;
-    uint32_t shm_pool_size;
+    uint32_t shm_pool_size; // TODO: Should this be int32_t ?
     struct client_state_surface_buffer double_buffer[BUF_COUNT];
     uint32_t buf_size;
 
@@ -129,10 +129,26 @@ struct client_state_selection {
     // BLPoint bl_point_bottom_right;
 };
 
+// TODO: Merge all or parts of this with client_state_surface_buffer?
+struct client_state_capture_buffer {
+    struct wl_buffer *buffer;
+    void *data;
+};
+
+// TODO: Merge all or parts of this with client_state_surface?
+struct client_state_capture {
+
+    struct client_state_capture_buffer buffer;
+    uint32_t buf_size;
+    struct wl_shm_pool *shm_pool;
+    uint32_t shm_pool_size; // TODO: Should this be int32_t ?
+};
+
 struct client_state {
     struct client_state_globals globals;
     struct client_state_surface surface;
     struct client_state_seat seat;
+    struct client_state_capture capture;
 
     struct client_state_selection selection;
 };
