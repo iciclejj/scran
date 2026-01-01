@@ -144,14 +144,21 @@ struct client_state_capture {
     uint32_t shm_pool_size; // TODO: Should this be int32_t ?
 };
 
-struct client_state_output {
-    int32_t scale;
+struct client_state_output_mode {
+    int32_t width;
+    int32_t height;
+    int32_t refresh_rate_mhz;
+};
 
+struct client_state_output {
     int32_t x_global;
     int32_t y_global;
-
     enum wl_output_subpixel subpixel_layout;
     enum wl_output_transform transform;
+
+    int32_t scale;
+
+    struct client_state_output_mode mode;
 };
 
 struct client_state {

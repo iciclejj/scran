@@ -392,6 +392,8 @@ int main(void)
     }
     fprintf(stderr, "Finished: init_output()\n");
 
+    // TODO: Will need xdg_output for logical geometry
+
     if (!init_image_copy_capture_shm_buffer(&state)) {
         return EXIT_FAILURE;
     }
