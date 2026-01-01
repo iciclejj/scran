@@ -39,6 +39,7 @@ init_wayland_globals(struct client_state *state)
     struct client_state_globals *globals = &state->globals;
 
     // TODO: #ifdef DEBUG for prints?
+    //           eprintf header with noop if not DEBUG ?
 
     fprintf(stderr, "Connecting to wayland socket '%s'.\n", SOCKNAME);
 
@@ -54,7 +55,7 @@ init_wayland_globals(struct client_state *state)
         return false;
     }
 
-    
+    // Rest of globals initialized by the registry_listener (after roundtrip)
     if ( wl_registry_add_listener(globals->registry, &registry_listener, (void *)state)
          == -1
     ) {
@@ -308,6 +309,7 @@ int main(void)
 
     while (wl_display_dispatch(state.globals.display)) {
         // TODO: state->running
+        //       Exit with keybind
     }
 
 
