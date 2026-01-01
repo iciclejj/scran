@@ -81,13 +81,6 @@ init_wayland_globals(struct client_state *state)
     return true;
 }
 
-static inline void
-exit_wayland(struct client_state *state)
-{
-    wl_display_disconnect(state->globals.display);
-    fprintf(stderr, "Disconnected from wayland server (%s)\n", SOCKNAME);
-}
-
 // Open shm file, get fd, unlink file, return fd.
 // The underlying file survives unlinking.
 static inline int
@@ -323,7 +316,9 @@ int main(void)
 
     // todo: destroy wl_proxy and wl_event_queue objects when created
     destroy_surface_shm_buffers(&state.surface);
-    exit_wayland(&state);
+
+    wl_display_disconnect(state.globals.display);
+    fprintf(stderr, "Disconnected from wayland server (%s)\n", SOCKNAME);
 
     return 0;
 }
