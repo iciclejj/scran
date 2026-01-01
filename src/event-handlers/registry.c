@@ -45,6 +45,17 @@ registry_handle_global(
     } else if (_INTERFACE_IS(wp_cursor_shape_manager_v1_interface)) {
         // sway only has version 1 at the time of writing.
         globals->cursor_shape_manager = wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, 1);
+    } else if (_INTERFACE_IS(wl_output_interface)) {
+        if (globals->output != NULL) {
+            // TODO: wl_list of outputs
+            fprintf(stderr, "Ignoring additional wl_output global.\n");
+        } else {
+            fprintf(stderr, "Adding output... ");
+            globals->output = wl_registry_bind(registry, name, &wl_output_interface, 4);
+            // TODO: Do this elsewhere? De-spaghetti everything later...
+            wl_output_add_listener(globals->output, &output_listener, state);
+            fprintf(stderr, "added output listener.\n");
+        }
     } else if (_INTERFACE_IS(ext_output_image_capture_source_manager_v1_interface)) {
         globals->output_image_capture_source_manager = wl_registry_bind(registry, name, &ext_output_image_capture_source_manager_v1_interface, 1);
     } else if (_INTERFACE_IS(ext_image_copy_capture_manager_v1_interface)) {

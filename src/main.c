@@ -241,10 +241,10 @@ init_surface(struct client_state *state)
     return true;
 }
 
-static bool
+static inline bool
 init_seat(struct client_state *state)
 {
-    // wl_seat_
+    // All init happens in seat_listener for now...
 
     return true;
 }
@@ -286,6 +286,14 @@ init_selection_and_blend2d(struct client_state *state)
             NULL  //       - Ditto
         );
     }
+
+    return true;
+}
+
+static inline bool
+init_output(struct client_state *state)
+{
+    // All init happens in output_listener for now...
 
     return true;
 }
@@ -378,6 +386,11 @@ int main(void)
         return EXIT_FAILURE;
     }
     fprintf(stderr, "Finished: init_selection()\n");
+
+    if (!init_output(&state)) {
+        return EXIT_FAILURE;
+    }
+    fprintf(stderr, "Finished: init_output()\n");
 
     if (!init_image_copy_capture_shm_buffer(&state)) {
         return EXIT_FAILURE;

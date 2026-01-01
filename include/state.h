@@ -25,6 +25,7 @@ struct client_state_globals {
     struct wl_compositor *compositor;
     struct wl_seat *seat;
     struct wl_shm *shm;
+    struct wl_output *output;
     struct zwlr_layer_shell_v1 *layer_shell;
     struct wp_cursor_shape_manager_v1 *cursor_shape_manager;
     struct ext_output_image_capture_source_manager_v1 *output_image_capture_source_manager;
@@ -137,20 +138,30 @@ struct client_state_capture_buffer {
 
 // TODO: Merge all or parts of this with client_state_surface?
 struct client_state_capture {
-
     struct client_state_capture_buffer buffer;
     uint32_t buf_size;
     struct wl_shm_pool *shm_pool;
     uint32_t shm_pool_size; // TODO: Should this be int32_t ?
 };
 
+struct client_state_output {
+    int32_t scale;
+
+    int32_t x_global;
+    int32_t y_global;
+
+    enum wl_output_subpixel subpixel_layout;
+    enum wl_output_transform transform;
+};
+
 struct client_state {
     struct client_state_globals globals;
     struct client_state_surface surface;
     struct client_state_seat seat;
-    struct client_state_capture capture;
+    struct client_state_output output;
 
     struct client_state_selection selection;
+    struct client_state_capture capture;
 };
 
 #endif
