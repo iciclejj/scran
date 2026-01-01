@@ -194,14 +194,12 @@ init_surface_shm_buffers(
     return true;
 }
 
-static bool
+static inline void
 destroy_surface_shm_buffers(struct client_state_surface *st_surface)
 {
     for (int i = 0; i < BUF_COUNT; ++i) {
         wl_buffer_destroy(st_surface->double_buffer[i].buffer);
     }
-
-    return true;
 }
 
 static inline bool
@@ -338,12 +336,10 @@ init_image_copy_capture_shm_buffer(struct client_state *state)
     return true;
 }
 
-static bool
+static inline void
 destroy_capture_shm_buffers(struct client_state_capture *st_capture)
 {
     wl_buffer_destroy(st_capture->buffer.buffer);
-
-    return true;
 }
 
 
