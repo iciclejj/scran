@@ -27,7 +27,7 @@ struct client_state_globals {
     struct wl_shm *shm;
     struct zwlr_layer_shell_v1 *layer_shell;
     struct wp_cursor_shape_manager_v1 *cursor_shape_manager;
-    struct ext_output_image_capture_source_v1 *output_image_capture_source;
+    struct ext_output_image_capture_source_manager_v1 *output_image_capture_source_manager;
     struct ext_image_copy_capture_manager_v1 *image_copy_capture_manager;
 };
 
