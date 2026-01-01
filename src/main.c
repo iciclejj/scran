@@ -88,13 +88,15 @@ exit_wayland(struct client_state *state)
     fprintf(stderr, "Disconnected from wayland server (%s)\n", SOCKNAME);
 }
 
+// Open shm file, get fd, unlink file, return fd.
+// The underlying file survives unlinking.
 static inline int
 shm_open_anon(void)
 {
+    // TODO: Generate random filenames in case file already exists?
     int fd = shm_open(SHM_FILENAME, O_CREAT | O_RDWR | O_EXCL, 0600);
 
     if (fd >= 0) {
-        // The underlying file/fd survives until all processes close/unmap it
         shm_unlink(SHM_FILENAME);
     }
 
