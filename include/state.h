@@ -138,6 +138,7 @@ struct client_state_capture_buffer {
 
 // TODO: Merge all or parts of this with client_state_surface?
 struct client_state_capture {
+    struct ext_image_capture_source_v1 *output_image_capture_source;
     struct client_state_capture_buffer buffer;
     uint32_t buf_size;
     struct wl_shm_pool *shm_pool;

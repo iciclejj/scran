@@ -299,6 +299,17 @@ init_output(struct client_state *state)
 }
 
 static inline bool
+init_image_capture_source(struct client_state *state)
+{
+    state->capture.output_image_capture_source = ext_output_image_capture_source_manager_v1_create_source(
+        state->globals.output_image_capture_source_manager,
+        state->globals.output
+    );
+
+    return true;
+}
+
+static inline bool
 init_image_copy_capture_shm_buffer(struct client_state *state)
 {
     // frame
@@ -393,6 +404,11 @@ int main(void)
     fprintf(stderr, "Finished: init_output()\n");
 
     // TODO: Will need xdg_output for logical geometry
+
+    if (!init_image_capture_source(&state)) {
+        return EXIT_FAILURE;
+    }
+    fprintf(stderr, "Finished: init_image_capture_source()\n");
 
     if (!init_image_copy_capture_shm_buffer(&state)) {
         return EXIT_FAILURE;
