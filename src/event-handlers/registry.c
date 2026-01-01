@@ -3,6 +3,8 @@
 #include <wayland-client.h>
 
 #include "wlr-layer-shell-unstable-v1.h"
+#include "ext-image-capture-source-v1.h"
+#include "ext-image-copy-capture-v1.h"
 
 #include "state.h"
 #include "wayland-event-handlers.h"
@@ -43,6 +45,10 @@ registry_handle_global(
     } else if (_INTERFACE_IS(wp_cursor_shape_manager_v1_interface)) {
         // sway only has version 1 at the time of writing.
         globals->cursor_shape_manager = wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, 1);
+    } else if (_INTERFACE_IS(ext_output_image_capture_source_manager_v1_interface)) {
+        globals->output_image_capture_source = wl_registry_bind(registry, name, &ext_output_image_capture_source_manager_v1_interface, 1);
+    } else if (_INTERFACE_IS(ext_image_copy_capture_manager_v1_interface)) {
+        globals->image_copy_capture_manager = wl_registry_bind(registry, name, &ext_image_copy_capture_manager_v1_interface, 1);
     }
 
     #undef _EVENT_INTERFACE_IS

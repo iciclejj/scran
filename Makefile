@@ -20,7 +20,10 @@ WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS = \
 	$(WAYLAND_PROTOCOLS_DIR_WLR)/unstable/wlr-layer-shell-unstable-v1.xml \
 	$(WAYLAND_PROTOCOLS_DIR)/stable/xdg-shell/xdg-shell.xml \
 	$(WAYLAND_PROTOCOLS_DIR)/stable/tablet/tablet-v2.xml \
-	$(WAYLAND_PROTOCOLS_DIR)/staging/cursor-shape/cursor-shape-v1.xml
+	$(WAYLAND_PROTOCOLS_DIR)/staging/cursor-shape/cursor-shape-v1.xml \
+	$(WAYLAND_PROTOCOLS_DIR)/staging/ext-image-capture-source/ext-image-capture-source-v1.xml \
+	$(WAYLAND_PROTOCOLS_DIR)/staging/ext-image-copy-capture/ext-image-copy-capture-v1.xml \
+	$(WAYLAND_PROTOCOLS_DIR)/staging/ext-foreign-toplevel-list/ext-foreign-toplevel-list-v1.xml
 WAYLAND_PROTOCOLS_REQUIRED_BASENAMES = $(foreach path, $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS), $(basename $(notdir $(path))))
 
 # $(1): Wayland protocol .xml path

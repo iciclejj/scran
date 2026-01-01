@@ -6,6 +6,9 @@
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 
+#include "wlr-layer-shell-unstable-v1.h"
+#include "ext-image-capture-source-v1.h"
+#include "ext-image-copy-capture-v1.h"
 #include "cursor-shape-v1.h"
 
 // TODO: Buffer file/header?
@@ -24,6 +27,8 @@ struct client_state_globals {
     struct wl_shm *shm;
     struct zwlr_layer_shell_v1 *layer_shell;
     struct wp_cursor_shape_manager_v1 *cursor_shape_manager;
+    struct ext_output_image_capture_source_v1 *output_image_capture_source;
+    struct ext_image_copy_capture_manager_v1 *image_copy_capture_manager;
 };
 
 struct client_state_surface_buffer {
