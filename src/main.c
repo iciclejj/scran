@@ -103,6 +103,8 @@ shm_open_anon(void)
     return fd;
 }
 
+// TODO: Clean this up a bit.
+//       Also decide where the attaches/commits and roundtrips are placed and how many total
 static inline bool
 init_surface_shm_buffers(
     // TODO: Either switch this back to just state, or do this narrowing everywhere
@@ -157,6 +159,10 @@ init_surface_shm_buffers(
 
     }
 
+    // Is this fine to do once buffers are mapped?
+    wl_shm_pool_destroy(st_surface->shm_pool);
+
+    // TODO: Should this be done here?
     wl_surface_attach(st_surface->surface, st_surface->double_buffer[0].buffer, 0, 0);
 
     return true;
