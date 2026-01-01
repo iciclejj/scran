@@ -120,11 +120,13 @@ init_surface_shm_buffers(
 
     if (-1 == ftruncate(shm_fd, st_surface->shm_pool_size)) {
         fprintf(stderr, "Failed to resize shm file to %d\n", st_surface->shm_pool_size);
+        close(shm_fd);
         return false;
     }
 
     fprintf(stderr, "Resized shm file to %d\n", st_surface->shm_pool_size);
 
+    // TODO: Handle wl_shm::format event
     st_surface->shm_pool = wl_shm_create_pool(
         wl_shm_global,
         shm_fd,
@@ -159,11 +161,21 @@ init_surface_shm_buffers(
 
     }
 
-    // Is this fine to do once buffers are mapped?
+    close(shm_fd);
     wl_shm_pool_destroy(st_surface->shm_pool);
 
     // TODO: Should this be done here?
     wl_surface_attach(st_surface->surface, st_surface->double_buffer[0].buffer, 0, 0);
+
+    return true;
+}
+
+static bool
+destroy_surface_shm_buffers(struct client_state_surface *st_surface)
+{
+    for (int i = 0; i < BUF_COUNT; ++i) {
+        wl_buffer_destroy(st_surface->double_buffer[i].buffer);
+    }
 
     return true;
 }
@@ -310,6 +322,7 @@ int main(void)
     //           F.ex. 2559x1599 rect width/height
 
     // todo: destroy wl_proxy and wl_event_queue objects when created
+    destroy_surface_shm_buffers(&state.surface);
     exit_wayland(&state);
 
     return 0;
