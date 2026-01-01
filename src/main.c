@@ -55,7 +55,7 @@ init_wayland_globals(struct client_state *state)
         return false;
     }
 
-    // Rest of globals initialized by the registry_listener (after roundtrip)
+    // Rest of globals initialized by registry_listener
     if ( wl_registry_add_listener(globals->registry, &registry_listener, (void *)state)
          == -1
     ) {
@@ -80,6 +80,25 @@ init_wayland_globals(struct client_state *state)
     // TODO: Validate globals?
 
     return true;
+}
+
+static void
+destroy_wayland_globals(struct client_state *state)
+{
+    struct client_state_globals *globals = &state->globals;
+
+    // TODO: Is a roundtrip necessary?
+
+    wl_compositor_destroy(globals->compositor);
+    wl_seat_destroy(globals->seat);
+    wl_shm_destroy(globals->shm);
+    zwlr_layer_shell_v1_destroy(globals->layer_shell);
+    wp_cursor_shape_manager_v1_destroy(globals->cursor_shape_manager);
+    ext_output_image_capture_source_manager_v1_destroy(globals->output_image_capture_source_manager);
+    ext_image_copy_capture_manager_v1_destroy(globals->image_copy_capture_manager);
+
+    // (Doesn't actually need to be last)
+    wl_registry_destroy(globals->registry);
 }
 
 // Open shm file, get fd, unlink file, return fd.
@@ -318,6 +337,7 @@ int main(void)
 
     // todo: destroy wl_proxy and wl_event_queue objects when created
     destroy_surface_shm_buffers(&state.surface);
+    destroy_wayland_globals(&state);
 
     wl_display_disconnect(state.globals.display);
     fprintf(stderr, "Disconnected from wayland server (%s)\n", SOCKNAME);
