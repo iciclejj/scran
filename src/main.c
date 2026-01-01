@@ -28,6 +28,8 @@ reset_selection(struct client_state *state)
     // TODO !!
 }
 
+// TODO: Decide on inline
+
 // TODO: Split this up into more atomic parts?
 //           F.ex. the roundtrip doesn't actually need to happen in here,
 //           but putting it outside the function entirely means you have to
@@ -171,11 +173,20 @@ init_surface_shm_buffers(
             &buffer_listener,
             &st_surface->double_buffer[i]
         );
-
     }
 
     close(shm_fd);
+    // TODO: Defer this until end of program execution?
+    //           Decide for this and other destroys
+    //           Else don't save shm_pool or shm_pool_size anywhere
     wl_shm_pool_destroy(st_surface->shm_pool);
+
+    // TODO: Do this cleaner?
+    for (int i = 0; i < BUF_COUNT; ++i) {
+        if (st_surface->double_buffer[i].data == NULL) {
+            return false;
+        }
+    }
 
     // TODO: Should this be done here?
     wl_surface_attach(st_surface->surface, st_surface->double_buffer[0].buffer, 0, 0);
@@ -287,6 +298,8 @@ int main(void)
     // struct client_state state = { 0 };
     struct client_state state;
     memset(&state, 0, sizeof(struct client_state));
+
+    // TODO: Systematize and minimize roundtrips/syncs
 
     // First roundtrip:
     if (!init_wayland_globals(&state)) {
