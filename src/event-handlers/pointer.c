@@ -90,6 +90,8 @@ handle_pointer_motion(
             break;
         case SELECTION_RESIZING:
             // TODO: Make this cleaner...
+            //       Handle inverted selection
+            //           i.e. drag bottom edge past top edge => TOP_LEFT becomes bottom left
             {
                 int32_t x_diff_pxl = pointer_x_pxl - (int32_t)wl_fixed_to_double(state->selection.resize_origin_pointer_x);
                 int32_t y_diff_pxl = pointer_y_pxl - (int32_t)wl_fixed_to_double(state->selection.resize_origin_pointer_y);
