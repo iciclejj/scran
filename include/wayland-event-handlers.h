@@ -19,5 +19,6 @@ extern struct zwlr_layer_surface_v1_listener layer_surface_listener;
 extern struct wl_buffer_listener buffer_listener;
 extern struct wl_callback_listener surface_frame_callback_listener;
 extern struct wl_output_listener output_listener;
+extern struct ext_image_copy_capture_session_v1_listener image_copy_capture_session_listener;
 
 #endif

@@ -13,6 +13,7 @@
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 
+#include "ext-image-copy-capture-v1.h"
 #include "wlr-layer-shell-unstable-v1.h"
 #include "wayland-client-protocol.h"
 
@@ -310,6 +311,24 @@ init_image_capture_source(struct client_state *state)
 }
 
 static inline bool
+init_image_copy_capture(struct client_state *state)
+{
+    state->capture.image_copy_capture_session = ext_image_copy_capture_manager_v1_create_session(
+        state->globals.image_copy_capture_manager,
+        state->capture.output_image_capture_source,
+        EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS
+    );
+
+    ext_image_copy_capture_session_v1_add_listener(
+        state->capture.image_copy_capture_session,
+        &image_copy_capture_session_listener,
+        state
+    );
+
+    return true;
+}
+
+static inline bool
 init_image_copy_capture_shm_buffer(struct client_state *state)
 {
     // frame
@@ -409,6 +428,11 @@ int main(void)
         return EXIT_FAILURE;
     }
     fprintf(stderr, "Finished: init_image_capture_source()\n");
+
+    if (!init_image_copy_capture(&state)) {
+        return EXIT_FAILURE;
+    }
+    fprintf(stderr, "Finished: init_image_copy_capture()\n");
 
     if (!init_image_copy_capture_shm_buffer(&state)) {
         return EXIT_FAILURE;
