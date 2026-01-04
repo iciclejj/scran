@@ -142,10 +142,13 @@ struct client_state_capture {
     struct ext_image_capture_source_v1 *output_image_capture_source;
     struct ext_image_copy_capture_session_v1 *image_copy_capture_session;
 
+    // TODO: Probably put this into a separate struct. Mode?
+    //       Something to separate it from both capture/output and from xdg output
     uint32_t width_source_pxl;
     uint32_t height_source_pxl;
+    uint32_t shm_format;
+    bool shm_format_is_selected; // XXX: Is there a nicer way?
 
-    uint32_t shm_formats_supported;
 
     struct client_state_capture_buffer buffer;
     uint32_t buf_size;

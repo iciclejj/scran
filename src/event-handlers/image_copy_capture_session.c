@@ -30,7 +30,21 @@ handle_image_copy_capture_session_shm_format(
     uint32_t shm_format
 ) {
     struct client_state *state = data;
-    state->capture.shm_formats_supported |= shm_format;
+
+    // List of formats we want to support.
+    // TODO: Add more formats and logic for handling them
+    if (!state->capture.shm_format_is_selected
+        && shm_format == WL_SHM_FORMAT_ARGB8888
+        || shm_format == WL_SHM_FORMAT_XRGB8888
+        || shm_format == WL_SHM_FORMAT_XBGR8888
+        || shm_format == WL_SHM_FORMAT_ABGR8888
+    ) {
+        state->capture.shm_format = shm_format;
+        state->capture.shm_format_is_selected = true;
+        fprintf(stderr, "Received supported format %x\n", shm_format);
+    } else {
+        fprintf(stderr, "Received unsupported format %x\n", shm_format);
+    }
 }
 
 static void
@@ -51,6 +65,8 @@ struct ext_image_copy_capture_session_v1_listener image_copy_capture_session_lis
     .shm_format = handle_image_copy_capture_session_shm_format,
     .dmabuf_device = noop, // TODO
     .dmabuf_format = noop, // TODO
-    .done = noop, // TODO
+    // TODO: Ensure correct formats (anything else?) after capture session listener dispatch/roundtrip
+    //           Either in ::done OR in later code
+    .done = noop,
     .stopped = handle_image_copy_capture_session_stopped,
 };
