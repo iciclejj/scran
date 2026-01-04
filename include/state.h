@@ -14,7 +14,7 @@
 // TODO: Buffer file/header?
 #define SHM_FILENAME "/icicle-wayland-client"
 #define BUF_COUNT 2
-// TODO: Get supported formats - compositor::format
+// ARGB8888 and XRGB8888 are always supported (wayland spec)
 #define SURFACE_SHM_FORMAT WL_SHM_FORMAT_ARGB8888
 #define SURFACE_SHM_FORMAT_BL BL_FORMAT_PRGB32
 #define SURFACE_BYTES_PER_PIXEL 4 // Depends on SURFACE_SHM_FORMAT  TODO: Get this from graphics library

@@ -356,6 +356,8 @@ init_image_copy_capture_shm_buffer(struct client_state *state)
         0,
         state->surface.width,
         state->surface.height,
+        // XXX TODO: This format must be gotten dynamically.
+        //               No format guarantees like surface/client-drawn buffers have
         SURFACE_BYTES_PER_PIXEL * state->surface.width,
         SURFACE_SHM_FORMAT
     );
