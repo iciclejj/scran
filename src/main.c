@@ -131,6 +131,7 @@ init_surface_shm_buffers(
     // TODO: Close this.
     int shm_fd = shm_open_anon();
     // TODO: Graphics library needs to take part in this..
+    //       Account for scale/transform
     st_surface->buf_size = SURFACE_BYTES_PER_PIXEL * st_surface->width * st_surface->height;
     st_surface->shm_pool_size = BUF_COUNT * st_surface->buf_size;
 
