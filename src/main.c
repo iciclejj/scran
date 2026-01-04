@@ -348,12 +348,20 @@ init_image_copy_capture_frame(struct client_state *state)
 static inline bool
 init_image_copy_capture_shm_buffer(struct client_state *state)
 {
-    // frame
+    if (!state->capture.shm_format_is_selected) {
+        fprintf(stderr, "Failed to select shm_buffer format.\n");
+        return false;
+    }
+
+    // Full output source buffer for now.
+    // TODO: Revisit this after multi-output support.
+    state->capture.buf_size =
+        state->capture.source_width_px
+        * state->capture.pixel_stride
+        * state->capture.source_height_px;
+    state->capture.shm_pool_size = state->capture.buf_size;
+
     int shm_fd = shm_open_anon();
-    // TODO: Assert buf_size is initialized
-    //           And rest of state->surface dependencies
-    state->capture.shm_pool_size = state->surface.buf_size;
-    state->capture.buf_size = state->surface.buf_size;
 
     if (-1 == ftruncate(shm_fd, state->capture.shm_pool_size)) {
         fprintf(stderr, "Failed to resize shm file to %d\n", state->capture.shm_pool_size);
@@ -373,10 +381,8 @@ init_image_copy_capture_shm_buffer(struct client_state *state)
         0,
         state->surface.width,
         state->surface.height,
-        // XXX TODO: This format must be gotten dynamically.
-        //               No format guarantees like surface/client-drawn buffers have
-        SURFACE_BYTES_PER_PIXEL * state->surface.width,
-        SURFACE_SHM_FORMAT
+        state->capture.pixel_stride * state->capture.source_width_px,
+        state->capture.shm_format
     );
 
     state->capture.buffer.data = mmap(
@@ -463,7 +469,6 @@ int main(void)
     // TODO: Figure out where to roundtrip
     wl_display_roundtrip(state.globals.display);
 
-    // XXX TEST TODO: shm buffers should be created after we get session info etc.
     if (!init_image_copy_capture_shm_buffer(&state)) {
         return EXIT_FAILURE;
     }
