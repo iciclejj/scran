@@ -44,6 +44,7 @@ handle_image_copy_capture_session_shm_format(
     ) {
         state->capture.shm_format = shm_format;
         state->capture.shm_format_is_selected = true;
+        state->capture.pixel_stride = 4;
         fprintf(stderr, "Received supported format %x\n", shm_format);
     } else {
         fprintf(stderr, "Received unsupported format %x\n", shm_format);

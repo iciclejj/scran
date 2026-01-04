@@ -154,6 +154,7 @@ struct client_state_capture {
     uint32_t source_width_px;
     uint32_t source_height_px;
     uint32_t shm_format;
+    uint32_t pixel_stride; // bytes per pixel. TODO: Rename?
     bool shm_format_is_selected; // XXX: Is there a nicer way?
 
     // TODO: Use this
