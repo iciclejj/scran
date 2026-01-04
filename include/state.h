@@ -15,9 +15,9 @@
 #define SHM_FILENAME "/icicle-wayland-client"
 #define BUF_COUNT 2
 // TODO: Get supported formats - compositor::format
-#define BUF_FORMAT WL_SHM_FORMAT_ARGB8888
-#define BUF_FORMAT_BL BL_FORMAT_PRGB32
-#define BUF_PIXEL_BYTES 4 // Depends on BUF_FORMAT  TODO: Get this from graphics library
+#define SURFACE_SHM_FORMAT WL_SHM_FORMAT_ARGB8888
+#define SURFACE_SHM_FORMAT_BL BL_FORMAT_PRGB32
+#define SURFACE_BYTES_PER_PIXEL 4 // Depends on SURFACE_SHM_FORMAT  TODO: Get this from graphics library
 
 struct client_state_globals {
     struct wl_display *display;

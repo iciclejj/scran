@@ -131,7 +131,7 @@ init_surface_shm_buffers(
     // TODO: Close this.
     int shm_fd = shm_open_anon();
     // TODO: Graphics library needs to take part in this..
-    st_surface->buf_size = BUF_PIXEL_BYTES * st_surface->width * st_surface->height;
+    st_surface->buf_size = SURFACE_BYTES_PER_PIXEL * st_surface->width * st_surface->height;
     st_surface->shm_pool_size = BUF_COUNT * st_surface->buf_size;
 
     if (-1 == ftruncate(shm_fd, st_surface->shm_pool_size)) {
@@ -165,8 +165,8 @@ init_surface_shm_buffers(
             _pool_offset,
             st_surface->width,
             st_surface->height,
-            BUF_PIXEL_BYTES * st_surface->width,
-            BUF_FORMAT
+            SURFACE_BYTES_PER_PIXEL * st_surface->width,
+            SURFACE_SHM_FORMAT
         );
 
         wl_buffer_add_listener(
@@ -279,9 +279,9 @@ init_selection_and_blend2d(struct client_state *state)
             &st_buffer->bl_img,
             state->surface.width,
             state->surface.height,
-            BUF_FORMAT_BL,
+            SURFACE_SHM_FORMAT_BL,
             st_buffer->data,
-            BUF_PIXEL_BYTES * state->surface.width,
+            SURFACE_BYTES_PER_PIXEL * state->surface.width,
             BL_DATA_ACCESS_RW,
             NULL, // TODO: - Let blend2d destroy our data?
             NULL  //       - Ditto
@@ -356,8 +356,8 @@ init_image_copy_capture_shm_buffer(struct client_state *state)
         0,
         state->surface.width,
         state->surface.height,
-        BUF_PIXEL_BYTES * state->surface.width,
-        BUF_FORMAT
+        SURFACE_BYTES_PER_PIXEL * state->surface.width,
+        SURFACE_SHM_FORMAT
     );
 
     state->capture.buffer.data = mmap(
