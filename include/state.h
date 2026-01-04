@@ -143,6 +143,8 @@ struct client_state_capture {
     // Inconsistent naming, but my eyes are bleeding
     struct ext_image_capture_source_v1 *source;
     struct ext_image_copy_capture_session_v1 *session;
+    // TODO: This doesn't need to be a state instance (nor do a lot of the others)
+    struct ext_image_copy_capture_frame_v1 *frame;
 
     // TODO: Probably put this into a separate struct. Mode?
     //       Something to separate it from both capture/output and from xdg output

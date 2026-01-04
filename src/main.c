@@ -331,11 +331,12 @@ init_image_copy_capture_session(struct client_state *state)
 static inline bool
 init_image_copy_capture_frame(struct client_state *state)
 {
-    struct ext_image_copy_capture_frame_v1 *frame = ext_image_copy_capture_session_v1_create_frame(
+    state->capture.frame = ext_image_copy_capture_session_v1_create_frame(
         state->capture.session
     );
+
     ext_image_copy_capture_frame_v1_add_listener(
-        frame,
+        state->capture.frame,
         &image_copy_capture_frame_listener,
         state
     );
