@@ -302,7 +302,7 @@ init_output(struct client_state *state)
 static inline bool
 init_image_capture_source(struct client_state *state)
 {
-    state->capture.output_image_capture_source = ext_output_image_capture_source_manager_v1_create_source(
+    state->capture.source = ext_output_image_capture_source_manager_v1_create_source(
         state->globals.output_image_capture_source_manager,
         state->globals.output
     );
@@ -313,14 +313,13 @@ init_image_capture_source(struct client_state *state)
 static inline bool
 init_image_copy_capture(struct client_state *state)
 {
-    state->capture.image_copy_capture_session = ext_image_copy_capture_manager_v1_create_session(
+    state->capture.session = ext_image_copy_capture_manager_v1_create_session(
         state->globals.image_copy_capture_manager,
-        state->capture.output_image_capture_source,
+        state->capture.source,
         EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS
     );
-
     ext_image_copy_capture_session_v1_add_listener(
-        state->capture.image_copy_capture_session,
+        state->capture.session,
         &image_copy_capture_session_listener,
         state
     );

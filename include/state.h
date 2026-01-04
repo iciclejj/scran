@@ -138,14 +138,14 @@ struct client_state_capture_buffer {
 
 // TODO: Merge all or parts of this with client_state_surface?
 struct client_state_capture {
-    // TODO: Probably rename these once struct organization is finalized
-    struct ext_image_capture_source_v1 *output_image_capture_source;
-    struct ext_image_copy_capture_session_v1 *image_copy_capture_session;
+    // Inconsistent naming, but my eyes are bleeding
+    struct ext_image_capture_source_v1 *source;
+    struct ext_image_copy_capture_session_v1 *session;
 
     // TODO: Probably put this into a separate struct. Mode?
     //       Something to separate it from both capture/output and from xdg output
-    uint32_t width_source_pxl;
-    uint32_t height_source_pxl;
+    uint32_t source_width_px;
+    uint32_t source_height_px;
     uint32_t shm_format;
     bool shm_format_is_selected; // XXX: Is there a nicer way?
 

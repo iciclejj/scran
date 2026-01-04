@@ -22,8 +22,8 @@ handle_image_copy_capture_session_buffer_size(
     //           Also use 
     assert(state->output.mode.width == width);
     assert(state->output.mode.height == height);
-    state->capture.width_source_pxl = width;
-    state->capture.height_source_pxl = height;
+    state->capture.source_width_px = width;
+    state->capture.source_height_px = height;
 }
 
 static void
@@ -57,7 +57,7 @@ handle_image_copy_capture_session_stopped(
 ) {
     struct client_state *state = data;
 
-    ext_image_copy_capture_session_v1_destroy(state->capture.image_copy_capture_session);
+    ext_image_copy_capture_session_v1_destroy(state->capture.session);
 
     // TODO: Destroy frames, free shm etc.
 }
