@@ -405,6 +405,27 @@ destroy_capture_shm_buffers(struct client_state_capture *st_capture)
     wl_buffer_destroy(st_capture->buffer.buffer);
 }
 
+static inline bool
+dispatch_capture_event_loop(struct client_state *state)
+{
+    // Get initial frame. Subsequent capture requests happen within frame::ready
+    //     Similar to the wl_surface callback event loop
+    ext_image_copy_capture_frame_v1_attach_buffer(
+        state->capture.frame,
+        state->capture.buffer.buffer
+    );
+    ext_image_copy_capture_frame_v1_damage_buffer(
+        state->capture.frame,
+        0,
+        0,
+        state->capture.source_width_px,
+        state->capture.source_height_px
+    );
+    ext_image_copy_capture_frame_v1_capture(state->capture.frame);
+
+    return true;
+}
+
 
 int main(void)
 {
@@ -417,6 +438,8 @@ int main(void)
     //       Handle errors/return false where appropriate
     //           Probably void function if false return never happens
     //       Probably refactor init_* function atomicity after code is more settled
+    //       Allow selection before capture protocols are ready?
+    //           Probably negligible and difficult without multithreading
 
     // First roundtrip:
     if (!init_wayland_globals(&state)) {
@@ -484,11 +507,22 @@ int main(void)
     );
     wl_surface_commit(state.surface.surface);
 
+    // TEST:
+    // TODO: Quit out of loop by keybind and some new status/running/etc state member
+    //       And probably not two loops...
     while (wl_display_dispatch(state.globals.display)) {
-        // TODO: state->running
-        //       Exit with keybind
+        if (state.selection.selection_state == SELECTION_COMPLETE) {
+            dispatch_capture_event_loop(&state);
+            break;
+        }
     }
-
+    while (wl_display_dispatch(state.globals.display)) {
+        if (state.selection.selection_state != SELECTION_COMPLETE
+            && state.selection.selection_state != SELECTION_REBASING
+        ) {
+            break;
+        }
+    }
 
     // TODO: Remember to fix off-by-one bug when selecting corner to corner
     //           F.ex. 2559x1599 rect width/height
