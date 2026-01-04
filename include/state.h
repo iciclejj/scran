@@ -118,6 +118,8 @@ struct client_state_selection {
     enum selection_state selection_state;
     enum selection_resize_direction selection_resize_direction;
 
+    // TODO: Make a cleaner/more obvious interface for getting selection
+    //       height/width etc. than just getting the .bl.box coordinates?
     struct client_state_selection_blend2d bl;
 
     wl_fixed_t rebase_origin_pointer_x;
@@ -149,6 +151,8 @@ struct client_state_capture {
     uint32_t shm_format;
     bool shm_format_is_selected; // XXX: Is there a nicer way?
 
+    // TODO: Use this
+    enum wl_output_transform transform;
 
     struct client_state_capture_buffer buffer;
     uint32_t buf_size;
