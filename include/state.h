@@ -44,6 +44,14 @@ struct client_state_surface {
     struct wl_surface *surface;
     struct zwlr_layer_surface_v1 *layer_surface;
 
+    // Probably make a new client_state_shm struct like:
+    //   .shm = {
+    //       .buffers: client_state_surface_buffer[],
+    //       .buf_size,
+    //       .shm_pool_size,
+    //       .shm_pool
+    //   }
+    // At least if will be easily usable in client_state_capture
     struct wl_shm_pool *shm_pool;
     uint32_t shm_pool_size; // TODO: Should this be int32_t ?
     struct client_state_surface_buffer double_buffer[BUF_COUNT];
