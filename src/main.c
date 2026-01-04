@@ -311,11 +311,12 @@ init_image_capture_source(struct client_state *state)
 }
 
 static inline bool
-init_image_copy_capture(struct client_state *state)
+init_image_copy_capture_session(struct client_state *state)
 {
     state->capture.session = ext_image_copy_capture_manager_v1_create_session(
         state->globals.image_copy_capture_manager,
         state->capture.source,
+        // TODO: Make this optional
         EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS
     );
     ext_image_copy_capture_session_v1_add_listener(
@@ -390,6 +391,9 @@ int main(void)
     memset(&state, 0, sizeof(struct client_state));
 
     // TODO: Systematize and minimize roundtrips/syncs
+    //       Handle errors/return false where appropriate
+    //           Probably void function if false return never happens
+    //       Probably refactor init_* function atomicity after code is more settled
 
     // First roundtrip:
     if (!init_wayland_globals(&state)) {
@@ -430,10 +434,10 @@ int main(void)
     }
     fprintf(stderr, "Finished: init_image_capture_source()\n");
 
-    if (!init_image_copy_capture(&state)) {
+    if (!init_image_copy_capture_session(&state)) {
         return EXIT_FAILURE;
     }
-    fprintf(stderr, "Finished: init_image_copy_capture()\n");
+    fprintf(stderr, "Finished: init_image_copy_capture_session()\n");
 
     if (!init_image_copy_capture_shm_buffer(&state)) {
         return EXIT_FAILURE;
