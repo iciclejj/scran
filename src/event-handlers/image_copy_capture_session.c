@@ -1,4 +1,7 @@
+#include <stdio.h>
 #include <assert.h>
+
+#include <wayland-client.h>
 
 #include "ext-image-copy-capture-v1.h"
 
