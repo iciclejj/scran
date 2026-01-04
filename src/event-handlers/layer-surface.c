@@ -21,10 +21,6 @@ handle_layer_surface_configure(
     state->surface.height = height;
     state->surface.width = width;
 
-    // TEST:
-    state->surface.curr_height = height;
-    state->surface.curr_width = width;
-
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 }
 

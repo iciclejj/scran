@@ -61,11 +61,6 @@ struct client_state_surface {
     bool is_focused;
     uint32_t width;
     uint32_t height;
-
-    // TEST:
-    uint32_t curr_color;
-    uint32_t curr_width;
-    uint32_t curr_height;
 };
 
 struct client_state_seat_pointer {
