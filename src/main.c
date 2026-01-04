@@ -453,7 +453,14 @@ int main(void)
     if (!init_image_copy_capture_session(&state)) {
         return EXIT_FAILURE;
     }
-    fprintf(stderr, "Finished: init_image_copy_capture_session()\n");
+    fprintf(stderr, "Finished: init_image_copy_capture_frame()\n");
+
+    if (!init_image_copy_capture_frame(&state)) {
+        return EXIT_FAILURE;
+    }
+    fprintf(stderr, "Finished: init_image_copy_capture_frame()\n");
+    // TODO: Figure out where to roundtrip
+    wl_display_roundtrip(state.globals.display);
 
     // XXX TEST TODO: shm buffers should be created after we get session info etc.
     if (!init_image_copy_capture_shm_buffer(&state)) {
