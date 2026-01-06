@@ -63,10 +63,10 @@ draw_frame(
     bl_context_set_fill_style_rgba32(&bl->ctx, 0x88888888);
     bl_context_fill_path_d(&bl->ctx, &origin, &bl->path);
 
-    fprintf(
-        stderr, "box: x0=%d, x1=%d, y0=%d, y1=%d\n",
-        bl->box.x0, bl->box.x1, bl->box.y0, bl->box.y1
-    );
+    // fprintf(
+    //     stderr, "box: x0=%d, x1=%d, y0=%d, y1=%d\n",
+    //     bl->box.x0, bl->box.x1, bl->box.y0, bl->box.y1
+    // );
 
     bl_context_end(&bl->ctx);
     bl_path_reset(&bl->path);
