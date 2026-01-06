@@ -2,9 +2,11 @@
 
 PROG = main
 LDLIBS = -lwayland-client -lblend2d
+LDLIBS += $(foreach pkg, libavcodec, $(shell pkg-config --libs $(pkg)))
 INCDIRS = include/
 INCDIRS += $(WAYLAND_PROTOCOLS_DIR_LOCAL)
 CFLAGS += $(addprefix -I, $(INCDIRS))
+CFLAGS += $(foreach pkg, libavcodec, $(shell pkg-config --cflags $(pkg)))
 SRCDIRS = src src/event-handlers
 SRCS = $(foreach dir, $(SRCDIRS), $(wildcard $(dir)/*.c))
 SRCS += $(addprefix $(WAYLAND_PROTOCOLS_DIR_LOCAL)/, $(WAYLAND_PROTOCOLS_REQUIRED_C_FILENAMES))

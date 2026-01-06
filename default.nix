@@ -5,7 +5,8 @@
   wayland-scanner,
   wayland-protocols,
   wlr-protocols,
-  blend2d
+  blend2d,
+  ffmpeg,
 }:
 
 stdenv.mkDerivation {
@@ -23,6 +24,7 @@ stdenv.mkDerivation {
   buildInputs = [
     wayland
     blend2d
+    ffmpeg
   ];
 
   installPhase = ''
