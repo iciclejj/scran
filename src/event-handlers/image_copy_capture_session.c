@@ -37,10 +37,12 @@ handle_image_copy_capture_session_shm_format(
     // List of formats we want to support.
     // TODO: Add more formats and logic for handling them
     if (!state->capture.shm_format_is_selected
-        && shm_format == WL_SHM_FORMAT_ARGB8888
-        || shm_format == WL_SHM_FORMAT_XRGB8888
-        || shm_format == WL_SHM_FORMAT_XBGR8888
-        || shm_format == WL_SHM_FORMAT_ABGR8888
+        &&
+        (shm_format == WL_SHM_FORMAT_ARGB8888
+         || shm_format == WL_SHM_FORMAT_XRGB8888
+         || shm_format == WL_SHM_FORMAT_XBGR8888
+         || shm_format == WL_SHM_FORMAT_ABGR8888
+        )
     ) {
         state->capture.shm_format = shm_format;
         state->capture.shm_format_is_selected = true;
