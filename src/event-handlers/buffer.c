@@ -4,7 +4,7 @@
 
 #include "wayland-event-handlers.h"
 
-void
+static void
 handle_buffer_release(void *data, struct wl_buffer *buffer)
 {
     struct client_state_surface_buffer *st_surface_buffer = data;

@@ -72,7 +72,7 @@ draw_frame(
     bl_path_reset(&bl->path);
 }
 
-void
+static void
 surface_frame_callback_handler(
     void *data,
     struct wl_callback *callback,

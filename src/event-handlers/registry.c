@@ -9,7 +9,7 @@
 #include "state.h"
 #include "wayland-event-handlers.h"
 
-void
+static void
 registry_handle_global(
     void *data,
     struct wl_registry *registry,

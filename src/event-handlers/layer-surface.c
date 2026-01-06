@@ -7,7 +7,7 @@
 #include "state.h"
 #include "wayland-event-handlers.h"
 
-void
+static void
 handle_layer_surface_configure(
     void *data,
     struct zwlr_layer_surface_v1 *layer_surface,
@@ -24,7 +24,7 @@ handle_layer_surface_configure(
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 }
 
-void
+static void
 handle_layer_surface_closed(void *data, struct zwlr_layer_surface_v1 *layer_surface)
 {
     struct client_state *state = data;

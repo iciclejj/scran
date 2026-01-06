@@ -5,7 +5,7 @@
 
 #include "wayland-event-handlers.h"
 
-void
+static void
 handle_pointer_enter(
     void *data,
     struct wl_pointer *pointer,
@@ -29,7 +29,7 @@ handle_pointer_enter(
     }
 }
 
-void
+static void
 handle_pointer_leave(
     void *data,
     struct wl_pointer *pointer,
@@ -45,7 +45,7 @@ handle_pointer_leave(
     }
 }
 
-void
+static void
 handle_pointer_motion(
     void *data,
     struct wl_pointer *pointer,
@@ -128,7 +128,7 @@ get_center_value(int32_t x0, int32_t x1)
     return x0 + ((x1 - x0) / 2);
 }
 
-void
+static void
 handle_pointer_button(
     void *data,
     struct wl_pointer *pointer,

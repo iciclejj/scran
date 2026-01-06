@@ -4,7 +4,7 @@
 
 #include "wayland-event-handlers.h"
 
-void
+static void
 handle_seat_capabilities(
     void *data,
     struct wl_seat *seat,
