@@ -52,16 +52,16 @@ WAYLAND_PROTOCOLS_REQUIRED_H_FILENAMES = $(patsubst %, %.h, $(WAYLAND_PROTOCOLS_
 
 $(foreach path, $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS), $(eval $(call WAYLAND_PROTOCOL_GEN_RULE, $(path))))
 
-protocols: $(addprefix \
+WAYLAND_PROTOCOLS = $(addprefix \
 	$(WAYLAND_PROTOCOLS_DIR_LOCAL)/, \
 	$(WAYLAND_PROTOCOLS_REQUIRED_C_FILENAMES) \
 	$(WAYLAND_PROTOCOLS_REQUIRED_H_FILENAMES) \
 )
 
-$(OBJS): %.o: %.c
+$(OBJS): %.o: %.c $(WAYLAND_PROTOCOLS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(PROG): $(OBJS) protocols
+$(PROG): $(OBJS)
 	$(CC) $(OBJS) $(CFLAGS) -o $(PROG) $(LDLIBS)
 
 
