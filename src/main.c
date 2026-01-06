@@ -435,7 +435,9 @@ dispatch_capture_event_loop(struct client_state *state)
     struct tm *tm_now = localtime(&time_now);
     strftime(time_now_str, sizeof(time_now_str), "%Y%m%d-%H%M%S", tm_now);
     snprintf(ffmpeg_command, 256,
-        "ffmpeg -f rawvideo -video_size %dx%d -pix_fmt %s -i -"
+        // XXX: Using -v quiet to suppress output and broken newline at end.
+        //          TODO: Find better solution that still gives some logging
+        "ffmpeg -v quiet -f rawvideo -video_size %dx%d -pix_fmt %s -i -"
             " test-capture_%s.mp4",
         state->capture.frame_width_px,
         state->capture.frame_height_px,
