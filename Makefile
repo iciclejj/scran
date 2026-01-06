@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := all
 
-PKGCONF_LIBS = libavcodec libavutil
+PKGCONF_LIBS = libavcodec libavutil xkbcommon
 
 PROG = main
 LDLIBS = -lwayland-client -lblend2d

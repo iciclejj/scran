@@ -6,6 +6,7 @@
   wayland-protocols,
   wlr-protocols,
   blend2d,
+  libxkbcommon,
   ffmpeg,
   copyDesktopItems,
   makeDesktopItem,
@@ -27,6 +28,7 @@ stdenv.mkDerivation {
   buildInputs = [
     wayland
     blend2d
+    libxkbcommon
     ffmpeg
   ];
 
