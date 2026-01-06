@@ -7,6 +7,8 @@
   wlr-protocols,
   blend2d,
   ffmpeg,
+  copyDesktopItems,
+  makeDesktopItem,
 }:
 
 stdenv.mkDerivation {
@@ -19,6 +21,7 @@ stdenv.mkDerivation {
     wlr-protocols
     wayland-protocols
     pkg-config
+    copyDesktopItems
   ];
 
   buildInputs = [
@@ -30,4 +33,15 @@ stdenv.mkDerivation {
   installPhase = ''
     install -D main $out/bin/wayland-client-test-1
   '';
+
+  desktopItems = [
+    # TODO: Change this
+    (makeDesktopItem {
+      name = "client-1-test";
+      exec = "client-1-test";
+      comment = "Screen capture...";
+      desktopName = "Client-1-Test";
+      genericName = "Client-1-Test";
+    })
+  ];
 }
