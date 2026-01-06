@@ -1,5 +1,7 @@
 # TODO: THIS IS ALL A MESS
 
+.DEFAULT_GOAL := all
+
 PKGCONF_LIBS = libavcodec libavutil
 
 PROG = main
