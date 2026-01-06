@@ -1,0 +1,50 @@
+#include <wayland-client.h>
+#include <blend2d/blend2d.h>
+#include <libavcodec/avcodec.h>
+#include <libavutil/pixdesc.h>
+
+// XXX TODO: Figure out how all the libraries treat rgba vs bgra etc. wrt. endianness
+//             - Especially wayland
+//             - F.ex. ffmpeg AV_PIX_FMT_RGB32 is endian-dependent
+//                   (according to libav comments. not tested yet.)
+//             - This line seems to give correct colors:
+//                   case WL_SHM_FORMAT_XBGR8888: return AV_PIX_FMT_RGB0;
+//               At least when comparing to session::shm_format's output.
+
+enum BLFormat
+wl_shm_format_to_blend2d(enum wl_shm_format wl_shm_format)
+{
+    switch (wl_shm_format) {
+        // XXX: Check if this is correct
+        case WL_SHM_FORMAT_ARGB8888: return BL_FORMAT_PRGB32;
+        case WL_SHM_FORMAT_XRGB8888: return BL_FORMAT_XRGB32;
+        // XXX: TODO: Needs BL_FORMAT_FLAG for endianness (?)
+        // case WL_SHM_FORMAT_ABGR8888: return BL_FORMAT_PRGB32;
+        // case WL_SHM_FORMAT_XBGR8888: return BL_FORMAT_XRGB32;
+        case WL_SHM_FORMAT_C8:       return BL_FORMAT_A8;
+        // TODO: Consider default: assert(true)?
+        default:                     return BL_FORMAT_NONE;
+    }
+}
+
+enum AVPixelFormat
+wl_shm_format_to_ffmpeg(enum wl_shm_format wl_shm_format)
+{
+    switch (wl_shm_format) {
+        // XXX: Double-check this behavior (at least with session::shm_format)
+        //      See TODO at the top.
+        case WL_SHM_FORMAT_ARGB8888: return AV_PIX_FMT_ABGR;
+        case WL_SHM_FORMAT_XRGB8888: return AV_PIX_FMT_0BGR;
+        case WL_SHM_FORMAT_ABGR8888: return AV_PIX_FMT_RGBA;
+        case WL_SHM_FORMAT_XBGR8888: return AV_PIX_FMT_RGB0;
+        case WL_SHM_FORMAT_C8:       return AV_PIX_FMT_GRAY8;
+        // TODO: Consider default: assert(true)?
+        default:                     return AV_PIX_FMT_NONE;
+    }
+}
+
+const char *
+wl_shm_format_to_ffmpeg_cli_str(enum wl_shm_format wl_shm_format)
+{
+    return av_get_pix_fmt_name(wl_shm_format_to_ffmpeg(wl_shm_format));
+}

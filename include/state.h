@@ -2,6 +2,8 @@
 #define STATE_H
 
 #include <stdbool.h>
+#include <stdio.h>
+#include <sys/uio.h>
 
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
@@ -149,6 +151,10 @@ struct client_state_capture {
     // TODO: This doesn't need to be a state instance (nor do a lot of the others)
     struct ext_image_copy_capture_frame_v1 *frame;
 
+    bool capturing;
+    FILE *ffmpeg;
+    int ffmpeg_fd;
+
     // TODO: Probably put this into a separate struct. Mode?
     //       Something to separate it from both capture/output and from xdg output
     uint32_t source_width_px;
@@ -164,6 +170,20 @@ struct client_state_capture {
     uint32_t buf_size;
     struct wl_shm_pool *shm_pool;
     uint32_t shm_pool_size; // TODO: Should this be int32_t ?
+
+    // TODO: - Either set this together with buf_size or implement logic to
+    //         read/write width*height cutout of buffer
+    //       - XXX: Redo names of both these and other x/y/w/h etc. things
+    //              once scale/transform is implemented
+    //                  i.e. _px etc.
+    uint32_t frame_width_px;
+    uint32_t frame_height_px;
+    uint32_t frame_x_px;
+    uint32_t frame_y_px;
+    // indexing into .buffer.data, i.e. the screen/output buffer that encapsulates
+    // the selection/capture area
+    // [34560] => 16 UHD monitors stacked vertically ~= 0.5 MB (x86_64)
+    struct iovec frame_iovec[34560]; 
 };
 
 struct client_state_output_mode {

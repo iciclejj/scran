@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
+#include <assert.h>
 
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
@@ -42,14 +43,67 @@ handle_image_copy_capture_frame_ready(
 ) {
     struct client_state *state = data;
 
+    // TODO: Don't capture the overlay. Especially since it seemingly doesn't
+    //       update in sync with the capture (the selection edges are sliding
+    //       into the capture frame when moving it around)
+
     // TODO: Is there any scenario where we wouldn't want to destroy this
     //       as soon as we enter ::ready?
     ext_image_copy_capture_frame_v1_destroy(frame);
 
+    // XXX: This is expected to be set to true prior to dispatching ::capture
+    //      (at time of writing) - see if-statement below.
+    state->capture.capturing =
+        state->selection.selection_state == SELECTION_COMPLETE ||
+        state->selection.selection_state == SELECTION_REBASING
+    ;
 
-    // XXX TODO: Implement capture!
+    // TODO: Make sure buffer is destroyed
+    if (!state->capture.capturing) {
+        pclose(state->capture.ffmpeg);
+        return;
+    }
 
+    // TODO:
+    //   - Make sure "inverted/flipped over itself" selection (e.g. y1 crosses y0)
+    //     is handled here and/or in selection logic
+    //   - Either assert width/height isn't 0 (and enforce in selection logic)
+    //     or handle it properly here
+    //
 
+    // surface area == output/source/monitor area == capture area
+    // TODO: Revisit/clean up once codebase is more settled.
+    assert(state->capture.buf_size == state->capture.pixel_stride * state->capture.source_width_px * state->capture.source_height_px);
+    assert(state->capture.source_width_px == state->surface.width);
+    assert(state->capture.source_height_px == state->surface.height);
+    assert(state->capture.frame_width_px == state->selection.bl.box.x1 - state->selection.bl.box.x0);
+    assert(state->capture.frame_height_px == state->selection.bl.box.y1 - state->selection.bl.box.y0);
+
+    // XXX: Clean up this eyesore. Change names or something, idk.
+
+    struct BLBoxI capture_area = state->selection.bl.box;
+    uint32_t pixel_stride      = state->capture.pixel_stride;
+    uint32_t height            = state->capture.frame_height_px;
+    uint32_t width             = state->capture.frame_width_px;
+    uint32_t source_width      = state->capture.source_width_px;
+
+    uint32_t row_bytes         = pixel_stride * width;
+    char *addr =
+        state->capture.buffer.data
+      + pixel_stride * capture_area.y0 * source_width
+      + pixel_stride * capture_area.x0;
+
+    for (int i = 0; i < height; ++i) {
+        state->capture.frame_iovec[i].iov_base = addr;
+        state->capture.frame_iovec[i].iov_len = row_bytes;
+        addr += pixel_stride * source_width;
+    }
+
+    // TODO: Assumes row-major. Find out whether this is a safe assumption.
+    //           Maybe depends on transform? Something else?
+    if (-1 == writev(state->capture.ffmpeg_fd, state->capture.frame_iovec, height)) {
+        fprintf(stderr, "Failed writev(). Error: %s\n", strerror(errno));
+    };
 
     struct ext_image_copy_capture_frame_v1 *new_frame;
     new_frame = ext_image_copy_capture_session_v1_create_frame(
