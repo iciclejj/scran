@@ -176,6 +176,9 @@ struct client_state_capture {
     //       - XXX: Redo names of both these and other x/y/w/h etc. things
     //              once scale/transform is implemented
     //                  i.e. _px etc.
+    //         NOTE: x and y should be locked at callback<surface>::done, to avoid desync with overlay
+    //         XXX: Double-check if anything else needs to be synced like this.
+    struct BLBoxI capture_area;
     uint32_t frame_width_px;
     uint32_t frame_height_px;
     uint32_t frame_x_px;

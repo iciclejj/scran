@@ -421,12 +421,6 @@ dispatch_capture_event_loop(struct client_state *state)
      && state->selection.bl.box.y1
     );
 
-    // XXX: Put all of this more nicely somewhere else ?
-    state->capture.frame_width_px = state->selection.bl.box.x1 - state->selection.bl.box.x0;
-    state->capture.frame_height_px = state->selection.bl.box.y1 - state->selection.bl.box.y0;
-    state->capture.frame_x_px = state->selection.bl.box.x0;
-    state->capture.frame_y_px = state->selection.bl.box.y0;
-
     // XXX: Double-check whether appropriate char-array sizes
     //      Also maybe clean up and/or optimize some of this filename stuff
     char ffmpeg_command[256];

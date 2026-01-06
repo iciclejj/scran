@@ -71,27 +71,19 @@ handle_image_copy_capture_frame_ready(
     //     or handle it properly here
     //
 
-    // surface area == output/source/monitor area == capture area
-    // TODO: Revisit/clean up once codebase is more settled.
-    assert(state->capture.buf_size == state->capture.pixel_stride * state->capture.source_width_px * state->capture.source_height_px);
-    assert(state->capture.source_width_px == state->surface.width);
-    assert(state->capture.source_height_px == state->surface.height);
-    assert(state->capture.frame_width_px == state->selection.bl.box.x1 - state->selection.bl.box.x0);
-    assert(state->capture.frame_height_px == state->selection.bl.box.y1 - state->selection.bl.box.y0);
-
     // XXX: Clean up this eyesore. Change names or something, idk.
-
-    struct BLBoxI capture_area = state->selection.bl.box;
     uint32_t pixel_stride      = state->capture.pixel_stride;
     uint32_t height            = state->capture.frame_height_px;
     uint32_t width             = state->capture.frame_width_px;
     uint32_t source_width      = state->capture.source_width_px;
+    uint32_t x                 = state->capture.frame_x_px;
+    uint32_t y                 = state->capture.frame_y_px;
 
     uint32_t row_bytes         = pixel_stride * width;
     char *addr =
         state->capture.buffer.data
-      + pixel_stride * capture_area.y0 * source_width
-      + pixel_stride * capture_area.x0;
+      + pixel_stride * y * source_width
+      + pixel_stride * x;
 
     for (int i = 0; i < height; ++i) {
         state->capture.frame_iovec[i].iov_base = addr;

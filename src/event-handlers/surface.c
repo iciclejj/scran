@@ -107,6 +107,16 @@ surface_frame_callback_handler(
 
     st_buffer->busy = true;
 
+    // NOTE: Must be set here to sync with selection box rendering.
+    //       Otherwise, rendered selection can lag behind the capture area,
+    //        leading to f.ex. capture frame border spilling into the actual
+    //        capture frame
+    //       See also comment in client_state_capture.
+    state->capture.frame_width_px = state->selection.bl.box.x1 - state->selection.bl.box.x0;
+    state->capture.frame_height_px = state->selection.bl.box.y1 - state->selection.bl.box.y0;
+    state->capture.frame_x_px = state->selection.bl.box.x0;
+    state->capture.frame_y_px = state->selection.bl.box.y0;
+
     draw_frame(state, st_buffer);
     wl_surface_attach(state->surface.surface, st_buffer->buffer, 0, 0);
 
