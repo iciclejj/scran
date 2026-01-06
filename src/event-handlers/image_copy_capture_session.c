@@ -34,6 +34,8 @@ handle_image_copy_capture_session_shm_format(
 ) {
     struct client_state *state = data;
 
+    fprintf(stderr, "session::shm_format received: %x... ", shm_format);
+
     // List of formats we want to support.
     // TODO: Add more formats and logic for handling them
     if (!state->capture.shm_format_is_selected
@@ -47,9 +49,9 @@ handle_image_copy_capture_session_shm_format(
         state->capture.shm_format = shm_format;
         state->capture.shm_format_is_selected = true;
         state->capture.pixel_stride = 4;
-        fprintf(stderr, "Received supported format %x\n", shm_format);
+        fprintf(stderr, "format supported!\n");
     } else {
-        fprintf(stderr, "Received unsupported format %x\n", shm_format);
+        fprintf(stderr, "format unsupported.\n");
     }
 }
 
