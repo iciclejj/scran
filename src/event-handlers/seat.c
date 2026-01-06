@@ -12,12 +12,14 @@ handle_seat_capabilities(
 ) {
     // TODO: Read through seat documentation properly
     //         esp. the v4 vs v5 things
-    //       Improve capability bitfield/enum documentation?
+    //       Improve capability bitfield/enum documentation (wayland docs/xmls)?
     //          Unclear language wrt. the arg being a bitfield
     struct client_state *state = data;
 
     if (capability & WL_SEAT_CAPABILITY_POINTER) {
         state->seat.pointer.pointer = wl_seat_get_pointer(seat);
+        // TODO: Consider using non-staging protocols for this? No real reason to use
+        //       wp_cursor_shape_manager other than convenience.
         state->seat.pointer.cursor_shape_device = wp_cursor_shape_manager_v1_get_pointer(
             state->globals.cursor_shape_manager,
             state->seat.pointer.pointer

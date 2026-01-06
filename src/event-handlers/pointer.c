@@ -144,6 +144,7 @@ handle_pointer_button(
     // TODO: Implement dragging
 
     // XXX: Not needed when we only have one surface.
+    //      TODO: Handle this everywhere
     if (!state->surface.is_focused) {
         return;
     }
