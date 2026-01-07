@@ -60,7 +60,14 @@ draw_frame(
     bl_path_add_box_i(&bl->path, &bl->box_outer, BL_GEOMETRY_DIRECTION_NONE);
     bl_path_add_box_i(&bl->path, &bl->box, BL_GEOMETRY_DIRECTION_NONE);
     bl_context_set_fill_rule(&bl->ctx, BL_FILL_RULE_EVEN_ODD);
-    bl_context_set_fill_style_rgba32(&bl->ctx, 0x88888888);
+    if (state->capture.capturing) {
+        // TODO: How is 88880000 hitting red and alpha?
+        //           Need to set endianness flag?
+        //       Show red border instead of red background
+        bl_context_set_fill_style_rgba32(&bl->ctx, 0x88887A7A);
+    } else {
+        bl_context_set_fill_style_rgba32(&bl->ctx, 0x88888888);
+    }
     bl_context_fill_path_d(&bl->ctx, &origin, &bl->path);
 
     // fprintf(
