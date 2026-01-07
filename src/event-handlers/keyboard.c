@@ -75,6 +75,8 @@ handle_keyboard_key(
     case XKB_KEY_Escape:
         fprintf(stderr, "Got escape key...");
         if (state->capture.capturing) {
+            // TODO: Probably both stop capture and request exit
+            //           Have dedicated start/stop capture key that doesn't exit
             fprintf(stderr, " stopping capture.\n");
             state->capture.capturing = false;
         } else {
@@ -83,7 +85,11 @@ handle_keyboard_key(
         }
         break;
     case XKB_KEY_Return:
-        if (!state->capture.capturing) {
+        if (state->capture.capturing) {
+            state->capture.capturing = false;
+            // TODO: Need to ensure capture is fully properly fully finished
+            //       before we allow new dispatch_capture_event_loop()
+        } else {
             dispatch_capture_event_loop(state);
         }
         break;
