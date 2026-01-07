@@ -6,6 +6,28 @@
 #include "wayland-event-handlers.h"
 #include "lib_interop.h"
 
+void
+dispatch_capture_event_loop(struct client_state *state)
+{
+    struct ext_image_copy_capture_frame_v1 *frame =
+        ext_image_copy_capture_session_v1_create_frame(
+            state->capture.session
+        );
+    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, state);
+    ext_image_copy_capture_frame_v1_attach_buffer(
+        frame,
+        state->capture.buffer.buffer
+    );
+    ext_image_copy_capture_frame_v1_damage_buffer(
+        frame,
+        0,
+        0,
+        state->capture.source_width_px,
+        state->capture.source_height_px
+    );
+    ext_image_copy_capture_frame_v1_capture(frame);
+}
+
 bool
 start_capture(struct client_state *state)
 {
@@ -51,24 +73,7 @@ start_capture(struct client_state *state)
 
     // Get initial frame. Subsequent capture requests happen within frame::ready
     //     Similar to the wl_surface callback event loop
-
-    struct ext_image_copy_capture_frame_v1 *frame =
-        ext_image_copy_capture_session_v1_create_frame(
-            state->capture.session
-        );
-    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, state);
-    ext_image_copy_capture_frame_v1_attach_buffer(
-        frame,
-        state->capture.buffer.buffer
-    );
-    ext_image_copy_capture_frame_v1_damage_buffer(
-        frame,
-        0,
-        0,
-        state->capture.source_width_px,
-        state->capture.source_height_px
-    );
-    ext_image_copy_capture_frame_v1_capture(frame);
+    dispatch_capture_event_loop(state);
 
     return true;
 }
