@@ -336,22 +336,6 @@ init_image_copy_capture_session(struct client_state *state)
 }
 
 static inline bool
-init_image_copy_capture_frame(struct client_state *state)
-{
-    state->capture.frame = ext_image_copy_capture_session_v1_create_frame(
-        state->capture.session
-    );
-
-    ext_image_copy_capture_frame_v1_add_listener(
-        state->capture.frame,
-        &image_copy_capture_frame_listener,
-        state
-    );
-
-    return true;
-}
-
-static inline bool
 init_image_copy_capture_shm_buffer(struct client_state *state)
 {
     if (!state->capture.shm_format_is_selected) {
@@ -467,12 +451,8 @@ int main(void)
     if (!init_image_copy_capture_session(&state)) {
         return EXIT_FAILURE;
     }
-    fprintf(stderr, "Finished: init_image_copy_capture_frame()\n");
+    fprintf(stderr, "Finished: init_image_copy_capture_session()\n");
 
-    if (!init_image_copy_capture_frame(&state)) {
-        return EXIT_FAILURE;
-    }
-    fprintf(stderr, "Finished: init_image_copy_capture_frame()\n");
     // TODO: Figure out where to roundtrip
     wl_display_roundtrip(state.globals.display);
 
