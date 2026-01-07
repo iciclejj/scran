@@ -8,6 +8,8 @@
 bool
 dispatch_capture_event_loop(struct client_state *state)
 {
+    // TODO: Make sure we can successfully perform multiple captures in succession
+
     // TODO: Assert instead?
     if (state->capture.capturing) {
         fprintf(stderr, "Already capturing...\n");
