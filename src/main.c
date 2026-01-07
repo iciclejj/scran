@@ -19,7 +19,6 @@
 
 #include "state.h"
 #include "wayland-event-handlers.h"
-#include "capture.h"
 
 #define SOCKNAME "wayland-1"
 #define SOCKPATH "/run/user/1000/" SOCKNAME
