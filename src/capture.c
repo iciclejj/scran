@@ -8,6 +8,11 @@
 bool
 dispatch_capture_event_loop(struct client_state *state)
 {
+    // TODO: Assert instead?
+    if (state->capture.capturing) {
+        fprintf(stderr, "Already capturing...\n");
+        return false;
+    }
     // TODO: Assert ffmpeg installed
     //          TODO: Probably use libav manually and don't launch ffmpeg
     // XXX: - Needs better asssert? Intent: make sure selection is complete and valid
