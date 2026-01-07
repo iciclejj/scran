@@ -10,6 +10,7 @@
 
 #include "state.h"
 #include "wayland-event-handlers.h"
+#include "capture.h"
 
 // Why does image_copy_capture support dynamic transform, but not dynamic
 // geometry/resolution entirely? Only because of buffer sizes?
@@ -90,27 +91,7 @@ handle_image_copy_capture_frame_ready(
         fprintf(stderr, "Failed writev(). Error: %s\n", strerror(errno));
     };
 
-    struct ext_image_copy_capture_frame_v1 *new_frame;
-    new_frame = ext_image_copy_capture_session_v1_create_frame(
-        state->capture.session
-    );
-    ext_image_copy_capture_frame_v1_add_listener(
-        new_frame,
-        &image_copy_capture_frame_listener,
-        state
-    );
-    ext_image_copy_capture_frame_v1_attach_buffer(
-        new_frame,
-        state->capture.buffer.buffer
-    );
-    ext_image_copy_capture_frame_v1_damage_buffer(
-        new_frame,
-        0,
-        0,
-        state->capture.source_width_px,
-        state->capture.source_height_px
-    );
-    ext_image_copy_capture_frame_v1_capture(new_frame);
+    dispatch_capture_event_loop(state);
 }
 
 struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener = {
