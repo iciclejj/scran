@@ -58,6 +58,8 @@ WAYLAND_PROTOCOLS = $(addprefix \
 	$(WAYLAND_PROTOCOLS_REQUIRED_H_FILENAMES) \
 )
 
+protocols: $(WAYLAND_PROTOCOLS)
+
 $(OBJS): %.o: %.c $(WAYLAND_PROTOCOLS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
