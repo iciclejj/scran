@@ -7,7 +7,7 @@
 #include "lib_interop.h"
 
 bool
-dispatch_capture_event_loop(struct client_state *state)
+start_capture(struct client_state *state)
 {
     // TODO: Assert instead?
     if (state->capture.capturing) {

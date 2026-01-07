@@ -5,6 +5,6 @@
 
 #include "state.h"
 
-bool dispatch_capture_event_loop(struct client_state *state);
+bool start_capture(struct client_state *state);
 
 #endif

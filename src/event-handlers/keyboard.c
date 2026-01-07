@@ -90,7 +90,7 @@ handle_keyboard_key(
             // TODO: Need to ensure capture is fully properly fully finished
             //       before we allow new dispatch_capture_event_loop()
         } else {
-            dispatch_capture_event_loop(state);
+            start_capture(state);
         }
         break;
     }
