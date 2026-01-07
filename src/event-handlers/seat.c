@@ -28,6 +28,7 @@ handle_seat_capabilities(
     }
     if (capability & WL_SEAT_CAPABILITY_KEYBOARD) {
         state->seat.keyboard.keyboard = wl_seat_get_keyboard(seat);
+        wl_keyboard_add_listener(state->seat.keyboard.keyboard, &keyboard_listener, state);
     }
     if (capability & WL_SEAT_CAPABILITY_TOUCH) {
         // TODO

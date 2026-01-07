@@ -21,5 +21,6 @@ extern struct wl_callback_listener surface_frame_callback_listener;
 extern struct wl_output_listener output_listener;
 extern struct ext_image_copy_capture_session_v1_listener image_copy_capture_session_listener;
 extern struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener;
+extern struct wl_keyboard_listener keyboard_listener;
 
 #endif

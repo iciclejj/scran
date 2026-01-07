@@ -51,13 +51,6 @@ handle_image_copy_capture_frame_ready(
     //       as soon as we enter ::ready?
     ext_image_copy_capture_frame_v1_destroy(frame);
 
-    // XXX: This is expected to be set to true prior to dispatching ::capture
-    //      (at time of writing) - see if-statement below.
-    state->capture.capturing =
-        state->selection.selection_state == SELECTION_COMPLETE ||
-        state->selection.selection_state == SELECTION_REBASING
-    ;
-
     // TODO: Make sure buffer is destroyed
     if (!state->capture.capturing) {
         pclose(state->capture.ffmpeg);

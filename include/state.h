@@ -7,6 +7,7 @@
 
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
+#include <xkbcommon/xkbcommon.h>
 
 #include "wlr-layer-shell-unstable-v1.h"
 #include "ext-image-capture-source-v1.h"
@@ -76,6 +77,10 @@ struct client_state_seat_pointer {
 
 struct client_state_seat_keyboard {
     struct wl_keyboard *keyboard;
+
+    struct xkb_context *xkb_context;
+    struct xkb_keymap *xkb_keymap;
+    struct xkb_state *xkb_state;
 };
 
 // TODO: Rename client_state_* objects to st_* ?
@@ -151,6 +156,7 @@ struct client_state_capture {
     // TODO: This doesn't need to be a state instance (nor do a lot of the others)
     struct ext_image_copy_capture_frame_v1 *frame;
 
+    // TODO: Clearer name for and/or usage of `capturing`
     bool capturing;
     FILE *ffmpeg;
     int ffmpeg_fd;
@@ -214,6 +220,8 @@ struct client_state {
 
     struct client_state_selection selection;
     struct client_state_capture capture;
+
+    bool exit_requested;
 };
 
 #endif

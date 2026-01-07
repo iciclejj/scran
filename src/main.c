@@ -228,6 +228,11 @@ init_surface(struct client_state *state)
         | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP
         | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
     );
+    zwlr_layer_surface_v1_set_keyboard_interactivity(
+        state->surface.layer_surface,
+        // TODO: Figure out whether this should rather be set to "exclusive"
+        ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND
+    );
 
     zwlr_layer_surface_v1_add_listener(state->surface.layer_surface, &layer_surface_listener, state);
     // Initial bufferless commit to trigger configure event
@@ -486,22 +491,10 @@ int main(void)
     );
     wl_surface_commit(state.surface.surface);
 
-    // TEST:
-    // TODO: Quit out of loop by keybind and some new status/running/etc state member
-    //       And probably not two loops...
-    while (wl_display_dispatch(state.globals.display)) {
-        if (state.selection.selection_state == SELECTION_COMPLETE) {
-            dispatch_capture_event_loop(&state);
-            break;
-        }
-    }
-    while (wl_display_dispatch(state.globals.display)) {
-        if (state.selection.selection_state != SELECTION_COMPLETE
-            && state.selection.selection_state != SELECTION_REBASING
-        ) {
-            break;
-        }
-    }
+    while ( // Main event loop...
+        !state.exit_requested
+        && wl_display_dispatch(state.globals.display)
+    );
 
     // TODO: Remember to fix off-by-one bug when selecting corner to corner
     //           F.ex. 2559x1599 rect width/height
