@@ -10,7 +10,6 @@
 #include "init.h"
 
 // TODO: Clean this up a bit.
-//       Also decide where the attaches/commits and roundtrips are placed and how many total
 bool
 init_surface_shm_buffers(
     // TODO: Either switch this back to just state, or do this narrowing everywhere
@@ -18,7 +17,6 @@ init_surface_shm_buffers(
     struct wl_shm *wl_shm_global
 ) {
     // TODO: Is this more efficient to create in handle_global and/or layer_surface ack_configure?
-    // TODO: Close this.
     int shm_fd = shm_open_anon();
     // TODO: Graphics library needs to take part in this..
     //       Account for scale/transform
@@ -32,7 +30,6 @@ init_surface_shm_buffers(
     }
     fprintf(stderr, "Resized shm file to %d\n", st_surface->shm_pool_size);
 
-    // TODO: Handle wl_shm::format event
     st_surface->shm_pool = wl_shm_create_pool(
         wl_shm_global,
         shm_fd,
