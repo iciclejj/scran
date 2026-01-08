@@ -12,16 +12,16 @@ handle_output_mode(
     int32_t height,
     int32_t refresh_rate_mhz
 ) {
-    struct client_state *state = data;
+    struct client_state_output *st_output = data;
 
     // Non-current modes are deprecated
     if (!(flags & WL_OUTPUT_MODE_CURRENT)) {
         return;
     }
 
-    state->output.mode.width_px = width;
-    state->output.mode.height_px = height;
-    state->output.mode.refresh_rate_mhz = refresh_rate_mhz;
+    st_output->mode.width_px = width;
+    st_output->mode.height_px = height;
+    st_output->mode.refresh_rate_mhz = refresh_rate_mhz;
 }
 
 // TODO: How to handle done event properly/efficiently?

@@ -53,7 +53,7 @@ registry_handle_global(
             fprintf(stderr, "Adding output... ");
             globals->output = wl_registry_bind(registry, name, &wl_output_interface, 4);
             // TODO: Do this elsewhere? De-spaghetti everything later...
-            wl_output_add_listener(globals->output, &output_listener, state);
+            wl_output_add_listener(globals->output, &output_listener, &state->output);
             fprintf(stderr, "added output listener.\n");
         }
     } else if (_INTERFACE_IS(ext_output_image_capture_source_manager_v1_interface)) {
