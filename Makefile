@@ -26,6 +26,7 @@ WAYLAND_PROTOCOLS_DIR_LOCAL = wayland-protocols
 WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS = \
 	$(WAYLAND_PROTOCOLS_DIR_WLR)/unstable/wlr-layer-shell-unstable-v1.xml \
 	$(WAYLAND_PROTOCOLS_DIR)/stable/xdg-shell/xdg-shell.xml \
+	$(WAYLAND_PROTOCOLS_DIR)/unstable/xdg-output/xdg-output-unstable-v1.xml \
 	$(WAYLAND_PROTOCOLS_DIR)/stable/tablet/tablet-v2.xml \
 	$(WAYLAND_PROTOCOLS_DIR)/staging/cursor-shape/cursor-shape-v1.xml \
 	$(WAYLAND_PROTOCOLS_DIR)/staging/ext-image-capture-source/ext-image-capture-source-v1.xml \

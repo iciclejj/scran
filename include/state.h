@@ -13,6 +13,7 @@
 #include "ext-image-capture-source-v1.h"
 #include "ext-image-copy-capture-v1.h"
 #include "cursor-shape-v1.h"
+#include "xdg-output-unstable-v1.h"
 
 #define MAX_OUTPUTS 64
 
@@ -26,7 +27,7 @@ struct client_state_globals {
     struct wl_compositor *compositor;
     struct wl_seat *seat;
     struct wl_shm *shm;
-    struct wl_output *output;
+    struct zxdg_output_manager_v1 *xdg_output_manager;
     struct zwlr_layer_shell_v1 *layer_shell;
     struct wp_cursor_shape_manager_v1 *cursor_shape_manager;
     struct ext_output_image_capture_source_manager_v1 *output_image_capture_source_manager;
