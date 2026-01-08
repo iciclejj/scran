@@ -20,7 +20,7 @@ init_surface_shm_buffers(
     int shm_fd = shm_open_anon();
     // TODO: Graphics library needs to take part in this..
     //       Account for scale/transform
-    st_surface->buf_size = SURFACE_BYTES_PER_PIXEL * st_surface->width * st_surface->height;
+    st_surface->buf_size = SURFACE_PIXEL_STRIDE * st_surface->width * st_surface->height;
     st_surface->shm_pool_size = SURFACE_BUF_COUNT * st_surface->buf_size;
 
     if (-1 == ftruncate(shm_fd, st_surface->shm_pool_size)) {
@@ -54,7 +54,7 @@ init_surface_shm_buffers(
             _pool_offset,
             st_surface->width,
             st_surface->height,
-            SURFACE_BYTES_PER_PIXEL * st_surface->width,
+            SURFACE_PIXEL_STRIDE * st_surface->width,
             SURFACE_SHM_FORMAT
         );
 

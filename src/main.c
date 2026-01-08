@@ -144,7 +144,7 @@ init_selection_and_blend2d(struct client_state *state)
             state->surface.height,
             SURFACE_SHM_FORMAT_BL,
             st_buffer->data,
-            SURFACE_BYTES_PER_PIXEL * state->surface.width,
+            SURFACE_PIXEL_STRIDE * state->surface.width,
             BL_DATA_ACCESS_RW,
             NULL, // TODO: - Let blend2d destroy our data?
             NULL  //       - Ditto
