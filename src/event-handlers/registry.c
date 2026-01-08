@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 
 #include <wayland-client.h>
@@ -5,6 +6,7 @@
 #include "wlr-layer-shell-unstable-v1.h"
 #include "ext-image-capture-source-v1.h"
 #include "ext-image-copy-capture-v1.h"
+#include "xdg-output-unstable-v1.h"
 
 #include "state.h"
 #include "wayland-event-handlers.h"
@@ -46,16 +48,22 @@ registry_handle_global(
         // sway only has version 1 at the time of writing.
         globals->cursor_shape_manager = wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, 1);
     } else if (_INTERFACE_IS(wl_output_interface)) {
-        if (globals->output != NULL) {
-            // TODO: wl_list of outputs
-            fprintf(stderr, "Ignoring additional wl_output global.\n");
-        } else {
-            fprintf(stderr, "Adding output... ");
-            globals->output = wl_registry_bind(registry, name, &wl_output_interface, 4);
-            // TODO: Do this elsewhere? De-spaghetti everything later...
-            wl_output_add_listener(globals->output, &output_listener, &state->output);
-            fprintf(stderr, "added output listener.\n");
+        if (state->n_outputs >= MAX_OUTPUTS) {
+            fprintf(stderr, "Maximum output limit reached: %d\n", MAX_OUTPUTS);
+            return;
         }
+        fprintf(stderr, "Adding output... ");
+
+        struct client_state_output *curr_output = &state->outputs[state->n_outputs];
+
+        curr_output->wl_output = wl_registry_bind(registry, name, &wl_output_interface, 4);
+        wl_output_add_listener(curr_output->wl_output, &output_listener, curr_output);
+
+        ++state->n_outputs;
+
+        fprintf(stderr, "added output listener.\n");
+    } else if (_INTERFACE_IS(zxdg_output_manager_v1_interface)) {
+        globals->xdg_output_manager = wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface, 3);
     } else if (_INTERFACE_IS(ext_output_image_capture_source_manager_v1_interface)) {
         globals->output_image_capture_source_manager = wl_registry_bind(registry, name, &ext_output_image_capture_source_manager_v1_interface, 1);
     } else if (_INTERFACE_IS(ext_image_copy_capture_manager_v1_interface)) {

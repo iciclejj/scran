@@ -12,9 +12,10 @@
 #define SURFACE_PIXEL_STRIDE 4 // Bytes per pixel. Depends on SURFACE_SHM_FORMAT.
 
 
-bool init_surface_shm_buffers(struct client_state_surface *st_surface, struct wl_shm *wl_shm_global);
-void destroy_surface_shm_buffers(struct client_state_surface *st_surface);
-bool init_surface(struct client_state *state);
+bool init_output_surface_shm_buffers(struct client_state_output_surface *st_surface, struct wl_shm *wl_shm_global);
+ void destroy_output_surface_shm_buffers(struct client_state_output_surface *st_surface);
+
+bool init_output_surface(struct client_state_output *st_output, struct client_state_globals *st_globals);
 
 int shm_open_anon(void);
 

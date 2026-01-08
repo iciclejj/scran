@@ -108,37 +108,37 @@ init_seat(struct client_state *state)
 }
 
 static inline bool
-init_selection_and_blend2d(struct client_state *state)
+init_selection_and_blend2d(struct client_state_output *st_output)
 {
-    struct client_state_selection *selection = &state->selection;
-    struct client_state_selection_blend2d *bl = &selection->bl;
+    struct client_state_output_selection_blend2d *bl = &st_output->selection.bl;
+    struct client_state_output_surface * st_surface = &st_output->surface;
 
     bl_context_init(&bl->ctx);
     bl_path_init(&bl->path);
 
     // XXX: Maybe handle this assert more robustly
-    assert(state->surface.width_px != 0);
+    assert(st_surface->width_px != 0);
     bl->box_outer = (struct BLBoxI) {
         .x0 = 0,
         .y0 = 0,
-        .x1 = state->surface.width_px,
-        .y1 = state->surface.height_px,
+        .x1 = st_surface->width_px,
+        .y1 = st_surface->height_px,
     };
 
     // TODO: Should maybe be a separate function, f.ex. init_surface_buffers_blend2d
     //       and called directly from main, after init_surface_shm_buffers
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
-        struct client_state_surface_buffer *st_buffer = &state->surface.double_buffer[i];
+        struct client_state_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
         // Shared memory must already be allocated.
         assert(st_buffer->data != NULL);
 
         bl_image_init_as_from_data(
             &st_buffer->bl_img,
-            state->surface.width_px,
-            state->surface.height_px,
+            st_surface->width_px,
+            st_surface->height_px,
             SURFACE_SHM_FORMAT_BL,
             st_buffer->data,
-            SURFACE_PIXEL_STRIDE * state->surface.width_px,
+            SURFACE_PIXEL_STRIDE * st_surface->width_px,
             BL_DATA_ACCESS_RW,
             NULL, // TODO: - Let blend2d destroy our data?
             NULL  //       - Ditto
@@ -149,90 +149,88 @@ init_selection_and_blend2d(struct client_state *state)
 }
 
 static inline bool
-init_output(struct client_state *state)
-{
-    // All init happens in output_listener for now...
-
-    return true;
-}
-
-static inline bool
-init_image_capture_source(struct client_state *state)
-{
-    state->capture.source = ext_output_image_capture_source_manager_v1_create_source(
-        state->globals.output_image_capture_source_manager,
-        state->globals.output
+init_image_capture_source(
+    struct client_state_output *st_output,
+    struct client_state_globals *globals
+) {
+    st_output->capture.source = ext_output_image_capture_source_manager_v1_create_source(
+        globals->output_image_capture_source_manager,
+        st_output->wl_output
     );
 
     return true;
 }
 
 static inline bool
-init_image_copy_capture_session(struct client_state *state)
-{
-    state->capture.session = ext_image_copy_capture_manager_v1_create_session(
-        state->globals.image_copy_capture_manager,
-        state->capture.source,
+init_image_copy_capture_session(
+    struct client_state_output *st_output,
+    struct client_state_globals *globals
+) {
+    st_output->capture.session = ext_image_copy_capture_manager_v1_create_session(
+        globals->image_copy_capture_manager,
+        st_output->capture.source,
         // TODO: Make this optional
         EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS
     );
     ext_image_copy_capture_session_v1_add_listener(
-        state->capture.session,
+        st_output->capture.session,
         &image_copy_capture_session_listener,
-        state
+        st_output
     );
 
     return true;
 }
 
 static inline bool
-init_image_copy_capture_shm_buffer(struct client_state *state)
-{
-    if (!state->capture.shm_format_is_selected) {
+init_image_copy_capture_shm_buffer(
+    struct client_state_output *st_output,
+    struct client_state_globals *globals
+) {
+    if (!st_output->capture.shm_format_is_selected) {
         fprintf(stderr, "Failed to select shm_buffer format.\n");
         return false;
     }
 
     // Full output source buffer for now.
     // TODO: Revisit this after multi-output support.
-    state->capture.buf_size =
-        state->capture.source_width_px
-        * state->capture.pixel_stride
-        * state->capture.source_height_px;
-    state->capture.shm_pool_size = state->capture.buf_size;
+    st_output->capture.buf_size =
+        st_output->capture.source_width_px
+        * st_output->capture.pixel_stride
+        * st_output->capture.source_height_px;
+    st_output->capture.shm_pool_size = st_output->capture.buf_size;
 
     int shm_fd = shm_open_anon();
 
-    if (-1 == ftruncate(shm_fd, state->capture.shm_pool_size)) {
-        fprintf(stderr, "Failed to resize shm file to %d\n", state->capture.shm_pool_size);
+    if (-1 == ftruncate(shm_fd, st_output->capture.shm_pool_size)) {
+        fprintf(stderr, "Failed to resize shm file to %d\n", st_output->capture.shm_pool_size);
         close(shm_fd);
         return false;
     }
 
     // TODO: Use same pool as surface?
-    state->capture.shm_pool = wl_shm_create_pool(
-        state->globals.shm,
+    st_output->capture.shm_pool = wl_shm_create_pool(
+        globals->shm,
         shm_fd,
-        state->capture.shm_pool_size
+        st_output->capture.shm_pool_size
     );
 
-    state->capture.buffer.buffer = wl_shm_pool_create_buffer(
-        state->capture.shm_pool,
+    st_output->capture.buffer.buffer = wl_shm_pool_create_buffer(
+        st_output->capture.shm_pool,
         0,
-        state->surface.width_px,
-        state->surface.height_px,
-        state->capture.pixel_stride * state->capture.source_width_px,
-        state->capture.shm_format
+        st_output->surface.width_px,
+        st_output->surface.height_px,
+        st_output->capture.pixel_stride * st_output->capture.source_width_px,
+        st_output->capture.shm_format
     );
 
-    state->capture.buffer.data = mmap(
-        0, state->capture.buf_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0
+    st_output->capture.buffer.data = mmap(
+        0, st_output->capture.buf_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0
     );
 
     close(shm_fd);
-    wl_shm_pool_destroy(state->capture.shm_pool);
+    wl_shm_pool_destroy(st_output->capture.shm_pool);
 
-    if (state->capture.buffer.data == NULL) {
+    if (st_output->capture.buffer.data == NULL) {
         return false;
     }
 
@@ -240,7 +238,7 @@ init_image_copy_capture_shm_buffer(struct client_state *state)
 }
 
 static inline void
-destroy_capture_shm_buffers(struct client_state_capture *st_capture)
+destroy_capture_shm_buffers(struct client_state_output_capture *st_capture)
 {
     wl_buffer_destroy(st_capture->buffer.buffer);
 }
@@ -265,61 +263,58 @@ int main(void)
     }
     fprintf(stderr, "Finished: init_wayland_globals()\n");
 
-    // Second roundtrip:
-    if (!init_surface(&state)) {
-        return EXIT_FAILURE;
-    }
-    fprintf(stderr, "Finished: init_surface()\n");
-
-    if (!init_surface_shm_buffers(&state.surface, state.globals.shm)) {
-        return EXIT_FAILURE;
-    }
-    fprintf(stderr, "Finished: init_surface_shm_buffers()\n");
-
     if (!init_seat(&state)) {
         return EXIT_FAILURE;
     }
     fprintf(stderr, "Finished: init_seat()\n");
 
-    if (!init_selection_and_blend2d(&state)) {
-        return EXIT_FAILURE;
-    }
-    fprintf(stderr, "Finished: init_selection()\n");
-
-    if (!init_output(&state)) {
-        return EXIT_FAILURE;
-    }
-    fprintf(stderr, "Finished: init_output()\n");
-
     // TODO: Will need xdg_output for logical geometry
 
-    if (!init_image_capture_source(&state)) {
-        return EXIT_FAILURE;
+    assert(state.n_outputs <= MAX_OUTPUTS);
+    for (int i = 0; i < state.n_outputs; ++i) {
+        struct client_state_output *_st_output = &state.outputs[i];
+
+        // TODO: Check memory management
+        if (!init_output_surface(_st_output, &state.globals)) {
+            return false;
+        }
+        if (!init_output_surface_shm_buffers(&_st_output->surface, state.globals.shm)) {
+            return false;
+        }
+        if (!init_selection_and_blend2d(_st_output)) {
+            return EXIT_FAILURE;
+        }
+
+        // indexing into .buffer.data, i.e. the screen/output buffer that encapsulates
+        // the selection/capture area
+        // [34560] => 16 UHD monitors stacked vertically ~= 0.5 MB (x86_64)
+        // XXX: Temporarily placed here to get multi-output going (was previously on stack)
+        //      Will collect memory allocations later.
+        _st_output->capture.frame_iovec_size = 34560;
+        _st_output->capture.frame_iovec = malloc(_st_output->capture.frame_iovec_size);
+
+        if (!init_image_capture_source(_st_output, &state.globals)) {
+            return EXIT_FAILURE;
+        }
+        if (!init_image_copy_capture_session(_st_output, &state.globals)) {
+            return EXIT_FAILURE;
+        }
+        // TODO: Figure out where to roundtrip
+        wl_display_roundtrip(state.globals.display);
+        if (!init_image_copy_capture_shm_buffer(_st_output, &state.globals)) {
+            return EXIT_FAILURE;
+        }
+
+        // Initial frame callback request.
+        // All subsequent requests are done "recursively" from within the listener's
+        // 'done' event handler
+        wl_callback_add_listener(
+            wl_surface_frame(_st_output->surface.surface),
+            &surface_frame_callback_listener,
+            _st_output
+        );
+        wl_surface_commit(_st_output->surface.surface);
     }
-    fprintf(stderr, "Finished: init_image_capture_source()\n");
-
-    if (!init_image_copy_capture_session(&state)) {
-        return EXIT_FAILURE;
-    }
-    fprintf(stderr, "Finished: init_image_copy_capture_session()\n");
-
-    // TODO: Figure out where to roundtrip
-    wl_display_roundtrip(state.globals.display);
-
-    if (!init_image_copy_capture_shm_buffer(&state)) {
-        return EXIT_FAILURE;
-    }
-    fprintf(stderr, "Finished: init_image_copy_capture_shm_buffer()\n");
-
-    // Initial frame callback request.
-    // All subsequent requests are done "recursively" from within the listener's
-    // 'done' event handler
-    wl_callback_add_listener(
-        wl_surface_frame(state.surface.surface),
-        &surface_frame_callback_listener,
-        &state
-    );
-    wl_surface_commit(state.surface.surface);
 
     while ( // Main event loop...
         !state.exit_requested
@@ -329,10 +324,15 @@ int main(void)
     // TODO: Remember to fix off-by-one bug when selecting corner to corner
     //           F.ex. 2559x1599 rect width/height
 
-    // todo: destroy wl_proxy and wl_event_queue objects when created
-    destroy_surface_shm_buffers(&state.surface);
-    destroy_capture_shm_buffers(&state.capture);
-    destroy_wayland_globals(&state);
+    assert(state.n_outputs <= MAX_OUTPUTS);
+    for (int i = 0; i < state.n_outputs; ++i) {
+        struct client_state_output *_st_output = &state.outputs[i];
+
+        // todo: destroy wl_proxy and wl_event_queue objects when created
+        destroy_output_surface_shm_buffers(&_st_output->surface);
+        destroy_capture_shm_buffers(&_st_output->capture);
+        destroy_wayland_globals(&state);
+    }
 
     wl_display_disconnect(state.globals.display);
     fprintf(stderr, "Disconnected from wayland server (%s)\n", SOCKNAME);

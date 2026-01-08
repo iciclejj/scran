@@ -20,13 +20,13 @@ normalize_rect_i(struct BLRectI *rect)
     }
 }
 
-static inline struct client_state_surface_buffer *
-get_free_double_buffer(struct client_state *state)
+static inline struct client_state_output_surface_buffer *
+get_free_double_buffer(struct client_state_output *st_output)
 {
-    struct client_state_surface_buffer *buffer =
-        state->surface.double_buffer[0].busy
-        ? &state->surface.double_buffer[1]
-        : &state->surface.double_buffer[0]
+    struct client_state_output_surface_buffer *buffer =
+        st_output->surface.double_buffer[0].busy
+        ? &st_output->surface.double_buffer[1]
+        : &st_output->surface.double_buffer[0]
     ;
 
     // fprintf(
@@ -44,23 +44,23 @@ get_free_double_buffer(struct client_state *state)
 
 static void
 draw_frame(
-    struct client_state *state,
-    struct client_state_surface_buffer *st_buffer
+    struct client_state_output *st_output,
+    struct client_state_output_surface_buffer *st_buffer
 ) {
     // XXX TEST TODO: Improve draw_frame
 
-    struct client_state_selection_blend2d *bl = &state->selection.bl;
+    struct client_state_output_selection_blend2d *bl = &st_output->selection.bl;
     struct BLPoint origin = { 0, 0 };
 
     // TODO: Only write and mark damage where needed
-    memset(st_buffer->data, 0, state->surface.buf_size);
+    memset(st_buffer->data, 0, st_output->surface.buf_size);
 
     bl_context_begin(&bl->ctx, &st_buffer->bl_img, NULL);
 
     bl_path_add_box_i(&bl->path, &bl->box_outer, BL_GEOMETRY_DIRECTION_NONE);
     bl_path_add_box_i(&bl->path, &bl->box, BL_GEOMETRY_DIRECTION_NONE);
     bl_context_set_fill_rule(&bl->ctx, BL_FILL_RULE_EVEN_ODD);
-    if (state->capture.capturing) {
+    if (st_output->capture.capturing) {
         // TODO: How is 88880000 hitting red and alpha?
         //           Need to set endianness flag?
         //       Show red border instead of red background
@@ -87,28 +87,28 @@ surface_frame_callback_handler(
 ) {
     // TODO: create_frame, create_something, ... ?
 
-    struct client_state *state = data;
-    struct client_state_surface_buffer *st_buffer = get_free_double_buffer(state);
+    struct client_state_output *st_output = data;
+    struct client_state_output_surface_buffer *st_buffer = get_free_double_buffer(st_output);
 
     // Destroy callback manually and request new frame "recursively"
     // TODO: Should this be done from main?
     wl_callback_destroy(callback);
     wl_callback_add_listener(
-        wl_surface_frame(state->surface.surface),
+        wl_surface_frame(st_output->surface.surface),
         &surface_frame_callback_listener,
-        state
+        st_output
     );
 
     if (st_buffer == NULL) {
         fprintf(stderr, "Both buffers busy...\n");
         // TODO: Restructure to not need to remember this for every fail condition
-        wl_surface_commit(state->surface.surface);
+        wl_surface_commit(st_output->surface.surface);
         return;
     }
     // XXX TEST: This will likely end up staying, though...
-    if (state->selection.selection_state == SELECTION_NONE) {
+    if (st_output->selection.selection_state == SELECTION_NONE) {
         // TODO: Restructure to not need to remember this for every fail condition
-        wl_surface_commit(state->surface.surface);
+        wl_surface_commit(st_output->surface.surface);
         return;
     }
 
@@ -119,24 +119,24 @@ surface_frame_callback_handler(
     //        leading to f.ex. capture frame border spilling into the actual
     //        capture frame
     //       See also comment in client_state_capture.
-    state->capture.frame_width_px = state->selection.bl.box.x1 - state->selection.bl.box.x0;
-    state->capture.frame_height_px = state->selection.bl.box.y1 - state->selection.bl.box.y0;
-    state->capture.frame_x_px = state->selection.bl.box.x0;
-    state->capture.frame_y_px = state->selection.bl.box.y0;
+    st_output->capture.frame_width_px = st_output->selection.bl.box.x1 - st_output->selection.bl.box.x0;
+    st_output->capture.frame_height_px = st_output->selection.bl.box.y1 - st_output->selection.bl.box.y0;
+    st_output->capture.frame_x_px = st_output->selection.bl.box.x0;
+    st_output->capture.frame_y_px = st_output->selection.bl.box.y0;
 
-    draw_frame(state, st_buffer);
-    wl_surface_attach(state->surface.surface, st_buffer->buffer, 0, 0);
+    draw_frame(st_output, st_buffer);
+    wl_surface_attach(st_output->surface.surface, st_buffer->buffer, 0, 0);
 
     // TODO: Calculate damage area to not re-draw entire surface every frame
     //       Probably call this within draw_frame?
     wl_surface_damage_buffer(
-        state->surface.surface,
+        st_output->surface.surface,
         0,
         0,
-        state->surface.width_px,
-        state->surface.height_px
+        st_output->surface.width_px,
+        st_output->surface.height_px
     );
-    wl_surface_commit(state->surface.surface);
+    wl_surface_commit(st_output->surface.surface);
 }
 
 struct wl_callback_listener surface_frame_callback_listener = {

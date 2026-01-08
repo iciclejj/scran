@@ -56,6 +56,8 @@ handle_keyboard_key(
     enum wl_keyboard_key_state key_state
 ) {
     struct client_state *state = data;
+    // TODO: Figure out pointer vs keyboard focus
+    struct client_state_output *st_output = state->seat.pointer.focused_output;
 
     if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
         return;
@@ -74,23 +76,23 @@ handle_keyboard_key(
     // TODO: Probably reorganize all of this later
     case XKB_KEY_Escape:
         fprintf(stderr, "Got escape key...");
-        if (state->capture.capturing) {
+        if (st_output->capture.capturing) {
             // TODO: Probably both stop capture and request exit
             //           Have dedicated start/stop capture key that doesn't exit
             fprintf(stderr, " stopping capture.\n");
-            state->capture.capturing = false;
+            st_output->capture.capturing = false;
         } else {
             fprintf(stderr, " exiting.\n");
             state->exit_requested = true;
         }
         break;
     case XKB_KEY_Return:
-        if (state->capture.capturing) {
-            state->capture.capturing = false;
+        if (st_output->capture.capturing) {
+            st_output->capture.capturing = false;
             // TODO: Need to ensure capture is fully properly fully finished
             //       before we allow new dispatch_capture_event_loop()
         } else {
-            start_capture(state);
+            start_capture(st_output);
         }
         break;
     }

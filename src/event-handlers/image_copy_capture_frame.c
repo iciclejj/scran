@@ -20,9 +20,9 @@ handle_image_copy_capture_frame_transform(
     struct ext_image_copy_capture_frame_v1 *frame,
     uint32_t transform
 ) {
-    struct client_state *state = data;
+    struct client_state_output *st_output = data;
 
-    state->capture.transform = transform;
+    st_output->capture.transform = transform;
 }
 
 static void
@@ -34,6 +34,8 @@ handle_image_copy_capture_frame_damage(
     int32_t width,
     int32_t height
 ) {
+    struct client_state_output *st_output = data;
+
     // XXX TODO IMPORTANT: Implement this and add flag to enable damage-based capture
 }
 
@@ -42,7 +44,7 @@ handle_image_copy_capture_frame_ready(
     void *data,
     struct ext_image_copy_capture_frame_v1 *frame
 ) {
-    struct client_state *state = data;
+    struct client_state_output *st_output = data;
 
     // TODO: Don't capture the overlay. Especially since it seemingly doesn't
     //       update in sync with the capture (the selection edges are sliding
@@ -53,8 +55,8 @@ handle_image_copy_capture_frame_ready(
     ext_image_copy_capture_frame_v1_destroy(frame);
 
     // TODO: Make sure buffer is destroyed
-    if (!state->capture.capturing) {
-        pclose(state->capture.ffmpeg);
+    if (!st_output->capture.capturing) {
+        pclose(st_output->capture.ffmpeg);
         return;
     }
 
@@ -66,32 +68,34 @@ handle_image_copy_capture_frame_ready(
     //
 
     // XXX: Clean up this eyesore. Change names or something, idk.
-    uint32_t pixel_stride      = state->capture.pixel_stride;
-    uint32_t height            = state->capture.frame_height_px;
-    uint32_t width             = state->capture.frame_width_px;
-    uint32_t source_width      = state->capture.source_width_px;
-    uint32_t x                 = state->capture.frame_x_px;
-    uint32_t y                 = state->capture.frame_y_px;
+    uint32_t pixel_stride      = st_output->capture.pixel_stride;
+    uint32_t height            = st_output->capture.frame_height_px;
+    uint32_t width             = st_output->capture.frame_width_px;
+    uint32_t source_width      = st_output->capture.source_width_px;
+    uint32_t x                 = st_output->capture.frame_x_px;
+    uint32_t y                 = st_output->capture.frame_y_px;
 
     uint32_t row_bytes         = pixel_stride * width;
     char *addr =
-        state->capture.buffer.data
+        st_output->capture.buffer.data
       + pixel_stride * y * source_width
       + pixel_stride * x;
 
+    // TODO: We should properly handle this once per output during output init
+    assert(st_output->capture.frame_iovec_size >= height);
     for (int i = 0; i < height; ++i) {
-        state->capture.frame_iovec[i].iov_base = addr;
-        state->capture.frame_iovec[i].iov_len = row_bytes;
+        st_output->capture.frame_iovec[i].iov_base = addr;
+        st_output->capture.frame_iovec[i].iov_len = row_bytes;
         addr += pixel_stride * source_width;
     }
 
     // TODO: Assumes row-major. Find out whether this is a safe assumption.
     //           Maybe depends on transform? Something else?
-    if (-1 == writev(state->capture.ffmpeg_fd, state->capture.frame_iovec, height)) {
+    if (-1 == writev(st_output->capture.ffmpeg_fd, st_output->capture.frame_iovec, height)) {
         fprintf(stderr, "Failed writev(). Error: %s\n", strerror(errno));
     };
 
-    dispatch_capture_event_loop(state);
+    dispatch_capture_event_loop(st_output);
 }
 
 struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener = {

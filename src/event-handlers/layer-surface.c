@@ -15,11 +15,11 @@ handle_layer_surface_configure(
     uint32_t width,
     uint32_t height
 ) {
-    struct client_state *state = data;
+    struct client_state_output_surface *st_surface = data;
 
     // TODO: Handle 0 height/width
-    state->surface.height_px = height;
-    state->surface.width_px = width;
+    st_surface->height_px = height;
+    st_surface->width_px = width;
 
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 }
@@ -27,12 +27,12 @@ handle_layer_surface_configure(
 static void
 handle_layer_surface_closed(void *data, struct zwlr_layer_surface_v1 *layer_surface)
 {
-    struct client_state *state = data;
+    struct client_state_output_surface *st_surface = data;
 
     for (int i = 0; i < SURFACE_BUF_COUNT; i++) {
-        struct client_state_surface_buffer *buffer = &state->surface.double_buffer[i];
+        struct client_state_output_surface_buffer *buffer = &st_surface->double_buffer[i];
 
-        munmap(buffer->data, state->surface.buf_size);
+        munmap(buffer->data, st_surface->buf_size);
         wl_buffer_destroy(buffer->buffer);
     }
 }

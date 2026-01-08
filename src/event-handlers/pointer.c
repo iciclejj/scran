@@ -24,8 +24,14 @@ handle_pointer_enter(
         WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR
     );
 
-    if (surface_entered == state->surface.surface) {
-        state->surface.is_focused = true;
+    // TODO: Macro for_each_output ?
+    for (int i = 0; i < state->n_outputs; ++i) {
+        if (surface_entered == state->outputs[i].surface.surface) {
+            // TODO: Is is_focused useful?
+            state->outputs[i].surface.is_focused = true;
+            st_pointer->focused_output = &state->outputs[i];
+            break;
+        }
     }
 }
 
@@ -40,8 +46,12 @@ handle_pointer_leave(
 
     // TODO: reset_selection((struct client_state *)data);
 
-    if (surface_left == state->surface.surface) {
-        state->surface.is_focused = false;
+    for (int i = 0; i < state->n_outputs; ++i) {
+        if (surface_left == state->outputs[i].surface.surface) {
+            // TODO: Is is_focused useful?
+            state->outputs[i].surface.is_focused = false;
+            break;
+        }
     }
 }
 
@@ -54,65 +64,67 @@ handle_pointer_motion(
     wl_fixed_t y
 ) {
     struct client_state *state = data;
+    struct client_state_output *st_output = state->seat.pointer.focused_output;
+    struct client_state_output_selection *st_selection = &st_output->selection;
 
     state->seat.pointer.x = x;
     state->seat.pointer.y = y;
 
-    if (state->selection.selection_state == SELECTION_NONE) {
+    if (st_selection->selection_state == SELECTION_NONE) {
         return;
     }
 
     int32_t pointer_x_pxl = (int32_t)wl_fixed_to_double(state->seat.pointer.x);
     int32_t pointer_y_pxl = (int32_t)wl_fixed_to_double(state->seat.pointer.y);
 
-    switch (state->selection.selection_state) {
+    switch (st_selection->selection_state) {
         case SELECTION_NONE:
             break;
         case SELECTION_IN_PROGRESS:
             // TODO: Make this explicitly either output pixel coordinates or
             //       surface-local coordinates
             //       Also document the behavior/conversion (and make helper function?).
-            state->selection.bl.box.x1 = pointer_x_pxl;
-            state->selection.bl.box.y1 = pointer_y_pxl;
+            st_selection->bl.box.x1 = pointer_x_pxl;
+            st_selection->bl.box.y1 = pointer_y_pxl;
             break;
         case SELECTION_COMPLETE:
             break;
         case SELECTION_REBASING:
             // TODO: Can't initialize variables here.
-            int32_t x_diff_pxl = pointer_x_pxl - (int32_t)wl_fixed_to_double(state->selection.rebase_origin_pointer_x);
-            int32_t y_diff_pxl = pointer_y_pxl - (int32_t)wl_fixed_to_double(state->selection.rebase_origin_pointer_y);
+            int32_t x_diff_pxl = pointer_x_pxl - (int32_t)wl_fixed_to_double(st_selection->rebase_origin_pointer_x);
+            int32_t y_diff_pxl = pointer_y_pxl - (int32_t)wl_fixed_to_double(st_selection->rebase_origin_pointer_y);
 
             // TODO: Make this a bit prettier?
-            state->selection.bl.box.x0 = state->selection.bl.box_before_rebase.x0 + x_diff_pxl;
-            state->selection.bl.box.y0 = state->selection.bl.box_before_rebase.y0 + y_diff_pxl;
-            state->selection.bl.box.x1 = state->selection.bl.box_before_rebase.x1 + x_diff_pxl;
-            state->selection.bl.box.y1 = state->selection.bl.box_before_rebase.y1 + y_diff_pxl;
+            st_selection->bl.box.x0 = st_selection->bl.box_before_rebase.x0 + x_diff_pxl;
+            st_selection->bl.box.y0 = st_selection->bl.box_before_rebase.y0 + y_diff_pxl;
+            st_selection->bl.box.x1 = st_selection->bl.box_before_rebase.x1 + x_diff_pxl;
+            st_selection->bl.box.y1 = st_selection->bl.box_before_rebase.y1 + y_diff_pxl;
             break;
         case SELECTION_RESIZING:
             // TODO: Make this cleaner...
             //       Handle inverted selection
             //           i.e. drag bottom edge past top edge => TOP_LEFT becomes bottom left
             {
-                int32_t x_diff_pxl = pointer_x_pxl - (int32_t)wl_fixed_to_double(state->selection.resize_origin_pointer_x);
-                int32_t y_diff_pxl = pointer_y_pxl - (int32_t)wl_fixed_to_double(state->selection.resize_origin_pointer_y);
-                switch (state->selection.selection_resize_direction) {
+                int32_t x_diff_pxl = pointer_x_pxl - (int32_t)wl_fixed_to_double(st_selection->resize_origin_pointer_x);
+                int32_t y_diff_pxl = pointer_y_pxl - (int32_t)wl_fixed_to_double(st_selection->resize_origin_pointer_y);
+                switch (st_selection->selection_resize_direction) {
                 case SELECTION_NONE:
                     break;
                 case SELECTION_RESIZE_TOP_LEFT:
-                    state->selection.bl.box.x0 = state->selection.bl.box_before_resize.x0 + x_diff_pxl;
-                    state->selection.bl.box.y0 = state->selection.bl.box_before_resize.y0 + y_diff_pxl;
+                    st_selection->bl.box.x0 = st_selection->bl.box_before_resize.x0 + x_diff_pxl;
+                    st_selection->bl.box.y0 = st_selection->bl.box_before_resize.y0 + y_diff_pxl;
                     break;
                 case SELECTION_RESIZE_TOP_RIGHT:
-                    state->selection.bl.box.x1 = state->selection.bl.box_before_resize.x1 + x_diff_pxl;
-                    state->selection.bl.box.y0 = state->selection.bl.box_before_resize.y0 + y_diff_pxl;
+                    st_selection->bl.box.x1 = st_selection->bl.box_before_resize.x1 + x_diff_pxl;
+                    st_selection->bl.box.y0 = st_selection->bl.box_before_resize.y0 + y_diff_pxl;
                     break;
                 case SELECTION_RESIZE_BOTTOM_LEFT:
-                    state->selection.bl.box.x0 = state->selection.bl.box_before_resize.x0 + x_diff_pxl;
-                    state->selection.bl.box.y1 = state->selection.bl.box_before_resize.y1 + y_diff_pxl;
+                    st_selection->bl.box.x0 = st_selection->bl.box_before_resize.x0 + x_diff_pxl;
+                    st_selection->bl.box.y1 = st_selection->bl.box_before_resize.y1 + y_diff_pxl;
                     break;
                 case SELECTION_RESIZE_BOTTOM_RIGHT:
-                    state->selection.bl.box.x1 = state->selection.bl.box_before_resize.x1 + x_diff_pxl;
-                    state->selection.bl.box.y1 = state->selection.bl.box_before_resize.y1 + y_diff_pxl;
+                    st_selection->bl.box.x1 = st_selection->bl.box_before_resize.x1 + x_diff_pxl;
+                    st_selection->bl.box.y1 = st_selection->bl.box_before_resize.y1 + y_diff_pxl;
                     break;
                 }
                 break;
@@ -138,16 +150,11 @@ handle_pointer_button(
     enum wl_pointer_button_state button_state
 ) {
     struct client_state *state = data;
+    struct client_state_output *st_output = state->seat.pointer.focused_output;
     struct client_state_seat_pointer *st_pointer = &state->seat.pointer;
-    struct client_state_selection_blend2d *bl = &state->selection.bl;
+    struct client_state_output_selection_blend2d *bl = &st_output->selection.bl;
 
     // TODO: Implement dragging
-
-    // XXX: Not needed when we only have one surface.
-    //      TODO: Handle this everywhere
-    if (!state->surface.is_focused) {
-        return;
-    }
 
     // XXX: This should probably be a helper function.
     // TODO: Rename to make it clear whether it's pixel or logical
@@ -161,30 +168,30 @@ handle_pointer_button(
 
     switch (button) {
     case BTN_LEFT:
-        switch(state->selection.selection_state) {
+        switch(st_output->selection.selection_state) {
         case SELECTION_NONE:
-            state->selection.bl.box.x0 = pointer_x_pxl;
-            state->selection.bl.box.y0 = pointer_y_pxl;
+            st_output->selection.bl.box.x0 = pointer_x_pxl;
+            st_output->selection.bl.box.y0 = pointer_y_pxl;
 
             // XXX TEST: Might keep, though..
-            state->selection.bl.box.x1 = pointer_x_pxl;
-            state->selection.bl.box.y1 = pointer_y_pxl;
+            st_output->selection.bl.box.x1 = pointer_x_pxl;
+            st_output->selection.bl.box.y1 = pointer_y_pxl;
 
-            state->selection.selection_state = SELECTION_IN_PROGRESS;
+            st_output->selection.selection_state = SELECTION_IN_PROGRESS;
             break;
         case SELECTION_IN_PROGRESS:
-            state->selection.bl.box.x1 = pointer_x_pxl;
-            state->selection.bl.box.y1 = pointer_y_pxl;
-            state->selection.selection_state = SELECTION_COMPLETE;
+            st_output->selection.bl.box.x1 = pointer_x_pxl;
+            st_output->selection.bl.box.y1 = pointer_y_pxl;
+            st_output->selection.selection_state = SELECTION_COMPLETE;
             break;
         case SELECTION_COMPLETE:
-            state->selection.rebase_origin_pointer_x = state->seat.pointer.x;
-            state->selection.rebase_origin_pointer_y = state->seat.pointer.y;
-            state->selection.bl.box_before_rebase = state->selection.bl.box;
-            state->selection.selection_state = SELECTION_REBASING;
+            st_output->selection.rebase_origin_pointer_x = state->seat.pointer.x;
+            st_output->selection.rebase_origin_pointer_y = state->seat.pointer.y;
+            st_output->selection.bl.box_before_rebase = st_output->selection.bl.box;
+            st_output->selection.selection_state = SELECTION_REBASING;
             break;
         case SELECTION_REBASING:
-            state->selection.selection_state = SELECTION_COMPLETE;
+            st_output->selection.selection_state = SELECTION_COMPLETE;
             break;
         case SELECTION_RESIZING:
             // TODO: Allow BTN_LEFT to stop the resizing ?
@@ -192,38 +199,38 @@ handle_pointer_button(
         }
         break;
     case BTN_RIGHT:
-        switch(state->selection.selection_state) {
+        switch(st_output->selection.selection_state) {
         case SELECTION_COMPLETE:
-            state->selection.selection_state = SELECTION_RESIZING;
-            state->selection.bl.box_before_resize = state->selection.bl.box;
+            st_output->selection.selection_state = SELECTION_RESIZING;
+            st_output->selection.bl.box_before_resize = st_output->selection.bl.box;
 
-            state->selection.resize_origin_pointer_x = state->seat.pointer.x;
-            state->selection.resize_origin_pointer_y = state->seat.pointer.y;
+            st_output->selection.resize_origin_pointer_x = state->seat.pointer.x;
+            st_output->selection.resize_origin_pointer_y = state->seat.pointer.y;
 
             // TODO: Make this cleaner.....
             if (pointer_x_pxl
-                < get_center_value(state->selection.bl.box_before_resize.x0, state->selection.bl.box_before_resize.x1)
+                < get_center_value(st_output->selection.bl.box_before_resize.x0, st_output->selection.bl.box_before_resize.x1)
             ) {
                 if (pointer_y_pxl
-                    < get_center_value(state->selection.bl.box_before_resize.y0, state->selection.bl.box_before_resize.y1)
+                    < get_center_value(st_output->selection.bl.box_before_resize.y0, st_output->selection.bl.box_before_resize.y1)
                 ) {
-                    state->selection.selection_resize_direction = SELECTION_RESIZE_TOP_LEFT;
+                    st_output->selection.selection_resize_direction = SELECTION_RESIZE_TOP_LEFT;
                 } else {
-                    state->selection.selection_resize_direction = SELECTION_RESIZE_BOTTOM_LEFT;
+                    st_output->selection.selection_resize_direction = SELECTION_RESIZE_BOTTOM_LEFT;
                 }
             } else {
                 if (pointer_y_pxl
-                    < get_center_value(state->selection.bl.box_before_resize.y0, state->selection.bl.box_before_resize.y1)
+                    < get_center_value(st_output->selection.bl.box_before_resize.y0, st_output->selection.bl.box_before_resize.y1)
                 ) {
-                    state->selection.selection_resize_direction = SELECTION_RESIZE_TOP_RIGHT;
+                    st_output->selection.selection_resize_direction = SELECTION_RESIZE_TOP_RIGHT;
                 } else {
-                    state->selection.selection_resize_direction = SELECTION_RESIZE_BOTTOM_RIGHT;
+                    st_output->selection.selection_resize_direction = SELECTION_RESIZE_BOTTOM_RIGHT;
                 }
             }
             break;
         case SELECTION_RESIZING:
-            state->selection.selection_state = SELECTION_COMPLETE;
-            state->selection.selection_resize_direction = SELECTION_RESIZE_NONE;
+            st_output->selection.selection_state = SELECTION_COMPLETE;
+            st_output->selection.selection_resize_direction = SELECTION_RESIZE_NONE;
             break;
         default:
             break;

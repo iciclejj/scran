@@ -14,6 +14,8 @@
 #include "ext-image-copy-capture-v1.h"
 #include "cursor-shape-v1.h"
 
+#define MAX_OUTPUTS 64
+
 // TODO: Buffer file/header?
 #define A_DOUBLE_BUFFER_HAS_TWO_BUFFERS 2
 #define SURFACE_BUF_COUNT A_DOUBLE_BUFFER_HAS_TWO_BUFFERS
@@ -31,7 +33,7 @@ struct client_state_globals {
     struct ext_image_copy_capture_manager_v1 *image_copy_capture_manager;
 };
 
-struct client_state_surface_buffer {
+struct client_state_output_surface_buffer {
     // TODO: Rename to wl_buffer to not mix it up with `data`?
     struct wl_buffer *buffer;
     void *data;
@@ -39,7 +41,7 @@ struct client_state_surface_buffer {
     BLImageCore bl_img;
 };
 
-struct client_state_surface {
+struct client_state_output_surface {
     struct wl_surface *surface;
     struct zwlr_layer_surface_v1 *layer_surface;
 
@@ -53,7 +55,7 @@ struct client_state_surface {
     // At least if will be easily usable in client_state_capture
     struct wl_shm_pool *shm_pool;
     uint32_t shm_pool_size; // TODO: Should this be int32_t ?
-    struct client_state_surface_buffer double_buffer[SURFACE_BUF_COUNT];
+    struct client_state_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
     uint32_t buf_size;
 
     // TODO: Per-monitor/output
@@ -65,6 +67,9 @@ struct client_state_surface {
 struct client_state_seat_pointer {
     struct wl_pointer *pointer;
     struct wp_cursor_shape_device_v1 *cursor_shape_device;
+
+    // TODO: Should this be for the entire seat, and not just pointer?
+    struct client_state_output *focused_output;
 
     enum wl_pointer_button_state btn_left_state;
     wl_fixed_t x;
@@ -91,7 +96,7 @@ struct client_state_seat {
     uint32_t capabilities; // bitmask: enum wl_seat_capability
 };
 
-struct client_state_selection_blend2d {
+struct client_state_output_selection_blend2d {
     BLContextCore ctx;
     BLPathCore path;
 
@@ -119,14 +124,14 @@ enum selection_resize_direction {
     SELECTION_RESIZE_BOTTOM_RIGHT,
 };
 
-struct client_state_selection {
+struct client_state_output_selection {
     // bool selection_started;
     enum selection_state selection_state;
     enum selection_resize_direction selection_resize_direction;
 
     // TODO: Make a cleaner/more obvious interface for getting selection
     //       height/width etc. than just getting the .bl.box coordinates?
-    struct client_state_selection_blend2d bl;
+    struct client_state_output_selection_blend2d bl;
 
     wl_fixed_t rebase_origin_pointer_x;
     wl_fixed_t rebase_origin_pointer_y;
@@ -145,7 +150,7 @@ struct client_state_capture_buffer {
 };
 
 // TODO: Merge all or parts of this with client_state_surface?
-struct client_state_capture {
+struct client_state_output_capture {
     // Inconsistent naming, but my eyes are bleeding
     struct ext_image_capture_source_v1 *source;
     struct ext_image_copy_capture_session_v1 *session;
@@ -185,10 +190,9 @@ struct client_state_capture {
     uint32_t frame_height_px;
     uint32_t frame_x_px;
     uint32_t frame_y_px;
-    // indexing into .buffer.data, i.e. the screen/output buffer that encapsulates
-    // the selection/capture area
-    // [34560] => 16 UHD monitors stacked vertically ~= 0.5 MB (x86_64)
-    struct iovec frame_iovec[34560]; 
+
+    uint32_t frame_iovec_size;
+    struct iovec *frame_iovec;
 };
 
 struct client_state_output_mode {
@@ -198,17 +202,21 @@ struct client_state_output_mode {
 };
 
 struct client_state_output {
+    struct wl_output *wl_output;
+
+    // TODO: Clearer name ?
     struct client_state_output_mode mode;
+
+    struct client_state_output_surface surface;
+    struct client_state_output_selection selection;
+    struct client_state_output_capture capture;
 };
 
 struct client_state {
     struct client_state_globals globals;
-    struct client_state_surface surface;
     struct client_state_seat seat;
-    struct client_state_output output;
-
-    struct client_state_selection selection;
-    struct client_state_capture capture;
+    struct client_state_output outputs[MAX_OUTPUTS];
+    uint32_t n_outputs;
 
     bool exit_requested;
 };

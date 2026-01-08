@@ -15,15 +15,15 @@ handle_image_copy_capture_session_buffer_size(
     uint32_t width,
     uint32_t height
 ) {
-    struct client_state *state = data;
+    struct client_state_output *st_output = data;
 
     // XXX TODO: Fix this once we have multiple monitor support 
     //           and/or logical output geomtry support (e.g. xdg_output)
     //           Also use 
-    assert(state->output.mode.width_px == width);
-    assert(state->output.mode.height_px == height);
-    state->capture.source_width_px = width;
-    state->capture.source_height_px = height;
+    assert(st_output->mode.width_px == width);
+    assert(st_output->mode.height_px == height);
+    st_output->capture.source_width_px = width;
+    st_output->capture.source_height_px = height;
 }
 
 static void
@@ -32,13 +32,13 @@ handle_image_copy_capture_session_shm_format(
     struct ext_image_copy_capture_session_v1 *session,
     uint32_t shm_format
 ) {
-    struct client_state *state = data;
+    struct client_state_output *st_output = data;
 
     fprintf(stderr, "session::shm_format received: %x... ", shm_format);
 
     // List of formats we want to support.
     // TODO: Add more formats and logic for handling them
-    if (!state->capture.shm_format_is_selected
+    if (!st_output->capture.shm_format_is_selected
         &&
         (shm_format == WL_SHM_FORMAT_ARGB8888
          || shm_format == WL_SHM_FORMAT_XRGB8888
@@ -46,9 +46,9 @@ handle_image_copy_capture_session_shm_format(
          || shm_format == WL_SHM_FORMAT_ABGR8888
         )
     ) {
-        state->capture.shm_format = shm_format;
-        state->capture.shm_format_is_selected = true;
-        state->capture.pixel_stride = 4;
+        st_output->capture.shm_format = shm_format;
+        st_output->capture.shm_format_is_selected = true;
+        st_output->capture.pixel_stride = 4;
         fprintf(stderr, "format supported!\n");
     } else {
         fprintf(stderr, "format unsupported.\n");
@@ -60,9 +60,9 @@ handle_image_copy_capture_session_stopped(
     void *data,
     struct ext_image_copy_capture_session_v1 *session
 ) {
-    struct client_state *state = data;
+    struct client_state_output *st_output = data;
 
-    ext_image_copy_capture_session_v1_destroy(state->capture.session);
+    ext_image_copy_capture_session_v1_destroy(st_output->capture.session);
 
     // TODO: Destroy frames, free shm etc.
 }

@@ -7,32 +7,32 @@
 #include "lib_interop.h"
 
 void
-dispatch_capture_event_loop(struct client_state *state)
+dispatch_capture_event_loop(struct client_state_output *st_output)
 {
     struct ext_image_copy_capture_frame_v1 *frame =
         ext_image_copy_capture_session_v1_create_frame(
-            state->capture.session
+            st_output->capture.session
         );
-    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, state);
+    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, st_output);
     ext_image_copy_capture_frame_v1_attach_buffer(
         frame,
-        state->capture.buffer.buffer
+        st_output->capture.buffer.buffer
     );
     ext_image_copy_capture_frame_v1_damage_buffer(
         frame,
         0,
         0,
-        state->capture.source_width_px,
-        state->capture.source_height_px
+        st_output->capture.source_width_px,
+        st_output->capture.source_height_px
     );
     ext_image_copy_capture_frame_v1_capture(frame);
 }
 
 bool
-start_capture(struct client_state *state)
+start_capture(struct client_state_output *st_output)
 {
     // TODO: Assert instead?
-    if (state->capture.capturing) {
+    if (st_output->capture.capturing) {
         fprintf(stderr, "Already capturing...\n");
         return false;
     }
@@ -41,10 +41,10 @@ start_capture(struct client_state *state)
     // XXX: - Needs better asssert? Intent: make sure selection is complete and valid
     //      Most of this function is probably temporary anyways
     assert(
-        state->selection.selection_state == SELECTION_COMPLETE
-     || state->selection.selection_state == SELECTION_REBASING
-     && state->selection.bl.box.x1
-     && state->selection.bl.box.y1
+        st_output->selection.selection_state == SELECTION_COMPLETE
+     || st_output->selection.selection_state == SELECTION_REBASING
+     && st_output->selection.bl.box.x1
+     && st_output->selection.bl.box.y1
     );
 
     // XXX: Double-check whether appropriate char-array sizes
@@ -59,21 +59,21 @@ start_capture(struct client_state *state)
         //          TODO: Find better solution that still gives some logging
         "ffmpeg -v quiet -f rawvideo -video_size %dx%d -pix_fmt %s -i -"
             " test-capture_%s.mp4",
-        state->capture.frame_width_px,
-        state->capture.frame_height_px,
-        wl_shm_format_to_ffmpeg_cli_str(state->capture.shm_format),
+        st_output->capture.frame_width_px,
+        st_output->capture.frame_height_px,
+        wl_shm_format_to_ffmpeg_cli_str(st_output->capture.shm_format),
         time_now_str
     );
     fprintf(stderr, "FFMPEG COMMAND: `%s`\n", ffmpeg_command);
 
-    state->capture.capturing = true;
-    state->capture.ffmpeg = popen(ffmpeg_command, "w");
-    state->capture.ffmpeg_fd = fileno(state->capture.ffmpeg);
+    st_output->capture.capturing = true;
+    st_output->capture.ffmpeg = popen(ffmpeg_command, "w");
+    st_output->capture.ffmpeg_fd = fileno(st_output->capture.ffmpeg);
 
 
     // Get initial frame. Subsequent capture requests happen within frame::ready
     //     Similar to the wl_surface callback event loop
-    dispatch_capture_event_loop(state);
+    dispatch_capture_event_loop(st_output);
 
     return true;
 }
