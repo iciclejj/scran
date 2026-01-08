@@ -1,10 +1,16 @@
 # TODO: THIS IS ALL A MESS
 
-.DEFAULT_GOAL := all
+.DEFAULT_GOAL := debug
 
 PKGCONF_LIBS = libavcodec libavutil xkbcommon
 
+BUILD_DIR = build
+ BUILD_DIR_REL = $(BUILD_DIR)/release
+ BUILD_DIR_DBG = $(BUILD_DIR)/debug
+
 PROG = main
+ PROG_REL = $(BUILD_DIR_REL)/$(PROG)
+ PROG_DBG = $(BUILD_DIR_DBG)/$(PROG)
 LDLIBS = -lwayland-client -lblend2d
 LDLIBS += $(foreach pkg, $(PKGCONF_LIBS), $(shell pkg-config --libs $(pkg)))
 INCDIRS = include/
@@ -12,10 +18,14 @@ INCDIRS += $(WAYLAND_PROTOCOLS_DIR_LOCAL)
 CFLAGS ?= -O2
 CFLAGS += $(addprefix -I, $(INCDIRS))
 CFLAGS += $(foreach pkg, $(PKGCONF_LIBS), $(shell pkg-config --cflags $(pkg)))
+ CFLAGS_REL = $(CFLAGS)
+ CFLAGS_DBG = $(CFLAGS) -g -O0 -U_FORTIFY_SOURCE
 SRCDIRS = src src/event-handlers src/init
 SRCS = $(foreach dir, $(SRCDIRS), $(wildcard $(dir)/*.c))
 SRCS += $(addprefix $(WAYLAND_PROTOCOLS_DIR_LOCAL)/, $(WAYLAND_PROTOCOLS_REQUIRED_C_FILENAMES))
 OBJS = $(SRCS:.c=.o)
+ OBJS_REL = $(addprefix $(BUILD_DIR_REL)/, $(OBJS))
+ OBJS_DBG = $(addprefix $(BUILD_DIR_DBG)/, $(OBJS))
 
 # TODO: Ensure package versions. Flake?
 WAYLAND_SCANNER = $(shell pkg-config --variable=wayland_scanner wayland-scanner)
@@ -48,7 +58,7 @@ WAYLAND_PROTOCOLS_REQUIRED_H_FILENAMES = $(patsubst %, %.h, $(WAYLAND_PROTOCOLS_
 
 
 
-.PHONY: all clean protocols
+.PHONY: all clean protocols debug
 
 
 $(foreach path, $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS), $(eval $(call WAYLAND_PROTOCOL_GEN_RULE, $(path))))
@@ -61,16 +71,23 @@ WAYLAND_PROTOCOLS = $(addprefix \
 
 protocols: $(WAYLAND_PROTOCOLS)
 
-$(OBJS): %.o: %.c $(WAYLAND_PROTOCOLS)
-	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD_DIR_REL)/%.o: %.c
+	@mkdir -p $(shell dirname $@)
+	$(CC) $(CFLAGS_REL) -c $< -o $@
+$(BUILD_DIR_DBG)/%.o: %.c
+	@mkdir -p $(shell dirname $@)
+	$(CC) $(CFLAGS_DBG) -c $< -o $@
 
-$(PROG): $(OBJS)
-	$(CC) $(OBJS) $(CFLAGS) -o $(PROG) $(LDLIBS)
+$(PROG_REL): $(OBJS_REL)
+	$(CC) $(OBJS_REL) $(CFLAGS_REL) -o $(PROG_REL) $(LDLIBS)
+$(PROG_DBG): $(OBJS_DBG)
+	$(CC) $(OBJS_DBG) $(CFLAGS_DBG) -o $(PROG_DBG) $(LDLIBS)
 
+all: $(PROG_REL) $(PROG_DBG)
 
-all: $(PROG)
+release: $(PROG_REL)
+debug: $(PROG_DBG)
 
 clean: 
-	rm $(OBJS)
-	rm $(PROG)
+	trash -rf ./build/ || rm -rf ./build/
 
