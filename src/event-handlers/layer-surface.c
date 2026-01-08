@@ -12,14 +12,14 @@ handle_layer_surface_configure(
     void *data,
     struct zwlr_layer_surface_v1 *layer_surface,
     uint32_t serial,
-    uint32_t width,
-    uint32_t height
+    uint32_t width_px_logical,
+    uint32_t height_px_logical
 ) {
     struct client_state_output_surface *st_surface = data;
 
     // TODO: Handle 0 height/width
-    st_surface->height_px = height;
-    st_surface->width_px = width;
+    st_surface->height_px = height_px_logical;
+    st_surface->width_px = width_px_logical;
 
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 }
