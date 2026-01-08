@@ -198,13 +198,6 @@ struct client_state_output_mode {
 };
 
 struct client_state_output {
-    int32_t x_global;
-    int32_t y_global;
-    enum wl_output_subpixel subpixel_layout;
-    enum wl_output_transform transform;
-
-    int32_t scale;
-
     struct client_state_output_mode mode;
 };
 
