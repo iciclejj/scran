@@ -29,7 +29,7 @@ handle_layer_surface_closed(void *data, struct zwlr_layer_surface_v1 *layer_surf
 {
     struct client_state *state = data;
 
-    for (int i = 0; i < BUF_COUNT; i++) {
+    for (int i = 0; i < SURFACE_BUF_COUNT; i++) {
         struct client_state_surface_buffer *buffer = &state->surface.double_buffer[i];
 
         munmap(buffer->data, state->surface.buf_size);

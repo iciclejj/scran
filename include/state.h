@@ -15,7 +15,8 @@
 #include "cursor-shape-v1.h"
 
 // TODO: Buffer file/header?
-#define BUF_COUNT 2
+#define A_DOUBLE_BUFFER_HAS_TWO_BUFFERS 2
+#define SURFACE_BUF_COUNT A_DOUBLE_BUFFER_HAS_TWO_BUFFERS
 
 struct client_state_globals {
     struct wl_display *display;
@@ -52,7 +53,7 @@ struct client_state_surface {
     // At least if will be easily usable in client_state_capture
     struct wl_shm_pool *shm_pool;
     uint32_t shm_pool_size; // TODO: Should this be int32_t ?
-    struct client_state_surface_buffer double_buffer[BUF_COUNT];
+    struct client_state_surface_buffer double_buffer[SURFACE_BUF_COUNT];
     uint32_t buf_size;
 
     // TODO: Per-monitor/output

@@ -23,14 +23,13 @@ init_surface_shm_buffers(
     // TODO: Graphics library needs to take part in this..
     //       Account for scale/transform
     st_surface->buf_size = SURFACE_BYTES_PER_PIXEL * st_surface->width * st_surface->height;
-    st_surface->shm_pool_size = BUF_COUNT * st_surface->buf_size;
+    st_surface->shm_pool_size = SURFACE_BUF_COUNT * st_surface->buf_size;
 
     if (-1 == ftruncate(shm_fd, st_surface->shm_pool_size)) {
         fprintf(stderr, "Failed to resize shm file to %d\n", st_surface->shm_pool_size);
         close(shm_fd);
         return false;
     }
-
     fprintf(stderr, "Resized shm file to %d\n", st_surface->shm_pool_size);
 
     // TODO: Handle wl_shm::format event
@@ -40,7 +39,7 @@ init_surface_shm_buffers(
         st_surface->shm_pool_size
     );
 
-    for (int i = 0; i < BUF_COUNT; i++) {
+    for (int i = 0; i < SURFACE_BUF_COUNT; i++) {
         fprintf(stderr, "Creating buffer %d\n", i);
         assert(i * st_surface->buf_size <= st_surface->shm_pool_size);
 
@@ -74,7 +73,7 @@ init_surface_shm_buffers(
     wl_shm_pool_destroy(st_surface->shm_pool);
 
     // TODO: Do this cleaner?
-    for (int i = 0; i < BUF_COUNT; ++i) {
+    for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
         if (st_surface->double_buffer[i].data == NULL) {
             return false;
         }
@@ -89,7 +88,7 @@ init_surface_shm_buffers(
 void
 destroy_surface_shm_buffers(struct client_state_surface *st_surface)
 {
-    for (int i = 0; i < BUF_COUNT; ++i) {
+    for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
         wl_buffer_destroy(st_surface->double_buffer[i].buffer);
     }
 }

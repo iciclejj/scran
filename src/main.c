@@ -133,7 +133,7 @@ init_selection_and_blend2d(struct client_state *state)
 
     // TODO: Should maybe be a separate function, f.ex. init_surface_buffers_blend2d
     //       and called directly from main, after init_surface_shm_buffers
-    for (int i = 0; i < BUF_COUNT; ++i) {
+    for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
         struct client_state_surface_buffer *st_buffer = &state->surface.double_buffer[i];
         // Shared memory must already be allocated.
         assert(st_buffer->data != NULL);
