@@ -165,10 +165,13 @@ struct client_state_output_capture {
 
     // TODO: Probably put this into a separate struct. Mode?
     //       Something to separate it from both capture/output and from xdg output
+    // NOTE: These do not have any transforms applied.
+    //       Capture frame buffer must match this size and handle transforms
+    //       manually.
     uint32_t source_width_px;
     uint32_t source_height_px;
-    uint32_t shm_format;
     uint32_t pixel_stride; // bytes per pixel.
+    uint32_t shm_format;
     bool shm_format_is_selected; // XXX: Is there a nicer way?
 
     // TODO: Use this
@@ -197,6 +200,7 @@ struct client_state_output_capture {
 };
 
 struct client_state_output_mode {
+    // NOTE: These do not have any transforms applied
     int32_t width_px;
     int32_t height_px;
     int32_t refresh_rate_mhz;

@@ -3,6 +3,14 @@
 #include "state.h"
 #include "wayland-event-handlers.h"
 
+// TODO:
+//     Figure out some simple but robust set of asserts or conditions that
+//     ensures [ output_mode(/xdg), capture_source, layer_shell/surface,
+//     anything_else? ] all have properly synced height/width(/other?)
+//      OR some system that treats f.ex. xdg_output as the ground truth somehow.
+//     NOTE: f.ex. output::mode and capture_session::buffer_size args seem to
+//           ignore applied transforms. Certain others are pre-transformed.
+//
 static void
 handle_output_mode(
     void *data,
