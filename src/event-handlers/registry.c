@@ -52,7 +52,6 @@ registry_handle_global(
             fprintf(stderr, "Maximum output limit reached: %d\n", MAX_OUTPUTS);
             return;
         }
-        fprintf(stderr, "Adding output... ");
 
         struct client_state_output *curr_output = &state->outputs[state->n_outputs];
 
@@ -60,8 +59,6 @@ registry_handle_global(
         wl_output_add_listener(curr_output->wl_output, &output_listener, curr_output);
 
         ++state->n_outputs;
-
-        fprintf(stderr, "added output listener.\n");
     } else if (_INTERFACE_IS(zxdg_output_manager_v1_interface)) {
         globals->xdg_output_manager = wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface, 3);
     } else if (_INTERFACE_IS(ext_output_image_capture_source_manager_v1_interface)) {
