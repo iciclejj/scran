@@ -12,7 +12,7 @@ INCDIRS += $(WAYLAND_PROTOCOLS_DIR_LOCAL)
 CFLAGS ?= -O2
 CFLAGS += $(addprefix -I, $(INCDIRS))
 CFLAGS += $(foreach pkg, $(PKGCONF_LIBS), $(shell pkg-config --cflags $(pkg)))
-SRCDIRS = src src/event-handlers
+SRCDIRS = src src/event-handlers src/init
 SRCS = $(foreach dir, $(SRCDIRS), $(wildcard $(dir)/*.c))
 SRCS += $(addprefix $(WAYLAND_PROTOCOLS_DIR_LOCAL)/, $(WAYLAND_PROTOCOLS_REQUIRED_C_FILENAMES))
 OBJS = $(SRCS:.c=.o)
