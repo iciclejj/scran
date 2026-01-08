@@ -36,16 +36,18 @@ init_surface_shm_buffers(
         st_surface->shm_pool_size
     );
 
+    // TODO: Collect all mmaps into one
+    st_surface->double_buffer[0].data = mmap(
+        NULL, st_surface->shm_pool_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0
+    );
+    st_surface->double_buffer[1].data =
+        st_surface->double_buffer[0].data + st_surface->buf_size;
+
     for (int i = 0; i < SURFACE_BUF_COUNT; i++) {
         fprintf(stderr, "Creating buffer %d\n", i);
         assert(i * st_surface->buf_size <= st_surface->shm_pool_size);
 
         int _pool_offset = i * st_surface->buf_size;
-
-        // TODO: Don't mmap per buffer...
-        st_surface->double_buffer[i].data = mmap(
-            NULL, st_surface->shm_pool_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, _pool_offset
-        );
 
         st_surface->double_buffer[i].buffer = wl_shm_pool_create_buffer(
             st_surface->shm_pool,
@@ -69,11 +71,8 @@ init_surface_shm_buffers(
     //           Else don't save shm_pool or shm_pool_size anywhere
     wl_shm_pool_destroy(st_surface->shm_pool);
 
-    // TODO: Do this cleaner?
-    for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
-        if (st_surface->double_buffer[i].data == NULL) {
-            return false;
-        }
+    if (st_surface->double_buffer[0].data == NULL) {
+        return false;
     }
 
     // TODO: Should this be done here?
