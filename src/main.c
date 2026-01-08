@@ -123,12 +123,12 @@ init_selection_and_blend2d(struct client_state *state)
     bl_path_init(&bl->path);
 
     // XXX: Maybe handle this assert more robustly
-    assert(state->surface.width != 0);
+    assert(state->surface.width_px != 0);
     bl->box_outer = (struct BLBoxI) {
         .x0 = 0,
         .y0 = 0,
-        .x1 = state->surface.width,
-        .y1 = state->surface.height,
+        .x1 = state->surface.width_px,
+        .y1 = state->surface.height_px,
     };
 
     // TODO: Should maybe be a separate function, f.ex. init_surface_buffers_blend2d
@@ -140,11 +140,11 @@ init_selection_and_blend2d(struct client_state *state)
 
         bl_image_init_as_from_data(
             &st_buffer->bl_img,
-            state->surface.width,
-            state->surface.height,
+            state->surface.width_px,
+            state->surface.height_px,
             SURFACE_SHM_FORMAT_BL,
             st_buffer->data,
-            SURFACE_PIXEL_STRIDE * state->surface.width,
+            SURFACE_PIXEL_STRIDE * state->surface.width_px,
             BL_DATA_ACCESS_RW,
             NULL, // TODO: - Let blend2d destroy our data?
             NULL  //       - Ditto
@@ -225,8 +225,8 @@ init_image_copy_capture_shm_buffer(struct client_state *state)
     state->capture.buffer.buffer = wl_shm_pool_create_buffer(
         state->capture.shm_pool,
         0,
-        state->surface.width,
-        state->surface.height,
+        state->surface.width_px,
+        state->surface.height_px,
         state->capture.pixel_stride * state->capture.source_width_px,
         state->capture.shm_format
     );

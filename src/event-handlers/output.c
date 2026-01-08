@@ -53,8 +53,8 @@ handle_output_mode(
         return;
     }
 
-    state->output.mode.width = width;
-    state->output.mode.height = height;
+    state->output.mode.width_px = width;
+    state->output.mode.height_px = height;
     state->output.mode.refresh_rate_mhz = refresh_rate_mhz;
 }
 

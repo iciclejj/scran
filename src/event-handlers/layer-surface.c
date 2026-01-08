@@ -18,8 +18,8 @@ handle_layer_surface_configure(
     struct client_state *state = data;
 
     // TODO: Handle 0 height/width
-    state->surface.height = height;
-    state->surface.width = width;
+    state->surface.height_px = height;
+    state->surface.width_px = width;
 
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 }

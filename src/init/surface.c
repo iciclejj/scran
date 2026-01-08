@@ -19,9 +19,9 @@ init_surface_shm_buffers(
     // TODO: Is this more efficient to create in handle_global and/or layer_surface ack_configure?
     int shm_fd = shm_open_anon();
     // TODO: Account for scale/transform
-    uint32_t width_bytes = SURFACE_PIXEL_STRIDE * st_surface->width;
+    uint32_t width_bytes = SURFACE_PIXEL_STRIDE * st_surface->width_px;
 
-    st_surface->buf_size = width_bytes * st_surface->height;
+    st_surface->buf_size = width_bytes * st_surface->height_px;
     st_surface->shm_pool_size = SURFACE_BUF_COUNT * st_surface->buf_size;
 
     if (-1 == ftruncate(shm_fd, st_surface->shm_pool_size)) {
@@ -53,8 +53,8 @@ init_surface_shm_buffers(
         st_surface->double_buffer[i].buffer = wl_shm_pool_create_buffer(
             st_surface->shm_pool,
             _pool_offset,
-            st_surface->width,
-            st_surface->height,
+            st_surface->width_px,
+            st_surface->height_px,
             width_bytes,
             SURFACE_SHM_FORMAT
         );

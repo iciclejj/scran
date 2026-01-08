@@ -133,8 +133,8 @@ surface_frame_callback_handler(
         state->surface.surface,
         0,
         0,
-        state->surface.width,
-        state->surface.height
+        state->surface.width_px,
+        state->surface.height_px
     );
     wl_surface_commit(state->surface.surface);
 }

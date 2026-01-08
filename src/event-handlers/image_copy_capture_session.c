@@ -20,8 +20,8 @@ handle_image_copy_capture_session_buffer_size(
     // XXX TODO: Fix this once we have multiple monitor support 
     //           and/or logical output geomtry support (e.g. xdg_output)
     //           Also use 
-    assert(state->output.mode.width == width);
-    assert(state->output.mode.height == height);
+    assert(state->output.mode.width_px == width);
+    assert(state->output.mode.height_px == height);
     state->capture.source_width_px = width;
     state->capture.source_height_px = height;
 }

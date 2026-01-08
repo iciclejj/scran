@@ -58,8 +58,8 @@ struct client_state_surface {
 
     // TODO: Per-monitor/output
     bool is_focused;
-    uint32_t width;
-    uint32_t height;
+    uint32_t width_px;
+    uint32_t height_px;
 };
 
 struct client_state_seat_pointer {
@@ -192,8 +192,8 @@ struct client_state_capture {
 };
 
 struct client_state_output_mode {
-    int32_t width;
-    int32_t height;
+    int32_t width_px;
+    int32_t height_px;
     int32_t refresh_rate_mhz;
 };
 
