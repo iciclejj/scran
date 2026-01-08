@@ -24,12 +24,6 @@
 #define SOCKNAME "wayland-1"
 #define SOCKPATH "/run/user/1000/" SOCKNAME
 
-static void
-reset_selection(struct client_state *state)
-{
-    // TODO !!
-}
-
 // TODO: Decide on inline
 
 // TODO: Split this up into more atomic parts?
