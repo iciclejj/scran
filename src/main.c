@@ -128,11 +128,8 @@ init_selection_and_blend2d(struct client_state_output *st_output)
             st_buffer->data,
             SURFACE_PIXEL_STRIDE * st_surface->width_px,
             BL_DATA_ACCESS_RW,
-            // XXX: MEMORY ALLOC/FREE HERE
-            //          Just remove the comments here. We probably want to free
-            //          our surface buffers ourselves.
-            NULL, // TODO: - Let blend2d destroy our data?
-            NULL  //       - Ditto
+            NULL,
+            NULL
         );
     }
 
