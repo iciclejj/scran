@@ -254,6 +254,21 @@ int main(void)
     fprintf(stderr, "Finished: init_wayland_globals()\n");
 
 
+    // indexing into .buffer.data, i.e. the screen/output buffer that encapsulates
+    // the selection/capture area
+    // [34560] => 16 UHD monitors stacked vertically ~= 0.5 MB (x86_64)
+    // XXX: Temporarily placed here while collecting memory allocations.
+    const uint32_t frame_iovec_len = 34560;
+    struct iovec *frame_iovec_memory = malloc(
+        sizeof(struct iovec) * state.n_outputs * frame_iovec_len
+    );
+    for (int i = 0; i < state.n_outputs; ++i) {
+        struct client_state_output *_st_output = &state.outputs[i];
+
+        _st_output->capture.frame_iovec_size = frame_iovec_len;
+        _st_output->capture.frame_iovec = frame_iovec_memory + i * frame_iovec_len;
+    }
+
     assert(state.n_outputs <= MAX_OUTPUTS);
     for (int i = 0; i < state.n_outputs; ++i) {
         struct client_state_output *_st_output = &state.outputs[i];
@@ -268,16 +283,6 @@ int main(void)
         if (!init_selection_and_blend2d(_st_output)) {
             return EXIT_FAILURE;
         }
-
-        // indexing into .buffer.data, i.e. the screen/output buffer that encapsulates
-        // the selection/capture area
-        // [34560] => 16 UHD monitors stacked vertically ~= 0.5 MB (x86_64)
-        // XXX: Temporarily placed here to get multi-output going (was previously on stack)
-        //      Will collect memory allocations later.
-        //
-        // XXX: MEMORY ALLOC/FREE HERE
-        _st_output->capture.frame_iovec_size = 34560;
-        _st_output->capture.frame_iovec = malloc(sizeof(struct iovec) * _st_output->capture.frame_iovec_size);
 
         if (!init_image_capture_source(_st_output, &state.globals)) {
             return EXIT_FAILURE;
