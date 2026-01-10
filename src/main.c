@@ -96,14 +96,6 @@ destroy_wayland_globals(struct client_state *state)
 }
 
 static inline bool
-init_seat(struct client_state *state)
-{
-    // All init happens in seat_listener for now...
-
-    return true;
-}
-
-static inline bool
 init_selection_and_blend2d(struct client_state_output *st_output)
 {
     struct client_state_output_selection_blend2d *bl = &st_output->selection.bl;
@@ -264,10 +256,6 @@ int main(void)
     }
     fprintf(stderr, "Finished: init_wayland_globals()\n");
 
-    if (!init_seat(&state)) {
-        return EXIT_FAILURE;
-    }
-    fprintf(stderr, "Finished: init_seat()\n");
 
     assert(state.n_outputs <= MAX_OUTPUTS);
     for (int i = 0; i < state.n_outputs; ++i) {
