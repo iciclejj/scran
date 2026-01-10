@@ -42,6 +42,7 @@ struct client_state_output_surface_buffer {
     BLImageCore bl_img;
 };
 
+// TODO: Optimize surface/selection event-loop struct sizes
 struct client_state_output_surface {
     struct wl_surface *surface;
     struct zwlr_layer_surface_v1 *layer_surface;
@@ -125,6 +126,7 @@ enum selection_resize_direction {
     SELECTION_RESIZE_BOTTOM_RIGHT,
 };
 
+// TODO: Optimize surface/selection event-loop struct sizes
 struct client_state_output_selection {
     // bool selection_started;
     enum selection_state selection_state;
@@ -150,7 +152,7 @@ struct client_state_capture_buffer {
     void *data;
 };
 
-// TODO: Merge all or parts of this with client_state_surface?
+// TODO: Optimize frame event-loop struct sizes
 struct client_state_output_capture {
     // Inconsistent naming, but my eyes are bleeding
     struct ext_image_capture_source_v1 *source;
