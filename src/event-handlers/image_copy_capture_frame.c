@@ -91,9 +91,28 @@ handle_image_copy_capture_frame_ready(
 
     // TODO: Assumes row-major. Find out whether this is a safe assumption.
     //           Maybe depends on transform? Something else?
-    if (-1 == writev(st_output->capture.ffmpeg_fd, st_output->capture.frame_iovec, height)) {
-        fprintf(stderr, "Failed writev(). Error: %s\n", strerror(errno));
-    };
+    int bytes_remaining = height;
+    while (bytes_remaining > 0) {
+        const ssize_t bytes_to_write = bytes_remaining < __IOV_MAX ?
+                                       bytes_remaining : __IOV_MAX;
+        const ssize_t offset = height - bytes_remaining;
+
+        const ssize_t bytes_written = writev(
+            st_output->capture.ffmpeg_fd,
+            st_output->capture.frame_iovec + offset,
+            bytes_to_write
+        );
+
+        if (bytes_written < bytes_to_write) {
+            fprintf(stderr, "Failed writev() (%ld/%d bytes)\n", bytes_written, bytes_to_write);
+            if (bytes_written == -1) {
+                fprintf(stderr, "    Error: %s\n", strerror(errno));
+            }
+            return; // TODO: Ensure returning here is safe.
+        };
+
+        bytes_remaining -= bytes_to_write;
+    }
 
     dispatch_capture_event_loop(st_output);
 }
