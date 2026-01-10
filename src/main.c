@@ -217,8 +217,8 @@ init_image_copy_capture_shm_buffer(
     st_output->capture.buffer.buffer = wl_shm_pool_create_buffer(
         st_output->capture.shm_pool,
         0,
-        st_output->surface.width_px,
-        st_output->surface.height_px,
+        st_output->capture.source_width_px,
+        st_output->capture.source_height_px,
         st_output->capture.pixel_stride * st_output->capture.source_width_px,
         st_output->capture.shm_format
     );
