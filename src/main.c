@@ -137,7 +137,7 @@ init_selection_and_blend2d(struct client_state_output *st_output)
 }
 
 static inline bool
-init_image_capture_source(
+init_capture(
     struct client_state_output *st_output,
     struct client_state_globals *globals
 ) {
@@ -146,14 +146,6 @@ init_image_capture_source(
         st_output->wl_output
     );
 
-    return true;
-}
-
-static inline bool
-init_image_copy_capture_session(
-    struct client_state_output *st_output,
-    struct client_state_globals *globals
-) {
     st_output->capture.session = ext_image_copy_capture_manager_v1_create_session(
         globals->image_copy_capture_manager,
         st_output->capture.source,
@@ -284,10 +276,7 @@ int main(void)
             return EXIT_FAILURE;
         }
 
-        if (!init_image_capture_source(_st_output, &state.globals)) {
-            return EXIT_FAILURE;
-        }
-        if (!init_image_copy_capture_session(_st_output, &state.globals)) {
+        if (!init_capture(_st_output, &state.globals)) {
             return EXIT_FAILURE;
         }
         // TODO: Figure out where to roundtrip
