@@ -105,12 +105,12 @@ init_selection_and_blend2d(struct client_state_output *st_output)
     bl_path_init(&bl->path);
 
     // XXX: Maybe handle this assert more robustly
-    assert(st_surface->width_px != 0);
+    assert(st_output->mode.width_px != 0);
     bl->box_outer = (struct BLBoxI) {
         .x0 = 0,
         .y0 = 0,
-        .x1 = st_surface->width_px,
-        .y1 = st_surface->height_px,
+        .x1 = st_output->mode.width_px,
+        .y1 = st_output->mode.height_px,
     };
 
     // TODO: Should maybe be a separate function, f.ex. init_surface_buffers_blend2d
@@ -122,11 +122,11 @@ init_selection_and_blend2d(struct client_state_output *st_output)
 
         bl_image_init_as_from_data(
             &st_buffer->bl_img,
-            st_surface->width_px,
-            st_surface->height_px,
+            st_output->mode.width_px,
+            st_output->mode.height_px,
             SURFACE_SHM_FORMAT_BL,
             st_buffer->data,
-            SURFACE_PIXEL_STRIDE * st_surface->width_px,
+            SURFACE_PIXEL_STRIDE * st_output->mode.width_px,
             BL_DATA_ACCESS_RW,
             NULL,
             NULL
@@ -269,7 +269,7 @@ int main(void)
         if (!init_output_surface(_st_output, &state.globals)) {
             return false;
         }
-        if (!init_output_surface_shm_buffers(&_st_output->surface, state.globals.shm)) {
+        if (!init_output_surface_shm_buffers(_st_output, state.globals.shm)) {
             return false;
         }
         if (!init_selection_and_blend2d(_st_output)) {

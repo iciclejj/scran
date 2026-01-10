@@ -13,15 +13,17 @@
 bool
 init_output_surface_shm_buffers(
     // TODO: Either switch this back to just state, or do this narrowing everywhere
-    struct client_state_output_surface *st_surface,
+    struct client_state_output *st_output,
     struct wl_shm *wl_shm_global
 ) {
+    struct client_state_output_surface *st_surface = &st_output->surface;
+
     // TODO: Is this more efficient to create in handle_global and/or layer_surface ack_configure?
     int shm_fd = shm_open_anon();
     // TODO: Account for scale/transform
-    uint32_t width_bytes = SURFACE_PIXEL_STRIDE * st_surface->width_px;
+    uint32_t width_bytes = SURFACE_PIXEL_STRIDE * st_output->mode.width_px;
 
-    st_surface->buf_size = width_bytes * st_surface->height_px;
+    st_surface->buf_size = width_bytes * st_output->mode.height_px;
     st_surface->shm_pool_size = SURFACE_BUF_COUNT * st_surface->buf_size;
 
     // XXX: MEMORY ALLOC/FREE HERE
@@ -55,8 +57,8 @@ init_output_surface_shm_buffers(
         st_surface->double_buffer[i].buffer = wl_shm_pool_create_buffer(
             st_surface->shm_pool,
             _pool_offset,
-            st_surface->width_px,
-            st_surface->height_px,
+            st_output->mode.width_px,
+            st_output->mode.height_px,
             width_bytes,
             SURFACE_SHM_FORMAT
         );
@@ -125,7 +127,7 @@ init_output_surface(
         ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND
     );
 
-    zwlr_layer_surface_v1_add_listener(st_output->surface.layer_surface, &layer_surface_listener, &st_output->surface);
+    zwlr_layer_surface_v1_add_listener(st_output->surface.layer_surface, &layer_surface_listener, st_output);
     // Initial bufferless commit to trigger configure event
     wl_surface_commit(st_output->surface.surface);
 

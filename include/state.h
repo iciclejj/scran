@@ -60,10 +60,7 @@ struct client_state_output_surface {
     struct client_state_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
     uint32_t buf_size;
 
-    // TODO: Per-monitor/output
     bool is_focused;
-    uint32_t width_px;
-    uint32_t height_px;
 };
 
 struct client_state_seat_pointer {
