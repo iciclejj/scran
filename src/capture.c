@@ -5,6 +5,7 @@
 #include "state.h"
 #include "wayland-event-handlers.h"
 #include "lib_interop.h"
+#include "capture.h"
 
 void
 dispatch_capture_event_loop(struct client_state_output *st_output)
