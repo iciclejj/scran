@@ -83,6 +83,7 @@ init_wayland_globals(struct client_state *state)
 static void
 destroy_wayland_globals(struct client_state *state)
 {
+    // XXX: MEMORY ALLOC/FREE HERE
     struct client_state_globals *globals = &state->globals;
 
     // TODO: Is a roundtrip necessary?
@@ -140,6 +141,9 @@ init_selection_and_blend2d(struct client_state_output *st_output)
             st_buffer->data,
             SURFACE_PIXEL_STRIDE * st_surface->width_px,
             BL_DATA_ACCESS_RW,
+            // XXX: MEMORY ALLOC/FREE HERE
+            //          Just remove the comments here. We probably want to free
+            //          our surface buffers ourselves.
             NULL, // TODO: - Let blend2d destroy our data?
             NULL  //       - Ditto
         );
@@ -202,6 +206,7 @@ init_image_copy_capture_shm_buffer(
 
     int shm_fd = shm_open_anon();
 
+    // XXX: MEMORY ALLOC/FREE HERE
     if (-1 == ftruncate(shm_fd, st_output->capture.shm_pool_size)) {
         fprintf(stderr, "Failed to resize shm file to %d\n", st_output->capture.shm_pool_size);
         close(shm_fd);
@@ -224,10 +229,12 @@ init_image_copy_capture_shm_buffer(
         st_output->capture.shm_format
     );
 
+    // XXX: MEMORY ALLOC/FREE HERE
     st_output->capture.buffer.data = mmap(
         0, st_output->capture.buf_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0
     );
 
+    // XXX: MEMORY ALLOC/FREE HERE
     close(shm_fd);
     wl_shm_pool_destroy(st_output->capture.shm_pool);
 
@@ -241,6 +248,7 @@ init_image_copy_capture_shm_buffer(
 static inline void
 destroy_capture_shm_buffers(struct client_state_output_capture *st_capture)
 {
+    // XXX: MEMORY ALLOC/FREE HERE
     wl_buffer_destroy(st_capture->buffer.buffer);
 }
 
@@ -286,6 +294,8 @@ int main(void)
         // [34560] => 16 UHD monitors stacked vertically ~= 0.5 MB (x86_64)
         // XXX: Temporarily placed here to get multi-output going (was previously on stack)
         //      Will collect memory allocations later.
+        //
+        // XXX: MEMORY ALLOC/FREE HERE
         _st_output->capture.frame_iovec_size = 34560;
         _st_output->capture.frame_iovec = malloc(sizeof(struct iovec) * _st_output->capture.frame_iovec_size);
 
@@ -325,6 +335,7 @@ int main(void)
         struct client_state_output *_st_output = &state.outputs[i];
 
         // todo: destroy wl_proxy and wl_event_queue objects when created
+        // XXX: MEMORY ALLOC/FREE HERE
         destroy_output_surface_shm_buffers(&_st_output->surface);
         destroy_capture_shm_buffers(&_st_output->capture);
         destroy_wayland_globals(&state);

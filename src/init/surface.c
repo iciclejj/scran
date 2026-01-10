@@ -24,6 +24,7 @@ init_output_surface_shm_buffers(
     st_surface->buf_size = width_bytes * st_surface->height_px;
     st_surface->shm_pool_size = SURFACE_BUF_COUNT * st_surface->buf_size;
 
+    // XXX: MEMORY ALLOC/FREE HERE
     if (-1 == ftruncate(shm_fd, st_surface->shm_pool_size)) {
         fprintf(stderr, "Failed to resize shm file to %d\n", st_surface->shm_pool_size);
         close(shm_fd);
@@ -38,6 +39,7 @@ init_output_surface_shm_buffers(
     );
 
     // TODO: Collect all mmaps into one
+    // XXX: MEMORY ALLOC/FREE HERE
     st_surface->double_buffer[0].data = mmap(
         NULL, st_surface->shm_pool_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0
     );
@@ -66,6 +68,7 @@ init_output_surface_shm_buffers(
         );
     }
 
+    // XXX: MEMORY ALLOC/FREE HERE
     close(shm_fd);
     // TODO: Defer this until end of program execution?
     //           Decide for this and other destroys
@@ -86,6 +89,7 @@ void
 destroy_output_surface_shm_buffers(struct client_state_output_surface *st_surface)
 {
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
+        // XXX: MEMORY ALLOC/FREE HERE
         wl_buffer_destroy(st_surface->double_buffer[i].buffer);
     }
 }
