@@ -206,6 +206,10 @@ struct client_state_output_mode {
 
 struct client_state_output {
     struct wl_output *wl_output;
+    // TODO: xdg_output
+    //         will at least be needed if/when implementing f.ex.
+    //         cross-output capture, or other features requiring awareness of
+    //         global geometry
 
     // TODO: Clearer name ?
     struct client_state_output_mode mode;

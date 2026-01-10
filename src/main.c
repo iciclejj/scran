@@ -268,8 +268,6 @@ int main(void)
     }
     fprintf(stderr, "Finished: init_seat()\n");
 
-    // TODO: Will need xdg_output for logical geometry
-
     assert(state.n_outputs <= MAX_OUTPUTS);
     for (int i = 0; i < state.n_outputs; ++i) {
         struct client_state_output *_st_output = &state.outputs[i];
