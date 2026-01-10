@@ -32,7 +32,7 @@
 //           assume it was wasn't called earlier (to not roundtip more than
 //           necesssary).
 static inline bool
-init_wayland_globals(struct client_state *state)
+init_wayland_globals_and_roundtrip(struct client_state *state)
 {
     struct client_state_globals *globals = &state->globals;
 
@@ -248,7 +248,7 @@ int main(void)
     //           Probably negligible and difficult without multithreading
 
     // First roundtrip:
-    if (!init_wayland_globals(&state)) {
+    if (!init_wayland_globals_and_roundtrip(&state)) {
         return EXIT_FAILURE;
     }
     fprintf(stderr, "Finished: init_wayland_globals()\n");
