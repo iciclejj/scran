@@ -190,8 +190,6 @@ struct client_state_output_capture {
     //        and capture's frame "draw".
     //        TODO: Double-check whether anything else should be synced like this.
     struct BLBoxI capture_area; // NOTE: Transform should be reversed.
-    uint32_t frame_width_px;
-    uint32_t frame_height_px;
 
     uint32_t frame_iovec_size;
     struct iovec *frame_iovec;

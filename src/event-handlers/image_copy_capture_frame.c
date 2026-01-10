@@ -69,8 +69,8 @@ handle_image_copy_capture_frame_ready(
 
     uint32_t pixel_stride      = st_output->capture.pixel_stride;
     uint32_t source_width      = st_output->capture.source_width_px;
-    uint32_t width             = st_output->capture.frame_width_px;
-    uint32_t height            = st_output->capture.frame_height_px;
+    uint32_t width             = st_output->capture.capture_area.x1 - st_output->capture.capture_area.x0;
+    uint32_t height            = st_output->capture.capture_area.y1 - st_output->capture.capture_area.y0;
     uint32_t x                 = st_output->capture.capture_area.x0;
     uint32_t y                 = st_output->capture.capture_area.y0;
     uint32_t row_bytes         = pixel_stride * width;

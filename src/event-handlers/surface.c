@@ -175,8 +175,6 @@ surface_frame_callback_handler(
         st_output->capture.source_height_px,
         st_output->transform
     );
-    st_output->capture.frame_width_px = st_output->capture.capture_area.x1 - st_output->capture.capture_area.x0;
-    st_output->capture.frame_height_px = st_output->capture.capture_area.y1 - st_output->capture.capture_area.y0;
 
     draw_frame(st_output, st_buffer);
     wl_surface_attach(st_output->surface.surface, st_buffer->buffer, 0, 0);

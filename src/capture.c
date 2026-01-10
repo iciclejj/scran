@@ -54,14 +54,16 @@ start_capture(struct client_state_output *st_output)
     char time_now_str[64];
     time_t time_now = time(NULL);
     struct tm *tm_now = localtime(&time_now);
+    const int width = st_output->capture.capture_area.x1 - st_output->capture.capture_area.x0;
+    const int height = st_output->capture.capture_area.y1 - st_output->capture.capture_area.y0;
     strftime(time_now_str, sizeof(time_now_str), "%Y%m%d-%H%M%S", tm_now);
     snprintf(ffmpeg_command, 256,
         // XXX: Using -v quiet to suppress output and broken newline at end.
         //          TODO: Find better solution that still gives some logging
         "ffmpeg -v quiet -f rawvideo -video_size %dx%d -pix_fmt %s -i -"
             " test-capture_%s.mp4",
-        st_output->capture.frame_width_px,
-        st_output->capture.frame_height_px,
+        width,
+        height,
         wl_shm_format_to_ffmpeg_cli_str(st_output->capture.shm_format),
         time_now_str
     );
