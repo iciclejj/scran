@@ -22,7 +22,7 @@ handle_image_copy_capture_frame_transform(
 ) {
     struct client_state_output *st_output = data;
 
-    st_output->capture.transform = transform;
+    st_output->capture.capture_frame_transform = transform;
 }
 
 static void
@@ -67,15 +67,14 @@ handle_image_copy_capture_frame_ready(
     //     or handle it properly here
     //
 
-    // XXX: Clean up this eyesore. Change names or something, idk.
     uint32_t pixel_stride      = st_output->capture.pixel_stride;
-    uint32_t height            = st_output->capture.frame_height_px;
-    uint32_t width             = st_output->capture.frame_width_px;
     uint32_t source_width      = st_output->capture.source_width_px;
-    uint32_t x                 = st_output->capture.frame_x_px;
-    uint32_t y                 = st_output->capture.frame_y_px;
-
+    uint32_t width             = st_output->capture.frame_width_px;
+    uint32_t height            = st_output->capture.frame_height_px;
+    uint32_t x                 = st_output->capture.capture_area.x0;
+    uint32_t y                 = st_output->capture.capture_area.y0;
     uint32_t row_bytes         = pixel_stride * width;
+
     char *addr =
         st_output->capture.buffer.data
       + pixel_stride * y * source_width

@@ -174,26 +174,24 @@ struct client_state_output_capture {
     uint32_t shm_format;
     bool shm_format_is_selected; // XXX: Is there a nicer way?
 
-    // TODO: Use this
-    enum wl_output_transform transform;
+    // TODO: What is this transform representing?
+    //           It is separate from output::geometry's transform.
+    enum wl_output_transform capture_frame_transform;
 
     struct client_state_capture_buffer buffer;
     uint32_t buf_size;
     struct wl_shm_pool *shm_pool;
     uint32_t shm_pool_size; // TODO: Should this be int32_t ?
 
-    // TODO: - Either set this together with buf_size or implement logic to
-    //         read/write width*height cutout of buffer
-    //       - XXX: Redo names of both these and other x/y/w/h etc. things
-    //              once scale/transform is implemented
-    //                  i.e. _px etc.
-    //         NOTE: x and y should be locked at callback<surface>::done, to avoid desync with overlay
-    //         XXX: Double-check if anything else needs to be synced like this.
-    struct BLBoxI capture_area;
+    //  NOTE: Capture area should be set synchronously with the drawn overlay's
+    //        area (or be set based on the same real-time values). Otherwise,
+    //        its graphics can spill into the capture frame.
+    //        F.ex., the mouse can have moved in-between overlay's frame draw
+    //        and capture's frame "draw".
+    //        TODO: Double-check whether anything else should be synced like this.
+    struct BLBoxI capture_area; // NOTE: Transform should be reversed.
     uint32_t frame_width_px;
     uint32_t frame_height_px;
-    uint32_t frame_x_px;
-    uint32_t frame_y_px;
 
     uint32_t frame_iovec_size;
     struct iovec *frame_iovec;
@@ -211,6 +209,7 @@ struct client_state_output {
 
     // TODO: Clearer name ?
     struct client_state_output_mode mode;
+    enum wl_output_transform transform;
 
     struct client_state_output_surface surface;
     struct client_state_output_selection selection;

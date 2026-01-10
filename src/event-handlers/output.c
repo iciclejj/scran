@@ -3,6 +3,27 @@
 #include "state.h"
 #include "wayland-event-handlers.h"
 
+
+static void
+handle_output_geometry(
+    void *data,
+    struct wl_output *output,
+    int32_t x_global,
+    int32_t y_global,
+    int32_t h_phys_mm,
+    int32_t w_phys_mm,
+    int32_t subpixel_layout,
+    const char *make,
+    const char *model,
+    int32_t transform
+) {
+    struct client_state_output *st_output = data;
+
+    st_output->transform = transform;
+
+    // TODO: h_phys_mm, y_phys_mm ? For ruler or something?
+}
+
 // TODO:
 //     Figure out some simple but robust set of asserts or conditions that
 //     ensures [ output_mode(/xdg), capture_source, layer_shell/surface,
@@ -36,7 +57,7 @@ handle_output_mode(
 //           version >= 2: geometry event followed by done event
 struct wl_output_listener output_listener = {
     // xdg_output is preferred for most of this.
-    .geometry = noop,
+    .geometry = handle_output_geometry,
     .scale = noop,
     .mode = handle_output_mode,
     .done = noop,

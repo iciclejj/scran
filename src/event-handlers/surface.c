@@ -79,6 +79,56 @@ draw_frame(
     bl_path_reset(&bl->path);
 }
 
+static inline struct BLBoxI
+_get_reverse_transform(
+    struct BLBoxI box,
+    uint32_t source_width,
+    uint32_t source_height,
+    enum wl_output_transform transform
+) {
+    uint32_t tmp, tmp2;
+
+    #define _flip_horizontally() \
+        box.x0 = source_width - box.x1; \
+        box.x1 = source_width - box.x0;
+
+    switch (transform) {
+    case WL_OUTPUT_TRANSFORM_FLIPPED:
+        _flip_horizontally();
+    case WL_OUTPUT_TRANSFORM_NORMAL:
+        return box;
+    case WL_OUTPUT_TRANSFORM_FLIPPED_90:
+        _flip_horizontally();
+    case WL_OUTPUT_TRANSFORM_90:
+        tmp = box.x0;
+        box.x0 = box.y0;
+        box.y0 = source_height - box.x1;
+        box.x1 = box.y1;
+        box.y1 = source_height - tmp/*x0*/;
+        return box;
+    case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+        _flip_horizontally();
+    case WL_OUTPUT_TRANSFORM_180:
+        box.y0 = source_height - box.y1;
+        box.x0 = source_width - box.x1;
+         box.y1 = source_height - box.y0;
+         box.x1 = source_width - box.x0;
+        return box;
+    case WL_OUTPUT_TRANSFORM_FLIPPED_270:
+        _flip_horizontally();
+    case WL_OUTPUT_TRANSFORM_270:
+        tmp = box.x0;
+        tmp2 = box.x1;
+        box.x0 = source_width - box.y1;
+        box.x1 = source_width - box.y0;
+        box.y0 = tmp;
+        box.y1 = tmp2;
+        return box;
+    }
+
+    #undef _flip_horizontally
+}
+
 static void
 surface_frame_callback_handler(
     void *data,
@@ -119,10 +169,14 @@ surface_frame_callback_handler(
     //        leading to f.ex. capture frame border spilling into the actual
     //        capture frame
     //       See also comment in client_state_capture.
-    st_output->capture.frame_width_px = st_output->selection.bl.box.x1 - st_output->selection.bl.box.x0;
-    st_output->capture.frame_height_px = st_output->selection.bl.box.y1 - st_output->selection.bl.box.y0;
-    st_output->capture.frame_x_px = st_output->selection.bl.box.x0;
-    st_output->capture.frame_y_px = st_output->selection.bl.box.y0;
+    st_output->capture.capture_area = _get_reverse_transform(
+        st_output->selection.bl.box,
+        st_output->capture.source_width_px,
+        st_output->capture.source_height_px,
+        st_output->transform
+    );
+    st_output->capture.frame_width_px = st_output->capture.capture_area.x1 - st_output->capture.capture_area.x0;
+    st_output->capture.frame_height_px = st_output->capture.capture_area.y1 - st_output->capture.capture_area.y0;
 
     draw_frame(st_output, st_buffer);
     wl_surface_attach(st_output->surface.surface, st_buffer->buffer, 0, 0);
