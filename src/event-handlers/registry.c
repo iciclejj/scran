@@ -52,6 +52,7 @@ registry_handle_global(
             fprintf(stderr, "Maximum output limit reached: %d\n", MAX_OUTPUTS);
             return;
         }
+        // TODO: Handle adding/removing outputs during program runtime?
 
         struct client_state_output *curr_output = &state->outputs[state->n_outputs];
 
