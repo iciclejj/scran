@@ -291,7 +291,7 @@ int main(void)
         // XXX: Temporarily placed here to get multi-output going (was previously on stack)
         //      Will collect memory allocations later.
         _st_output->capture.frame_iovec_size = 34560;
-        _st_output->capture.frame_iovec = malloc(_st_output->capture.frame_iovec_size);
+        _st_output->capture.frame_iovec = malloc(sizeof(struct iovec) * _st_output->capture.frame_iovec_size);
 
         if (!init_image_capture_source(_st_output, &state.globals)) {
             return EXIT_FAILURE;
