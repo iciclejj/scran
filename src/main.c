@@ -246,8 +246,8 @@ int main(void)
     fprintf(stderr, "Finished: init_wayland_globals()\n");
 
 
-    // indexing into .buffer.data, i.e. the screen/output buffer that encapsulates
-    // the selection/capture area
+    // indexing into .buffer.data, i.e. the screen/output capture buffer
+    // that encapsulates the selection/capture area
     // [34560] => 16 UHD monitors stacked vertically ~= 0.5 MB (x86_64)
     // XXX: Temporarily placed here while collecting memory allocations.
     const uint32_t frame_iovec_len = 34560;
