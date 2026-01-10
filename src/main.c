@@ -245,10 +245,7 @@ destroy_capture_shm_buffers(struct client_state_output_capture *st_capture)
 
 int main(void)
 {
-    // TODO: memset? or explicit zeroing where required?
-    // struct client_state state = { 0 };
-    struct client_state state;
-    memset(&state, 0, sizeof(struct client_state));
+    struct client_state state = { };
 
     // TODO: Systematize and minimize roundtrips/syncs
     //       Handle errors/return false where appropriate
