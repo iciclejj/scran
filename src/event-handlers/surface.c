@@ -171,8 +171,8 @@ surface_frame_callback_handler(
     //       See also comment in client_state_capture.
     st_output->capture.capture_area = _get_reverse_transform(
         st_output->selection.bl.box,
-        st_output->capture.source_width_px,
-        st_output->capture.source_height_px,
+        st_output->mode.width_px,
+        st_output->mode.height_px,
         st_output->transform
     );
 

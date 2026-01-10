@@ -168,8 +168,6 @@ struct client_state_output_capture {
     // NOTE: These do not have any transforms applied.
     //       Capture frame buffer must match this size and handle transforms
     //       manually.
-    uint32_t source_width_px;
-    uint32_t source_height_px;
     uint32_t pixel_stride; // bytes per pixel.
     uint32_t shm_format;
     bool shm_format_is_selected; // XXX: Is there a nicer way?

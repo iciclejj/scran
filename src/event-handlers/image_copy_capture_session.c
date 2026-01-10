@@ -17,13 +17,11 @@ handle_image_copy_capture_session_buffer_size(
 ) {
     struct client_state_output *st_output = data;
 
-    // XXX TODO: Fix this once we have multiple monitor support 
-    //           and/or logical output geomtry support (e.g. xdg_output)
-    //           Also use 
+    // This seemingly always hold true, so use output::mode w/h only.
+    // TODO: See if xdg_output can somehow be used as backing for the session.
+    //           As a foreign toplevel..?
     assert(st_output->mode.width_px == width);
     assert(st_output->mode.height_px == height);
-    st_output->capture.source_width_px = width;
-    st_output->capture.source_height_px = height;
 }
 
 static void
