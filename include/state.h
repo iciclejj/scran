@@ -195,6 +195,7 @@ struct client_state_output_capture {
 
 struct client_state_output_mode {
     // NOTE: These do not have any transforms applied
+    //       (but they are affected by resolution settings)
     int32_t width_px;
     int32_t height_px;
     int32_t refresh_rate_mhz;
