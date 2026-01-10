@@ -12,6 +12,8 @@ handle_layer_surface_configure(
     void *data,
     struct zwlr_layer_surface_v1 *layer_surface,
     uint32_t serial,
+    // Should be equal to output resolution if layer surface is anchored to
+    // every edge. TODO: Check scale/transform interactions
     uint32_t width_px_logical,
     uint32_t height_px_logical
 ) {
