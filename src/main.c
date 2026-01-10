@@ -186,6 +186,7 @@ init_image_copy_capture_shm_buffer(
     struct client_state_output *st_output,
     struct client_state_globals *globals
 ) {
+    // TODO: Somehow assert session::shm_buffer has ran?
     if (!st_output->capture.shm_format_is_selected) {
         fprintf(stderr, "Failed to select shm_buffer format.\n");
         return false;
