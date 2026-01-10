@@ -64,7 +64,7 @@ init_wayland_globals(struct client_state *state)
 
 
     // wl_display_roundtrip runs wl_display_sync internally, and polls wl_callback
-    // until all done-events are received and handled handled.
+    // until all done-events are received and handled.
     //   (spec doesn't actually dictate implementation through wl_display_sync etc.,
     //    but libwayland does it like this at the time of writing.)
     if (wl_display_roundtrip(globals->display) == -1) {
