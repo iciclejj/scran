@@ -175,7 +175,6 @@ struct client_state_output_capture {
     enum wl_output_transform capture_frame_transform;
 
     struct client_state_capture_buffer buffer;
-    uint32_t buf_size;
     struct wl_shm_pool *shm_pool;
     uint32_t shm_pool_size; // TODO: Should this be int32_t ?
 

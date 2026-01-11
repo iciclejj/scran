@@ -47,8 +47,8 @@ init_image_copy_capture_shm_buffer(
 
     // Full output source buffer for now.
     // TODO: Revisit this after multi-output support.
-    st_output->capture.buf_size = GET_CAPTURE_BUF_SIZE((*st_output));
-    st_output->capture.shm_pool_size = st_output->capture.buf_size;
+    const ssize_t buf_size = GET_CAPTURE_BUF_SIZE((*st_output));
+    st_output->capture.shm_pool_size = buf_size;
 
     int shm_fd = shm_open_anon();
 
@@ -77,7 +77,7 @@ init_image_copy_capture_shm_buffer(
 
     // XXX: MEMORY ALLOC/FREE HERE
     st_output->capture.buffer.data = mmap(
-        0, st_output->capture.buf_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0
+        0, buf_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0
     );
 
     // XXX: MEMORY ALLOC/FREE HERE
