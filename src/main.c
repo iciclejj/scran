@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <assert.h>
@@ -21,16 +20,10 @@
 #include "wayland-event-handlers.h"
 #include "init.h"
 
+// TODO: Dynamically find this name
 #define SOCKNAME "wayland-1"
 #define SOCKPATH "/run/user/1000/" SOCKNAME
 
-// TODO: Decide on inline
-
-// TODO: Split this up into more atomic parts?
-//           F.ex. the roundtrip doesn't actually need to happen in here,
-//           but putting it outside the function entirely means you have to
-//           assume it was wasn't called earlier (to not roundtip more than
-//           necesssary).
 static inline bool
 init_wayland_globals_and_roundtrip(struct client_state *state)
 {
@@ -67,8 +60,7 @@ init_wayland_globals_and_roundtrip(struct client_state *state)
         return false;
     }
 
-    // TEST:
-    fprintf(stderr, "Display roundtripped.\n");
+    fprintf(stderr, "Finished: init_wayland_globals()\n");
 
     // TODO: Validate globals?
 
@@ -78,7 +70,6 @@ init_wayland_globals_and_roundtrip(struct client_state *state)
 static void
 destroy_wayland_globals(struct client_state *state)
 {
-    // XXX: MEMORY ALLOC/FREE HERE
     struct client_state_globals *globals = &state->globals;
 
     // TODO: Is a roundtrip necessary?
@@ -90,6 +81,7 @@ destroy_wayland_globals(struct client_state *state)
     wp_cursor_shape_manager_v1_destroy(globals->cursor_shape_manager);
     ext_output_image_capture_source_manager_v1_destroy(globals->output_image_capture_source_manager);
     ext_image_copy_capture_manager_v1_destroy(globals->image_copy_capture_manager);
+    // TODO: Add remaining...
 
     // (Doesn't actually need to be last)
     wl_registry_destroy(globals->registry);
@@ -136,60 +128,130 @@ init_selection_and_blend2d(struct client_state_output *st_output)
     return true;
 }
 
+// TODO: Allow selection before capture protocols are ready?
+//           Probably negligible and difficult without multithreading
+//       Probably find a cleaner way to do this multi-step init?
+//       Remember to fix off-by-one bug when selecting corner to corner
+//           F.ex. 2559x1599 rect width/height
 int main(void)
 {
     struct client_state state = { };
 
-    // TODO: Systematize and minimize roundtrips/syncs
-    //       Handle errors/return false where appropriate
-    //           Probably void function if false return never happens
-    //       Probably refactor init_* function atomicity after code is more settled
-    //       Allow selection before capture protocols are ready?
-    //           Probably negligible and difficult without multithreading
-
-    // First roundtrip:
     if (!init_wayland_globals_and_roundtrip(&state)) {
         return EXIT_FAILURE;
     }
-    fprintf(stderr, "Finished: init_wayland_globals()\n");
 
-
-    // indexing into .buffer.data, i.e. the screen/output capture buffer
-    // that encapsulates the selection/capture area
-    // [34560] => 16 UHD monitors stacked vertically ~= 0.5 MB (x86_64)
-    // XXX: Temporarily placed here while collecting memory allocations.
-    const uint32_t frame_iovec_len = 34560;
-    struct iovec *frame_iovec_memory = malloc(
-        sizeof(struct iovec) * state.n_outputs * frame_iovec_len
-    );
+    //   Collect dynamic memory requirements
+    // + Initialize otherwhat lacking extra dependencies (beyond globals)
     for (int i = 0; i < state.n_outputs; ++i) {
         struct client_state_output *_st_output = &state.outputs[i];
 
-        _st_output->capture.frame_iovec_size = frame_iovec_len;
-        _st_output->capture.frame_iovec = frame_iovec_memory + i * frame_iovec_len;
-    }
-
-    assert(state.n_outputs <= MAX_OUTPUTS);
-    for (int i = 0; i < state.n_outputs; ++i) {
-        struct client_state_output *_st_output = &state.outputs[i];
-
-        // TODO: Check memory management
         if (!init_output_surface(_st_output, &state.globals)) {
-            return false;
-        }
-        if (!init_output_surface_shm_buffers(_st_output, state.globals.shm)) {
-            return false;
-        }
-        if (!init_selection_and_blend2d(_st_output)) {
             return EXIT_FAILURE;
         }
 
         if (!init_capture(_st_output, &state.globals)) {
             return EXIT_FAILURE;
         }
-        // TODO: Figure out where to roundtrip
-        wl_display_roundtrip(state.globals.display);
-        if (!init_image_copy_capture_shm_buffer(_st_output, &state.globals)) {
+    }
+    // Then roundtrip to collect listener-provided memory requirements into state
+    // This should be our last required roundtrip until main event loop's dispatch
+    wl_display_roundtrip(state.globals.display);
+
+    // Calculate memory requirements
+    int global_pool_size_bytes = 0;
+    for (int i = 0; i < state.n_outputs; ++i) {
+        struct client_state_output *_st_output = &state.outputs[i];
+
+        // XXX: Handle this gracefully (and maybe in a nicer location?)
+        if (_st_output->capture.shm_format == -1) {
+            fprintf(stderr, "Failed to select shm_buffer format.\n");
+            return EXIT_FAILURE;
+        }
+
+        const ssize_t _surface_buf_bytes = SURFACE_BUF_COUNT * GET_SURFACE_BUF_SIZE(_st_output->mode);
+        const ssize_t _capture_buf_bytes = GET_CAPTURE_BUF_SIZE((*_st_output));
+        const ssize_t _capture_buf_iov_bytes = GET_CAPTURE_IOV_SIZE((*_st_output));
+        // selection: No manual allocations
+
+        global_pool_size_bytes += _surface_buf_bytes
+                                + _capture_buf_bytes
+                                + _capture_buf_iov_bytes;
+    }
+
+    int global_pool_shm_fd = shm_open_anon();
+    if (ftruncate(global_pool_shm_fd, global_pool_size_bytes) == -1) {
+        fprintf(stderr, "Failed to resize shm file to %d\n", global_pool_size_bytes);
+        close(global_pool_shm_fd);
+        return EXIT_FAILURE;
+    }
+
+    void *global_pool = mmap(NULL, global_pool_size_bytes, PROT_READ | PROT_WRITE, MAP_SHARED, global_pool_shm_fd, 0);
+    struct wl_shm_pool *global_pool_wl = wl_shm_create_pool(
+        state.globals.shm,
+        global_pool_shm_fd,
+        global_pool_size_bytes
+    );
+
+    // Assign allocated memory
+    ssize_t curr_offset = 0;
+    for (int i = 0; i < state.n_outputs; ++i) {
+        struct client_state_output *_st_output = &state.outputs[i];
+
+        assert(SURFACE_BUF_COUNT == A_DOUBLE_BUFFER_HAS_TWO_BUFFERS && SURFACE_BUF_COUNT == 2);
+
+        for (int i = 0; i < SURFACE_BUF_COUNT; i++) {
+            _st_output->surface.double_buffer[i].data = global_pool + curr_offset;
+            _st_output->surface.double_buffer[i].buffer = wl_shm_pool_create_buffer(
+                global_pool_wl,
+                curr_offset,
+                _st_output->mode.width_px,
+                _st_output->mode.height_px,
+                GET_SURFACE_STRIDE(_st_output->mode),
+                SURFACE_SHM_FORMAT
+            );
+            curr_offset += GET_SURFACE_BUF_SIZE(_st_output->mode);
+
+            wl_buffer_add_listener(
+                _st_output->surface.double_buffer[i].buffer,
+                &buffer_listener,
+                &_st_output->surface.double_buffer[i]
+            );
+
+            // XXX TODO: Should this be done here?
+            wl_surface_attach(_st_output->surface.surface, _st_output->surface.double_buffer[0].buffer, 0, 0);
+        }
+
+        _st_output->capture.buffer.data = global_pool + curr_offset;
+        _st_output->capture.buffer.buffer = wl_shm_pool_create_buffer(
+            global_pool_wl,
+            curr_offset,
+            _st_output->mode.width_px,
+            _st_output->mode.height_px,
+            GET_CAPTURE_STRIDE((*_st_output)),
+            _st_output->capture.shm_format
+        );
+        curr_offset += GET_CAPTURE_IOV_SIZE((*_st_output));
+
+        wl_buffer_add_listener(
+            _st_output->capture.buffer.buffer,
+            &buffer_listener,
+            &_st_output->capture.buffer
+        );
+
+        _st_output->capture.frame_iovec =  global_pool + curr_offset;
+    }
+
+    // (wayland's mmaps and fd references live on)
+    wl_shm_pool_destroy(global_pool_wl);
+    close(global_pool_shm_fd);
+
+    // Memory init finished - run remaining dependent initialization
+    assert(state.n_outputs <= MAX_OUTPUTS);
+    for (int i = 0; i < state.n_outputs; ++i) {
+        struct client_state_output *_st_output = &state.outputs[i];
+
+        if (!init_selection_and_blend2d(_st_output)) {
             return EXIT_FAILURE;
         }
 
@@ -209,19 +271,14 @@ int main(void)
         && wl_display_dispatch(state.globals.display)
     );
 
-    // TODO: Remember to fix off-by-one bug when selecting corner to corner
-    //           F.ex. 2559x1599 rect width/height
-
     assert(state.n_outputs <= MAX_OUTPUTS);
     for (int i = 0; i < state.n_outputs; ++i) {
         struct client_state_output *_st_output = &state.outputs[i];
 
-        // todo: destroy wl_proxy and wl_event_queue objects when created
-        // XXX: MEMORY ALLOC/FREE HERE
-        destroy_output_surface_shm_buffers(&_st_output->surface);
-        destroy_capture_shm_buffers(&_st_output->capture);
-        destroy_wayland_globals(&state);
+        // TODO: Destroy wayland objects
     }
+    munmap(global_pool, global_pool_size_bytes);
+    destroy_wayland_globals(&state);
 
     wl_display_disconnect(state.globals.display);
     fprintf(stderr, "Disconnected from wayland server (%s)\n", SOCKNAME);

@@ -36,7 +36,7 @@ handle_image_copy_capture_session_shm_format(
 
     // List of formats we want to support.
     // TODO: Add more formats and logic for handling them
-    if (!st_output->capture.shm_format_is_selected
+    if (st_output->capture.shm_format == -1
         &&
         (shm_format == WL_SHM_FORMAT_ARGB8888
          || shm_format == WL_SHM_FORMAT_XRGB8888
@@ -45,7 +45,6 @@ handle_image_copy_capture_session_shm_format(
         )
     ) {
         st_output->capture.shm_format = shm_format;
-        st_output->capture.shm_format_is_selected = true;
         st_output->capture.pixel_stride = 4;
         fprintf(stderr, "format supported!\n");
     } else {
@@ -71,8 +70,6 @@ struct ext_image_copy_capture_session_v1_listener image_copy_capture_session_lis
     .shm_format = handle_image_copy_capture_session_shm_format,
     .dmabuf_device = noop, // TODO
     .dmabuf_format = noop, // TODO
-    // TODO: Ensure correct formats (anything else?) after capture session listener dispatch/roundtrip
-    //           Either in ::done OR in later code
     .done = noop,
     .stopped = handle_image_copy_capture_session_stopped,
 };

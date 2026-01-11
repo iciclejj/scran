@@ -47,16 +47,6 @@ struct client_state_output_surface {
     struct wl_surface *surface;
     struct zwlr_layer_surface_v1 *layer_surface;
 
-    // Probably make a new client_state_shm struct like:
-    //   .shm = {
-    //       .buffers: client_state_surface_buffer[],
-    //       .buf_size,
-    //       .shm_pool_size,
-    //       .shm_pool
-    //   }
-    // At least if will be easily usable in client_state_capture
-    struct wl_shm_pool *shm_pool;
-    uint32_t shm_pool_size; // TODO: Should this be int32_t ?
     struct client_state_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
 
     bool is_focused;
@@ -168,14 +158,12 @@ struct client_state_output_capture {
     //       manually.
     uint32_t pixel_stride; // bytes per pixel.
     uint32_t shm_format;
-    bool shm_format_is_selected; // XXX: Is there a nicer way?
 
     // TODO: What is this transform representing?
     //           It is separate from output::geometry's transform.
     enum wl_output_transform capture_frame_transform;
 
     struct client_state_capture_buffer buffer;
-    struct wl_shm_pool *shm_pool;
 
     //  NOTE: Capture area should be set synchronously with the drawn overlay's
     //        area (or be set based on the same real-time values). Otherwise,
@@ -185,7 +173,8 @@ struct client_state_output_capture {
     //        TODO: Double-check whether anything else should be synced like this.
     struct BLBoxI capture_area; // NOTE: Transform should be reversed.
 
-    uint32_t frame_iovec_size;
+        // indexing into .buffer.data, i.e. the screen/output capture buffer
+        // that encapsulates the selection/capture area
     struct iovec *frame_iovec;
 };
 
@@ -216,6 +205,7 @@ struct client_state_output {
 struct client_state {
     struct client_state_globals globals;
     struct client_state_seat seat;
+    // TODO: Pointers, probably. This entire state mess still needs cleaning up in general.
     struct client_state_output outputs[MAX_OUTPUTS];
     uint32_t n_outputs;
 

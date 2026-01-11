@@ -11,6 +11,7 @@
 #include "state.h"
 #include "wayland-event-handlers.h"
 #include "capture.h"
+#include "init.h"
 
 // Why does image_copy_capture support dynamic transform, but not dynamic
 // geometry/resolution entirely? Only because of buffer sizes?
@@ -80,8 +81,7 @@ handle_image_copy_capture_frame_ready(
       + pixel_stride * y * source_width
       + pixel_stride * x;
 
-    // TODO: We should properly handle this once per output during output init
-    assert(st_output->capture.frame_iovec_size >= height);
+    assert(GET_CAPTURE_IOV_SIZE((*st_output)) >= height);
     for (int i = 0; i < height; ++i) {
         st_output->capture.frame_iovec[i].iov_base = addr;
         st_output->capture.frame_iovec[i].iov_len = row_bytes;
