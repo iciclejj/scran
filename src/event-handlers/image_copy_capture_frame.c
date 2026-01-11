@@ -103,7 +103,7 @@ handle_image_copy_capture_frame_ready(
         );
 
         if (bytes_written < bytes_to_write) {
-            fprintf(stderr, "Failed writev() (%ld/%d bytes)\n", bytes_written, bytes_to_write);
+            fprintf(stderr, "Failed writev() (%ld/%ld bytes)\n", bytes_written, bytes_to_write);
             if (bytes_written == -1) {
                 fprintf(stderr, "    Error: %s\n", strerror(errno));
             }
