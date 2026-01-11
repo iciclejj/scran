@@ -18,6 +18,10 @@ bool init_output_surface_shm_buffers(struct client_state_output *st_output, stru
 
 bool init_output_surface(struct client_state_output *st_output, struct client_state_globals *st_globals);
 
+bool init_capture(struct client_state_output *st_output, struct client_state_globals *globals);
+bool init_image_copy_capture_shm_buffer(struct client_state_output *st_output, struct client_state_globals *globals);
+void destroy_capture_shm_buffers(struct client_state_output_capture *st_capture);
+
 int shm_open_anon(void);
 
 #endif
