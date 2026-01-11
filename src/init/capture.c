@@ -47,10 +47,7 @@ init_image_copy_capture_shm_buffer(
 
     // Full output source buffer for now.
     // TODO: Revisit this after multi-output support.
-    st_output->capture.buf_size =
-        st_output->mode.width_px
-        * st_output->capture.pixel_stride
-        * st_output->mode.height_px;
+    st_output->capture.buf_size = GET_CAPTURE_BUF_SIZE((*st_output));
     st_output->capture.shm_pool_size = st_output->capture.buf_size;
 
     int shm_fd = shm_open_anon();
