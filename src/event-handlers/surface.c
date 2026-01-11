@@ -52,7 +52,7 @@ draw_frame(
 
     struct client_state_output_selection_blend2d *bl = &st_output->selection.bl;
     struct BLPoint origin = { 0, 0 };
-    const uint32_t buf_size = SURFACE_PIXEL_STRIDE * st_output->mode.width_px * st_output->mode.height_px;
+    const uint32_t buf_size = GET_SURFACE_BUF_SIZE(st_output->mode);
 
     // TODO: Only write and mark damage where needed
     memset(st_buffer->data, 0, buf_size);

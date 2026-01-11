@@ -31,7 +31,7 @@ static void
 handle_layer_surface_closed(void *data, struct zwlr_layer_surface_v1 *layer_surface)
 {
     struct client_state_output *st_output = data;
-    const uint32_t buf_size = SURFACE_PIXEL_STRIDE * st_output->mode.width_px * st_output->mode.height_px;
+    const uint32_t buf_size = GET_SURFACE_BUF_SIZE(st_output->mode);
 
     for (int i = 0; i < SURFACE_BUF_COUNT; i++) {
         struct client_state_output_surface_buffer *buffer = &st_output->surface.double_buffer[i];

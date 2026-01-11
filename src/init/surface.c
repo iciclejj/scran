@@ -22,7 +22,7 @@ init_output_surface_shm_buffers(
     int shm_fd = shm_open_anon();
     // TODO: Account for scale/transform
     uint32_t width_bytes = SURFACE_PIXEL_STRIDE * st_output->mode.width_px;
-    const uint32_t buf_size = width_bytes * st_output->mode.height_px;
+    const uint32_t buf_size = GET_SURFACE_BUF_SIZE(st_output->mode);
 
     st_surface->shm_pool_size = SURFACE_BUF_COUNT * buf_size;
 
