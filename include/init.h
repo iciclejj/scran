@@ -10,8 +10,8 @@
 #define SURFACE_SHM_FORMAT WL_SHM_FORMAT_ARGB8888
 #define SURFACE_SHM_FORMAT_BL BL_FORMAT_PRGB32
 #define SURFACE_PIXEL_STRIDE 4 // Bytes per pixel. Depends on SURFACE_SHM_FORMAT.
-#define GET_SURFACE_BUF_SIZE(output_mode) (SURFACE_PIXEL_STRIDE * output_mode.width_px * output_mode.height_px);
-#define GET_CAPTURE_BUF_SIZE(st_output) (st_output.capture.pixel_stride * st_output.mode.width_px * st_output.mode.height_px);
+#define GET_SURFACE_BUF_SIZE(output_mode) (SURFACE_PIXEL_STRIDE * output_mode.width_px * output_mode.height_px)
+#define GET_CAPTURE_BUF_SIZE(st_output) (st_output.capture.pixel_stride * st_output.mode.width_px * st_output.mode.height_px)
 
 
 bool init_output_surface_shm_buffers(struct client_state_output *st_output, struct wl_shm *wl_shm_global);
