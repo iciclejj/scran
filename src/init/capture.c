@@ -48,13 +48,13 @@ init_image_copy_capture_shm_buffer(
     // Full output source buffer for now.
     // TODO: Revisit this after multi-output support.
     const ssize_t buf_size = GET_CAPTURE_BUF_SIZE((*st_output));
-    st_output->capture.shm_pool_size = buf_size;
+    const ssize_t shm_pool_size = buf_size;
 
     int shm_fd = shm_open_anon();
 
     // XXX: MEMORY ALLOC/FREE HERE
-    if (-1 == ftruncate(shm_fd, st_output->capture.shm_pool_size)) {
-        fprintf(stderr, "Failed to resize shm file to %d\n", st_output->capture.shm_pool_size);
+    if (-1 == ftruncate(shm_fd, shm_pool_size)) {
+        fprintf(stderr, "Failed to resize shm file to %ld\n", shm_pool_size);
         close(shm_fd);
         return false;
     }
@@ -63,7 +63,7 @@ init_image_copy_capture_shm_buffer(
     st_output->capture.shm_pool = wl_shm_create_pool(
         globals->shm,
         shm_fd,
-        st_output->capture.shm_pool_size
+        shm_pool_size
     );
 
     st_output->capture.buffer.buffer = wl_shm_pool_create_buffer(

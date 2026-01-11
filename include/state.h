@@ -176,7 +176,6 @@ struct client_state_output_capture {
 
     struct client_state_capture_buffer buffer;
     struct wl_shm_pool *shm_pool;
-    uint32_t shm_pool_size; // TODO: Should this be int32_t ?
 
     //  NOTE: Capture area should be set synchronously with the drawn overlay's
     //        area (or be set based on the same real-time values). Otherwise,
