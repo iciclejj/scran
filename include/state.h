@@ -58,7 +58,6 @@ struct client_state_output_surface {
     struct wl_shm_pool *shm_pool;
     uint32_t shm_pool_size; // TODO: Should this be int32_t ?
     struct client_state_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
-    uint32_t buf_size;
 
     bool is_focused;
 };

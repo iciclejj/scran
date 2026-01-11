@@ -22,9 +22,9 @@ init_output_surface_shm_buffers(
     int shm_fd = shm_open_anon();
     // TODO: Account for scale/transform
     uint32_t width_bytes = SURFACE_PIXEL_STRIDE * st_output->mode.width_px;
+    const uint32_t buf_size = width_bytes * st_output->mode.height_px;
 
-    st_surface->buf_size = width_bytes * st_output->mode.height_px;
-    st_surface->shm_pool_size = SURFACE_BUF_COUNT * st_surface->buf_size;
+    st_surface->shm_pool_size = SURFACE_BUF_COUNT * buf_size;
 
     // XXX: MEMORY ALLOC/FREE HERE
     if (-1 == ftruncate(shm_fd, st_surface->shm_pool_size)) {
@@ -46,13 +46,13 @@ init_output_surface_shm_buffers(
         NULL, st_surface->shm_pool_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0
     );
     st_surface->double_buffer[1].data =
-        st_surface->double_buffer[0].data + st_surface->buf_size;
+        st_surface->double_buffer[0].data + buf_size;
 
     for (int i = 0; i < SURFACE_BUF_COUNT; i++) {
         fprintf(stderr, "Creating buffer %d\n", i);
-        assert(i * st_surface->buf_size <= st_surface->shm_pool_size);
+        assert(i * buf_size <= st_surface->shm_pool_size);
 
-        int _pool_offset = i * st_surface->buf_size;
+        int _pool_offset = i * buf_size;
 
         st_surface->double_buffer[i].buffer = wl_shm_pool_create_buffer(
             st_surface->shm_pool,

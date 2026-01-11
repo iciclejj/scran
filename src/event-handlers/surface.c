@@ -5,6 +5,7 @@
 
 #include "state.h"
 #include "wayland-event-handlers.h"
+#include "init.h"
 
 static inline void
 normalize_rect_i(struct BLRectI *rect)
@@ -51,9 +52,10 @@ draw_frame(
 
     struct client_state_output_selection_blend2d *bl = &st_output->selection.bl;
     struct BLPoint origin = { 0, 0 };
+    const uint32_t buf_size = SURFACE_PIXEL_STRIDE * st_output->mode.width_px * st_output->mode.height_px;
 
     // TODO: Only write and mark damage where needed
-    memset(st_buffer->data, 0, st_output->surface.buf_size);
+    memset(st_buffer->data, 0, buf_size);
 
     bl_context_begin(&bl->ctx, &st_buffer->bl_img, NULL);
 
