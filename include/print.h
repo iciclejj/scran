@@ -1,4 +1,4 @@
-#ifdef _DISABLE_fprintf
+#ifdef _DISABLE_eprintf
 #define eprintf(fmt, ...) ((void)0)
 #else
 #define eprintf(fmt, ...) (void)fprintf(stderr, fmt, ##__VA_ARGS__)
