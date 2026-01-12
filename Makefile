@@ -3,7 +3,7 @@
 .DEFAULT_GOAL := debug
 
 ENV_CFLAGS := $(CFLAGS)
-ENV_CFLAGS_REL := $(CFLAGS_DBG)
+ENV_CFLAGS_REL := $(CFLAGS_REL)
 ENV_CFLAGS_DBG := $(CFLAGS_DBG)
 
 PKGCONF_LIBS = libavcodec libavutil xkbcommon
