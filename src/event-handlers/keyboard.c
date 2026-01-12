@@ -7,6 +7,7 @@
 #include "state.h"
 #include "wayland-event-handlers.h"
 #include "capture.h"
+#include "print.h"
 
 static void
 handle_keyboard_keymap(
@@ -20,7 +21,7 @@ handle_keyboard_keymap(
 
     // No other formats are recognized by wayland atm.
     if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
-        fprintf(stderr, "Unknown keyboard format - ignoring.\n");
+        DEBUG("Unknown keyboard format - ignoring.\n");
         return;
     }
 
@@ -75,14 +76,14 @@ handle_keyboard_key(
     switch (xkb_key) {
     // TODO: Probably reorganize all of this later
     case XKB_KEY_Escape:
-        fprintf(stderr, "Got escape key...");
+        DEBUG("Got escape key...");
         if (st_output->capture.capturing) {
             // TODO: Probably both stop capture and request exit
             //           Have dedicated start/stop capture key that doesn't exit
-            fprintf(stderr, " stopping capture.\n");
+            DEBUG(" stopping capture.\n");
             st_output->capture.capturing = false;
         } else {
-            fprintf(stderr, " exiting.\n");
+            DEBUG(" exiting.\n");
             state->exit_requested = true;
         }
         break;

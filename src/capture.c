@@ -7,6 +7,8 @@
 #include "lib_interop.h"
 #include "capture.h"
 
+#include "print.h"
+
 void
 dispatch_capture_event_loop(struct client_state_output *st_output)
 {
@@ -34,7 +36,7 @@ start_capture(struct client_state_output *st_output)
 {
     // TODO: Assert instead?
     if (st_output->capture.capturing) {
-        fprintf(stderr, "Already capturing...\n");
+        DEBUG("Already capturing...\n");
         return false;
     }
     // TODO: Assert ffmpeg installed
@@ -67,7 +69,7 @@ start_capture(struct client_state_output *st_output)
         wl_shm_format_to_ffmpeg_cli_str(st_output->capture.shm_format),
         time_now_str
     );
-    fprintf(stderr, "FFMPEG COMMAND: `%s`\n", ffmpeg_command);
+    DEBUG("FFMPEG COMMAND: `%s`\n", ffmpeg_command);
 
     st_output->capture.capturing = true;
     st_output->capture.ffmpeg = popen(ffmpeg_command, "w");

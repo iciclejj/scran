@@ -9,6 +9,8 @@
 #include "wayland-event-handlers.h"
 #include "init.h"
 
+#include "print.h"
+
 bool
 init_output_surface(
     struct client_state_output *st_output,
@@ -48,7 +50,7 @@ init_output_surface(
     //      due to nested add_listener functions
     //          seat_listener --> pointer_listener, keyboard_listener ...
     if (-1 == wl_display_roundtrip(st_globals->display)) {
-        fprintf(stderr, "Display roundtrip after adding zwlr_layer_surface_v1 listener failed.\n");
+        DEBUG("Display roundtrip after adding zwlr_layer_surface_v1 listener failed.\n");
         return false;
     }
 

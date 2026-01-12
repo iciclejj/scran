@@ -19,6 +19,7 @@
 #include "state.h"
 #include "wayland-event-handlers.h"
 #include "init.h"
+#include "print.h"
 
 // TODO: Dynamically find this name
 #define SOCKNAME "wayland-1"
@@ -29,20 +30,17 @@ init_wayland_globals_and_roundtrip(struct client_state *state)
 {
     struct client_state_globals *globals = &state->globals;
 
-    // TODO: #ifdef DEBUG for prints?
-    //           eprintf header with noop if not DEBUG ?
-
-    fprintf(stderr, "Connecting to wayland socket '%s'.\n", SOCKNAME);
+    DEBUG("Connecting to wayland socket '%s'.\n", SOCKNAME);
 
     globals->display = wl_display_connect(SOCKNAME);
     if (globals->display == NULL) {
-        fprintf(stderr, "Failed to connect to wayland socket.\n");
+        DEBUG("Failed to connect to wayland socket.\n");
         return false;
     }
 
     globals->registry = wl_display_get_registry(globals->display);
     if (globals->registry == NULL) {
-        fprintf(stderr, "Failed to get wayland registry.\n");
+        DEBUG("Failed to get wayland registry.\n");
         return false;
     }
 
@@ -50,17 +48,17 @@ init_wayland_globals_and_roundtrip(struct client_state *state)
     if ( wl_registry_add_listener(globals->registry, &registry_listener, (void *)state)
          == -1
     ) {
-        fprintf(stderr, "Failed to add registry listener.\n");
+        DEBUG("Failed to add registry listener.\n");
         return false;
     }
 
 
     if (wl_display_roundtrip(globals->display) == -1) {
-        fprintf(stderr, "Display roundtrip after adding registry listener failed.\n");
+        DEBUG("Display roundtrip after adding registry listener failed.\n");
         return false;
     }
 
-    fprintf(stderr, "Finished: init_wayland_globals()\n");
+    DEBUG("Finished: init_wayland_globals()\n");
 
     // TODO: Validate globals?
 
@@ -165,7 +163,7 @@ int main(void)
 
         // XXX: Handle this gracefully (and maybe in a nicer location?)
         if (_st_output->capture.shm_format == -1) {
-            fprintf(stderr, "Failed to select shm_buffer format.\n");
+            DEBUG("Failed to select shm_buffer format.\n");
             return EXIT_FAILURE;
         }
 
@@ -181,7 +179,7 @@ int main(void)
 
     int global_pool_shm_fd = shm_open_anon();
     if (ftruncate(global_pool_shm_fd, global_pool_size_bytes) == -1) {
-        fprintf(stderr, "Failed to resize shm file to %d\n", global_pool_size_bytes);
+        DEBUG("Failed to resize shm file to %d\n", global_pool_size_bytes);
         close(global_pool_shm_fd);
         return EXIT_FAILURE;
     }
@@ -281,7 +279,7 @@ int main(void)
     destroy_wayland_globals(&state);
 
     wl_display_disconnect(state.globals.display);
-    fprintf(stderr, "Disconnected from wayland server (%s)\n", SOCKNAME);
+    DEBUG("Disconnected from wayland server (%s)\n", SOCKNAME);
 
     return 0;
 }

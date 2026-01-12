@@ -7,6 +7,7 @@
 
 #include "state.h"
 #include "wayland-event-handlers.h"
+#include "print.h"
 
 static void
 handle_image_copy_capture_session_buffer_size(
@@ -32,7 +33,7 @@ handle_image_copy_capture_session_shm_format(
 ) {
     struct client_state_output *st_output = data;
 
-    fprintf(stderr, "session::shm_format received: %x... ", shm_format);
+    DEBUG("session::shm_format received: %x... ", shm_format);
 
     // List of formats we want to support.
     // TODO: Add more formats and logic for handling them
@@ -46,9 +47,9 @@ handle_image_copy_capture_session_shm_format(
     ) {
         st_output->capture.shm_format = shm_format;
         st_output->capture.pixel_stride = 4;
-        fprintf(stderr, "format supported!\n");
+        DEBUG("format supported!\n");
     } else {
-        fprintf(stderr, "format unsupported.\n");
+        DEBUG("format unsupported.\n");
     }
 }
 

@@ -7,6 +7,8 @@
 #include "wayland-event-handlers.h"
 #include "init.h"
 
+#include "print.h"
+
 static inline void
 normalize_rect_i(struct BLRectI *rect)
 {
@@ -30,8 +32,8 @@ get_free_double_buffer(struct client_state_output *st_output)
         : &st_output->surface.double_buffer[0]
     ;
 
-    // fprintf(
-    //     stderr, "get_free_double_buffer(): busy? buf_0=%d, buf_1=%d\n",
+    // DEBUG(
+    //     "get_free_double_buffer(): busy? buf_0=%d, buf_1=%d\n",
     //     state->surface.double_buffer[0].busy,
     //     state->surface.double_buffer[1].busy
     // );
@@ -72,8 +74,8 @@ draw_frame(
     }
     bl_context_fill_path_d(&bl->ctx, &origin, &bl->path);
 
-    // fprintf(
-    //     stderr, "box: x0=%d, x1=%d, y0=%d, y1=%d\n",
+    // DEBUG(
+    //     "box: x0=%d, x1=%d, y0=%d, y1=%d\n",
     //     bl->box.x0, bl->box.x1, bl->box.y0, bl->box.y1
     // );
 
@@ -152,7 +154,7 @@ surface_frame_callback_handler(
     );
 
     if (st_buffer == NULL) {
-        fprintf(stderr, "Both buffers busy...\n");
+        DEBUG("Both buffers busy...\n");
         // TODO: Restructure to not need to remember this for every fail condition
         wl_surface_commit(st_output->surface.surface);
         return;

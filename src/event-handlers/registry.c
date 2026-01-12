@@ -10,6 +10,7 @@
 
 #include "state.h"
 #include "wayland-event-handlers.h"
+#include "print.h"
 
 static void
 registry_handle_global(
@@ -31,13 +32,13 @@ registry_handle_global(
     } else if (_INTERFACE_IS(wl_seat_interface)) {
         if (globals->seat != NULL) {
             // TODO: wl_list of seats
-            fprintf(stderr, "Ignoring additional wl_seat global.\n");
+            DEBUG("Ignoring additional wl_seat global.\n");
         } else {
-            fprintf(stderr, "Adding seat... ");
+            DEBUG("Adding seat... ");
             globals->seat    = wl_registry_bind(registry, name, &wl_seat_interface, version);
             // TODO: Do this elsewhere? De-spaghetti everything later...
             wl_seat_add_listener(globals->seat, &seat_listener, state);
-            fprintf(stderr, "added seat listener.\n");
+            DEBUG("added seat listener.\n");
         }
     } else if (_INTERFACE_IS(wl_shm_interface)) {
         globals->shm         = wl_registry_bind(registry, name, &wl_shm_interface, version);
@@ -49,7 +50,7 @@ registry_handle_global(
         globals->cursor_shape_manager = wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, 1);
     } else if (_INTERFACE_IS(wl_output_interface)) {
         if (state->n_outputs >= MAX_OUTPUTS) {
-            fprintf(stderr, "Maximum output limit reached: %d\n", MAX_OUTPUTS);
+            DEBUG("Maximum output limit reached: %d\n", MAX_OUTPUTS);
             return;
         }
         // TODO: Handle adding/removing outputs during program runtime?

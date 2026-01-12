@@ -12,6 +12,7 @@
 #include "wayland-event-handlers.h"
 #include "capture.h"
 #include "init.h"
+#include "print.h"
 
 // Why does image_copy_capture support dynamic transform, but not dynamic
 // geometry/resolution entirely? Only because of buffer sizes?
@@ -103,9 +104,9 @@ handle_image_copy_capture_frame_ready(
         );
 
         if (bytes_written < bytes_to_write) {
-            fprintf(stderr, "Failed writev() (%ld/%ld bytes)\n", bytes_written, bytes_to_write);
+            DEBUG("Failed writev() (%ld/%ld bytes)\n", bytes_written, bytes_to_write);
             if (bytes_written == -1) {
-                fprintf(stderr, "    Error: %s\n", strerror(errno));
+                DEBUG("    Error: %s\n", strerror(errno));
             }
             return; // TODO: Ensure returning here is safe.
         };
