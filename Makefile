@@ -2,30 +2,35 @@
 
 .DEFAULT_GOAL := debug
 
+ENV_CFLAGS := $(CFLAGS)
+ENV_CFLAGS_REL := $(CFLAGS_DBG)
+ENV_CFLAGS_DBG := $(CFLAGS_DBG)
+
 PKGCONF_LIBS = libavcodec libavutil xkbcommon
 
 BUILD_DIR = build
- BUILD_DIR_REL = $(BUILD_DIR)/release
- BUILD_DIR_DBG = $(BUILD_DIR)/debug
+BUILD_DIR_REL = $(BUILD_DIR)/release
+BUILD_DIR_DBG = $(BUILD_DIR)/debug
 
 PROG = main
- PROG_REL = $(BUILD_DIR_REL)/$(PROG)
- PROG_DBG = $(BUILD_DIR_DBG)/$(PROG)
+PROG_REL = $(BUILD_DIR_REL)/$(PROG)
+PROG_DBG = $(BUILD_DIR_DBG)/$(PROG)
 LDLIBS = -lwayland-client -lblend2d
 LDLIBS += $(foreach pkg, $(PKGCONF_LIBS), $(shell pkg-config --libs $(pkg)))
 INCDIRS = include/
 INCDIRS += $(WAYLAND_PROTOCOLS_DIR_LOCAL)
-CFLAGS ?= -O2
-CFLAGS += $(addprefix -I, $(INCDIRS))
+CFLAGS = $(addprefix -I, $(INCDIRS))
 CFLAGS += $(foreach pkg, $(PKGCONF_LIBS), $(shell pkg-config --cflags $(pkg)))
- CFLAGS_REL = $(CFLAGS)
- CFLAGS_DBG = $(CFLAGS) -g -O0 -U_FORTIFY_SOURCE
+CFLAGS_REL = $(CFLAGS)
+CFLAGS_REL += $(ENV_CFLAGS) $(ENV_CFLAGS_REL)
+CFLAGS_DBG = $(CFLAGS) -g -O0 -U_FORTIFY_SOURCE
+CFLAGS_DBG += $(ENV_CFLAGS) $(ENV_CFLAGS_DBG)
 SRCDIRS = src src/event-handlers src/init
 SRCS = $(foreach dir, $(SRCDIRS), $(wildcard $(dir)/*.c))
 SRCS += $(addprefix $(WAYLAND_PROTOCOLS_DIR_LOCAL)/, $(WAYLAND_PROTOCOLS_REQUIRED_C_FILENAMES))
 OBJS = $(SRCS:.c=.o)
- OBJS_REL = $(addprefix $(BUILD_DIR_REL)/, $(OBJS))
- OBJS_DBG = $(addprefix $(BUILD_DIR_DBG)/, $(OBJS))
+OBJS_REL = $(addprefix $(BUILD_DIR_REL)/, $(OBJS))
+OBJS_DBG = $(addprefix $(BUILD_DIR_DBG)/, $(OBJS))
 
 # TODO: Ensure package versions. Flake?
 WAYLAND_SCANNER = $(shell pkg-config --variable=wayland_scanner wayland-scanner)
