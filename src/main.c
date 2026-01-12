@@ -261,6 +261,13 @@ int main(void)
             &surface_frame_callback_listener,
             _st_output
         );
+
+        // NOTE: Most "init" time is spent here (during first dispatch),
+        //       waiting to enter layer_surface::configure (Ex: ~7000us)
+        //       And remaining time is mostly during the first roundtrip to get
+        //       globals. (Ex: ~2000us)
+        //         - Second roundtrip where we collect memory requirements is
+        //           relatively fast (Ex: ~130us)
         wl_surface_commit(_st_output->surface.surface);
     }
 
