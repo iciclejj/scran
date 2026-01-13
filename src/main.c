@@ -227,7 +227,6 @@ init_meminit(
 static bool
 init_postmem(struct client_state *state)
 {
-    // Memory init finished - run remaining dependent initialization
     assert(state->n_outputs <= MAX_OUTPUTS);
     for (int i = 0; i < state->n_outputs; ++i) {
         struct client_state_output *_st_output = &state->outputs[i];
@@ -237,8 +236,7 @@ init_postmem(struct client_state *state)
         }
 
         // Initial frame callback request.
-        // All subsequent requests are done "recursively" from within the listener's
-        // 'done' event handler
+        // All subsequent requests are done "recursively" from within ::done
         wl_callback_add_listener(
             wl_surface_frame(_st_output->surface.surface),
             &surface_frame_callback_listener,
