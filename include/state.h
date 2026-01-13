@@ -157,10 +157,6 @@ struct client_state_output_capture {
     uint32_t pixel_stride; // bytes per pixel.
     uint32_t shm_format;
 
-    // TODO: What is this transform representing?
-    //           It is separate from output::geometry's transform.
-    enum wl_output_transform capture_frame_transform;
-
     struct client_state_capture_buffer buffer;
 
     //  NOTE: Capture area should be set synchronously with the drawn overlay's

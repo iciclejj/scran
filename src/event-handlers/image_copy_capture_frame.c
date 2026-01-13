@@ -15,8 +15,6 @@
 #include "print.h"
 
 
-// Why does image_copy_capture support dynamic transform, but not dynamic
-// geometry/resolution entirely? Only because of buffer sizes?
 static void
 handle_image_copy_capture_frame_transform(
     void *data,
@@ -25,7 +23,8 @@ handle_image_copy_capture_frame_transform(
 ) {
     struct client_state_output *st_output = data;
 
-    st_output->capture.capture_frame_transform = transform;
+    // TODO: What is this transform representing?
+    //           It is separate from output::geometry's transform.
 }
 
 
