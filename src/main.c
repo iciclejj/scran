@@ -131,8 +131,8 @@ init_premem(struct client_state *state)
 static bool
 init_meminit(
     struct client_state *state,
-    size_t *global_pool_size_bytes,
-    void **global_pool
+    size_t *shm_size_bytes,
+    void **shm_addr
 ) {
     // Calculate memory requirements
     for (int i = 0; i < state->n_outputs; ++i) {
@@ -149,23 +149,23 @@ init_meminit(
         const ssize_t _capture_buf_iov_bytes = GET_CAPTURE_IOV_SIZE((*_st_output));
         // selection: No manual allocations
 
-        *global_pool_size_bytes += _surface_buf_bytes
+        *shm_size_bytes += _surface_buf_bytes
                                 + _capture_buf_bytes
                                 + _capture_buf_iov_bytes;
     }
 
     int global_pool_shm_fd = shm_open_anon();
-    if (ftruncate(global_pool_shm_fd, *global_pool_size_bytes) == -1) {
-        DEBUG("Failed to resize shm file to %zu\n", *global_pool_size_bytes);
+    if (ftruncate(global_pool_shm_fd, *shm_size_bytes) == -1) {
+        DEBUG("Failed to resize shm file to %zu\n", *shm_size_bytes);
         close(global_pool_shm_fd);
         return false;
     }
 
-    *global_pool = mmap(NULL, *global_pool_size_bytes, PROT_READ | PROT_WRITE, MAP_SHARED, global_pool_shm_fd, 0);
+    *shm_addr = mmap(NULL, *shm_size_bytes, PROT_READ | PROT_WRITE, MAP_SHARED, global_pool_shm_fd, 0);
     struct wl_shm_pool *global_pool_wl = wl_shm_create_pool(
         state->globals.shm,
         global_pool_shm_fd,
-        *global_pool_size_bytes
+        *shm_size_bytes
     );
 
     // Assign allocated memory
@@ -176,7 +176,7 @@ init_meminit(
         assert(SURFACE_BUF_COUNT == A_DOUBLE_BUFFER_HAS_TWO_BUFFERS && SURFACE_BUF_COUNT == 2);
 
         for (int i = 0; i < SURFACE_BUF_COUNT; i++) {
-            _st_output->surface.double_buffer[i].data = *global_pool + curr_offset;
+            _st_output->surface.double_buffer[i].data = *shm_addr + curr_offset;
             _st_output->surface.double_buffer[i].buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
                 curr_offset,
@@ -197,7 +197,7 @@ init_meminit(
             wl_surface_attach(_st_output->surface.surface, _st_output->surface.double_buffer[0].buffer, 0, 0);
         }
 
-        _st_output->capture.buffer.data = *global_pool + curr_offset;
+        _st_output->capture.buffer.data = *shm_addr + curr_offset;
         _st_output->capture.buffer.buffer = wl_shm_pool_create_buffer(
             global_pool_wl,
             curr_offset,
@@ -214,7 +214,7 @@ init_meminit(
             &_st_output->capture.buffer
         );
 
-        _st_output->capture.frame_iovec =  *global_pool + curr_offset;
+        _st_output->capture.frame_iovec =  *shm_addr + curr_offset;
     }
 
     // (wayland's mmaps and fd references live on)
@@ -265,15 +265,15 @@ init_postmem(struct client_state *state)
 int main(void)
 {
     struct client_state state = { };
-    size_t global_pool_size_bytes = 0;
-    void *global_pool = NULL;
+    size_t shm_size_bytes = 0;
+    void *shm_addr = NULL;
 
     if (!init_premem(&state)) {
         eprintf("Failed pre-memory allocation initialization.\n");
         return EXIT_FAILURE;
     }
 
-    if (!init_meminit(&state, &global_pool_size_bytes, &global_pool)) {
+    if (!init_meminit(&state, &shm_size_bytes, &shm_addr)) {
         eprintf("Failed to initialize memory and/or shared memory buffers.\n");
         return EXIT_FAILURE;
     }
@@ -291,7 +291,7 @@ int main(void)
 
         // TODO: Destroy wayland objects
     }
-    munmap(global_pool, global_pool_size_bytes);
+    munmap(shm_addr, shm_size_bytes);
     destroy_wayland_globals(&state);
 
     wl_display_disconnect(state.globals.display);
