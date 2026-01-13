@@ -21,13 +21,6 @@ dispatch_capture_event_loop(struct client_state_output *st_output)
         frame,
         st_output->capture.buffer.buffer
     );
-    ext_image_copy_capture_frame_v1_damage_buffer(
-        frame,
-        0,
-        0,
-        st_output->mode.width_px,
-        st_output->mode.height_px
-    );
     ext_image_copy_capture_frame_v1_capture(frame);
 }
 
