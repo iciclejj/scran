@@ -1,7 +1,7 @@
 #include <wayland-client.h>
 
 #include "state.h"
-#include "wayland-event-handlers.h"
+#include "event-handlers.h"
 
 
 static void

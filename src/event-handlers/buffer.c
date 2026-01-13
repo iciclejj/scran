@@ -2,7 +2,7 @@
 
 #include "state.h"
 
-#include "wayland-event-handlers.h"
+#include "event-handlers.h"
 
 static void
 handle_buffer_release(void *data, struct wl_buffer *buffer)

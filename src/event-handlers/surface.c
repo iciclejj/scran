@@ -4,7 +4,7 @@
 #include <blend2d/blend2d.h>
 
 #include "state.h"
-#include "wayland-event-handlers.h"
+#include "event-handlers.h"
 #include "init.h"
 
 #include "print.h"

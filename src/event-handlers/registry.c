@@ -9,7 +9,7 @@
 #include "xdg-output-unstable-v1.h"
 
 #include "state.h"
-#include "wayland-event-handlers.h"
+#include "event-handlers.h"
 #include "print.h"
 
 static void

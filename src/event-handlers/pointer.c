@@ -3,7 +3,7 @@
 
 #include "state.h"
 
-#include "wayland-event-handlers.h"
+#include "event-handlers.h"
 
 static void
 handle_pointer_enter(

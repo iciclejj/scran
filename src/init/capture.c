@@ -7,7 +7,7 @@
 
 #include "init.h"
 #include "state.h"
-#include "wayland-event-handlers.h"
+#include "event-handlers.h"
 
 bool
 init_capture(

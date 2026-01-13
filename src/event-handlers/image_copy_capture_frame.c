@@ -9,7 +9,7 @@
 #include "ext-image-copy-capture-v1.h"
 
 #include "state.h"
-#include "wayland-event-handlers.h"
+#include "event-handlers.h"
 #include "capture.h"
 #include "init.h"
 #include "print.h"
