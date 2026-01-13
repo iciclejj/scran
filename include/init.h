@@ -21,6 +21,7 @@
 bool init_output_surface_shm_buffers(struct client_state_output *st_output, struct wl_shm *wl_shm_global);
 bool init_output_surface(struct client_state_output *st_output, struct client_state_globals *st_globals);
 bool init_capture(struct client_state_output *st_output, struct client_state_globals *globals);
+bool init_selection_and_blend2d(struct client_state_output *st_output);
 
 int shm_open_anon(void);
 
