@@ -278,7 +278,10 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    init_postmem(&state);
+    if (!init_postmem(&state)) {
+        eprintf("Failed post-memory allocation initialization.\n");
+        return EXIT_FAILURE;
+    }
 
     while ( // Main event loop...
         !state.exit_requested
