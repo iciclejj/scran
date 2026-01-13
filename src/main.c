@@ -283,10 +283,14 @@ int main(void)
         return EXIT_FAILURE;
     }
 
+
+
     while ( // Main event loop...
         !state.exit_requested
         && wl_display_dispatch(state.globals.display)
     );
+
+
 
     assert(state.n_outputs <= MAX_OUTPUTS);
     for (int i = 0; i < state.n_outputs; ++i) {
