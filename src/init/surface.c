@@ -46,14 +46,6 @@ init_output_surface(
     // Initial bufferless commit to trigger configure event
     wl_surface_commit(st_output->surface.surface);
 
-    // XXX: This also triggers initial wl_seat listener events at the moment,
-    //      due to nested add_listener functions
-    //          seat_listener --> pointer_listener, keyboard_listener ...
-    if (-1 == wl_display_roundtrip(st_globals->display)) {
-        DEBUG("Display roundtrip after adding zwlr_layer_surface_v1 listener failed.\n");
-        return false;
-    }
-
     return true;
 }
 
