@@ -46,7 +46,7 @@ handle_image_copy_capture_session_shm_format(
         )
     ) {
         st_output->capture.shm_format = shm_format;
-        st_output->capture.pixel_stride = 4;
+        st_output->capture.frame_ctx.pixel_stride = 4;
         DEBUG("format supported!\n");
     } else {
         DEBUG("format unsupported.\n");

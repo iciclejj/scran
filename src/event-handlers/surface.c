@@ -64,7 +64,7 @@ draw_frame(
     bl_path_add_box_i(&bl->path, &bl->box_outer, BL_GEOMETRY_DIRECTION_NONE);
     bl_path_add_box_i(&bl->path, &bl->box, BL_GEOMETRY_DIRECTION_NONE);
     bl_context_set_fill_rule(&bl->ctx, BL_FILL_RULE_EVEN_ODD);
-    if (st_output->capture.capturing) {
+    if (st_output->capture.frame_ctx.capturing) {
         // TODO: How is 88880000 hitting red and alpha?
         //           Need to set endianness flag?
         //       Show red border instead of red background
@@ -173,7 +173,7 @@ surface_frame_callback_handler(
     //        leading to f.ex. capture frame border spilling into the actual
     //        capture frame
     //       See also comment in client_state_capture.
-    st_output->capture.capture_area = _get_reverse_transform(
+    st_output->capture.frame_ctx.capture_area = _get_reverse_transform(
         st_output->selection.bl.box,
         st_output->mode.width_px,
         st_output->mode.height_px,

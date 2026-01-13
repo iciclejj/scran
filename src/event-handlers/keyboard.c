@@ -77,19 +77,19 @@ handle_keyboard_key(
     // TODO: Probably reorganize all of this later
     case XKB_KEY_Escape:
         DEBUG("Got escape key...");
-        if (st_output->capture.capturing) {
+        if (st_output->capture.frame_ctx.capturing) {
             // TODO: Probably both stop capture and request exit
             //           Have dedicated start/stop capture key that doesn't exit
             DEBUG(" stopping capture.\n");
-            st_output->capture.capturing = false;
+            st_output->capture.frame_ctx.capturing = false;
         } else {
             DEBUG(" exiting.\n");
             state->exit_requested = true;
         }
         break;
     case XKB_KEY_Return:
-        if (st_output->capture.capturing) {
-            st_output->capture.capturing = false;
+        if (st_output->capture.frame_ctx.capturing) {
+            st_output->capture.frame_ctx.capturing = false;
             // TODO: Need to ensure capture is fully properly fully finished
             //       before we allow new dispatch_capture_event_loop()
         } else {

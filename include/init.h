@@ -13,9 +13,9 @@
 #define GET_SURFACE_BUF_SIZE(output_mode) (SURFACE_PIXEL_STRIDE * output_mode.width_px * output_mode.height_px)
 #define GET_SURFACE_STRIDE(output_mode) (SURFACE_PIXEL_STRIDE * output_mode.width_px)
 
-#define GET_CAPTURE_BUF_SIZE(st_output) (st_output.capture.pixel_stride * st_output.mode.width_px * st_output.mode.height_px)
+#define GET_CAPTURE_BUF_SIZE(st_output) (st_output.capture.frame_ctx.pixel_stride * st_output.mode.width_px * st_output.mode.height_px)
 #define GET_CAPTURE_IOV_SIZE(st_output) (sizeof(struct iovec) * st_output.mode.height_px)
-#define GET_CAPTURE_STRIDE(st_output) (st_output.capture.pixel_stride * st_output.mode.width_px)
+#define GET_CAPTURE_STRIDE(st_output) (st_output.capture.frame_ctx.pixel_stride * st_output.mode.width_px)
 
 
 bool init_output_surface_shm_buffers(struct client_state_output *st_output, struct wl_shm *wl_shm_global);

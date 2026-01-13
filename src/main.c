@@ -162,8 +162,8 @@ init_meminit(
             wl_surface_attach(_st_output->surface.surface, _st_output->surface.double_buffer[0].buffer, 0, 0);
         }
 
-        _st_output->capture.buffer.data = *shm_addr + curr_offset;
-        _st_output->capture.buffer.buffer = wl_shm_pool_create_buffer(
+        _st_output->capture.frame_ctx.st_buffer.data = *shm_addr + curr_offset;
+        _st_output->capture.frame_ctx.st_buffer.buffer = wl_shm_pool_create_buffer(
             global_pool_wl,
             curr_offset,
             _st_output->mode.width_px,
@@ -174,12 +174,12 @@ init_meminit(
         curr_offset += GET_CAPTURE_BUF_SIZE((*_st_output));
 
         wl_buffer_add_listener(
-            _st_output->capture.buffer.buffer,
+            _st_output->capture.frame_ctx.st_buffer.buffer,
             &buffer_listener,
-            &_st_output->capture.buffer
+            &_st_output->capture.frame_ctx.st_buffer
         );
 
-        _st_output->capture.frame_iovec =  *shm_addr + curr_offset;
+        _st_output->capture.frame_ctx.frame_iovec =  *shm_addr + curr_offset;
         curr_offset += GET_CAPTURE_IOV_SIZE((*_st_output));
     }
 

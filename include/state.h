@@ -138,26 +138,18 @@ struct client_state_capture_buffer {
     void *data;
 };
 
-// TODO: Optimize frame event-loop struct sizes
-struct client_state_output_capture {
-    // Inconsistent naming, but my eyes are bleeding
-    struct ext_image_capture_source_v1 *source;
+struct capture_frame_context {
+    struct client_state_capture_buffer st_buffer;
+
     struct ext_image_copy_capture_session_v1 *session;
 
-    // TODO: Clearer name for and/or usage of `capturing`
-    bool capturing;
+    // indexing into .buffer.data, i.e. the screen/output capture buffer
+    // that encapsulates the selection/capture area
+    struct iovec *frame_iovec;
+
+    // TODO: FILE *ffmpeg is only needed for pclose. Find a clean way to remove it.
     FILE *ffmpeg;
     int ffmpeg_fd;
-
-    // TODO: Probably put this into a separate struct. Mode?
-    //       Something to separate it from both capture/output and from xdg output
-    // NOTE: These do not have any transforms applied.
-    //       Capture frame buffer must match this size and handle transforms
-    //       manually.
-    uint32_t pixel_stride; // bytes per pixel.
-    uint32_t shm_format;
-
-    struct client_state_capture_buffer buffer;
 
     //  NOTE: Capture area should be set synchronously with the drawn overlay's
     //        area (or be set based on the same real-time values). Otherwise,
@@ -166,10 +158,25 @@ struct client_state_output_capture {
     //        and capture's frame "draw".
     //        TODO: Double-check whether anything else should be synced like this.
     struct BLBoxI capture_area; // NOTE: Transform should be reversed.
+    uint32_t pixel_stride;
+    int32_t source_width_px;
 
-        // indexing into .buffer.data, i.e. the screen/output capture buffer
-        // that encapsulates the selection/capture area
-    struct iovec *frame_iovec;
+    bool capturing; // XXX: Fix references to this
+};
+
+struct client_state_output_capture {
+    struct capture_frame_context frame_ctx;
+
+    // Inconsistent naming, but my eyes are bleeding
+    struct ext_image_capture_source_v1 *source;
+    struct ext_image_copy_capture_session_v1 *session;
+
+    // TODO: Probably put this into a separate struct. Mode?
+    //       Something to separate it from both capture/output and from xdg output
+    // NOTE: These do not have any transforms applied.
+    //       Capture frame buffer must match this size and handle transforms
+    //       manually.
+    uint32_t shm_format;
 };
 
 struct client_state_output_mode {

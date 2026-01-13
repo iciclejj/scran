@@ -59,8 +59,8 @@ handle_image_copy_capture_frame_ready(
     ext_image_copy_capture_frame_v1_destroy(frame);
 
     // TODO: Make sure buffer is destroyed
-    if (!st_output->capture.capturing) {
-        pclose(st_output->capture.ffmpeg);
+    if (!st_output->capture.frame_ctx.capturing) {
+        pclose(st_output->capture.frame_ctx.ffmpeg);
         return;
     }
 
@@ -71,23 +71,23 @@ handle_image_copy_capture_frame_ready(
     //     or handle it properly here
     //
 
-    uint32_t pixel_stride      = st_output->capture.pixel_stride;
+    uint32_t pixel_stride      = st_output->capture.frame_ctx.pixel_stride;
     uint32_t source_width      = st_output->mode.width_px;
-    uint32_t width             = st_output->capture.capture_area.x1 - st_output->capture.capture_area.x0;
-    uint32_t height            = st_output->capture.capture_area.y1 - st_output->capture.capture_area.y0;
-    uint32_t x                 = st_output->capture.capture_area.x0;
-    uint32_t y                 = st_output->capture.capture_area.y0;
+    uint32_t width             = st_output->capture.frame_ctx.capture_area.x1 - st_output->capture.frame_ctx.capture_area.x0;
+    uint32_t height            = st_output->capture.frame_ctx.capture_area.y1 - st_output->capture.frame_ctx.capture_area.y0;
+    uint32_t x                 = st_output->capture.frame_ctx.capture_area.x0;
+    uint32_t y                 = st_output->capture.frame_ctx.capture_area.y0;
     uint32_t row_bytes         = pixel_stride * width;
 
     char *addr =
-        st_output->capture.buffer.data
+        st_output->capture.frame_ctx.st_buffer.data
       + pixel_stride * y * source_width
       + pixel_stride * x;
 
     assert(GET_CAPTURE_IOV_SIZE((*st_output)) >= height);
     for (int i = 0; i < height; ++i) {
-        st_output->capture.frame_iovec[i].iov_base = addr;
-        st_output->capture.frame_iovec[i].iov_len = row_bytes;
+        st_output->capture.frame_ctx.frame_iovec[i].iov_base = addr;
+        st_output->capture.frame_ctx.frame_iovec[i].iov_len = row_bytes;
         addr += pixel_stride * source_width;
     }
 
@@ -100,8 +100,8 @@ handle_image_copy_capture_frame_ready(
         const ssize_t offset = height - bytes_remaining;
 
         const ssize_t bytes_written = writev(
-            st_output->capture.ffmpeg_fd,
-            st_output->capture.frame_iovec + offset,
+            st_output->capture.frame_ctx.ffmpeg_fd,
+            st_output->capture.frame_ctx.frame_iovec + offset,
             bytes_to_write
         );
 

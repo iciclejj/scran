@@ -19,7 +19,7 @@ dispatch_capture_event_loop(struct client_state_output *st_output)
     ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, st_output);
     ext_image_copy_capture_frame_v1_attach_buffer(
         frame,
-        st_output->capture.buffer.buffer
+        st_output->capture.frame_ctx.st_buffer.buffer
     );
     ext_image_copy_capture_frame_v1_capture(frame);
 }
@@ -28,7 +28,7 @@ bool
 start_capture(struct client_state_output *st_output)
 {
     // TODO: Assert instead?
-    if (st_output->capture.capturing) {
+    if (st_output->capture.frame_ctx.capturing) {
         DEBUG("Already capturing...\n");
         return false;
     }
@@ -49,8 +49,8 @@ start_capture(struct client_state_output *st_output)
     char time_now_str[64];
     time_t time_now = time(NULL);
     struct tm *tm_now = localtime(&time_now);
-    const int width = st_output->capture.capture_area.x1 - st_output->capture.capture_area.x0;
-    const int height = st_output->capture.capture_area.y1 - st_output->capture.capture_area.y0;
+    const int width = st_output->capture.frame_ctx.capture_area.x1 - st_output->capture.frame_ctx.capture_area.x0;
+    const int height = st_output->capture.frame_ctx.capture_area.y1 - st_output->capture.frame_ctx.capture_area.y0;
     strftime(time_now_str, sizeof(time_now_str), "%Y%m%d-%H%M%S", tm_now);
     snprintf(ffmpeg_command, 256,
         // XXX: Using -v quiet to suppress output and broken newline at end.
@@ -64,9 +64,9 @@ start_capture(struct client_state_output *st_output)
     );
     DEBUG("FFMPEG COMMAND: `%s`\n", ffmpeg_command);
 
-    st_output->capture.capturing = true;
-    st_output->capture.ffmpeg = popen(ffmpeg_command, "w");
-    st_output->capture.ffmpeg_fd = fileno(st_output->capture.ffmpeg);
+    st_output->capture.frame_ctx.capturing = true;
+    st_output->capture.frame_ctx.ffmpeg = popen(ffmpeg_command, "w");
+    st_output->capture.frame_ctx.ffmpeg_fd = fileno(st_output->capture.frame_ctx.ffmpeg);
 
 
     // Get initial frame. Subsequent capture requests happen within frame::ready
