@@ -25,46 +25,6 @@
 #define SOCKNAME "wayland-1"
 #define SOCKPATH "/run/user/1000/" SOCKNAME
 
-static inline bool
-init_wayland_globals_and_roundtrip(struct client_state *state)
-{
-    struct client_state_globals *globals = &state->globals;
-
-    DEBUG("Connecting to wayland socket '%s'.\n", SOCKNAME);
-
-    globals->display = wl_display_connect(SOCKNAME);
-    if (globals->display == NULL) {
-        DEBUG("Failed to connect to wayland socket.\n");
-        return false;
-    }
-
-    globals->registry = wl_display_get_registry(globals->display);
-    if (globals->registry == NULL) {
-        DEBUG("Failed to get wayland registry.\n");
-        return false;
-    }
-
-    // Rest of globals initialized by registry_listener
-    if ( wl_registry_add_listener(globals->registry, &registry_listener, (void *)state)
-         == -1
-    ) {
-        DEBUG("Failed to add registry listener.\n");
-        return false;
-    }
-
-
-    if (wl_display_roundtrip(globals->display) == -1) {
-        DEBUG("Display roundtrip after adding registry listener failed.\n");
-        return false;
-    }
-
-    DEBUG("Finished: init_wayland_globals()\n");
-
-    // TODO: Validate globals?
-
-    return true;
-}
-
 static void
 destroy_wayland_globals(struct client_state *state)
 {
@@ -130,10 +90,23 @@ init_selection_and_blend2d(struct client_state_output *st_output)
 static bool
 init_premem(struct client_state *state)
 {
-    // TODO: Unwrap this ?
-    if (!init_wayland_globals_and_roundtrip(state)) {
+    state->globals.display = wl_display_connect(SOCKNAME);
+
+    if (state->globals.display == NULL) {
+        eprintf("Failed to connect to wayland socket.\n");
         return false;
+    } else {
+        eprintf("Connected to wayland socket.\n");
     }
+
+    state->globals.registry = wl_display_get_registry(state->globals.display);
+
+    // Remaining globals get bound by registry_listener::global during the first roundtrip
+    // TODO: Validate globals (at least non-stable protocols)
+    wl_registry_add_listener(state->globals.registry, &registry_listener, (void *)state);
+    wl_display_roundtrip(state->globals.display);
+    DEBUG("Roundtripped after adding registry listener()\n");
+
 
     //   Collect dynamic memory requirements
     // + Initialize otherwhat lacking extra dependencies (beyond globals)
@@ -148,8 +121,8 @@ init_premem(struct client_state *state)
             return false;
         }
     }
-    // Then roundtrip to collect listener-provided memory requirements into state
-    // This should be our last required roundtrip until main event loop's dispatch
+    // Then roundtrip to collect listener-provided memory requirements into our state struct.
+    // This should be our last required roundtrip until the main event loop dispatch.
     wl_display_roundtrip(state->globals.display);
 
     return true;
