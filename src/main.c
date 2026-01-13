@@ -23,6 +23,7 @@
 
 // TODO:
 //     Move init/ code back in here or put init code in there consistently...
+//     Don't use libwayland..? Handle allocations etc. ourselves?
 //
 
 // TODO: Dynamically find this name
