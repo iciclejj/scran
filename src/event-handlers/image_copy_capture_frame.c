@@ -14,6 +14,7 @@
 #include "init.h"
 #include "print.h"
 
+
 // Why does image_copy_capture support dynamic transform, but not dynamic
 // geometry/resolution entirely? Only because of buffer sizes?
 static void
@@ -26,6 +27,7 @@ handle_image_copy_capture_frame_transform(
 
     st_output->capture.capture_frame_transform = transform;
 }
+
 
 static void
 handle_image_copy_capture_frame_damage(
@@ -40,6 +42,7 @@ handle_image_copy_capture_frame_damage(
 
     // XXX TODO IMPORTANT: Implement this and add flag to enable damage-based capture
 }
+
 
 static void
 handle_image_copy_capture_frame_ready(
@@ -116,6 +119,7 @@ handle_image_copy_capture_frame_ready(
 
     dispatch_capture_event_loop(st_output);
 }
+
 
 struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener = {
     .transform = handle_image_copy_capture_frame_transform,
