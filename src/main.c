@@ -284,8 +284,16 @@ int main(void)
     }
 
 
-
-    while ( // Main event loop...
+    // Main event loop.
+    //
+    // This will also finalize any initialization that has not roundtripped yet.
+    //
+    // TODO:
+    //   - Find out if we can bypass (sway/wlroot's?) seemingly framerate-bound
+    //     startup latency for reaching layer_surface::configure. Or potentially
+    //     fix it, if it is a bug.
+    //     The initializing ::commit shouldn't need to be vsynced..?
+    while (
         !state.exit_requested
         && wl_display_dispatch(state.globals.display)
     );
@@ -298,6 +306,7 @@ int main(void)
 
         // TODO: Destroy wayland objects
     }
+
     munmap(shm_addr, shm_size_bytes);
     destroy_wayland_globals(&state);
 
