@@ -170,7 +170,7 @@ init_meminit(
             GET_CAPTURE_STRIDE((*_st_output)),
             _st_output->capture.shm_format
         );
-        curr_offset += GET_CAPTURE_IOV_SIZE((*_st_output));
+        curr_offset += GET_CAPTURE_BUF_SIZE((*_st_output));
 
         wl_buffer_add_listener(
             _st_output->capture.buffer.buffer,
@@ -179,6 +179,7 @@ init_meminit(
         );
 
         _st_output->capture.frame_iovec =  *shm_addr + curr_offset;
+        curr_offset += GET_CAPTURE_IOV_SIZE((*_st_output));
     }
 
     // (wayland's mmaps and fd references live on)
