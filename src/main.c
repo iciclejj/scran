@@ -247,6 +247,7 @@ init_postmem(struct client_state *state)
 
         // NOTE: Most "init" time is spent here (during first dispatch),
         //       waiting to enter layer_surface::configure (Ex: ~7000us)
+        //          XXX: This part seems possibly framerate-bound/vsynced ?
         //       And remaining time is mostly during the first roundtrip to get
         //       globals. (Ex: ~2000us)
         //         - Second roundtrip where we collect memory requirements is
