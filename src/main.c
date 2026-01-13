@@ -131,8 +131,8 @@ init_premem(struct client_state *state)
 static bool
 init_meminit(
     struct client_state *state,
-    size_t *shm_size_bytes,
-    void **shm_addr
+    void **shm_addr,
+    size_t *shm_size_bytes
 ) {
     // Calculate memory requirements
     for (int i = 0; i < state->n_outputs; ++i) {
@@ -265,15 +265,15 @@ init_postmem(struct client_state *state)
 int main(void)
 {
     struct client_state state = { };
-    size_t shm_size_bytes = 0;
     void *shm_addr = NULL;
+    size_t shm_size_bytes = 0;
 
     if (!init_premem(&state)) {
         eprintf("Failed pre-memory allocation initialization.\n");
         return EXIT_FAILURE;
     }
 
-    if (!init_meminit(&state, &shm_size_bytes, &shm_addr)) {
+    if (!init_meminit(&state, &shm_addr, &shm_size_bytes)) {
         eprintf("Failed to initialize memory and/or shared memory buffers.\n");
         return EXIT_FAILURE;
     }
