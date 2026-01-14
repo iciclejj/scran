@@ -154,7 +154,7 @@ init_meminit(
 
             wl_buffer_add_listener(
                 _st_output->surface.double_buffer[i].buffer,
-                &buffer_listener,
+                &surface_buffer_listener,
                 &_st_output->surface.double_buffer[i]
             );
 
@@ -175,7 +175,7 @@ init_meminit(
 
         wl_buffer_add_listener(
             _st_output->capture.frame_ctx.st_buffer.buffer,
-            &buffer_listener,
+            &capture_buffer_listener,
             &_st_output->capture.frame_ctx.st_buffer
         );
 
