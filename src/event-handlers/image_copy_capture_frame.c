@@ -42,7 +42,9 @@ handle_image_copy_capture_frame_damage(
     // XXX TODO IMPORTANT: Implement this and add flag to enable damage-based capture
 }
 
-
+// TODO:
+//  - Can we fully avoid capturing the overlay (beyond just 
+//    making sure it's out of frame) ?
 static void
 handle_image_copy_capture_frame_ready(
     void *data,
@@ -50,15 +52,8 @@ handle_image_copy_capture_frame_ready(
 ) {
     struct capture_frame_context *frame_ctx = data;
 
-    // TODO: Don't capture the overlay. Especially since it seemingly doesn't
-    //       update in sync with the capture (the selection edges are sliding
-    //       into the capture frame when moving it around)
-
-    // TODO: Is there any scenario where we wouldn't want to destroy this
-    //       as soon as we enter ::ready?
     ext_image_copy_capture_frame_v1_destroy(frame);
 
-    // TODO: Make sure buffer is destroyed
     if (!frame_ctx->capturing) {
         pclose(frame_ctx->ffmpeg);
         return;
@@ -92,8 +87,6 @@ handle_image_copy_capture_frame_ready(
         addr += pixel_stride * source_width;
     }
 
-    // TODO: Assumes row-major. Find out whether this is a safe assumption.
-    //           Maybe depends on transform? Something else?
     int bytes_remaining = height;
     while (bytes_remaining > 0) {
         const ssize_t bytes_to_write = bytes_remaining < __IOV_MAX ?
