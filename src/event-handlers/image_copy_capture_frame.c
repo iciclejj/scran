@@ -75,7 +75,7 @@ handle_image_copy_capture_frame_ready(
       + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
 
     // TODO: Can we still do this assert somehow?
-    // assert(GET_CAPTURE_IOV_SIZE((*st_output)) >= height_px);
+    // assert(GET_CAPTURE_IOV_LEN((*st_output)) >= height_px);
     for (int i = 0; i < height_px; ++i) {
         frame_ctx->frame_iovec[i].iov_base = addr;
         frame_ctx->frame_iovec[i].iov_len = row_bytes;
