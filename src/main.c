@@ -93,6 +93,9 @@ init_premem(struct client_state *state)
     return true;
 }
 
+// TODO:
+//  - Add --slim/--no-video arg that skips allocating iovs, extra frame buffers,
+//    etc.
 static bool
 init_meminit(
     struct client_state *state,
