@@ -21,8 +21,10 @@ handle_image_copy_capture_session_buffer_size(
     // This seemingly always hold true, so use output::mode w/h only.
     // TODO: See if xdg_output can somehow be used as backing for the session.
     //           As a foreign toplevel..?
-    assert(st_output->mode.width_px == width);
-    assert(st_output->mode.height_px == height);
+    assert(width == st_output->mode.width_px);
+    assert(height == st_output->mode.height_px);
+
+    st_output->capture.frame_ctx.source_width_px = width;
 }
 
 static void
