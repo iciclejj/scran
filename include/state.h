@@ -161,7 +161,7 @@ struct capture_frame_context {
     uint32_t pixel_stride;
     int32_t source_width_px;
 
-    bool capturing; // XXX: Fix references to this
+    bool capturing;
 };
 
 struct client_state_output_capture {
