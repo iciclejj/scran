@@ -43,6 +43,7 @@ struct client_state_output_surface_buffer {
 };
 
 // TODO: Optimize surface/selection event-loop struct sizes
+//           Make a *_context struct, like for capture_frame
 struct client_state_output_surface {
     struct wl_surface *surface;
     struct zwlr_layer_surface_v1 *layer_surface;
@@ -113,6 +114,7 @@ enum selection_resize_direction {
 };
 
 // TODO: Optimize surface/selection event-loop struct sizes
+//           Make a *_context struct, like for capture_frame
 struct client_state_output_selection {
     // bool selection_started;
     enum selection_state selection_state;
@@ -138,6 +140,7 @@ struct client_state_capture_buffer {
     void *data;
 };
 
+// TODO: More consistent naming?
 struct capture_frame_context {
     struct client_state_capture_buffer st_buffer;
 
