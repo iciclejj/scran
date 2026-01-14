@@ -183,6 +183,8 @@ init_meminit(
         curr_offset += GET_CAPTURE_IOV_SIZE((*_st_output));
     }
 
+    assert(curr_offset == *shm_size_bytes);
+
     // (wayland's mmaps and fd references live on)
     wl_shm_pool_destroy(global_pool_wl);
     close(global_pool_shm_fd);
