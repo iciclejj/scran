@@ -55,8 +55,7 @@ handle_image_copy_capture_frame_ready(
     ext_image_copy_capture_frame_v1_destroy(frame);
 
     if (!frame_ctx->capturing) {
-        pclose(frame_ctx->ffmpeg);
-        return;
+        goto end_capture;
     }
 
     // TODO:
@@ -104,13 +103,21 @@ handle_image_copy_capture_frame_ready(
             if (bytes_written == -1) {
                 DEBUG("    Error: %s\n", strerror(errno));
             }
-            return; // TODO: Ensure returning here is safe.
+
+            goto end_capture;
         };
 
         bytes_remaining -= bytes_to_write;
     }
 
     dispatch_capture_event_loop(frame_ctx);
+
+    return;
+
+end_capture:
+    assert(frame_ctx->ffmpeg);
+    pclose(frame_ctx->ffmpeg);
+    return;
 }
 
 
