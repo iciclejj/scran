@@ -6,6 +6,6 @@
 #include "state.h"
 
 bool start_capture(struct client_state_output *st_output);
-void dispatch_capture_event_loop(struct client_state_output *st_output);
+void dispatch_capture_event_loop(struct capture_frame_context *frame_ctx);
 
 #endif

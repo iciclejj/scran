@@ -21,7 +21,7 @@ handle_image_copy_capture_frame_transform(
     struct ext_image_copy_capture_frame_v1 *frame,
     uint32_t transform
 ) {
-    struct client_state_output *st_output = data;
+    struct capture_frame_context *frame_ctx = data;
 
     // TODO: What is this transform representing?
     //           It is separate from output::geometry's transform.
@@ -37,7 +37,7 @@ handle_image_copy_capture_frame_damage(
     int32_t width,
     int32_t height
 ) {
-    struct client_state_output *st_output = data;
+    struct capture_frame_context *frame_ctx = data;
 
     // XXX TODO IMPORTANT: Implement this and add flag to enable damage-based capture
 }
@@ -48,7 +48,7 @@ handle_image_copy_capture_frame_ready(
     void *data,
     struct ext_image_copy_capture_frame_v1 *frame
 ) {
-    struct client_state_output *st_output = data;
+    struct capture_frame_context *frame_ctx = data;
 
     // TODO: Don't capture the overlay. Especially since it seemingly doesn't
     //       update in sync with the capture (the selection edges are sliding
@@ -59,8 +59,8 @@ handle_image_copy_capture_frame_ready(
     ext_image_copy_capture_frame_v1_destroy(frame);
 
     // TODO: Make sure buffer is destroyed
-    if (!st_output->capture.frame_ctx.capturing) {
-        pclose(st_output->capture.frame_ctx.ffmpeg);
+    if (!frame_ctx->capturing) {
+        pclose(frame_ctx->ffmpeg);
         return;
     }
 
@@ -71,23 +71,24 @@ handle_image_copy_capture_frame_ready(
     //     or handle it properly here
     //
 
-    uint32_t pixel_stride      = st_output->capture.frame_ctx.pixel_stride;
-    uint32_t source_width      = st_output->mode.width_px;
-    uint32_t width             = st_output->capture.frame_ctx.capture_area.x1 - st_output->capture.frame_ctx.capture_area.x0;
-    uint32_t height            = st_output->capture.frame_ctx.capture_area.y1 - st_output->capture.frame_ctx.capture_area.y0;
-    uint32_t x                 = st_output->capture.frame_ctx.capture_area.x0;
-    uint32_t y                 = st_output->capture.frame_ctx.capture_area.y0;
+    uint32_t pixel_stride      = frame_ctx->pixel_stride;
+    uint32_t source_width      = frame_ctx->source_width_px;
+    uint32_t width             = frame_ctx->capture_area.x1 - frame_ctx->capture_area.x0;
+    uint32_t height            = frame_ctx->capture_area.y1 - frame_ctx->capture_area.y0;
+    uint32_t x                 = frame_ctx->capture_area.x0;
+    uint32_t y                 = frame_ctx->capture_area.y0;
     uint32_t row_bytes         = pixel_stride * width;
 
     char *addr =
-        st_output->capture.frame_ctx.st_buffer.data
+        frame_ctx->st_buffer.data
       + pixel_stride * y * source_width
       + pixel_stride * x;
 
-    assert(GET_CAPTURE_IOV_SIZE((*st_output)) >= height);
+    // TODO: Can we still do this assert somehow?
+    // assert(GET_CAPTURE_IOV_SIZE((*st_output)) >= height);
     for (int i = 0; i < height; ++i) {
-        st_output->capture.frame_ctx.frame_iovec[i].iov_base = addr;
-        st_output->capture.frame_ctx.frame_iovec[i].iov_len = row_bytes;
+        frame_ctx->frame_iovec[i].iov_base = addr;
+        frame_ctx->frame_iovec[i].iov_len = row_bytes;
         addr += pixel_stride * source_width;
     }
 
@@ -100,8 +101,8 @@ handle_image_copy_capture_frame_ready(
         const ssize_t offset = height - bytes_remaining;
 
         const ssize_t bytes_written = writev(
-            st_output->capture.frame_ctx.ffmpeg_fd,
-            st_output->capture.frame_ctx.frame_iovec + offset,
+            frame_ctx->ffmpeg_fd,
+            frame_ctx->frame_iovec + offset,
             bytes_to_write
         );
 
@@ -116,7 +117,7 @@ handle_image_copy_capture_frame_ready(
         bytes_remaining -= bytes_to_write;
     }
 
-    dispatch_capture_event_loop(st_output);
+    dispatch_capture_event_loop(frame_ctx);
 }
 
 

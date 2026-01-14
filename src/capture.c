@@ -10,16 +10,16 @@
 #include "print.h"
 
 void
-dispatch_capture_event_loop(struct client_state_output *st_output)
+dispatch_capture_event_loop(struct capture_frame_context *frame_ctx)
 {
     struct ext_image_copy_capture_frame_v1 *frame =
         ext_image_copy_capture_session_v1_create_frame(
-            st_output->capture.session
+            *frame_ctx->session
         );
-    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, st_output);
+    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, frame_ctx);
     ext_image_copy_capture_frame_v1_attach_buffer(
         frame,
-        st_output->capture.frame_ctx.st_buffer.buffer
+        frame_ctx->st_buffer.buffer
     );
     ext_image_copy_capture_frame_v1_capture(frame);
 }
@@ -71,7 +71,7 @@ start_capture(struct client_state_output *st_output)
 
     // Get initial frame. Subsequent capture requests happen within frame::ready
     //     Similar to the wl_surface callback event loop
-    dispatch_capture_event_loop(st_output);
+    dispatch_capture_event_loop(&st_output->capture.frame_ctx);
 
     return true;
 }

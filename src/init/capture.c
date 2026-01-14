@@ -25,6 +25,7 @@ init_capture(
         // TODO: Make this optional
         EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS
     );
+    st_output->capture.frame_ctx.session = &st_output->capture.session;
 
     // XXX: Maybe there's a nicer way to do this or to properly assert this
     //      initialization in the listener somewhere?

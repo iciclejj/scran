@@ -141,7 +141,7 @@ struct client_state_capture_buffer {
 struct capture_frame_context {
     struct client_state_capture_buffer st_buffer;
 
-    struct ext_image_copy_capture_session_v1 *session;
+    struct ext_image_copy_capture_session_v1 **session;
 
     // indexing into .buffer.data, i.e. the screen/output capture buffer
     // that encapsulates the selection/capture area

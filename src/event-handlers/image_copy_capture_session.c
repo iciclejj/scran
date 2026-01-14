@@ -62,7 +62,7 @@ handle_image_copy_capture_session_stopped(
 ) {
     struct client_state_output *st_output = data;
 
-    ext_image_copy_capture_session_v1_destroy(st_output->capture.session);
+    ext_image_copy_capture_session_v1_destroy(*st_output->capture.frame_ctx.session);
 
     // TODO: Destroy frames, free shm etc.
 }
