@@ -86,28 +86,25 @@ handle_image_copy_capture_frame_ready(
         addr += pixel_stride * source_width;
     }
 
-    int bytes_remaining = height;
-    while (bytes_remaining > 0) {
-        const ssize_t bytes_to_write = bytes_remaining < __IOV_MAX ?
-                                       bytes_remaining : __IOV_MAX;
-        const ssize_t offset = height - bytes_remaining;
+    int rows_remaining = height;
+    while (rows_remaining > 0) {
+        const ssize_t rows_offset = height - rows_remaining;
+        const ssize_t rows_to_write = rows_remaining < __IOV_MAX ?
+                                      rows_remaining : __IOV_MAX;
 
         const ssize_t bytes_written = writev(
             frame_ctx->ffmpeg_fd,
-            frame_ctx->frame_iovec + offset,
-            bytes_to_write
+            frame_ctx->frame_iovec + rows_offset,
+            rows_to_write
         );
 
-        if (bytes_written < bytes_to_write) {
-            DEBUG("Failed writev() (%ld/%ld bytes)\n", bytes_written, bytes_to_write);
-            if (bytes_written == -1) {
-                DEBUG("    Error: %s\n", strerror(errno));
-            }
-
+        // TODO: Handle partial writes
+        if (bytes_written == -1) {
+            eprintf("Failed writev() during capture\n");
             goto end_capture;
         };
 
-        bytes_remaining -= bytes_to_write;
+        rows_remaining -= rows_to_write;
     }
 
     dispatch_capture_event_loop(frame_ctx);
