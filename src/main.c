@@ -127,6 +127,8 @@ init_meminit(
     }
 
     *shm_addr = mmap(NULL, *shm_size_bytes, PROT_READ | PROT_WRITE, MAP_SHARED, global_pool_shm_fd, 0);
+    // TODO: Only allocate what the server will actually need.
+    //           F.ex., the server doesn't need to have frame_iov. 
     struct wl_shm_pool *global_pool_wl = wl_shm_create_pool(
         state->globals.shm,
         global_pool_shm_fd,
