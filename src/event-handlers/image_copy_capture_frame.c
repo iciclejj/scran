@@ -69,17 +69,18 @@ handle_image_copy_capture_frame_ready(
     uint32_t area_height_px  = frame_ctx->capture_area_px.y1 - frame_ctx->capture_area_px.y0;
     uint32_t area_row_bytes       = frame_ctx->pixel_stride * area_width_px;
 
-    char *addr =
+    char *const area_start_addr =
         frame_ctx->st_buffer.data
       + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
       + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
 
     // TODO: Can we still do this assert somehow?
     // assert(GET_CAPTURE_IOV_LEN((*st_output)) >= height_px);
+    char *curr_addr = area_start_addr;
     for (int i = 0; i < area_height_px; ++i) {
-        frame_ctx->frame_iovec[i].iov_base = addr;
+        frame_ctx->frame_iovec[i].iov_base = curr_addr;
         frame_ctx->frame_iovec[i].iov_len = area_row_bytes;
-        addr += frame_ctx->pixel_stride * frame_ctx->source_width_px;
+        curr_addr += frame_ctx->pixel_stride * frame_ctx->source_width_px;
     }
 
     int rows_remaining = area_height_px;
