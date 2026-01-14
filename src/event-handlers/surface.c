@@ -173,7 +173,7 @@ surface_frame_callback_handler(
     //        leading to f.ex. capture frame border spilling into the actual
     //        capture frame
     //       See also comment in client_state_capture.
-    st_output->capture.frame_ctx.capture_area = _get_reverse_transform(
+    st_output->capture.frame_ctx.capture_area_px = _get_reverse_transform(
         st_output->selection.bl.box,
         st_output->mode.width_px,
         st_output->mode.height_px,

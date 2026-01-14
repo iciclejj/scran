@@ -65,26 +65,26 @@ handle_image_copy_capture_frame_ready(
     //     or handle it properly here
     //
 
-    uint32_t width      = frame_ctx->capture_area.x1 - frame_ctx->capture_area.x0;
-    uint32_t height     = frame_ctx->capture_area.y1 - frame_ctx->capture_area.y0;
-    uint32_t row_bytes  = frame_ctx->pixel_stride * width;
+    uint32_t width_px   = frame_ctx->capture_area_px.x1 - frame_ctx->capture_area_px.x0;
+    uint32_t height_px  = frame_ctx->capture_area_px.y1 - frame_ctx->capture_area_px.y0;
+    uint32_t row_bytes  = frame_ctx->pixel_stride * width_px;
 
     char *addr =
         frame_ctx->st_buffer.data
-      + frame_ctx->pixel_stride * frame_ctx->capture_area.y0 * frame_ctx->source_width_px
-      + frame_ctx->pixel_stride * frame_ctx->capture_area.x0;
+      + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
+      + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
 
     // TODO: Can we still do this assert somehow?
-    // assert(GET_CAPTURE_IOV_SIZE((*st_output)) >= height);
-    for (int i = 0; i < height; ++i) {
+    // assert(GET_CAPTURE_IOV_SIZE((*st_output)) >= height_px);
+    for (int i = 0; i < height_px; ++i) {
         frame_ctx->frame_iovec[i].iov_base = addr;
         frame_ctx->frame_iovec[i].iov_len = row_bytes;
         addr += frame_ctx->pixel_stride * frame_ctx->source_width_px;
     }
 
-    int rows_remaining = height;
+    int rows_remaining = height_px;
     while (rows_remaining > 0) {
-        const ssize_t rows_offset = height - rows_remaining;
+        const ssize_t rows_offset = height_px - rows_remaining;
         const ssize_t rows_to_write = rows_remaining < __IOV_MAX ?
                                       rows_remaining : __IOV_MAX;
 

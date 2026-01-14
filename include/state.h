@@ -160,7 +160,7 @@ struct capture_frame_context {
     //        F.ex., the mouse can have moved in-between overlay's frame draw
     //        and capture's frame "draw".
     //        TODO: Double-check whether anything else should be synced like this.
-    struct BLBoxI capture_area; // NOTE: Transform should be reversed.
+    struct BLBoxI capture_area_px; // NOTE: Transform should be reversed.
     uint32_t pixel_stride;
     int32_t source_width_px;
 

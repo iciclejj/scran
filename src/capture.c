@@ -49,8 +49,8 @@ start_capture(struct client_state_output *st_output)
     char time_now_str[64];
     time_t time_now = time(NULL);
     struct tm *tm_now = localtime(&time_now);
-    const int width = st_output->capture.frame_ctx.capture_area.x1 - st_output->capture.frame_ctx.capture_area.x0;
-    const int height = st_output->capture.frame_ctx.capture_area.y1 - st_output->capture.frame_ctx.capture_area.y0;
+    const int width = st_output->capture.frame_ctx.capture_area_px.x1 - st_output->capture.frame_ctx.capture_area_px.x0;
+    const int height = st_output->capture.frame_ctx.capture_area_px.y1 - st_output->capture.frame_ctx.capture_area_px.y0;
     strftime(time_now_str, sizeof(time_now_str), "%Y%m%d-%H%M%S", tm_now);
     snprintf(ffmpeg_command, 256,
         // XXX: Using -v quiet to suppress output and broken newline at end.
