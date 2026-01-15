@@ -39,7 +39,7 @@ handle_output_mode(
     uint32_t flags,
     int32_t width,
     int32_t height,
-    int32_t refresh_rate_mhz
+    int32_t refresh_rate_mHz // millihertz
 ) {
     struct client_state_output *st_output = data;
 
@@ -50,7 +50,7 @@ handle_output_mode(
 
     st_output->mode.width_px = width;
     st_output->mode.height_px = height;
-    st_output->mode.refresh_rate_mhz = refresh_rate_mhz;
+    st_output->mode.refresh_rate_mHz = refresh_rate_mHz;
 }
 
 // TODO: How to handle done event properly/efficiently?

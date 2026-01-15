@@ -187,7 +187,7 @@ struct client_state_output_mode {
     //       (but they are affected by resolution settings)
     int32_t width_px;
     int32_t height_px;
-    int32_t refresh_rate_mhz;
+    int32_t refresh_rate_mHz;
 };
 
 struct client_state_output {
