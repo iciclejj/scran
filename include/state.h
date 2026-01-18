@@ -8,6 +8,9 @@
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 #include <xkbcommon/xkbcommon.h>
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libswscale/swscale.h>
 
 #include "wlr-layer-shell-unstable-v1.h"
 #include "ext-image-capture-source-v1.h"
@@ -146,13 +149,12 @@ struct capture_frame_context {
 
     struct ext_image_copy_capture_session_v1 **session;
 
-    // indexing into .buffer.data, i.e. the screen/output capture buffer
-    // that encapsulates the selection/capture area
-    struct iovec *frame_iovec;
+    AVFormatContext *av_format_ctx;
+    AVCodecContext *av_codec_ctx;
+    AVFrame *av_frame_encoded;
+    SwsContext *sws_ctx;
 
-    // TODO: FILE *ffmpeg is only needed for pclose. Find a clean way to remove it.
-    FILE *ffmpeg;
-    int ffmpeg_fd;
+    uint64_t presentation_time_nsec;
 
     //  NOTE: Capture area should be set synchronously with the drawn overlay's
     //        area (or be set based on the same real-time values). Otherwise,
@@ -162,8 +164,14 @@ struct capture_frame_context {
     //        TODO: Double-check whether anything else should be synced like this.
     struct BLBoxI capture_area_px; // NOTE: Transform should be reversed.
     uint32_t pixel_stride;
+    // TODO: Get this through output.mode if we both end up pointing to it here,
+    //       AND it is still asserted to be equal to session::buffer_size's
+    //       width arg.
     int32_t source_width_px;
 
+    // TODO: Probably turn this into a union with some member that gets
+    //       re-initialized with every start/stop capture.
+    //         - Union with presentation_time ?
     bool capturing;
 };
 

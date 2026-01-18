@@ -94,8 +94,8 @@ init_premem(struct client_state *state)
 }
 
 // TODO:
-//  - Add --slim/--no-video arg that skips allocating iovs, extra frame buffers,
-//    etc.
+//  - Add --slim/--no-video arg that skips allocating video-only requirements,,
+//    extra frame buffers, etc.
 static bool
 init_meminit(
     struct client_state *state,
@@ -114,12 +114,11 @@ init_meminit(
 
         const ssize_t _surface_buf_bytes = SURFACE_BUF_COUNT * GET_SURFACE_BUF_SIZE(_st_output->mode);
         const ssize_t _capture_buf_bytes = GET_CAPTURE_BUF_SIZE((*_st_output));
-        const ssize_t _capture_buf_iov_bytes = GET_CAPTURE_IOV_SIZE((*_st_output));
+        // TODO: persistent libav allocations
         // selection: No manual allocations
 
         *shm_size_bytes += _surface_buf_bytes
-                                + _capture_buf_bytes
-                                + _capture_buf_iov_bytes;
+                                + _capture_buf_bytes;
     }
 
     int global_pool_shm_fd = shm_open_anon();
@@ -131,7 +130,7 @@ init_meminit(
 
     *shm_addr = mmap(NULL, *shm_size_bytes, PROT_READ | PROT_WRITE, MAP_SHARED, global_pool_shm_fd, 0);
     // TODO: Only allocate what the server will actually need.
-    //           F.ex., the server doesn't need to have frame_iov. 
+    //           F.ex., the server doesn't need to have libav objects.
     struct wl_shm_pool *global_pool_wl = wl_shm_create_pool(
         state->globals.shm,
         global_pool_shm_fd,
@@ -183,9 +182,6 @@ init_meminit(
             &capture_buffer_listener,
             &_st_output->capture.frame_ctx.st_buffer
         );
-
-        _st_output->capture.frame_ctx.frame_iovec =  *shm_addr + curr_offset;
-        curr_offset += GET_CAPTURE_IOV_SIZE((*_st_output));
     }
 
     assert(curr_offset == *shm_size_bytes);

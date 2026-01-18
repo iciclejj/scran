@@ -23,7 +23,6 @@ handle_image_copy_capture_session_buffer_size(
     //           As a foreign toplevel..?
     assert(width == st_output->mode.width_px);
     assert(height == st_output->mode.height_px);
-
     st_output->capture.frame_ctx.source_width_px = width;
 }
 
@@ -49,9 +48,7 @@ handle_image_copy_capture_session_shm_format(
     ) {
         st_output->capture.shm_format = shm_format;
         st_output->capture.frame_ctx.pixel_stride = 4;
-        DEBUG("format supported!\n");
     } else {
-        DEBUG("format unsupported.\n");
     }
 }
 
@@ -64,7 +61,7 @@ handle_image_copy_capture_session_stopped(
 
     ext_image_copy_capture_session_v1_destroy(*st_output->capture.frame_ctx.session);
 
-    // TODO: Destroy frames, free shm etc.
+    // TODO: Destroy dynamically allocated memory (e.g. libav objects)
 }
 
 
