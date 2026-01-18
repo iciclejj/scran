@@ -1,5 +1,3 @@
-#include <stdio.h>
-
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 

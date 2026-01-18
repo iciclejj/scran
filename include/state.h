@@ -2,7 +2,6 @@
 #define STATE_H
 
 #include <stdbool.h>
-#include <stdio.h>
 #include <sys/uio.h>
 
 #include <wayland-client.h>
