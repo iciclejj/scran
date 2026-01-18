@@ -243,11 +243,77 @@ handle_pointer_frame(
     // TODO ?
 }
 
+static void
+handle_pointer_axis(
+    void *data,
+    struct wl_pointer *wl_pointer,
+    uint32_t time,
+    uint32_t axis,
+    wl_fixed_t value
+) {
+    // TODO
+}
+
+static void
+handle_axis_discrete(
+    void *data,
+    struct wl_pointer *wl_pointer,
+    uint32_t axis,
+    int32_t discrete
+) {
+    // TODO
+}
+
+static void
+handle_axis_relative_direction(
+    void *data,
+    struct wl_pointer *wl_pointer,
+    uint32_t axis,
+    uint32_t direction
+) {
+    // TODO
+}
+
+static void
+handle_axis_source(
+    void *data,
+    struct wl_pointer *wl_pointer,
+    uint32_t axis_source
+) {
+    // TODO
+}
+
+static void
+handle_axis_stop(
+    void *data,
+    struct wl_pointer *wl_pointer,
+    uint32_t time,
+    uint32_t axis
+) {
+    // TODO
+}
+
+static void
+handle_axis_value120(
+    void *data,
+    struct wl_pointer *wl_pointer,
+    uint32_t axis,
+    int32_t value120
+) {
+    // TODO
+}
+
 struct wl_pointer_listener pointer_listener = {
     .enter = handle_pointer_enter,
     .leave = handle_pointer_leave,
     .button = handle_pointer_button,
     .motion = handle_pointer_motion,
     .frame = handle_pointer_frame,
+    .axis = handle_pointer_axis,
+    .axis_discrete = handle_axis_discrete,
+    .axis_relative_direction = handle_axis_relative_direction,
+    .axis_source = handle_axis_source,
+    .axis_stop = handle_axis_stop,
+    .axis_value120 = handle_axis_value120,
 };
 
