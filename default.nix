@@ -33,7 +33,7 @@ stdenv.mkDerivation {
   ];
 
   installPhase = ''
-    install -D main $out/bin/wayland-client-test-1
+    install -D build/release/main $out/bin/wayland-client-test-1
   '';
 
   desktopItems = [
