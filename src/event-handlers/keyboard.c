@@ -97,14 +97,14 @@ handle_keyboard_key(
     switch (xkb_key) {
     // TODO: Probably reorganize all of this later
     case XKB_KEY_Escape:
-        DEBUG("Got escape key...");
+        eprintf("Got escape key...");
         if (st_output->capture.frame_ctx.capturing) {
             // TODO: Probably both stop capture and request exit
             //           Have dedicated start/stop capture key that doesn't exit
-            DEBUG(" stopping capture.\n");
+            eprintf(" stopping capture.\n");
             st_output->capture.frame_ctx.capturing = false;
         } else {
-            DEBUG(" exiting.\n");
+            eprintf(" exiting.\n");
             state->exit_requested = true;
         }
         break;

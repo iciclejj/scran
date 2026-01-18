@@ -33,7 +33,7 @@ handle_image_copy_capture_session_shm_format(
 ) {
     struct client_state_output *st_output = data;
 
-    DEBUG("session::shm_format received: %x... ", shm_format);
+    DEBUG("session::shm_format received: %x\n", shm_format);
 
     // List of formats we want to support.
     // TODO: Add more formats and logic for handling them

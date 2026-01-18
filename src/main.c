@@ -279,7 +279,7 @@ int main(void)
     destroy_wayland_globals(&state);
 
     wl_display_disconnect(state.globals.display);
-    DEBUG("Disconnected from wayland server (%s)\n", SOCKNAME);
+    eprintf("Disconnected from wayland server (%s)\n", SOCKNAME);
 
     return 0;
 }
