@@ -157,7 +157,7 @@ handle_image_copy_capture_frame_ready(
 
     // TODO: avio_flush ?
 
-    dispatch_capture_event_loop(frame_ctx);
+    dispatch_video_capture_event_loop(frame_ctx);
 
     return;
 

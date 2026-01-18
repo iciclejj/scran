@@ -14,7 +14,7 @@
 #define AV_FORMAT_STREAM_IDX_VIDEO 0
 // #define AV_FORMAT_STREAM_IDX_AUDIO 1
 
-bool start_capture(struct client_state_output *st_output);
-void dispatch_capture_event_loop(struct capture_frame_context *frame_ctx);
+bool start_video_capture(struct client_state_output *st_output);
+void dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx);
 
 #endif

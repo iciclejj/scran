@@ -19,7 +19,7 @@
 #define _CODEC_X264_NAME "libx264"
 
 void
-dispatch_capture_event_loop(struct capture_frame_context *frame_ctx)
+dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
 {
     struct ext_image_copy_capture_frame_v1 *frame =
         ext_image_copy_capture_session_v1_create_frame(
@@ -150,7 +150,7 @@ init_ffmpeg(struct client_state_output *st_output)
 }
 
 bool
-start_capture(struct client_state_output *st_output)
+start_video_capture(struct client_state_output *st_output)
 {
     // TODO: Assert instead?
     if (st_output->capture.frame_ctx.capturing) {
@@ -171,7 +171,7 @@ start_capture(struct client_state_output *st_output)
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
-    dispatch_capture_event_loop(&st_output->capture.frame_ctx);
+    dispatch_video_capture_event_loop(&st_output->capture.frame_ctx);
     st_output->capture.frame_ctx.capturing = true;
 
     return true;

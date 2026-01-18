@@ -114,7 +114,7 @@ handle_keyboard_key(
             // TODO: Need to ensure capture is fully properly fully finished
             //       before we allow new dispatch_capture_event_loop()
         } else {
-            start_capture(st_output);
+            start_video_capture(st_output);
         }
         break;
     }
