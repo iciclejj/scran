@@ -23,6 +23,8 @@ init_capture(
         globals->image_copy_capture_manager,
         st_output->capture.source,
         // TODO: Make this optional
+        // TODO: Not a big deal, but cursor doesn't seem in sync with area
+        //       movement.
         EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS
     );
     st_output->capture.frame_ctx.session = &st_output->capture.session;
