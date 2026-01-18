@@ -13,16 +13,16 @@
 
   # src overridable to ease installation from outside of nixpkgs, among other
   # things
-  src ? ./.,
+  _src ? ./.,
 
-  target ? "release",
-  hardeningDisable ? if target == "debug" then [ "all" ] else [ ],
+  _target ? "release",
+  hardeningDisable ? if _target == "debug" then [ "all" ] else [ ],
 }:
 
 stdenv.mkDerivation {
   pname = "client-1-test";
   version = "0.1.1";
-  inherit src;
+  src = _src;
 
   nativeBuildInputs = [
     wayland-scanner
@@ -40,7 +40,7 @@ stdenv.mkDerivation {
   ];
 
   inherit hardeningDisable;
-  buildFlags = [ target ];
+  buildFlags = [ _target ];
 
   installPhase = ''
     runHook preInstall
