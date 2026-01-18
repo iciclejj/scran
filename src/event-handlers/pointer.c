@@ -81,6 +81,7 @@ handle_pointer_motion(
         case SELECTION_NONE:
             break;
         case SELECTION_IN_PROGRESS:
+            // TODO: Merge this with SELECTION_RESIZING?
             // TODO: Make this explicitly either output pixel coordinates or
             //       surface-local coordinates
             //       Also document the behavior/conversion (and make helper function?).
