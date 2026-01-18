@@ -1,10 +1,13 @@
 main
+TODO.txt
 
 **/*.o
-./*.mp4
+*.mp4
+*.m2ts
 
 wayland-protocols/*
 
 compile_commands.json
+cscope*.out
 
 .cache/
