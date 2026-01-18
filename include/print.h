@@ -9,9 +9,10 @@
 #endif
 
 #ifdef NDEBUG
-#define DEBUG(fmt, ...) ((void)0)
+#define _DEBUG(fmt, ...) ((void)0)
 #else
-#define DEBUG(fmt, ...) eprintf(fmt, ##__VA_ARGS__)
+#define _DEBUG(fmt, ...) eprintf(fmt, ##__VA_ARGS__)
+#define DEBUG(fmt, ...) _DEBUG("DEBUG: " fmt, ##__VA_ARGS__)
 #endif
 
 
