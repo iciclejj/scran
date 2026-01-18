@@ -91,9 +91,9 @@ handle_pointer_motion(
         break;
     case SELECTION_REBASING:
         {
-            const int x_diff = x_px - st_selection->pointer_origin_rebase_x_px;
-            const int y_diff = y_px - st_selection->pointer_origin_rebase_y_px;
-            const BLBoxI box_before_rebase = st_selection->bl.box_before_rebase;
+            const int x_diff = x_px - st_selection->pointer_before_changes_x_px;
+            const int y_diff = y_px - st_selection->pointer_before_changes_y_px;
+            const BLBoxI box_before_rebase = st_selection->bl.box_before_changes;
 
             st_selection->bl.box.x0 = box_before_rebase.x0 + x_diff;
             st_selection->bl.box.x1 = box_before_rebase.x1 + x_diff;
@@ -106,9 +106,9 @@ handle_pointer_motion(
         //       Handle inverted selection
         //           i.e. drag bottom edge past top edge => TOP_LEFT becomes bottom left
         {
-            const int x_diff_px = x_px - st_selection->pointer_origin_resize_x_px;
-            const int y_diff_px = y_px - st_selection->pointer_origin_resize_y_px;
-            const BLBoxI box_before_resize = st_selection->bl.box_before_resize;
+            const int x_diff_px = x_px - st_selection->pointer_before_changes_x_px;
+            const int y_diff_px = y_px - st_selection->pointer_before_changes_y_px;
+            const BLBoxI box_before_resize = st_selection->bl.box_before_changes;
 
             switch (st_selection->selection_resize_direction) {
             case SELECTION_NONE:
@@ -154,8 +154,6 @@ handle_pointer_button(
 ) {
     struct client_state *state = data;
     struct client_state_output *st_output = state->seat.pointer.focused_output;
-    struct client_state_seat_pointer *st_pointer = &state->seat.pointer;
-    struct client_state_output_selection_blend2d *bl = &st_output->selection.bl;
 
     // TODO: Implement dragging
 
@@ -186,10 +184,10 @@ handle_pointer_button(
             st_output->selection.selection_state = SELECTION_COMPLETE;
             break;
         case SELECTION_COMPLETE:
-            st_output->selection.pointer_origin_rebase_x_px = x_px;
-            st_output->selection.pointer_origin_rebase_y_px = y_px;
-            st_output->selection.bl.box_before_rebase = st_output->selection.bl.box;
             st_output->selection.selection_state = SELECTION_REBASING;
+            st_output->selection.pointer_before_changes_x_px = x_px;
+            st_output->selection.pointer_before_changes_y_px = y_px;
+            st_output->selection.bl.box_before_changes = st_output->selection.bl.box;
             break;
         case SELECTION_REBASING:
             st_output->selection.selection_state = SELECTION_COMPLETE;
@@ -203,23 +201,26 @@ handle_pointer_button(
         switch(st_output->selection.selection_state) {
         case SELECTION_COMPLETE:
             st_output->selection.selection_state = SELECTION_RESIZING;
-            st_output->selection.bl.box_before_resize = st_output->selection.bl.box;
+            st_output->selection.bl.box_before_changes = st_output->selection.bl.box;
+            st_output->selection.pointer_before_changes_x_px = x_px;
+            st_output->selection.pointer_before_changes_y_px = y_px;
 
-            st_output->selection.pointer_origin_resize_x_px = x_px;
-            st_output->selection.pointer_origin_resize_y_px = y_px;
+            {
+                const BLBoxI box_before_changes = st_output->selection.bl.box_before_changes;
 
-            // TODO: Make this cleaner.....
-            if (x_px < get_center_value(st_output->selection.bl.box_before_resize.x0, st_output->selection.bl.box_before_resize.x1)) {
-                if (y_px < get_center_value(st_output->selection.bl.box_before_resize.y0, st_output->selection.bl.box_before_resize.y1)) {
-                    st_output->selection.selection_resize_direction = SELECTION_RESIZE_TOP_LEFT;
+                // TODO: Make this cleaner.....
+                if (x_px < get_center_value(box_before_changes.x0, box_before_changes.x1)) {
+                    if (y_px < get_center_value(box_before_changes.y0, box_before_changes.y1)) {
+                        st_output->selection.selection_resize_direction = SELECTION_RESIZE_TOP_LEFT;
+                    } else {
+                        st_output->selection.selection_resize_direction = SELECTION_RESIZE_BOTTOM_LEFT;
+                    }
                 } else {
-                    st_output->selection.selection_resize_direction = SELECTION_RESIZE_BOTTOM_LEFT;
-                }
-            } else {
-                if (y_px < get_center_value(st_output->selection.bl.box_before_resize.y0, st_output->selection.bl.box_before_resize.y1)) {
-                    st_output->selection.selection_resize_direction = SELECTION_RESIZE_TOP_RIGHT;
-                } else {
-                    st_output->selection.selection_resize_direction = SELECTION_RESIZE_BOTTOM_RIGHT;
+                    if (y_px < get_center_value(box_before_changes.y0, box_before_changes.y1)) {
+                        st_output->selection.selection_resize_direction = SELECTION_RESIZE_TOP_RIGHT;
+                    } else {
+                        st_output->selection.selection_resize_direction = SELECTION_RESIZE_BOTTOM_RIGHT;
+                    }
                 }
             }
             break;

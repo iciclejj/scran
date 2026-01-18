@@ -88,6 +88,7 @@ struct client_state_seat {
 };
 
 struct client_state_output_selection_blend2d {
+    // TODO Drop the blend2d struct and just create handler context structs
     BLContextCore ctx;
     BLPathCore path;
 
@@ -95,10 +96,10 @@ struct client_state_output_selection_blend2d {
     //      now that all of state should have been standardized to pixel
     //      integer values (same for other boxes, resize_origin_pointer, etc.)
     struct BLBoxI box;
-    // TODO: Maybe move this somewhere together with rebase_origin_pointer ?
-    struct BLBoxI box_before_rebase;
-    struct BLBoxI box_before_resize;
     struct BLBoxI box_outer;
+
+    // TODO: Clearer name? This should be used to store the pre-resize/rebase box
+    struct BLBoxI box_before_changes;
 };
 
 enum selection_state {
@@ -129,10 +130,8 @@ struct client_state_output_selection {
     //       height/width etc. than just getting the .bl.box coordinates?
     struct client_state_output_selection_blend2d bl;
 
-    int pointer_origin_rebase_x_px;
-    int pointer_origin_rebase_y_px;
-    int pointer_origin_resize_x_px;
-    int pointer_origin_resize_y_px;
+    int pointer_before_changes_x_px;
+    int pointer_before_changes_y_px;
 
     // TODO: Not needed? Just use box only?
     // BLPoint bl_point_top_left;
