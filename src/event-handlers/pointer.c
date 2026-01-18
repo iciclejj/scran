@@ -102,9 +102,6 @@ handle_pointer_motion(
         }
         break;
     case SELECTION_RESIZING:
-        // TODO: Make this cleaner...
-        //       Handle inverted selection
-        //           i.e. drag bottom edge past top edge => TOP_LEFT becomes bottom left
         {
             const int x_diff_px = x_px - st_selection->pointer_before_changes_x_px;
             const int y_diff_px = y_px - st_selection->pointer_before_changes_y_px;
@@ -227,6 +224,18 @@ handle_pointer_button(
         case SELECTION_RESIZING:
             st_output->selection.selection_state = SELECTION_COMPLETE;
             st_output->selection.selection_resize_direction = SELECTION_RESIZE_NONE;
+            
+            BLBoxI *const box = &st_output->selection.bl.box;
+            if (box->x1 < box->x0) {
+                int tmp = box->x0;
+                box->x0 = box->x1;
+                box->x1 = tmp;
+            }
+            if (box->y1 < box->y0) {
+                int tmp = box->y0;
+                box->y0 = box->y1;
+                box->y1 = tmp;
+            }
             break;
         default:
             break;

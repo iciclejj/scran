@@ -65,8 +65,6 @@ handle_image_copy_capture_frame_presentation_time(
 // TODO:
 //  - Can we fully avoid capturing the overlay (beyond just 
 //    making sure it's out of frame) ?
-//  - Make sure "inverted/flipped over itself" selection (e.g. y1 crosses y0)
-//    is handled here and/or in selection logic
 //  - Either assert width/height isn't 0 (and enforce in selection logic)
 //    or handle it properly here
 //  - Allow resizing capture frame during recording
