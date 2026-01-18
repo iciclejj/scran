@@ -77,58 +77,58 @@ handle_pointer_motion(
     }
 
     switch (st_selection->selection_state) {
-        case SELECTION_NONE:
-            break;
-        case SELECTION_IN_PROGRESS:
-            // TODO: Merge this with SELECTION_RESIZING?
-            // TODO: Make this explicitly either output pixel coordinates or
-            //       surface-local coordinates
-            //       Also document the behavior/conversion (and make helper function?).
-            st_selection->bl.box.x1 = x_px;
-            st_selection->bl.box.y1 = y_px;
-            break;
-        case SELECTION_COMPLETE:
-            break;
-        case SELECTION_REBASING:
-            // TODO: Can't initialize variables here.
-            const int x_diff_pxl = x_px - st_selection->rebase_origin_pointer_x_px;
-            const int y_diff_pxl = y_px - st_selection->rebase_origin_pointer_y_px;
+    case SELECTION_NONE:
+        break;
+    case SELECTION_IN_PROGRESS:
+        // TODO: Merge this with SELECTION_RESIZING?
+        // TODO: Make this explicitly either output pixel coordinates or
+        //       surface-local coordinates
+        //       Also document the behavior/conversion (and make helper function?).
+        st_selection->bl.box.x1 = x_px;
+        st_selection->bl.box.y1 = y_px;
+        break;
+    case SELECTION_COMPLETE:
+        break;
+    case SELECTION_REBASING:
+        // TODO: Can't initialize variables here.
+        const int x_diff_pxl = x_px - st_selection->rebase_origin_pointer_x_px;
+        const int y_diff_pxl = y_px - st_selection->rebase_origin_pointer_y_px;
 
-            // TODO: Make this a bit prettier?
-            st_selection->bl.box.x0 = st_selection->bl.box_before_rebase.x0 + x_diff_pxl;
-            st_selection->bl.box.y0 = st_selection->bl.box_before_rebase.y0 + y_diff_pxl;
-            st_selection->bl.box.x1 = st_selection->bl.box_before_rebase.x1 + x_diff_pxl;
-            st_selection->bl.box.y1 = st_selection->bl.box_before_rebase.y1 + y_diff_pxl;
-            break;
-        case SELECTION_RESIZING:
-            // TODO: Make this cleaner...
-            //       Handle inverted selection
-            //           i.e. drag bottom edge past top edge => TOP_LEFT becomes bottom left
-            {
-                int x_diff_pxl = x_px - st_selection->resize_origin_pointer_x_px;
-                int y_diff_pxl = y_px - st_selection->resize_origin_pointer_y_px;
-                switch (st_selection->selection_resize_direction) {
-                case SELECTION_NONE:
-                    break;
-                case SELECTION_RESIZE_TOP_LEFT:
-                    st_selection->bl.box.x0 = st_selection->bl.box_before_resize.x0 + x_diff_pxl;
-                    st_selection->bl.box.y0 = st_selection->bl.box_before_resize.y0 + y_diff_pxl;
-                    break;
-                case SELECTION_RESIZE_TOP_RIGHT:
-                    st_selection->bl.box.x1 = st_selection->bl.box_before_resize.x1 + x_diff_pxl;
-                    st_selection->bl.box.y0 = st_selection->bl.box_before_resize.y0 + y_diff_pxl;
-                    break;
-                case SELECTION_RESIZE_BOTTOM_LEFT:
-                    st_selection->bl.box.x0 = st_selection->bl.box_before_resize.x0 + x_diff_pxl;
-                    st_selection->bl.box.y1 = st_selection->bl.box_before_resize.y1 + y_diff_pxl;
-                    break;
-                case SELECTION_RESIZE_BOTTOM_RIGHT:
-                    st_selection->bl.box.x1 = st_selection->bl.box_before_resize.x1 + x_diff_pxl;
-                    st_selection->bl.box.y1 = st_selection->bl.box_before_resize.y1 + y_diff_pxl;
-                    break;
-                }
+        // TODO: Make this a bit prettier?
+        st_selection->bl.box.x0 = st_selection->bl.box_before_rebase.x0 + x_diff_pxl;
+        st_selection->bl.box.y0 = st_selection->bl.box_before_rebase.y0 + y_diff_pxl;
+        st_selection->bl.box.x1 = st_selection->bl.box_before_rebase.x1 + x_diff_pxl;
+        st_selection->bl.box.y1 = st_selection->bl.box_before_rebase.y1 + y_diff_pxl;
+        break;
+    case SELECTION_RESIZING:
+        // TODO: Make this cleaner...
+        //       Handle inverted selection
+        //           i.e. drag bottom edge past top edge => TOP_LEFT becomes bottom left
+        {
+            int x_diff_pxl = x_px - st_selection->resize_origin_pointer_x_px;
+            int y_diff_pxl = y_px - st_selection->resize_origin_pointer_y_px;
+            switch (st_selection->selection_resize_direction) {
+            case SELECTION_NONE:
+                break;
+            case SELECTION_RESIZE_TOP_LEFT:
+                st_selection->bl.box.x0 = st_selection->bl.box_before_resize.x0 + x_diff_pxl;
+                st_selection->bl.box.y0 = st_selection->bl.box_before_resize.y0 + y_diff_pxl;
+                break;
+            case SELECTION_RESIZE_TOP_RIGHT:
+                st_selection->bl.box.x1 = st_selection->bl.box_before_resize.x1 + x_diff_pxl;
+                st_selection->bl.box.y0 = st_selection->bl.box_before_resize.y0 + y_diff_pxl;
+                break;
+            case SELECTION_RESIZE_BOTTOM_LEFT:
+                st_selection->bl.box.x0 = st_selection->bl.box_before_resize.x0 + x_diff_pxl;
+                st_selection->bl.box.y1 = st_selection->bl.box_before_resize.y1 + y_diff_pxl;
+                break;
+            case SELECTION_RESIZE_BOTTOM_RIGHT:
+                st_selection->bl.box.x1 = st_selection->bl.box_before_resize.x1 + x_diff_pxl;
+                st_selection->bl.box.y1 = st_selection->bl.box_before_resize.y1 + y_diff_pxl;
                 break;
             }
+            break;
+        }
     }
 
     // TODO: Dynamically resize visual selection
