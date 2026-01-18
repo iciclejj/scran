@@ -16,6 +16,7 @@
   src ? ./.,
 
   target ? "release",
+  hardeningDisable ? if target == "debug" then [ "all" ] else [ ],
 }:
 
 stdenv.mkDerivation {
@@ -38,6 +39,7 @@ stdenv.mkDerivation {
     ffmpeg
   ];
 
+  inherit hardeningDisable;
   buildFlags = [ target ];
 
   installPhase = ''
