@@ -14,6 +14,8 @@
   # src overridable to ease installation from outside of nixpkgs, among other
   # things
   src ? ./.,
+
+  target ? "release",
 }:
 
 stdenv.mkDerivation {
@@ -35,6 +37,8 @@ stdenv.mkDerivation {
     libxkbcommon
     ffmpeg
   ];
+
+  buildFlags = [ target ];
 
   installPhase = ''
     runHook preInstall
