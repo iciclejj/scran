@@ -10,12 +10,16 @@
   ffmpeg,
   copyDesktopItems,
   makeDesktopItem,
+
+  # src overridable to ease installation from outside of nixpkgs, among other
+  # things
+  src ? ./.,
 }:
 
 stdenv.mkDerivation {
   pname = "client-1-test";
   version = "0.1.1";
-  src = ./.;
+  inherit src;
 
   nativeBuildInputs = [
     wayland-scanner
