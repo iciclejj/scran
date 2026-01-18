@@ -129,10 +129,10 @@ struct client_state_output_selection {
     //       height/width etc. than just getting the .bl.box coordinates?
     struct client_state_output_selection_blend2d bl;
 
-    int rebase_origin_pointer_x_px;
-    int rebase_origin_pointer_y_px;
-    int resize_origin_pointer_x_px;
-    int resize_origin_pointer_y_px;
+    int pointer_origin_rebase_x_px;
+    int pointer_origin_rebase_y_px;
+    int pointer_origin_resize_x_px;
+    int pointer_origin_resize_y_px;
 
     // TODO: Not needed? Just use box only?
     // BLPoint bl_point_top_left;

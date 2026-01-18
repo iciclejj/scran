@@ -90,45 +90,48 @@ handle_pointer_motion(
     case SELECTION_COMPLETE:
         break;
     case SELECTION_REBASING:
-        // TODO: Can't initialize variables here.
-        const int x_diff_pxl = x_px - st_selection->rebase_origin_pointer_x_px;
-        const int y_diff_pxl = y_px - st_selection->rebase_origin_pointer_y_px;
+        {
+            const int x_diff = x_px - st_selection->pointer_origin_rebase_x_px;
+            const int y_diff = y_px - st_selection->pointer_origin_rebase_y_px;
+            const BLBoxI box_before_rebase = st_selection->bl.box_before_rebase;
 
-        // TODO: Make this a bit prettier?
-        st_selection->bl.box.x0 = st_selection->bl.box_before_rebase.x0 + x_diff_pxl;
-        st_selection->bl.box.y0 = st_selection->bl.box_before_rebase.y0 + y_diff_pxl;
-        st_selection->bl.box.x1 = st_selection->bl.box_before_rebase.x1 + x_diff_pxl;
-        st_selection->bl.box.y1 = st_selection->bl.box_before_rebase.y1 + y_diff_pxl;
+            st_selection->bl.box.x0 = box_before_rebase.x0 + x_diff;
+            st_selection->bl.box.x1 = box_before_rebase.x1 + x_diff;
+            st_selection->bl.box.y0 = box_before_rebase.y0 + y_diff;
+            st_selection->bl.box.y1 = box_before_rebase.y1 + y_diff;
+        }
         break;
     case SELECTION_RESIZING:
         // TODO: Make this cleaner...
         //       Handle inverted selection
         //           i.e. drag bottom edge past top edge => TOP_LEFT becomes bottom left
         {
-            int x_diff_pxl = x_px - st_selection->resize_origin_pointer_x_px;
-            int y_diff_pxl = y_px - st_selection->resize_origin_pointer_y_px;
+            const int x_diff_px = x_px - st_selection->pointer_origin_resize_x_px;
+            const int y_diff_px = y_px - st_selection->pointer_origin_resize_y_px;
+            const BLBoxI box_before_resize = st_selection->bl.box_before_resize;
+
             switch (st_selection->selection_resize_direction) {
             case SELECTION_NONE:
                 break;
             case SELECTION_RESIZE_TOP_LEFT:
-                st_selection->bl.box.x0 = st_selection->bl.box_before_resize.x0 + x_diff_pxl;
-                st_selection->bl.box.y0 = st_selection->bl.box_before_resize.y0 + y_diff_pxl;
+                st_selection->bl.box.x0 = box_before_resize.x0 + x_diff_px;
+                st_selection->bl.box.y0 = box_before_resize.y0 + y_diff_px;
                 break;
             case SELECTION_RESIZE_TOP_RIGHT:
-                st_selection->bl.box.x1 = st_selection->bl.box_before_resize.x1 + x_diff_pxl;
-                st_selection->bl.box.y0 = st_selection->bl.box_before_resize.y0 + y_diff_pxl;
+                st_selection->bl.box.x1 = box_before_resize.x1 + x_diff_px;
+                st_selection->bl.box.y0 = box_before_resize.y0 + y_diff_px;
                 break;
             case SELECTION_RESIZE_BOTTOM_LEFT:
-                st_selection->bl.box.x0 = st_selection->bl.box_before_resize.x0 + x_diff_pxl;
-                st_selection->bl.box.y1 = st_selection->bl.box_before_resize.y1 + y_diff_pxl;
+                st_selection->bl.box.x0 = box_before_resize.x0 + x_diff_px;
+                st_selection->bl.box.y1 = box_before_resize.y1 + y_diff_px;
                 break;
             case SELECTION_RESIZE_BOTTOM_RIGHT:
-                st_selection->bl.box.x1 = st_selection->bl.box_before_resize.x1 + x_diff_pxl;
-                st_selection->bl.box.y1 = st_selection->bl.box_before_resize.y1 + y_diff_pxl;
+                st_selection->bl.box.x1 = box_before_resize.x1 + x_diff_px;
+                st_selection->bl.box.y1 = box_before_resize.y1 + y_diff_px;
                 break;
             }
-            break;
         }
+        break;
     }
 
     // TODO: Dynamically resize visual selection
@@ -183,8 +186,8 @@ handle_pointer_button(
             st_output->selection.selection_state = SELECTION_COMPLETE;
             break;
         case SELECTION_COMPLETE:
-            st_output->selection.rebase_origin_pointer_x_px = x_px;
-            st_output->selection.rebase_origin_pointer_y_px = y_px;
+            st_output->selection.pointer_origin_rebase_x_px = x_px;
+            st_output->selection.pointer_origin_rebase_y_px = y_px;
             st_output->selection.bl.box_before_rebase = st_output->selection.bl.box;
             st_output->selection.selection_state = SELECTION_REBASING;
             break;
@@ -202,8 +205,8 @@ handle_pointer_button(
             st_output->selection.selection_state = SELECTION_RESIZING;
             st_output->selection.bl.box_before_resize = st_output->selection.bl.box;
 
-            st_output->selection.resize_origin_pointer_x_px = x_px;
-            st_output->selection.resize_origin_pointer_y_px = y_px;
+            st_output->selection.pointer_origin_resize_x_px = x_px;
+            st_output->selection.pointer_origin_resize_y_px = y_px;
 
             // TODO: Make this cleaner.....
             if (x_px < get_center_value(st_output->selection.bl.box_before_resize.x0, st_output->selection.bl.box_before_resize.x1)) {
