@@ -2,7 +2,6 @@
 #include <wayland-client.h>
 
 #include "state.h"
-
 #include "event-handlers.h"
 
 static void
@@ -67,15 +66,15 @@ handle_pointer_motion(
     struct client_state_output *st_output = state->seat.pointer.focused_output;
     struct client_state_output_selection *st_selection = &st_output->selection;
 
-    state->seat.pointer.x = x;
-    state->seat.pointer.y = y;
+    const int x_px = wl_fixed_to_int(x);
+    const int y_px = wl_fixed_to_int(y);
+
+    state->seat.pointer.x_px = x_px;
+    state->seat.pointer.y_px = y_px;
 
     if (st_selection->selection_state == SELECTION_NONE) {
         return;
     }
-
-    int32_t pointer_x_pxl = (int32_t)wl_fixed_to_double(state->seat.pointer.x);
-    int32_t pointer_y_pxl = (int32_t)wl_fixed_to_double(state->seat.pointer.y);
 
     switch (st_selection->selection_state) {
         case SELECTION_NONE:
@@ -85,15 +84,15 @@ handle_pointer_motion(
             // TODO: Make this explicitly either output pixel coordinates or
             //       surface-local coordinates
             //       Also document the behavior/conversion (and make helper function?).
-            st_selection->bl.box.x1 = pointer_x_pxl;
-            st_selection->bl.box.y1 = pointer_y_pxl;
+            st_selection->bl.box.x1 = x_px;
+            st_selection->bl.box.y1 = y_px;
             break;
         case SELECTION_COMPLETE:
             break;
         case SELECTION_REBASING:
             // TODO: Can't initialize variables here.
-            int32_t x_diff_pxl = pointer_x_pxl - (int32_t)wl_fixed_to_double(st_selection->rebase_origin_pointer_x);
-            int32_t y_diff_pxl = pointer_y_pxl - (int32_t)wl_fixed_to_double(st_selection->rebase_origin_pointer_y);
+            const int x_diff_pxl = x_px - st_selection->rebase_origin_pointer_x_px;
+            const int y_diff_pxl = y_px - st_selection->rebase_origin_pointer_y_px;
 
             // TODO: Make this a bit prettier?
             st_selection->bl.box.x0 = st_selection->bl.box_before_rebase.x0 + x_diff_pxl;
@@ -106,8 +105,8 @@ handle_pointer_motion(
             //       Handle inverted selection
             //           i.e. drag bottom edge past top edge => TOP_LEFT becomes bottom left
             {
-                int32_t x_diff_pxl = pointer_x_pxl - (int32_t)wl_fixed_to_double(st_selection->resize_origin_pointer_x);
-                int32_t y_diff_pxl = pointer_y_pxl - (int32_t)wl_fixed_to_double(st_selection->resize_origin_pointer_y);
+                int x_diff_pxl = x_px - st_selection->resize_origin_pointer_x_px;
+                int y_diff_pxl = y_px - st_selection->resize_origin_pointer_y_px;
                 switch (st_selection->selection_resize_direction) {
                 case SELECTION_NONE:
                     break;
@@ -157,10 +156,8 @@ handle_pointer_button(
 
     // TODO: Implement dragging
 
-    // XXX: This should probably be a helper function.
-    // TODO: Rename to make it clear whether it's pixel or logical
-    int32_t pointer_x_pxl = (int)wl_fixed_to_double(state->seat.pointer.x);
-    int32_t pointer_y_pxl = (int)wl_fixed_to_double(state->seat.pointer.y);
+    int x_px = state->seat.pointer.x_px;
+    int y_px = state->seat.pointer.y_px;
 
     // TODO: Add hold/click-and-drag functionality
     if (button_state != WL_POINTER_BUTTON_STATE_PRESSED) {
@@ -171,23 +168,23 @@ handle_pointer_button(
     case BTN_LEFT:
         switch(st_output->selection.selection_state) {
         case SELECTION_NONE:
-            st_output->selection.bl.box.x0 = pointer_x_pxl;
-            st_output->selection.bl.box.y0 = pointer_y_pxl;
+            st_output->selection.bl.box.x0 = x_px;
+            st_output->selection.bl.box.y0 = y_px;
 
             // XXX TEST: Might keep, though..
-            st_output->selection.bl.box.x1 = pointer_x_pxl;
-            st_output->selection.bl.box.y1 = pointer_y_pxl;
+            st_output->selection.bl.box.x1 = x_px;
+            st_output->selection.bl.box.y1 = y_px;
 
             st_output->selection.selection_state = SELECTION_IN_PROGRESS;
             break;
         case SELECTION_IN_PROGRESS:
-            st_output->selection.bl.box.x1 = pointer_x_pxl;
-            st_output->selection.bl.box.y1 = pointer_y_pxl;
+            st_output->selection.bl.box.x1 = x_px;
+            st_output->selection.bl.box.y1 = y_px;
             st_output->selection.selection_state = SELECTION_COMPLETE;
             break;
         case SELECTION_COMPLETE:
-            st_output->selection.rebase_origin_pointer_x = state->seat.pointer.x;
-            st_output->selection.rebase_origin_pointer_y = state->seat.pointer.y;
+            st_output->selection.rebase_origin_pointer_x_px = x_px;
+            st_output->selection.rebase_origin_pointer_y_px = y_px;
             st_output->selection.bl.box_before_rebase = st_output->selection.bl.box;
             st_output->selection.selection_state = SELECTION_REBASING;
             break;
@@ -205,24 +202,18 @@ handle_pointer_button(
             st_output->selection.selection_state = SELECTION_RESIZING;
             st_output->selection.bl.box_before_resize = st_output->selection.bl.box;
 
-            st_output->selection.resize_origin_pointer_x = state->seat.pointer.x;
-            st_output->selection.resize_origin_pointer_y = state->seat.pointer.y;
+            st_output->selection.resize_origin_pointer_x_px = x_px;
+            st_output->selection.resize_origin_pointer_y_px = y_px;
 
             // TODO: Make this cleaner.....
-            if (pointer_x_pxl
-                < get_center_value(st_output->selection.bl.box_before_resize.x0, st_output->selection.bl.box_before_resize.x1)
-            ) {
-                if (pointer_y_pxl
-                    < get_center_value(st_output->selection.bl.box_before_resize.y0, st_output->selection.bl.box_before_resize.y1)
-                ) {
+            if (x_px < get_center_value(st_output->selection.bl.box_before_resize.x0, st_output->selection.bl.box_before_resize.x1)) {
+                if (y_px < get_center_value(st_output->selection.bl.box_before_resize.y0, st_output->selection.bl.box_before_resize.y1)) {
                     st_output->selection.selection_resize_direction = SELECTION_RESIZE_TOP_LEFT;
                 } else {
                     st_output->selection.selection_resize_direction = SELECTION_RESIZE_BOTTOM_LEFT;
                 }
             } else {
-                if (pointer_y_pxl
-                    < get_center_value(st_output->selection.bl.box_before_resize.y0, st_output->selection.bl.box_before_resize.y1)
-                ) {
+                if (y_px < get_center_value(st_output->selection.bl.box_before_resize.y0, st_output->selection.bl.box_before_resize.y1)) {
                     st_output->selection.selection_resize_direction = SELECTION_RESIZE_TOP_RIGHT;
                 } else {
                     st_output->selection.selection_resize_direction = SELECTION_RESIZE_BOTTOM_RIGHT;

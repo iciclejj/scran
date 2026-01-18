@@ -63,8 +63,8 @@ struct client_state_seat_pointer {
     struct client_state_output *focused_output;
 
     enum wl_pointer_button_state btn_left_state;
-    wl_fixed_t x;
-    wl_fixed_t y;
+    int x_px;
+    int y_px;
 };
 
 struct client_state_seat_keyboard {
@@ -91,6 +91,9 @@ struct client_state_output_selection_blend2d {
     BLContextCore ctx;
     BLPathCore path;
 
+    // TODO Rename to box_px OR remove _px suffix from everything in state,
+    //      now that all of state should have been standardized to pixel
+    //      integer values (same for other boxes, resize_origin_pointer, etc.)
     struct BLBoxI box;
     // TODO: Maybe move this somewhere together with rebase_origin_pointer ?
     struct BLBoxI box_before_rebase;
@@ -126,10 +129,10 @@ struct client_state_output_selection {
     //       height/width etc. than just getting the .bl.box coordinates?
     struct client_state_output_selection_blend2d bl;
 
-    wl_fixed_t rebase_origin_pointer_x;
-    wl_fixed_t rebase_origin_pointer_y;
-    wl_fixed_t resize_origin_pointer_x;
-    wl_fixed_t resize_origin_pointer_y;
+    int rebase_origin_pointer_x_px;
+    int rebase_origin_pointer_y_px;
+    int resize_origin_pointer_x_px;
+    int resize_origin_pointer_y_px;
 
     // TODO: Not needed? Just use box only?
     // BLPoint bl_point_top_left;
