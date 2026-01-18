@@ -33,7 +33,9 @@ stdenv.mkDerivation {
   ];
 
   installPhase = ''
+    runHook preInstall
     install -D build/release/main $out/bin/wayland-client-test-1
+    runHook postInstall
   '';
 
   desktopItems = [
