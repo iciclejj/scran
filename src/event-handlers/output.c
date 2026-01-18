@@ -24,6 +24,15 @@ handle_output_geometry(
     // TODO: h_phys_mm, y_phys_mm ? For ruler or something?
 }
 
+static void
+handle_output_scale(
+    void *data,
+    struct wl_output *wl_output,
+    int32_t factor
+) {
+    // TODO
+}
+
 // TODO:
 //     Figure out some simple but robust set of asserts or conditions that
 //     ensures [ output_mode(/xdg), capture_source, layer_shell/surface,
@@ -53,14 +62,41 @@ handle_output_mode(
     st_output->mode.refresh_rate_mHz = refresh_rate_mHz;
 }
 
+static void
+handle_output_done(
+    void *data,
+    struct wl_output *wl_output
+) {
+    // TODO ?
+}
+
+static void
+handle_output_name(
+    void *data,
+    struct wl_output *wl_output,
+    const char *name
+) {
+    // TODO
+}
+
+static void
+handle_output_description(
+    void *data,
+    struct wl_output *wl_output,
+    const char *description
+) {
+    // Probably not needed...
+}
+
+
 // TODO: How to handle done event properly/efficiently?
 //           version >= 2: geometry event followed by done event
 struct wl_output_listener output_listener = {
     // xdg_output is preferred for most of this.
     .geometry = handle_output_geometry,
-    .scale = noop,
+    .scale = handle_output_scale,
     .mode = handle_output_mode,
-    .done = noop,
-    .name = noop,
-    .description = noop,
+    .done = handle_output_done,
+    .name = handle_output_name,
+    .description = handle_output_description,
 };

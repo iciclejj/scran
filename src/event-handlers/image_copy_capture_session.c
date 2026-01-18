@@ -63,12 +63,38 @@ handle_image_copy_capture_session_stopped(
     // TODO: Destroy dynamically allocated memory (e.g. libav objects)
 }
 
+void
+handle_image_copy_capture_session_dmabuf_device(
+    void *data,
+    struct ext_image_copy_capture_session_v1 *ext_image_copy_capture_session_v1,
+    struct wl_array *device
+) {
+    // TODO
+}
+
+void
+handle_image_copy_capture_session_dmabuf_format(
+    void *data,
+    struct ext_image_copy_capture_session_v1 *ext_image_copy_capture_session_v1,
+    uint32_t format,
+    struct wl_array *modifiers
+) {
+    // TODO
+}
+
+void
+handle_image_copy_capture_session_done(
+    void *data,
+    struct ext_image_copy_capture_session_v1 *ext_image_copy_capture_session_v1
+) {
+    // TODO
+}
 
 struct ext_image_copy_capture_session_v1_listener image_copy_capture_session_listener = {
     .buffer_size = handle_image_copy_capture_session_buffer_size,
     .shm_format = handle_image_copy_capture_session_shm_format,
-    .dmabuf_device = noop, // TODO
-    .dmabuf_format = noop, // TODO
-    .done = noop,
+    .dmabuf_device = handle_image_copy_capture_session_dmabuf_device,
+    .dmabuf_format = handle_image_copy_capture_session_dmabuf_format,
+    .done = handle_image_copy_capture_session_done,
     .stopped = handle_image_copy_capture_session_stopped,
 };

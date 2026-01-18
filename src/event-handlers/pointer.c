@@ -239,11 +239,19 @@ handle_pointer_button(
     }
 }
 
+static void
+handle_pointer_frame(
+    void *data,
+    struct wl_pointer *wl_pointer
+) {
+    // TODO ?
+}
+
 struct wl_pointer_listener pointer_listener = {
     .enter = handle_pointer_enter,
     .leave = handle_pointer_leave,
     .button = handle_pointer_button,
     .motion = handle_pointer_motion,
-    .frame = noop, // TODO?
+    .frame = handle_pointer_frame,
 };
 

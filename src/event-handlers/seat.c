@@ -5,6 +5,15 @@
 #include "event-handlers.h"
 
 static void
+handle_seat_name(
+    void *data,
+    struct wl_seat *wl_seat,
+    const char *name
+) {
+    // TODO
+}
+
+static void
 handle_seat_capabilities(
     void *data,
     struct wl_seat *seat,
@@ -38,7 +47,7 @@ handle_seat_capabilities(
 }
 
 struct wl_seat_listener seat_listener = {
-    .name = noop, // Seems to be required..?
+    .name = handle_seat_name,
     .capabilities = handle_seat_capabilities,
 };
 

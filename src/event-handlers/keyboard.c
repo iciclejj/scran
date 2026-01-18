@@ -48,6 +48,27 @@ handle_keyboard_keymap(
 }
 
 static void
+handle_keyboard_enter (
+    void *data,
+    struct wl_keyboard *wl_keyboard,
+    uint32_t serial,
+    struct wl_surface *surface,
+    struct wl_array *keys
+) {
+    // TODO
+}
+
+static void
+handle_keyboard_leave (
+    void *data,
+    struct wl_keyboard *wl_keyboard,
+    uint32_t serial,
+    struct wl_surface *surface
+) {
+    // TODO
+}
+
+static void
 handle_keyboard_key(
     void *data,
     struct wl_keyboard * keyboard,
@@ -137,8 +158,8 @@ handle_keyboard_repeat_info(
 
 struct wl_keyboard_listener keyboard_listener = {
     .keymap = handle_keyboard_keymap,
-    .enter = noop,
-    .leave = noop,
+    .enter = handle_keyboard_enter,
+    .leave = handle_keyboard_leave,
     .key = handle_keyboard_key,
     .modifiers = handle_keyboard_modifiers,
     .repeat_info = handle_keyboard_repeat_info,
