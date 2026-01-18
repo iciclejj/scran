@@ -77,10 +77,10 @@ WAYLAND_PROTOCOLS = $(addprefix \
 
 protocols: $(WAYLAND_PROTOCOLS)
 
-$(BUILD_DIR_REL)/%.o: %.c
+$(BUILD_DIR_REL)/%.o: %.c $(WAYLAND_PROTOCOLS)
 	@mkdir -p $(shell dirname $@)
 	$(CC) $(CFLAGS_REL) -c $< -o $@
-$(BUILD_DIR_DBG)/%.o: %.c
+$(BUILD_DIR_DBG)/%.o: %.c $(WAYLAND_PROTOCOLS)
 	@mkdir -p $(shell dirname $@)
 	$(CC) $(CFLAGS_DBG) -c $< -o $@
 
