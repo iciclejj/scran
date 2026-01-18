@@ -1,4 +1,6 @@
+#include <assert.h>
 #include <linux/input-event-codes.h>
+
 #include <wayland-client.h>
 
 #include "state.h"
@@ -91,14 +93,41 @@ handle_pointer_motion(
         break;
     case SELECTION_REBASING:
         {
-            const int x_diff = x_px - st_selection->pointer_before_changes_x_px;
-            const int y_diff = y_px - st_selection->pointer_before_changes_y_px;
+            int x_diff = x_px - st_selection->pointer_before_changes_x_px;
+            int y_diff = y_px - st_selection->pointer_before_changes_y_px;
             const BLBoxI box_before_rebase = st_selection->bl.box_before_changes;
 
-            st_selection->bl.box.x0 = box_before_rebase.x0 + x_diff;
-            st_selection->bl.box.x1 = box_before_rebase.x1 + x_diff;
-            st_selection->bl.box.y0 = box_before_rebase.y0 + y_diff;
-            st_selection->bl.box.y1 = box_before_rebase.y1 + y_diff;
+            BLBoxI new_box = {
+                .x0 = box_before_rebase.x0 + x_diff,
+                .y0 = box_before_rebase.y0 + y_diff,
+                .x1 = box_before_rebase.x1 + x_diff,
+                .y1 = box_before_rebase.y1 + y_diff,
+            };
+
+            // The rebase should have been initiated with a valid box.
+            assert(box_before_rebase.x0 < box_before_rebase.x1);
+            assert(box_before_rebase.y0 < box_before_rebase.y1);
+            assert(box_before_rebase.x0 >= 0 && box_before_rebase.x1 <= st_output->mode.width_px);
+            assert(box_before_rebase.y0 >= 0 && box_before_rebase.y1 <= st_output->mode.height_px);
+
+            // Restrict the area to be within the output's borders.
+            // TODO: Maybe make this cleaner ?
+            if (new_box.x0 < 0) {
+                new_box.x1 -= new_box.x0;
+                new_box.x0 = 0;
+            } else if (new_box.x1 > st_output->mode.width_px) {
+                new_box.x0 -= new_box.x1 - st_output->mode.width_px;
+                new_box.x1 = st_output->mode.width_px;
+            }
+            if (new_box.y0 < 0) {
+                new_box.y1 -= new_box.y0;
+                new_box.y0 = 0;
+            } else if (new_box.y1 > st_output->mode.height_px) {
+                new_box.y0 -= new_box.y1 - st_output->mode.height_px;
+                new_box.y1 = st_output->mode.height_px;
+            }
+
+            st_selection->bl.box = new_box;
         }
         break;
     case SELECTION_RESIZING:
