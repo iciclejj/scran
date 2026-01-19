@@ -263,7 +263,8 @@ int main(void)
     //     The initializing ::commit shouldn't need to be vsynced..?
     while (
         !state.exit_requested
-        && wl_display_dispatch(state.globals.display)
+        &&
+        -1 != wl_display_dispatch(state.globals.display)
     );
 
 
