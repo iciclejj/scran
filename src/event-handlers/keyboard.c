@@ -108,7 +108,7 @@ handle_keyboard_key(
             state->exit_requested = true;
         }
         break;
-    case XKB_KEY_Return:
+    case XKB_KEY_space:
         if (st_output->capture.frame_ctx.capturing) {
             st_output->capture.frame_ctx.capturing = false;
             // TODO: Need to ensure capture is fully properly fully finished
