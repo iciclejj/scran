@@ -268,6 +268,10 @@ int main(void)
     );
 
 
+    // TODO: Assert capture has exited gracefully
+    // TODO: Double-check and ensure that this roundtrip is enough to let
+    // everything finalize (and that it's not redundant).
+    wl_display_roundtrip(state.globals.display);
 
     assert(state.n_outputs <= MAX_OUTPUTS);
     for (int i = 0; i < state.n_outputs; ++i) {
