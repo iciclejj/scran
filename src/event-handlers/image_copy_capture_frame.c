@@ -20,7 +20,7 @@
 
 
 static void
-handle_image_copy_capture_frame_transform(
+handle_image_copy_capture_frame_transform__video_capture(
     void *data,
     struct ext_image_copy_capture_frame_v1 *frame,
     uint32_t transform
@@ -33,7 +33,7 @@ handle_image_copy_capture_frame_transform(
 
 
 static void
-handle_image_copy_capture_frame_damage(
+handle_image_copy_capture_frame_damage__video_capture(
     void *data,
     struct ext_image_copy_capture_frame_v1 *frame,
     int32_t x,
@@ -47,7 +47,7 @@ handle_image_copy_capture_frame_damage(
 }
 
 static void
-handle_image_copy_capture_frame_presentation_time(
+handle_image_copy_capture_frame_presentation_time__video_capture(
     void *data,
     struct ext_image_copy_capture_frame_v1 *frame,
     uint32_t tv_sec_hi,
@@ -77,7 +77,7 @@ handle_image_copy_capture_frame_presentation_time(
 //       https://www.ffmpeg.org/doxygen/trunk/group__lavc__encdec.html
 //
 static void
-handle_image_copy_capture_frame_ready(
+handle_image_copy_capture_frame_ready__video_capture(
     void *data,
     struct ext_image_copy_capture_frame_v1 *frame
 ) {
@@ -179,9 +179,11 @@ end_capture_err:
 }
 
 
-struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener = {
-    .transform = handle_image_copy_capture_frame_transform,
-    .damage = handle_image_copy_capture_frame_damage,
-    .presentation_time = handle_image_copy_capture_frame_presentation_time,
-    .ready = handle_image_copy_capture_frame_ready,
+// TODO: Maybe find some nicer naming convention than __video_capture etc., idk
+struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener__video_capture = {
+    .transform = handle_image_copy_capture_frame_transform__video_capture,
+    .damage = handle_image_copy_capture_frame_damage__video_capture,
+    .presentation_time = handle_image_copy_capture_frame_presentation_time__video_capture,
+    .ready = handle_image_copy_capture_frame_ready__video_capture,
 };
+

@@ -25,7 +25,7 @@ dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
         ext_image_copy_capture_session_v1_create_frame(
             *frame_ctx->session
         );
-    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, frame_ctx);
+    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__video_capture, frame_ctx);
     ext_image_copy_capture_frame_v1_attach_buffer(
         frame,
         frame_ctx->st_buffer.buffer
