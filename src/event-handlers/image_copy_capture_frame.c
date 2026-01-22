@@ -340,6 +340,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     bl_pixel_converter_destroy(&bl_pixel_converter);
     bl_image_codec_destroy(&bl_img_codec);
     bl_image_destroy(&frame_ctx->bl_img_captured);
+    free(bl_buf_cropped_converted);
 }
 
 
