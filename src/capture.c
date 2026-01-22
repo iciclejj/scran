@@ -35,16 +35,19 @@ dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
 
 
 // TODO: Maybe optimize this a bit (and/or make it a bit cleaner somehow).
-static void
-_create_timestamped_video_filename(char filename[NAME_MAX])
-{
+//       Also ensure string/array safety. Either asserts or live.
+void
+create_timestamped_filename(
+    char filename_ret[CAPTURE_OUTPUT_FILENAME_MAX],
+    char file_extension[CAPTURE_OUTPUT_FILE_EXTENSION_MAX]
+) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
 
     struct tm time_now_tm;
     localtime_r(&ts.tv_sec, &time_now_tm);
 
-    char *_filename = filename;
+    char *_filename = filename_ret;
     // TODO: Remove this eventually and just use asserts. Resulting filename
     // length is deterministic.
     size_t _name_max = NAME_MAX;
@@ -62,9 +65,11 @@ _create_timestamped_video_filename(char filename[NAME_MAX])
     _name_max -= chars_added_after_usec;
 
     // XXX: %z is a gnu extension. (Timezone offset.)
-    strftime(_filename, _name_max, "%z" _FORMAT_MPEGTS_FILE_EXTENSION, &time_now_tm);
-    // _filename += chars_added_after_usec;
-    // _name_max -= chars_added_after_usec;
+    const int chars_added_after_timezone = strftime(_filename, _name_max, "%z", &time_now_tm);
+    _filename += chars_added_after_timezone;
+    _name_max -= chars_added_after_timezone;
+
+    snprintf(_filename, _name_max, "%s", file_extension);
 }
 
 // TODO:
@@ -144,7 +149,7 @@ init_ffmpeg(struct client_state_output *st_output)
 
     // AVFormatContext
     char filename[NAME_MAX];
-    _create_timestamped_video_filename(filename);
+    create_timestamped_filename(filename, _FORMAT_MPEGTS_NAME);
     avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MPEGTS_NAME, filename);
 
 
