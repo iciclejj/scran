@@ -1,7 +1,25 @@
+#include <assert.h>
+
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/pixdesc.h>
+
+// XXX TODO: Verify that this assignment happens at compile time.
+//           Also, maybe make it prettier if possible...
+#define _BL_FORMAT_INFO_BYTESWAPPED_RGB_KEPT_ALPHA(_bl_format_info_) \
+    (BLFormatInfo){     \
+        .depth = _bl_format_info_.depth,    \
+        .flags = _bl_format_info_.flags,    \
+        .r_size = _bl_format_info_.r_size,  \
+        .g_size = _bl_format_info_.g_size,  \
+        .b_size = _bl_format_info_.b_size,  \
+        .a_size = _bl_format_info_.a_size,  \
+        .r_shift = _bl_format_info_.b_shift,    \
+        .g_shift = _bl_format_info_.g_shift,    \
+        .b_shift = _bl_format_info_.r_shift,    \
+        .a_shift = _bl_format_info_.a_shift,    \
+    };
 
 // XXX TODO: Figure out how all the libraries treat rgba vs bgra etc. wrt. endianness
 //             - Especially wayland
@@ -11,21 +29,36 @@
 //                   case WL_SHM_FORMAT_XBGR8888: return AV_PIX_FMT_RGB0;
 //               At least when comparing to session::shm_format's output.
 
+// Natively supported formats (index into bl_image_format global)
 enum BLFormat
 wl_shm_format_to_blend2d(enum wl_shm_format wl_shm_format)
 {
     switch (wl_shm_format) {
-        // XXX: Check if this is correct
         case WL_SHM_FORMAT_ARGB8888: return BL_FORMAT_PRGB32;
         case WL_SHM_FORMAT_XRGB8888: return BL_FORMAT_XRGB32;
-        // XXX: TODO: Needs BL_FORMAT_FLAG for endianness (?)
-        // case WL_SHM_FORMAT_ABGR8888: return BL_FORMAT_PRGB32;
-        // case WL_SHM_FORMAT_XBGR8888: return BL_FORMAT_XRGB32;
         case WL_SHM_FORMAT_C8:       return BL_FORMAT_A8;
         // TODO: Consider default: assert(true)?
         default:                     return BL_FORMAT_NONE;
     }
 }
+
+struct BLFormatInfo
+wl_shm_format_to_blend2d_struct(enum wl_shm_format wl_shm_format)
+{
+    switch (wl_shm_format) {
+    // Builtin (many Blend2D support this directly without a separate conversion step)
+    // NOTE: Can convert wl_shm_format builtin enum values using wl_shm_format_to_blend2d
+    case WL_SHM_FORMAT_ARGB8888: return bl_format_info[BL_FORMAT_PRGB32];
+    case WL_SHM_FORMAT_XRGB8888: return bl_format_info[BL_FORMAT_XRGB32];
+    case WL_SHM_FORMAT_C8:       return bl_format_info[BL_FORMAT_A8];
+    // Custom
+    case WL_SHM_FORMAT_ABGR8888: return _BL_FORMAT_INFO_BYTESWAPPED_RGB_KEPT_ALPHA(bl_format_info[BL_FORMAT_PRGB32]);
+    case WL_SHM_FORMAT_XBGR8888: return _BL_FORMAT_INFO_BYTESWAPPED_RGB_KEPT_ALPHA(bl_format_info[BL_FORMAT_XRGB32]);
+    // TODO: Consider default: assert(true)?
+    default: return (BLFormatInfo){ 0 };
+    }
+}
+
 
 enum AVPixelFormat
 wl_shm_format_to_ffmpeg(enum wl_shm_format wl_shm_format)

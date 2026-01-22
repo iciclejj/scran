@@ -207,3 +207,32 @@ start_video_capture(struct client_state_output *st_output)
 
     return true;
 }
+
+void
+dispatch_image_capture_event(struct client_state_output_capture *st_capture)
+{
+    struct capture_frame_context *frame_ctx = &st_capture->frame_ctx;
+
+    struct ext_image_copy_capture_frame_v1 *frame =
+        ext_image_copy_capture_session_v1_create_frame(
+            *frame_ctx->session
+        );
+    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__image_capture, st_capture);
+    ext_image_copy_capture_frame_v1_attach_buffer(
+        frame,
+        frame_ctx->st_buffer.buffer
+    );
+    ext_image_copy_capture_frame_v1_capture(frame);
+}
+
+
+bool
+start_image_capture(struct client_state_output *st_output)
+{
+    // See TODO at call site
+    assert(!st_output->capture.frame_ctx.capturing);
+
+    dispatch_image_capture_event(&st_output->capture);
+
+    return true;
+}

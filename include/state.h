@@ -155,6 +155,9 @@ struct capture_frame_context {
     AVFrame *av_frame_encoded;
     SwsContext *sws_ctx;
 
+    // TODO: Maybe union with libav or a separate frame_ctx or similar
+    BLImageCore bl_img_captured;
+
     uint64_t presentation_time_nsec;
 
     //  NOTE: Capture area should be set synchronously with the drawn overlay's

@@ -10,14 +10,22 @@
 #include <libswscale/swscale.h>
 #include <libavutil/frame.h>
 
+#include "blend2d/core/api.h"
+#include "blend2d/core/imagecodec.h"
+#include "blend2d/core/pixelconverter.h"
 #include "ext-image-copy-capture-v1.h"
 
+#include "libavutil/avutil.h"
 #include "state.h"
 #include "event-handlers.h"
 #include "capture.h"
 #include "print.h"
 #include "util/blend2d.h"
+#include "lib_interop.h"
 
+#define _FORMAT_PNG_FILE_EXTENSION ".png"
+#define _FORMAT_PNG_BLEND2D_CODEC_NAME "PNG"
+#define _FORMAT_PNG_BLEND2D_OUTPUT_FORMAT BL_FORMAT_PRGB32 // pixel format
 
 static void
 handle_image_copy_capture_frame_transform__video_capture(
@@ -187,3 +195,158 @@ struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listene
     .ready = handle_image_copy_capture_frame_ready__video_capture,
 };
 
+
+static void
+handle_image_copy_capture_frame_transform__image_capture(
+    void *data,
+    struct ext_image_copy_capture_frame_v1 *frame,
+    uint32_t transform
+) {
+    struct capture_frame_context *frame_ctx = data;
+
+    // TODO: What is this transform representing?
+    //           It is separate from output::geometry's transform.
+}
+
+
+static void
+handle_image_copy_capture_frame_damage__image_capture(
+    void *data,
+    struct ext_image_copy_capture_frame_v1 *frame,
+    int32_t x,
+    int32_t y,
+    int32_t width,
+    int32_t height
+) {
+    // No-op
+    //
+    // TODO: Maybe make it not a no-op, depending on how simultaneous
+    // image + video capture gets implemented.
+}
+
+static void
+handle_image_copy_capture_frame_presentation_time__image_capture(
+    void *data,
+    struct ext_image_copy_capture_frame_v1 *frame,
+    uint32_t tv_sec_hi,
+    uint32_t tv_sec_lo,
+    uint32_t tv_nsec
+) {
+    // No-op
+}
+
+
+// TODO:
+// - Maybe see the top TODO in the __video_capture handler
+// - See if we can use frame_ctx or a new frame_ctx separate from video
+//   capture, rather than the entire st_capture struct.
+//       Not as important for just image capture as with video capture, though
+// - Error handling or robust asserts
+// - Let user decide encoding parameters etc.
+static void
+handle_image_copy_capture_frame_ready__image_capture(
+    void *data,
+    struct ext_image_copy_capture_frame_v1 *frame
+) {
+    struct client_state_output_capture *st_capture = data;
+    struct capture_frame_context *frame_ctx = &st_capture->frame_ctx;
+
+    // XXX: Not implemented yet...
+    assert(!frame_ctx->capturing);
+
+    ext_image_copy_capture_frame_v1_destroy(frame);
+
+
+    // TODO: Clarify names, more in sync with start_capture names?
+    const int area_width = blboxi_width_abs_unsafe(frame_ctx->capture_area_px);
+    const int area_height = blboxi_height_abs_unsafe(frame_ctx->capture_area_px);
+    const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
+    const uint32_t area_row_bytes = frame_ctx->pixel_stride * area_width;
+    // const int capture_area_width_px = blboxi_width_abs_unsafe(frame_ctx->capture_area_px);
+    const uint8_t *const area_start_addr =
+        frame_ctx->st_buffer.data
+        + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
+        + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
+
+
+    // TODO: Remove or actually use...
+    BLResult res;
+
+    // XXX TODO: Ensure good defaults
+    BLFormatInfo _bl_format_info_dst = bl_format_info[_FORMAT_PNG_BLEND2D_OUTPUT_FORMAT];
+    BLFormatInfo _bl_format_info_src = wl_shm_format_to_blend2d_struct(st_capture->shm_format);
+
+    if (_bl_format_info_src.depth == 0) {
+        eprintf("Error: Unsupported format. Aborting image capture.\n");
+        return;
+    }
+
+    // XXX: We just always run it through the converter for now.
+    // TODO: Only convert if required (not natively supported pixel format by blend2d)
+    //       *maybe* also reconsider using a different library.
+    BLPixelConverterCore bl_pixel_converter;
+    bl_pixel_converter_init(&bl_pixel_converter);
+    res = bl_pixel_converter_create(
+        &bl_pixel_converter,
+        &_bl_format_info_dst,
+        &_bl_format_info_src,
+        ( BL_PIXEL_CONVERTER_CREATE_FLAG_DONT_COPY_PALETTE
+        | BL_PIXEL_CONVERTER_CREATE_FLAG_ALTERABLE_PALETTE
+        )
+    );
+    DEBUG("image_copy_capture_frame.c: bl_pixel_converter_create:  %d\n", res);
+
+    // XXX TODO: Allocate in meminit
+    void *bl_buf_cropped_converted = malloc(area_row_bytes * area_height);
+    res = bl_pixel_converter_convert(
+        &bl_pixel_converter,
+        bl_buf_cropped_converted,
+        area_row_bytes,
+        area_start_addr,
+        source_row_bytes,
+        area_width,
+        area_height,
+        NULL
+    );
+    DEBUG("image_copy_capture_frame.c: bl_pixel_converter_convert:  %d\n", res);
+
+    res = bl_image_init_as_from_data(
+        &frame_ctx->bl_img_captured,
+        area_width,
+        area_height,
+        _FORMAT_PNG_BLEND2D_OUTPUT_FORMAT,
+        bl_buf_cropped_converted,
+        area_row_bytes,
+        BL_DATA_ACCESS_READ,
+        NULL,
+        NULL
+    );
+    DEBUG("image_copy_capture_frame.c: bl_image_init_as_from_data:  %d\n", res);
+
+    BLImageCodecCore bl_img_codec;
+    res = bl_image_codec_init_by_name(&bl_img_codec, _FORMAT_PNG_BLEND2D_CODEC_NAME, SIZE_MAX, NULL);
+
+    char filename[NAME_MAX];
+    create_timestamped_filename(filename, _FORMAT_PNG_FILE_EXTENSION);
+    res = bl_image_write_to_file(&frame_ctx->bl_img_captured, filename, &bl_img_codec);
+
+    if (res == BL_SUCCESS) {
+        eprintf("Image saved to %s\n", filename);
+    } else {
+        eprintf("Error: Failed to save image (attempted: %s).", filename);
+    }
+
+    // TODO: Double-check whether this order is fine.
+    bl_pixel_converter_destroy(&bl_pixel_converter);
+    bl_image_codec_destroy(&bl_img_codec);
+    bl_image_destroy(&frame_ctx->bl_img_captured);
+}
+
+
+
+struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener__image_capture = {
+    .transform = handle_image_copy_capture_frame_transform__image_capture,
+    .damage = handle_image_copy_capture_frame_damage__image_capture,
+    .presentation_time = handle_image_copy_capture_frame_presentation_time__image_capture,
+    .ready = handle_image_copy_capture_frame_ready__image_capture,
+};

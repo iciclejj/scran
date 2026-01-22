@@ -108,6 +108,17 @@ handle_keyboard_key(
             state->exit_requested = true;
         }
         break;
+    case XKB_KEY_Return:
+        // TODO: Create two capture sessions so that we can take screenshots while
+        // doing video capture? Probably just implement it as part of the video
+        // capture pipeline, without two capture sessions.
+        if (st_output->capture.frame_ctx.capturing) {
+            eprintf("Screenshot during video capture not implemented yet, try again later :(\n");
+        } else {
+            start_image_capture(st_output);
+        }
+
+        break;
     case XKB_KEY_space:
         if (st_output->capture.frame_ctx.capturing) {
             st_output->capture.frame_ctx.capturing = false;
