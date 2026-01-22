@@ -33,12 +33,38 @@ dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
     ext_image_copy_capture_frame_v1_capture(frame);
 }
 
+
+// TODO: Maybe optimize this a bit (and/or make it a bit cleaner somehow).
 static void
-_create_timestamped_filename(char filename[NAME_MAX])
+_create_timestamped_video_filename(char filename[NAME_MAX])
 {
-    const time_t time_now = time(NULL);
-    const struct tm *const time_now_tm = localtime(&time_now);
-    strftime(filename, NAME_MAX, "test-capture_%Y%m%d-%H%M%S" _FORMAT_MPEGTS_FILE_EXTENSION, time_now_tm);
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+
+    struct tm time_now_tm;
+    localtime_r(&ts.tv_sec, &time_now_tm);
+
+    char *_filename = filename;
+    // TODO: Remove this eventually and just use asserts. Resulting filename
+    // length is deterministic.
+    size_t _name_max = NAME_MAX;
+
+    // XXX TODO: Normal filename...
+    const int chars_added_after_sec = strftime(_filename, _name_max, "test-capture_%Y%m%d-%H%M%S", &time_now_tm);
+    _filename += chars_added_after_sec;
+    _name_max -= chars_added_after_sec;
+
+    // INFO: Assumes 4 decimal points (10khz) is the smallest safe divisor that
+    // doesn't risk file-overwriting during rapid consecutive screenshots.
+    const long _tv_usec = ts.tv_nsec / 100000;
+    const int chars_added_after_usec = snprintf(_filename, _name_max, ".%04ld", _tv_usec);
+    _filename += chars_added_after_usec;
+    _name_max -= chars_added_after_usec;
+
+    // XXX: %z is a gnu extension. (Timezone offset.)
+    strftime(_filename, _name_max, "%z" _FORMAT_MPEGTS_FILE_EXTENSION, &time_now_tm);
+    // _filename += chars_added_after_usec;
+    // _name_max -= chars_added_after_usec;
 }
 
 // TODO:
@@ -118,7 +144,7 @@ init_ffmpeg(struct client_state_output *st_output)
 
     // AVFormatContext
     char filename[NAME_MAX];
-    _create_timestamped_filename(filename);
+    _create_timestamped_video_filename(filename);
     avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MPEGTS_NAME, filename);
 
 
