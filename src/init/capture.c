@@ -38,6 +38,14 @@ init_capture(
         st_output
     );
 
+    // TODO: Revisit which parts of video and image init to put here vs
+    // start_capture/dispatch
+
+    // Image capture
+    bl_pixel_converter_init(&st_output->capture.frame_ctx.bl_pixel_converter);
+    bl_image_init(&st_output->capture.frame_ctx.bl_img_captured);
+    bl_image_codec_init(&st_output->capture.frame_ctx.bl_img_codec);
+
     return true;
 }
 

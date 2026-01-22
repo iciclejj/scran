@@ -284,10 +284,8 @@ handle_image_copy_capture_frame_ready__image_capture(
     // XXX: We just always run it through the converter for now.
     // TODO: Only convert if required (not natively supported pixel format by blend2d)
     //       *maybe* also reconsider using a different library.
-    BLPixelConverterCore bl_pixel_converter;
-    bl_pixel_converter_init(&bl_pixel_converter);
     res = bl_pixel_converter_create(
-        &bl_pixel_converter,
+        &frame_ctx->bl_pixel_converter,
         &_bl_format_info_dst,
         &_bl_format_info_src,
         ( BL_PIXEL_CONVERTER_CREATE_FLAG_DONT_COPY_PALETTE
@@ -298,7 +296,7 @@ handle_image_copy_capture_frame_ready__image_capture(
 
     void *const bl_buf_cropped_converted = frame_ctx->img_data_2;
     res = bl_pixel_converter_convert(
-        &bl_pixel_converter,
+        &frame_ctx->bl_pixel_converter,
         bl_buf_cropped_converted,
         area_row_bytes,
         area_start_addr,
@@ -312,7 +310,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     // TODO: Find out whether bl_*_init_as_* functions are efficient enough, or
     // whether there's some lower-overhead way of looping on adding new
     // data/width/height etc. that doesn't require full destruction/re-allocation
-    res = bl_image_init_as_from_data(
+    res = bl_image_create_from_data(
         &frame_ctx->bl_img_captured,
         area_width,
         area_height,
@@ -325,23 +323,17 @@ handle_image_copy_capture_frame_ready__image_capture(
     );
     DEBUG("image_copy_capture_frame.c: bl_image_init_as_from_data:  %d\n", res);
 
-    BLImageCodecCore bl_img_codec;
-    res = bl_image_codec_init_by_name(&bl_img_codec, _FORMAT_PNG_BLEND2D_CODEC_NAME, SIZE_MAX, NULL);
+    res = bl_image_codec_find_by_name(&frame_ctx->bl_img_codec, _FORMAT_PNG_BLEND2D_CODEC_NAME, SIZE_MAX, NULL);
 
     char filename[NAME_MAX];
     create_timestamped_filename(filename, _FORMAT_PNG_FILE_EXTENSION);
-    res = bl_image_write_to_file(&frame_ctx->bl_img_captured, filename, &bl_img_codec);
+    res = bl_image_write_to_file(&frame_ctx->bl_img_captured, filename, &frame_ctx->bl_img_codec);
 
     if (res == BL_SUCCESS) {
         eprintf("Image saved to %s\n", filename);
     } else {
         eprintf("Error: Failed to save image (attempted: %s).", filename);
     }
-
-    // TODO: Double-check whether this order is fine.
-    bl_pixel_converter_destroy(&bl_pixel_converter);
-    bl_image_codec_destroy(&bl_img_codec);
-    bl_image_destroy(&frame_ctx->bl_img_captured);
 }
 
 

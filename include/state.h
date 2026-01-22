@@ -158,6 +158,8 @@ struct capture_frame_context {
 
     // TODO: Maybe union with libav or a separate frame_ctx or similar
     BLImageCore bl_img_captured;
+    BLPixelConverterCore bl_pixel_converter;
+    BLImageCodecCore bl_img_codec;
 
     uint64_t presentation_time_nsec;
 
