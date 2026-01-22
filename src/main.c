@@ -93,6 +93,22 @@ init_premem(struct client_state *state)
     return true;
 }
 
+void
+init_premem_destroy(struct client_state *state)
+{
+    assert(state->n_outputs <= MAX_OUTPUTS);
+
+    for (int i = 0; i < state->n_outputs; ++i) {
+        struct client_state_output *_st_output = &state->outputs[i];
+
+        destroy_output_surface(_st_output);
+        destroy_capture(_st_output);
+    }
+
+    // Includes registry global
+    destroy_wayland_globals(state);
+}
+
 // TODO:
 //  - Add --slim/--no-video arg that skips allocating video-only requirements,,
 //    extra frame buffers, etc.
@@ -276,15 +292,8 @@ int main(void)
     // everything finalize (and that it's not redundant).
     wl_display_roundtrip(state.globals.display);
 
-    assert(state.n_outputs <= MAX_OUTPUTS);
-    for (int i = 0; i < state.n_outputs; ++i) {
-        struct client_state_output *_st_output = &state.outputs[i];
-
-        // TODO: Destroy wayland objects
-    }
-
     munmap(shm_addr, shm_size_bytes);
-    destroy_wayland_globals(&state);
+    init_premem_destroy(&state);
 
     wl_display_disconnect(state.globals.display);
     eprintf("Disconnected from wayland server (%s)\n", SOCKNAME);

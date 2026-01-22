@@ -3,6 +3,7 @@
 
 #include <wayland-client.h>
 
+#include "ext-image-capture-source-v1.h"
 #include "ext-image-copy-capture-v1.h"
 
 #include "init.h"
@@ -47,5 +48,16 @@ init_capture(
     bl_image_codec_init(&st_output->capture.frame_ctx.bl_img_codec);
 
     return true;
+}
+
+void
+destroy_capture(struct client_state_output *st_output)
+{
+    ext_image_capture_source_v1_destroy(st_output->capture.source);
+    ext_image_copy_capture_session_v1_destroy(st_output->capture.session);
+
+    bl_pixel_converter_destroy(&st_output->capture.frame_ctx.bl_pixel_converter);
+    bl_image_destroy(&st_output->capture.frame_ctx.bl_img_captured);
+    bl_image_codec_destroy(&st_output->capture.frame_ctx.bl_img_codec);
 }
 

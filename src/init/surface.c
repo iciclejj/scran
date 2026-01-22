@@ -49,3 +49,10 @@ init_output_surface(
     return true;
 }
 
+void
+destroy_output_surface(struct client_state_output *st_output)
+{
+    wl_surface_destroy(st_output->surface.surface);
+    zwlr_layer_surface_v1_destroy(st_output->surface.layer_surface);
+}
+
