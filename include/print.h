@@ -12,8 +12,8 @@
 #define _DEBUG(fmt, ...) ((void)0)
 #else
 #define _DEBUG(fmt, ...) eprintf(fmt, ##__VA_ARGS__)
-#define DEBUG(fmt, ...) _DEBUG("DEBUG: " fmt, ##__VA_ARGS__)
 #endif
+#define DEBUG(fmt, ...) _DEBUG("DEBUG: " fmt, ##__VA_ARGS__)
 
 
 #endif
