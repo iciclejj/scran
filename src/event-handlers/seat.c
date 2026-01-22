@@ -51,3 +51,14 @@ struct wl_seat_listener seat_listener = {
     .capabilities = handle_seat_capabilities,
 };
 
+void
+seat_listener_destroy(struct client_state_seat *seat)
+{
+    wl_keyboard_destroy(seat->keyboard.keyboard);
+
+    keyboard_listener_destroy(seat);
+
+    wl_pointer_destroy(seat->pointer.pointer);
+    wp_cursor_shape_device_v1_destroy(seat->pointer.cursor_shape_device);
+}
+

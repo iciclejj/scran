@@ -30,26 +30,6 @@
 #define SOCKNAME "wayland-1"
 #define SOCKPATH "/run/user/1000/" SOCKNAME
 
-static void
-destroy_wayland_globals(struct client_state *state)
-{
-    struct client_state_globals *globals = &state->globals;
-
-    // TODO: Is a roundtrip necessary?
-
-    wl_compositor_destroy(globals->compositor);
-    wl_seat_destroy(globals->seat);
-    wl_shm_destroy(globals->shm);
-    zwlr_layer_shell_v1_destroy(globals->layer_shell);
-    wp_cursor_shape_manager_v1_destroy(globals->cursor_shape_manager);
-    ext_output_image_capture_source_manager_v1_destroy(globals->output_image_capture_source_manager);
-    ext_image_copy_capture_manager_v1_destroy(globals->image_copy_capture_manager);
-    // TODO: Add remaining...
-
-    // (Doesn't actually need to be last)
-    wl_registry_destroy(globals->registry);
-}
-
 
 // TODO: void return type?
 static bool
@@ -105,8 +85,7 @@ init_premem_destroy(struct client_state *state)
         destroy_capture(_st_output);
     }
 
-    // Includes registry global
-    destroy_wayland_globals(state);
+    registry_listener_destroy(state);
 }
 
 // TODO:

@@ -75,3 +75,52 @@ struct wl_registry_listener registry_listener = {
     .global = registry_handle_global,
     .global_remove = NULL,
 };
+
+// TODO: Document the "destroy-function tree". =
+//       TLDR: Recursively and (inversely?)chronologically create and call
+//       *_destroy functions for any piece of code (e.g. listeners or functions
+//       int other files) that triggers an init in need of later destruction.
+//
+//       Example:
+//
+//       init_premem_destroy<root_node> {
+//           init_globals_destroy {
+//               registry_listener_destroy {
+//                   seat_listener_destroy {
+//                       keyboard_listener_destroy {
+//                           wl_*_destroy
+//                           ...
+//                       }
+//
+//                       wl_*_destroy
+//                       ...
+//                   }
+//               }
+//           }
+//
+//           wl_*_destroy
+//           ...
+//       }
+//
+// TODO: Well I guess I ended up basically documenting it already. Now put it
+// somewhere nice
+void
+registry_listener_destroy(struct client_state *state)
+{
+    const struct client_state_globals *const globals = &state->globals;
+
+    seat_listener_destroy(&state->seat);
+
+    // TODO: Is a roundtrip necessary?
+
+    wl_compositor_destroy(globals->compositor);
+    wl_seat_destroy(globals->seat);
+    wl_shm_destroy(globals->shm);
+    zwlr_layer_shell_v1_destroy(globals->layer_shell);
+    wp_cursor_shape_manager_v1_destroy(globals->cursor_shape_manager);
+    ext_output_image_capture_source_manager_v1_destroy(globals->output_image_capture_source_manager);
+    ext_image_copy_capture_manager_v1_destroy(globals->image_copy_capture_manager);
+    // TODO: Add remaining..?
+
+    wl_registry_destroy(globals->registry);
+}

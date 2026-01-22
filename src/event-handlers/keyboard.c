@@ -175,3 +175,11 @@ struct wl_keyboard_listener keyboard_listener = {
     .modifiers = handle_keyboard_modifiers,
     .repeat_info = handle_keyboard_repeat_info,
 };
+
+void
+keyboard_listener_destroy(struct client_state_seat *st_seat)
+{
+    xkb_context_unref(st_seat->keyboard.xkb_context);
+    xkb_keymap_unref(st_seat->keyboard.xkb_keymap);
+    xkb_state_unref(st_seat->keyboard.xkb_state);
+}
