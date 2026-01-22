@@ -296,8 +296,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     );
     DEBUG("image_copy_capture_frame.c: bl_pixel_converter_create:  %d\n", res);
 
-    // XXX TODO: Allocate in meminit
-    void *bl_buf_cropped_converted = malloc(area_row_bytes * area_height);
+    void *const bl_buf_cropped_converted = frame_ctx->img_data_2;
     res = bl_pixel_converter_convert(
         &bl_pixel_converter,
         bl_buf_cropped_converted,
@@ -310,6 +309,9 @@ handle_image_copy_capture_frame_ready__image_capture(
     );
     DEBUG("image_copy_capture_frame.c: bl_pixel_converter_convert:  %d\n", res);
 
+    // TODO: Find out whether bl_*_init_as_* functions are efficient enough, or
+    // whether there's some lower-overhead way of looping on adding new
+    // data/width/height etc. that doesn't require full destruction/re-allocation
     res = bl_image_init_as_from_data(
         &frame_ctx->bl_img_captured,
         area_width,
@@ -340,7 +342,6 @@ handle_image_copy_capture_frame_ready__image_capture(
     bl_pixel_converter_destroy(&bl_pixel_converter);
     bl_image_codec_destroy(&bl_img_codec);
     bl_image_destroy(&frame_ctx->bl_img_captured);
-    free(bl_buf_cropped_converted);
 }
 
 

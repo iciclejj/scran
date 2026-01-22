@@ -114,11 +114,11 @@ init_meminit(
 
         const ssize_t _surface_buf_bytes = SURFACE_BUF_COUNT * GET_SURFACE_BUF_SIZE(_st_output->mode);
         const ssize_t _capture_buf_bytes = GET_CAPTURE_BUF_SIZE((*_st_output));
+        const ssize_t _capture_buf_2_bytes = GET_CAPTURE_BUF_2_SIZE((*_st_output));
         // TODO: persistent libav allocations
         // selection: No manual allocations
 
-        *shm_size_bytes += _surface_buf_bytes
-                                + _capture_buf_bytes;
+        *shm_size_bytes += _surface_buf_bytes + _capture_buf_bytes + _capture_buf_2_bytes;
     }
 
     int global_pool_shm_fd = shm_open_anon();
@@ -176,6 +176,9 @@ init_meminit(
             _st_output->capture.shm_format
         );
         curr_offset += GET_CAPTURE_BUF_SIZE((*_st_output));
+
+        _st_output->capture.frame_ctx.img_data_2 = *shm_addr + curr_offset;
+        curr_offset += GET_CAPTURE_BUF_2_SIZE((*_st_output));
 
         wl_buffer_add_listener(
             _st_output->capture.frame_ctx.st_buffer.buffer,

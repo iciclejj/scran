@@ -13,6 +13,7 @@
 #define GET_SURFACE_BUF_SIZE(output_mode) (SURFACE_PIXEL_STRIDE * output_mode.width_px * output_mode.height_px)
 #define GET_SURFACE_STRIDE(output_mode) (SURFACE_PIXEL_STRIDE * output_mode.width_px)
 #define GET_CAPTURE_BUF_SIZE(st_output) (st_output.capture.frame_ctx.pixel_stride * st_output.mode.width_px * st_output.mode.height_px)
+#define GET_CAPTURE_BUF_2_SIZE(st_output) GET_CAPTURE_BUF_SIZE(st_output)
 #define GET_CAPTURE_STRIDE(st_output) (st_output.capture.frame_ctx.pixel_stride * st_output.mode.width_px)
 
 

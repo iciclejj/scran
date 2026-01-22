@@ -147,6 +147,7 @@ struct client_state_capture_buffer {
 // TODO: More consistent naming?
 struct capture_frame_context {
     struct client_state_capture_buffer st_buffer;
+    void *img_data_2;
 
     struct ext_image_copy_capture_session_v1 **session;
 
