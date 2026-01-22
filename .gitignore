@@ -9,5 +9,6 @@ wayland-protocols/*
 
 compile_commands.json
 cscope*.out
+vgcore.*
 
 .cache/
