@@ -284,6 +284,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     // XXX: We just always run it through the converter for now.
     // TODO: Only convert if required (not natively supported pixel format by blend2d)
     //       *maybe* also reconsider using a different library.
+    //           Unless blend2d does that on its own. Find out.
     res = bl_pixel_converter_create(
         &frame_ctx->bl_pixel_converter,
         &_bl_format_info_dst,
@@ -294,6 +295,13 @@ handle_image_copy_capture_frame_ready__image_capture(
     );
     DEBUG("image_copy_capture_frame.c: bl_pixel_converter_create:  %d\n", res);
 
+    // TODO: Double-check that this pointer doesn't get overwritten by blend2d
+    //       and re-allocated.
+    //       ALSO XXX TODO(!!):
+    //           Output size is not necessarily guaranteed to be <= raw pixel
+    //           buffer size. In other words, this buffer could overflow, as it
+    //           is (at time of writing) set to equal the size of the raw
+    //           capture source pixel buffer.
     void *const bl_buf_cropped_converted = frame_ctx->img_data_2;
     res = bl_pixel_converter_convert(
         &frame_ctx->bl_pixel_converter,
@@ -307,9 +315,6 @@ handle_image_copy_capture_frame_ready__image_capture(
     );
     DEBUG("image_copy_capture_frame.c: bl_pixel_converter_convert:  %d\n", res);
 
-    // TODO: Find out whether bl_*_init_as_* functions are efficient enough, or
-    // whether there's some lower-overhead way of looping on adding new
-    // data/width/height etc. that doesn't require full destruction/re-allocation
     res = bl_image_create_from_data(
         &frame_ctx->bl_img_captured,
         area_width,
