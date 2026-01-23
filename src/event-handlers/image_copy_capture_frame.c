@@ -262,12 +262,15 @@ handle_image_copy_capture_frame_ready__image_capture(
     const int area_height = blboxi_height_abs_unsafe(frame_ctx->capture_area_px);
     const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
     const uint32_t area_row_bytes = frame_ctx->pixel_stride * area_width;
-    // const int capture_area_width_px = blboxi_width_abs_unsafe(frame_ctx->capture_area_px);
+    // XXX TODO: Either eparate buffer from video capture OR double-check that
+    // the shared buffer doesn't cause issues + add robust checks/asserts
     const uint8_t *const area_start_addr =
         frame_ctx->st_buffer.data
         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
 
+    // TODO: Do we ever actually need to call blend2d *_reset() fuctions before
+    // re-entry into this event handler?
 
     // TODO: Remove or actually use...
     BLResult res;
@@ -328,6 +331,8 @@ handle_image_copy_capture_frame_ready__image_capture(
     );
     DEBUG("image_copy_capture_frame.c: bl_image_init_as_from_data:  %d\n", res);
 
+    // TODO: This should be called once, outside of the capture event pipeline,
+    // unless between-capture format changing is implemented.
     res = bl_image_codec_find_by_name(&frame_ctx->bl_img_codec, _FORMAT_PNG_BLEND2D_CODEC_NAME, SIZE_MAX, NULL);
 
     char filename[NAME_MAX];
