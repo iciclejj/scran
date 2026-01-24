@@ -56,6 +56,8 @@ seat_listener_destroy(struct client_state_seat *seat)
 {
     wl_keyboard_destroy(seat->keyboard.keyboard);
 
+    // XXX: Put this commit in before data control implementation commit
+    wl_keyboard_destroy(seat->keyboard.keyboard);
     keyboard_listener_destroy(seat);
 
     wl_pointer_destroy(seat->pointer.pointer);
