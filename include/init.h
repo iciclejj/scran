@@ -26,6 +26,7 @@ bool init_capture(struct client_state_output *st_output, struct client_state_glo
  void destroy_capture(struct client_state_output *st_output);
 
 bool init_selection_and_blend2d(struct client_state_output *st_output);
+ void destroy_selection_and_blend2d(struct client_state_output *st_output);
 
 int shm_open_anon(void);
 

@@ -73,7 +73,7 @@ init_premem(struct client_state *state)
     return true;
 }
 
-void
+static void
 init_premem_destroy(struct client_state *state)
 {
     assert(state->n_outputs <= MAX_OUTPUTS);
@@ -223,6 +223,15 @@ init_postmem(struct client_state *state)
     return true;
 }
 
+static void
+init_postmem_destroy(struct client_state *state)
+{
+    for (int i = 0; i < state->n_outputs; ++i) {
+        destroy_selection_and_blend2d(&state->outputs[i]);
+    }
+}
+
+
 // TODO: Allow selection before capture protocols are ready?
 //           Probably negligible and difficult without multithreading
 //       Probably find a cleaner way to do this multi-step init?
@@ -271,7 +280,8 @@ int main(void)
     // everything finalize (and that it's not redundant).
     wl_display_roundtrip(state.globals.display);
 
-    munmap(shm_addr, shm_size_bytes);
+    init_postmem_destroy(&state);
+    munmap(shm_addr, shm_size_bytes); // TODO: Put into init_meminit_destroy?
     init_premem_destroy(&state);
 
     wl_display_disconnect(state.globals.display);

@@ -13,8 +13,6 @@ init_selection_and_blend2d(struct client_state_output *st_output)
     bl_context_init(&bl->ctx);
     bl_path_init(&bl->path);
 
-    // XXX: Maybe handle this assert more robustly
-    assert(st_output->mode.width_px != 0);
     bl->box_outer = (struct BLBoxI) {
         .x0 = 0,
         .y0 = 0,
@@ -44,3 +42,20 @@ init_selection_and_blend2d(struct client_state_output *st_output)
 
     return true;
 }
+
+void
+destroy_selection_and_blend2d(struct client_state_output *st_output)
+{
+    struct client_state_output_selection_blend2d *bl = &st_output->selection.bl;
+    struct client_state_output_surface * st_surface = &st_output->surface;
+
+    for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
+        struct client_state_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
+
+        bl_image_destroy(&st_buffer->bl_img);
+    }
+
+    bl_context_destroy(&bl->ctx);
+    bl_path_destroy(&bl->path);
+}
+
