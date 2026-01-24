@@ -44,8 +44,6 @@ handle_seat_capabilities(
         // TODO
     }
 
-    state->seat.capabilities |= capability;
-
     struct client_state_seat_datacontrol *const st_datacontrol = &state->seat.datacontrol;
 
     st_datacontrol->device = ext_data_control_manager_v1_get_data_device(

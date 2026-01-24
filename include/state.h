@@ -104,9 +104,6 @@ struct client_state_seat {
     struct client_state_seat_keyboard keyboard;
     struct client_state_seat_datacontrol datacontrol;
     // TODO: struct wl_touch *touch;
-
-    // TODO: Create bitfield? Why isn't that part of the library?
-    uint32_t capabilities; // bitmask: enum wl_seat_capability
 };
 
 struct client_state_output_selection_blend2d {
