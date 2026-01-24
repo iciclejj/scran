@@ -12,7 +12,9 @@
 
 bool
 init_capture(
+    // TODO: Don't pass entire st_output if not required
     struct client_state_output *st_output,
+    struct client_state_seat_datacontrol *st_datacontrol,
     struct client_state_globals *globals
 ) {
     st_output->capture.source = ext_output_image_capture_source_manager_v1_create_source(
@@ -46,6 +48,8 @@ init_capture(
     bl_pixel_converter_init(&st_output->capture.frame_ctx.bl_pixel_converter);
     bl_image_init(&st_output->capture.frame_ctx.bl_img_captured);
     bl_image_codec_init(&st_output->capture.frame_ctx.bl_img_codec);
+
+    st_output->capture.frame_ctx.st_datacontrol = st_datacontrol;
 
     return true;
 }

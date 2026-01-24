@@ -22,7 +22,7 @@ bool init_output_surface_shm_buffers(struct client_state_output *st_output, stru
 bool init_output_surface(struct client_state_output *st_output, struct client_state_globals *st_globals);
  void destroy_output_surface(struct client_state_output *st_output);
 
-bool init_capture(struct client_state_output *st_output, struct client_state_globals *globals);
+bool init_capture(struct client_state_output *st_output, struct client_state_seat_datacontrol *st_datacontrol, struct client_state_globals *globals);
  void destroy_capture(struct client_state_output *st_output);
 
 bool init_selection_and_blend2d(struct client_state_output *st_output);

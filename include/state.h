@@ -16,6 +16,7 @@
 #include "ext-image-copy-capture-v1.h"
 #include "cursor-shape-v1.h"
 #include "xdg-output-unstable-v1.h"
+#include "ext-data-control-v1.h"
 
 #define MAX_OUTPUTS 64
 
@@ -34,6 +35,7 @@ struct client_state_globals {
     struct wp_cursor_shape_manager_v1 *cursor_shape_manager;
     struct ext_output_image_capture_source_manager_v1 *output_image_capture_source_manager;
     struct ext_image_copy_capture_manager_v1 *image_copy_capture_manager;
+    struct ext_data_control_manager_v1 *data_control_manager;
 };
 
 struct client_state_output_surface_buffer {
@@ -75,12 +77,32 @@ struct client_state_seat_keyboard {
     struct xkb_state *xkb_state;
 };
 
-// TODO: Rename client_state_* objects to st_* ?
-//          Or name the wl_* objects wl_* ?
+// XXX: Rename this?
+struct client_state_seat_datacontrol {
+    // TODO: Avoid double-dereference (change double-derefs in other state
+    // structs as well)
+    struct ext_data_control_manager_v1 **manager;
+    struct ext_data_control_device_v1 *device;
+    struct ext_data_control_source_v1 *source;
+    // TODO: Get data from save-path
+
+    // NOTE: Handed over from ::frame event. Remember to destroy/unref on
+    // data_control::cancelled (or if overwriting pointer), if required based
+    // on ::frame (required at time of writing).
+    // TODO: Check whether a BLImage maintains a reference to the BLCoded (and,
+    // by extension, the mimetype string), and consider just handing over the
+    // entire BLImage instead. Maybe doesn't make sense to do even then, though.
+    BLArrayCore data_to_send;
+    // TODO: Allow multiple mimetypes?
+    const char *data_to_send_mime_type;
+
+    bool selection_active;
+};
 
 struct client_state_seat {
     struct client_state_seat_pointer pointer;
     struct client_state_seat_keyboard keyboard;
+    struct client_state_seat_datacontrol datacontrol;
     // TODO: struct wl_touch *touch;
 
     // TODO: Create bitfield? Why isn't that part of the library?
@@ -150,7 +172,9 @@ struct capture_frame_context {
     struct client_state_capture_buffer st_buffer;
     void *img_data_2;
 
+    // TODO: This entire frame context badly needs re-reorganizing and slimming
     struct ext_image_copy_capture_session_v1 **session;
+    struct client_state_seat_datacontrol *st_datacontrol;
 
     AVFormatContext *av_format_ctx;
     AVCodecContext *av_codec_ctx;
@@ -229,6 +253,7 @@ struct client_state {
     struct client_state_output outputs[MAX_OUTPUTS];
     uint32_t n_outputs;
 
+    // TODO: Make this a state enum or a bitfield with datacontrol.selection_active etc. ?
     bool exit_requested;
 };
 

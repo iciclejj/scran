@@ -62,7 +62,7 @@ init_premem(struct client_state *state)
             return false;
         }
 
-        if (!init_capture(_st_output, &state->globals)) {
+        if (!init_capture(_st_output, &state->seat.datacontrol, &state->globals)) {
             return false;
         }
     }
@@ -71,6 +71,22 @@ init_premem(struct client_state *state)
     wl_display_roundtrip(state->globals.display);
 
     return true;
+}
+
+static inline void
+_stay_alive_while_clipboard_active(struct client_state *state)
+{
+    bool *const clipboard_active = &state->seat.datacontrol.selection_active;
+
+    if (*clipboard_active == true) {
+        eprintf("Keeping clipboard selection alive until stolen...\n");
+
+        while (*clipboard_active == true) {
+            wl_display_dispatch(state->globals.display);
+        }
+
+        eprintf("Clipboard selection stolen! Continuing exit.\n");
+    }
 }
 
 static void
@@ -83,6 +99,11 @@ init_premem_destroy(struct client_state *state)
 
         destroy_output_surface(_st_output);
         destroy_capture(_st_output);
+
+        // TODO: Make sure this happens at an appropriate point in time (memory
+        // footprint should be minimized), once the init/cleanup is more
+        // finalized.
+        _stay_alive_while_clipboard_active(state);
     }
 
     registry_listener_destroy(state);

@@ -1,4 +1,5 @@
 #include <wayland-client.h>
+#include <blend2d/blend2d.h>
 
 #include "state.h"
 
@@ -44,6 +45,15 @@ handle_seat_capabilities(
     }
 
     state->seat.capabilities |= capability;
+
+    struct client_state_seat_datacontrol *const st_datacontrol = &state->seat.datacontrol;
+
+    st_datacontrol->device = ext_data_control_manager_v1_get_data_device(
+        state->globals.data_control_manager,
+        state->globals.seat
+    );
+
+    st_datacontrol->manager = &state->globals.data_control_manager;
 }
 
 struct wl_seat_listener seat_listener = {
@@ -54,7 +64,10 @@ struct wl_seat_listener seat_listener = {
 void
 seat_listener_destroy(struct client_state_seat *seat)
 {
-    wl_keyboard_destroy(seat->keyboard.keyboard);
+    ext_data_control_device_v1_destroy(seat->datacontrol.device);
+    if (seat->datacontrol.source != NULL) {
+        ext_data_control_source_v1_destroy(seat->datacontrol.source);
+    }
 
     // XXX: Put this commit in before data control implementation commit
     wl_keyboard_destroy(seat->keyboard.keyboard);

@@ -11,9 +11,11 @@
 #include <libavutil/frame.h>
 
 #include "blend2d/core/api.h"
+#include "blend2d/core/array.h"
 #include "blend2d/core/imagecodec.h"
 #include "blend2d/core/pixelconverter.h"
 #include "ext-image-copy-capture-v1.h"
+#include "ext-data-control-v1.h"
 
 #include "libavutil/avutil.h"
 #include "state.h"
@@ -318,6 +320,8 @@ handle_image_copy_capture_frame_ready__image_capture(
     );
     DEBUG("image_copy_capture_frame.c: bl_pixel_converter_convert:  %d\n", res);
 
+    // NOTE: The data passed is not freed unless freed by passed destroy_func,
+    // if it is not NULL (aka it is not freed here, at time of writing).
     res = bl_image_create_from_data(
         &frame_ctx->bl_img_captured,
         area_width,
@@ -325,6 +329,8 @@ handle_image_copy_capture_frame_ready__image_capture(
         _FORMAT_PNG_BLEND2D_OUTPUT_FORMAT,
         bl_buf_cropped_converted,
         area_row_bytes,
+        // XXX: Read-only access causes blend2d to make a copy if modified.
+        // TODO: Probably just change to RW.
         BL_DATA_ACCESS_READ,
         NULL,
         NULL
@@ -335,15 +341,80 @@ handle_image_copy_capture_frame_ready__image_capture(
     // unless between-capture format changing is implemented.
     res = bl_image_codec_find_by_name(&frame_ctx->bl_img_codec, _FORMAT_PNG_BLEND2D_CODEC_NAME, SIZE_MAX, NULL);
 
+    // TODO: This should be initialized in init_premem, so we don't re-allocate
+    // the array backing every time. Must in that case either be a double-
+    // buffer, OR assert that there will never be a race condition with
+    // offer::send.
+    //     Probably simply doing everything within one run of this function
+    //     should to be enough, assuming no multi-threading?
+    BLArrayCore bl_array_img_encoded;
+    bl_array_init(&bl_array_img_encoded, BL_OBJECT_TYPE_ARRAY_UINT8);
+    res = bl_image_write_to_data(&frame_ctx->bl_img_captured, &bl_array_img_encoded, &frame_ctx->bl_img_codec);
+
+    // TODO: Conditional save to file and/or to clipboard selection
+
+    // XXX: Everything here is so bad... Should really switch to a more
+    // c-friendly library...
+    //     TODO: Are the internal functions reasonably stable and/or easy to
+    //     use directly?
+    const void *const bl_array_img_encoded_data = bl_array_get_data(&bl_array_img_encoded);
+    const size_t bytes_to_write = bl_array_get_size(&bl_array_img_encoded);
+    size_t bytes_written;
+
     char filename[NAME_MAX];
     create_timestamped_filename(filename, _FORMAT_PNG_FILE_EXTENSION);
-    res = bl_image_write_to_file(&frame_ctx->bl_img_captured, filename, &frame_ctx->bl_img_codec);
+    res = bl_file_system_write_file(
+        filename,
+        bl_array_img_encoded_data,
+        bytes_to_write,
+        &bytes_written
+    );
 
-    if (res == BL_SUCCESS) {
-        eprintf("Image saved to %s\n", filename);
+    if (res == BL_SUCCESS && bytes_written == bytes_to_write) {
+        eprintf("Image saved: %s (%ldKiB)\n", filename, bytes_written >> 10);
     } else {
         eprintf("Error: Failed to save image (attempted: %s).", filename);
     }
+
+
+    // TODO: Consider loading image back from storage, instead of storing it
+    // in memory?
+
+    // TODO: Verify that init_move doesn't leak memory without explicit reset
+    //           And also that the moved-*from* instance doesn't need explicit
+    //           destroy
+    bl_array_init_move(&frame_ctx->st_datacontrol->data_to_send, &bl_array_img_encoded);
+    // TODO: Is this the inteded way for a user to access members not exposed to
+    // the C-API by bl_*_get_* functions ?
+    //     See: https://blend2d.com/doc/group__bl__impl.html
+    const BLImageCodecImpl *const bl_img_codec_impl = (BLImageCodecImpl *)(frame_ctx->bl_img_codec._d.impl);
+    // TODO: Double-check (lack of) refcounting behavior of _get_data functions
+    //           XXX TODO: Also, if not refcounted, then ensure it is nulled
+    //           when invalidated or that it will not matter that it isn't.
+    frame_ctx->st_datacontrol->data_to_send_mime_type = bl_string_get_data(&bl_img_codec_impl->mime_type);
+
+    // XXX: Calling this directly from here makes sense for now, since we only
+    // support one seat. TODO: Make a function to decide which seat's
+    // data_control_device should handle this.
+    if (frame_ctx->st_datacontrol->source != NULL) {
+        ext_data_control_source_v1_destroy(frame_ctx->st_datacontrol->source);
+    }
+    frame_ctx->st_datacontrol->source = ext_data_control_manager_v1_create_data_source(
+        *frame_ctx->st_datacontrol->manager
+    );
+    ext_data_control_source_v1_add_listener(
+        frame_ctx->st_datacontrol->source,
+        &data_control_source_listener,
+        frame_ctx->st_datacontrol
+    );
+    ext_data_control_source_v1_offer(
+        frame_ctx->st_datacontrol->source,
+        frame_ctx->st_datacontrol->data_to_send_mime_type
+    );
+    ext_data_control_device_v1_set_selection(frame_ctx->st_datacontrol->device, frame_ctx->st_datacontrol->source);
+    DEBUG("image_capture::frame(): datacontrol_source::set_selection().\n");
+
+    frame_ctx->st_datacontrol->selection_active = true;
 }
 
 
