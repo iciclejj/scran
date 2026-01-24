@@ -104,6 +104,7 @@ struct client_state_output_selection_blend2d {
 
 enum selection_state {
     // TODO: Bitmask and allow simultaneous f.ex. rebasing + resizing?
+    SELECTION_EXIT_REQUESTED = -1,
     SELECTION_NONE,
     SELECTION_IN_PROGRESS,
     SELECTION_COMPLETE,

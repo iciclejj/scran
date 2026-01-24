@@ -1,5 +1,6 @@
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
+#include <assert.h>
 
 #include "state.h"
 #include "event-handlers.h"
@@ -137,31 +138,26 @@ surface_frame_callback_handler(
     struct wl_callback *callback,
     uint32_t time_ms
 ) {
-    // TODO: create_frame, create_something, ... ?
-
     struct client_state_output *st_output = data;
-    struct client_state_output_surface_buffer *st_buffer = get_free_double_buffer(st_output);
 
-    // Destroy callback manually and request new frame "recursively"
-    // TODO: Should this be done from main?
+    // Destroy callback here and request new frame "recursively" within callback
     wl_callback_destroy(callback);
-    wl_callback_add_listener(
-        wl_surface_frame(st_output->surface.surface),
-        &surface_frame_callback_listener,
-        st_output
-    );
 
-    if (st_buffer == NULL) {
-        DEBUG("Both buffers busy...\n");
-        // TODO: Restructure to not need to remember this for every fail condition
-        wl_surface_commit(st_output->surface.surface);
+    if (st_output->selection.selection_state == SELECTION_EXIT_REQUESTED) {
+        // Quit before requesting another frame
         return;
     }
-    // XXX TEST: This will likely end up staying, though...
-    if (st_output->selection.selection_state == SELECTION_NONE) {
-        // TODO: Restructure to not need to remember this for every fail condition
-        wl_surface_commit(st_output->surface.surface);
-        return;
+
+    struct client_state_output_surface_buffer *st_buffer = get_free_double_buffer(st_output);
+
+    if (st_buffer == NULL ||
+        st_output->selection.selection_state == SELECTION_NONE
+    ) {
+        #ifndef NDEBUG
+            if (st_buffer == NULL) DEBUG("Both buffers busy...\n");
+        #endif /* NDEBUG */
+
+        goto go_next;
     }
 
     st_buffer->busy = true;
@@ -189,6 +185,12 @@ surface_frame_callback_handler(
         0,
         st_output->mode.width_px,
         st_output->mode.height_px
+    );
+go_next:
+    wl_callback_add_listener(
+        wl_surface_frame(st_output->surface.surface),
+        &surface_frame_callback_listener,
+        st_output
     );
     wl_surface_commit(st_output->surface.surface);
 }

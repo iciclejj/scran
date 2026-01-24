@@ -79,6 +79,8 @@ handle_pointer_motion(
     }
 
     switch (st_selection->selection_state) {
+    case SELECTION_EXIT_REQUESTED:
+        break;
     case SELECTION_NONE:
         break;
     case SELECTION_IN_PROGRESS:
