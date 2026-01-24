@@ -31,12 +31,6 @@ get_free_double_buffer(struct client_state_output *st_output)
         : &st_output->surface.double_buffer[0]
     ;
 
-    // DEBUG(
-    //     "get_free_double_buffer(): busy? buf_0=%d, buf_1=%d\n",
-    //     state->surface.double_buffer[0].busy,
-    //     state->surface.double_buffer[1].busy
-    // );
-
     if (buffer->busy) {
         return NULL;
     }

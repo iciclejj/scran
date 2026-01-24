@@ -67,7 +67,6 @@ seat_listener_destroy(struct client_state_seat *seat)
         ext_data_control_source_v1_destroy(seat->datacontrol.source);
     }
 
-    // XXX: Put this commit in before data control implementation commit
     wl_keyboard_destroy(seat->keyboard.keyboard);
     keyboard_listener_destroy(seat);
 

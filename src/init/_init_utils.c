@@ -4,6 +4,9 @@
 
 #include "init.h"
 
+// TODO: We only use this in one place. Just define it where we use it and remove this
+// file.
+
 
 #define SHM_TMP_FILENAME "/icicle-wayland-client-jfkdsalfj"
 

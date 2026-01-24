@@ -12,8 +12,6 @@
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 
-#include "ext-image-copy-capture-v1.h"
-#include "wlr-layer-shell-unstable-v1.h"
 #include "wayland-client-protocol.h"
 
 #include "state.h"
@@ -31,7 +29,6 @@
 #define SOCKPATH "/run/user/1000/" SOCKNAME
 
 
-// TODO: void return type?
 static bool
 init_premem(struct client_state *state)
 {

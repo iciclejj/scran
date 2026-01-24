@@ -31,7 +31,7 @@ handle_keyboard_keymap(
 
     // TODO: Maybe initialize this once elsewhere?
     //           But keep in mind keymap event can come multiple times.
-    // TODO: Destroy.
+    //               TODO: Make sure EVERY created instance is destroyed
     state->seat.keyboard.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     state->seat.keyboard.xkb_keymap = xkb_keymap_new_from_string(
         state->seat.keyboard.xkb_context,
@@ -68,6 +68,8 @@ handle_keyboard_leave (
     // TODO
 }
 
+// TODO: Either roundtrip here or ensure that capture etc. pipelines get to
+// finish properly (can be either before or after this function exits)
 static inline void
 _set_state_to_exit_requested(struct client_state *state)
 {

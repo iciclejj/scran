@@ -9,8 +9,6 @@
 #include "event-handlers.h"
 #include "init.h"
 
-#include "print.h"
-
 bool
 init_output_surface(
     struct client_state_output *st_output,
