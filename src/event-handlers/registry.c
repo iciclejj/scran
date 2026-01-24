@@ -109,6 +109,7 @@ registry_listener_destroy(struct client_state *state)
 {
     const struct client_state_globals *const globals = &state->globals;
 
+    // TODO: Destroy properly per seat once multi-seat implemented
     seat_listener_destroy(&state->seat);
 
     // TODO: Is a roundtrip necessary?
