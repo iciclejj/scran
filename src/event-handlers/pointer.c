@@ -137,7 +137,7 @@ handle_pointer_motion(
             const BLBoxI box_before_resize = st_selection->bl.box_before_changes;
 
             switch (st_selection->selection_resize_direction) {
-            case SELECTION_NONE:
+            case SELECTION_RESIZE_NONE:
                 break;
             case SELECTION_RESIZE_TOP_LEFT:
                 st_selection->bl.box.x0 = box_before_resize.x0 + x_diff_px;
