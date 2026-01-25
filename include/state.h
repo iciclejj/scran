@@ -24,7 +24,7 @@
 #define A_DOUBLE_BUFFER_HAS_TWO_BUFFERS 2
 #define SURFACE_BUF_COUNT A_DOUBLE_BUFFER_HAS_TWO_BUFFERS
 
-struct client_state_globals {
+struct scran_globals {
     struct wl_display *display;
     struct wl_registry *registry;
     struct wl_compositor *compositor;
@@ -38,7 +38,7 @@ struct client_state_globals {
     struct ext_data_control_manager_v1 *data_control_manager;
 };
 
-struct client_state_output_surface_buffer {
+struct scran_output_surface_buffer {
     // TODO: Rename to wl_buffer to not mix it up with `data`?
     struct wl_buffer *buffer;
     void *data;
@@ -48,28 +48,28 @@ struct client_state_output_surface_buffer {
 
 // TODO: Optimize surface/selection event-loop struct sizes
 //           Make a *_context struct, like for capture_frame
-struct client_state_output_surface {
+struct scran_output_surface {
     struct wl_surface *surface;
     struct zwlr_layer_surface_v1 *layer_surface;
 
-    struct client_state_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
+    struct scran_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
 
     bool is_focused;
 };
 
-struct client_state_seat_pointer {
+struct scran_seat_pointer {
     struct wl_pointer *pointer;
     struct wp_cursor_shape_device_v1 *cursor_shape_device;
 
     // TODO: Should this be for the entire seat, and not just pointer?
-    struct client_state_output *focused_output;
+    struct scran_output *focused_output;
 
     enum wl_pointer_button_state btn_left_state;
     int x_px;
     int y_px;
 };
 
-struct client_state_seat_keyboard {
+struct scran_seat_keyboard {
     struct wl_keyboard *keyboard;
 
     struct xkb_context *xkb_context;
@@ -78,7 +78,7 @@ struct client_state_seat_keyboard {
 };
 
 // XXX: Rename this?
-struct client_state_seat_datacontrol {
+struct scran_seat_datacontrol {
     // TODO: Avoid double-dereference (change double-derefs in other state
     // structs as well)
     struct ext_data_control_manager_v1 **manager;
@@ -99,14 +99,14 @@ struct client_state_seat_datacontrol {
     bool selection_active;
 };
 
-struct client_state_seat {
-    struct client_state_seat_pointer pointer;
-    struct client_state_seat_keyboard keyboard;
-    struct client_state_seat_datacontrol datacontrol;
+struct scran_seat {
+    struct scran_seat_pointer pointer;
+    struct scran_seat_keyboard keyboard;
+    struct scran_seat_datacontrol datacontrol;
     // TODO: struct wl_touch *touch;
 };
 
-struct client_state_output_selection_blend2d {
+struct scran_output_selection_blend2d {
     // TODO Drop the blend2d struct and just create handler context structs
     BLContextCore ctx;
     BLPathCore path;
@@ -141,14 +141,14 @@ enum selection_resize_direction {
 
 // TODO: Optimize surface/selection event-loop struct sizes
 //           Make a *_context struct, like for capture_frame
-struct client_state_output_selection {
+struct scran_output_selection {
     // bool selection_started;
     enum selection_state selection_state;
     enum selection_resize_direction selection_resize_direction;
 
     // TODO: Make a cleaner/more obvious interface for getting selection
     //       height/width etc. than just getting the .bl.box coordinates?
-    struct client_state_output_selection_blend2d bl;
+    struct scran_output_selection_blend2d bl;
 
     int pointer_before_changes_x_px;
     int pointer_before_changes_y_px;
@@ -158,20 +158,20 @@ struct client_state_output_selection {
     // BLPoint bl_point_bottom_right;
 };
 
-// TODO: Merge all or parts of this with client_state_surface_buffer?
-struct client_state_capture_buffer {
+// TODO: Merge all or parts of this with scran_surface_buffer?
+struct scran_capture_buffer {
     struct wl_buffer *buffer;
     void *data;
 };
 
 // TODO: More consistent naming?
 struct capture_frame_context {
-    struct client_state_capture_buffer st_buffer;
+    struct scran_capture_buffer st_buffer;
     void *img_data_2;
 
     // TODO: This entire frame context badly needs re-reorganizing and slimming
     struct ext_image_copy_capture_session_v1 **session;
-    struct client_state_seat_datacontrol *st_datacontrol;
+    struct scran_seat_datacontrol *st_datacontrol;
 
     AVFormatContext *av_format_ctx;
     AVCodecContext *av_codec_ctx;
@@ -204,7 +204,7 @@ struct capture_frame_context {
     bool capturing;
 };
 
-struct client_state_output_capture {
+struct scran_output_capture {
     struct capture_frame_context frame_ctx;
 
     // Inconsistent naming, but my eyes are bleeding
@@ -219,7 +219,7 @@ struct client_state_output_capture {
     uint32_t shm_format;
 };
 
-struct client_state_output_mode {
+struct scran_output_mode {
     // NOTE: These do not have any transforms applied
     //       (but they are affected by resolution settings)
     int32_t width_px;
@@ -227,7 +227,7 @@ struct client_state_output_mode {
     int32_t refresh_rate_mHz;
 };
 
-struct client_state_output {
+struct scran_output {
     struct wl_output *wl_output;
     // TODO: xdg_output
     //         will at least be needed if/when implementing f.ex.
@@ -235,19 +235,19 @@ struct client_state_output {
     //         global geometry
 
     // TODO: Clearer name ?
-    struct client_state_output_mode mode;
+    struct scran_output_mode mode;
     enum wl_output_transform transform;
 
-    struct client_state_output_surface surface;
-    struct client_state_output_selection selection;
-    struct client_state_output_capture capture;
+    struct scran_output_surface surface;
+    struct scran_output_selection selection;
+    struct scran_output_capture capture;
 };
 
-struct client_state {
-    struct client_state_globals globals;
-    struct client_state_seat seat;
+struct scran {
+    struct scran_globals globals;
+    struct scran_seat seat;
     // TODO: Pointers, probably. This entire state mess still needs cleaning up in general.
-    struct client_state_output outputs[MAX_OUTPUTS];
+    struct scran_output outputs[MAX_OUTPUTS];
     uint32_t n_outputs;
 
     // TODO: Make this a state enum or a bitfield with datacontrol.selection_active etc. ?

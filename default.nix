@@ -20,8 +20,8 @@
 }:
 
 stdenv.mkDerivation {
-  pname = "client-1-test";
-  version = "0.1.1";
+  pname = "scran";
+  version = "0.1.0-beta";
   src = _src;
 
   nativeBuildInputs = [
@@ -44,18 +44,18 @@ stdenv.mkDerivation {
 
   installPhase = ''
     runHook preInstall
-    install -D build/release/main $out/bin/wayland-client-test-1
+    install -D build/release/main $out/bin/scran
     runHook postInstall
   '';
 
   desktopItems = [
     # TODO: Change this
     (makeDesktopItem {
-      name = "client-1-test";
-      exec = "client-1-test";
-      comment = "Screen capture...";
-      desktopName = "Client-1-Test";
-      genericName = "Client-1-Test";
+      name = "scran";
+      exec = "scran";
+      comment = "Screen capture";
+      desktopName = "Scran";
+      genericName = "Scran";
     })
   ];
 }

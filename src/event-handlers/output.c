@@ -17,7 +17,7 @@ handle_output_geometry(
     const char *model,
     int32_t transform
 ) {
-    struct client_state_output *st_output = data;
+    struct scran_output *st_output = data;
 
     st_output->transform = transform;
 
@@ -50,7 +50,7 @@ handle_output_mode(
     int32_t height,
     int32_t refresh_rate_mHz // millihertz
 ) {
-    struct client_state_output *st_output = data;
+    struct scran_output *st_output = data;
 
     // Non-current modes are deprecated
     if (!(flags & WL_OUTPUT_MODE_CURRENT)) {

@@ -18,7 +18,7 @@ handle_layer_surface_configure(
     uint32_t width_px_logical,
     uint32_t height_px_logical
 ) {
-    struct client_state_output *st_output = data;
+    struct scran_output *st_output = data;
 
     assert(st_output->mode.width_px == width_px_logical);
     assert(st_output->mode.height_px == height_px_logical);
@@ -29,7 +29,7 @@ handle_layer_surface_configure(
 static void
 handle_layer_surface_closed(void *data, struct zwlr_layer_surface_v1 *layer_surface)
 {
-    struct client_state_output *st_output = data;
+    struct scran_output *st_output = data;
 
     for (int i = 0; i < SURFACE_BUF_COUNT; i++) {
         wl_buffer_destroy(st_output->surface.double_buffer[i].buffer);

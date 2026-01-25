@@ -22,10 +22,10 @@ normalize_rect_i(struct BLRectI *rect)
     }
 }
 
-static inline struct client_state_output_surface_buffer *
-get_free_double_buffer(struct client_state_output *st_output)
+static inline struct scran_output_surface_buffer *
+get_free_double_buffer(struct scran_output *st_output)
 {
-    struct client_state_output_surface_buffer *buffer =
+    struct scran_output_surface_buffer *buffer =
         st_output->surface.double_buffer[0].busy
         ? &st_output->surface.double_buffer[1]
         : &st_output->surface.double_buffer[0]
@@ -40,12 +40,12 @@ get_free_double_buffer(struct client_state_output *st_output)
 
 static void
 draw_frame(
-    struct client_state_output *st_output,
-    struct client_state_output_surface_buffer *st_buffer
+    struct scran_output *st_output,
+    struct scran_output_surface_buffer *st_buffer
 ) {
     // XXX TEST TODO: Improve draw_frame
 
-    struct client_state_output_selection_blend2d *bl = &st_output->selection.bl;
+    struct scran_output_selection_blend2d *bl = &st_output->selection.bl;
     struct BLPoint origin = { 0, 0 };
     const uint32_t buf_size = GET_SURFACE_BUF_SIZE(st_output->mode);
 
@@ -132,7 +132,7 @@ surface_frame_callback_handler(
     struct wl_callback *callback,
     uint32_t time_ms
 ) {
-    struct client_state_output *st_output = data;
+    struct scran_output *st_output = data;
 
     // Destroy callback here and request new frame "recursively" within callback
     wl_callback_destroy(callback);
@@ -142,7 +142,7 @@ surface_frame_callback_handler(
         return;
     }
 
-    struct client_state_output_surface_buffer *st_buffer = get_free_double_buffer(st_output);
+    struct scran_output_surface_buffer *st_buffer = get_free_double_buffer(st_output);
 
     if (st_buffer == NULL ||
         st_output->selection.selection_state == SELECTION_NONE
@@ -160,7 +160,7 @@ surface_frame_callback_handler(
     //       Otherwise, rendered selection can lag behind the capture area,
     //        leading to f.ex. capture frame border spilling into the actual
     //        capture frame
-    //       See also comment in client_state_capture.
+    //       See also comment in scran_capture.
     st_output->capture.frame_ctx.capture_area_px = _get_reverse_transform(
         st_output->selection.bl.box,
         st_output->mode.width_px,

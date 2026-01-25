@@ -250,7 +250,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     void *data,
     struct ext_image_copy_capture_frame_v1 *frame
 ) {
-    struct client_state_output_capture *st_capture = data;
+    struct scran_output_capture *st_capture = data;
     struct capture_frame_context *frame_ctx = &st_capture->frame_ctx;
 
     // XXX: Not implemented yet...

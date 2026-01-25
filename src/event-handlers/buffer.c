@@ -7,7 +7,7 @@
 static void
 handle_surface_buffer_release(void *data, struct wl_buffer *buffer)
 {
-    struct client_state_output_surface_buffer *st_surface_buffer = data;
+    struct scran_output_surface_buffer *st_surface_buffer = data;
 
     st_surface_buffer->busy = false;
 }
@@ -20,7 +20,7 @@ struct wl_buffer_listener surface_buffer_listener = {
 static void
 handle_capture_buffer_release(void *data, struct wl_buffer *buffer)
 {
-    struct client_state_capture_buffer *st_capture_buffer = data;
+    struct scran_capture_buffer *st_capture_buffer = data;
 
     // Don't need to do anything at the moment...
 }

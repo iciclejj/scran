@@ -17,16 +17,16 @@
 #define GET_CAPTURE_STRIDE(st_output) (st_output.capture.frame_ctx.pixel_stride * st_output.mode.width_px)
 
 
-bool init_output_surface_shm_buffers(struct client_state_output *st_output, struct wl_shm *wl_shm_global);
+bool init_output_surface_shm_buffers(struct scran_output *st_output, struct wl_shm *wl_shm_global);
 
-bool init_output_surface(struct client_state_output *st_output, struct client_state_globals *st_globals);
- void destroy_output_surface(struct client_state_output *st_output);
+bool init_output_surface(struct scran_output *st_output, struct scran_globals *st_globals);
+ void destroy_output_surface(struct scran_output *st_output);
 
-bool init_capture(struct client_state_output *st_output, struct client_state_seat_datacontrol *st_datacontrol, struct client_state_globals *globals);
- void destroy_capture(struct client_state_output *st_output);
+bool init_capture(struct scran_output *st_output, struct scran_seat_datacontrol *st_datacontrol, struct scran_globals *globals);
+ void destroy_capture(struct scran_output *st_output);
 
-bool init_selection_and_blend2d(struct client_state_output *st_output);
- void destroy_selection_and_blend2d(struct client_state_output *st_output);
+bool init_selection_and_blend2d(struct scran_output *st_output);
+ void destroy_selection_and_blend2d(struct scran_output *st_output);
 
 int shm_open_anon(void);
 

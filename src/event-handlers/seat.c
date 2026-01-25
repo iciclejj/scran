@@ -24,7 +24,7 @@ handle_seat_capabilities(
     //         esp. the v4 vs v5 things
     //       Improve capability bitfield/enum documentation (wayland docs/xmls)?
     //          Unclear language wrt. the arg being a bitfield
-    struct client_state *state = data;
+    struct scran *state = data;
 
     if (capability & WL_SEAT_CAPABILITY_POINTER) {
         state->seat.pointer.pointer = wl_seat_get_pointer(seat);
@@ -44,7 +44,7 @@ handle_seat_capabilities(
         // TODO
     }
 
-    struct client_state_seat_datacontrol *const st_datacontrol = &state->seat.datacontrol;
+    struct scran_seat_datacontrol *const st_datacontrol = &state->seat.datacontrol;
 
     st_datacontrol->device = ext_data_control_manager_v1_get_data_device(
         state->globals.data_control_manager,
@@ -60,7 +60,7 @@ struct wl_seat_listener seat_listener = {
 };
 
 void
-seat_listener_destroy(struct client_state_seat *seat)
+seat_listener_destroy(struct scran_seat *seat)
 {
     ext_data_control_device_v1_destroy(seat->datacontrol.device);
     if (seat->datacontrol.source != NULL) {
