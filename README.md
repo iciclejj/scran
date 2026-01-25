@@ -2,6 +2,27 @@
 # Scran
 Screen capture. Only tested on [sway](https://swaywm.org/).
 
+## Installing (Nix)
+
+Simple example (many ways to do it):
+
+```nix
+let
+  scran_src = builtins.fetchGit {
+    url = "git+ssh://git@github.com/iciclejj/scran.git";
+    ref = "main";
+    # Desired commit (v0.1.0-beta)
+    rev = "58e4fad53de6c9c229d5e3c40ce32e5f744006e0";
+  };
+
+  scran = pkgs.callPackage scran_src { };
+in
+{
+  environment.systemPackages = [
+    scran
+  ];
+}
+```
 ## Usage & Behavior
 Image/video is saved to current directory.
 
@@ -16,7 +37,10 @@ Image also sent to clipboard
 - Enter
   - Capture image
 - Space
-  - Capture video (toggle)
+  - Capture video (start/stop)
+- Escape
+  - Stop video capture
+  - Exit
 
 ## Primary Feature-TODOs
 - VA-API
