@@ -1,6 +1,24 @@
 # ⚠️ Work In Progress ⚠️
 # Scran
-### Primary Feature-TODOs
+Screen capture. Only tested on [sway](https://swaywm.org/).
+
+## Usage & Behavior
+Image/video is saved to current directory.
+
+Image also sent to clipboard
+
+### Keymap (as of v0.1.0-beta)
+- Left mouse button
+  - Init selection
+  - Toggle move selection (after init)
+- Right mouse button
+  - Toggle resize selection
+- Enter
+  - Capture image
+- Space
+  - Capture video (toggle)
+
+## Primary Feature-TODOs
 - VA-API
 - Low-hanging fruit optimization
 - Improved multi-display support
