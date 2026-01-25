@@ -5,10 +5,10 @@
 #include "state.h"
 
 bool
-init_selection_and_blend2d(struct client_state_output *st_output)
+init_selection_and_blend2d(struct scran_output *st_output)
 {
-    struct client_state_output_selection_blend2d *bl = &st_output->selection.bl;
-    struct client_state_output_surface * st_surface = &st_output->surface;
+    struct scran_output_selection_blend2d *bl = &st_output->selection.bl;
+    struct scran_output_surface * st_surface = &st_output->surface;
 
     bl_context_init(&bl->ctx);
     bl_path_init(&bl->path);
@@ -23,7 +23,7 @@ init_selection_and_blend2d(struct client_state_output *st_output)
     // TODO: Should maybe be a separate function, f.ex. init_surface_buffers_blend2d
     //       and called directly from main, after init_surface_shm_buffers
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
-        struct client_state_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
+        struct scran_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
         // Shared memory must already be allocated.
         assert(st_buffer->data != NULL);
 
@@ -44,13 +44,13 @@ init_selection_and_blend2d(struct client_state_output *st_output)
 }
 
 void
-destroy_selection_and_blend2d(struct client_state_output *st_output)
+destroy_selection_and_blend2d(struct scran_output *st_output)
 {
-    struct client_state_output_selection_blend2d *bl = &st_output->selection.bl;
-    struct client_state_output_surface * st_surface = &st_output->surface;
+    struct scran_output_selection_blend2d *bl = &st_output->selection.bl;
+    struct scran_output_surface * st_surface = &st_output->surface;
 
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
-        struct client_state_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
+        struct scran_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
 
         bl_image_destroy(&st_buffer->bl_img);
     }

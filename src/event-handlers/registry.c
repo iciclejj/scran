@@ -21,8 +21,8 @@ registry_handle_global(
     uint32_t version // of interface
     )
 {
-    struct client_state *state = data;
-    struct client_state_globals *globals = &state->globals;
+    struct scran *state = data;
+    struct scran_globals *globals = &state->globals;
 
     #define _INTERFACE_IS(desired) (strcmp(interface, desired.name) == 0)
 
@@ -55,7 +55,7 @@ registry_handle_global(
         }
         // TODO: Handle adding/removing outputs during program runtime?
 
-        struct client_state_output *curr_output = &state->outputs[state->n_outputs];
+        struct scran_output *curr_output = &state->outputs[state->n_outputs];
 
         curr_output->wl_output = wl_registry_bind(registry, name, &wl_output_interface, 4);
         wl_output_add_listener(curr_output->wl_output, &output_listener, curr_output);
@@ -109,9 +109,9 @@ struct wl_registry_listener registry_listener = {
 // TODO: Well I guess I ended up basically documenting it already. Now put it
 // somewhere nice
 void
-registry_listener_destroy(struct client_state *state)
+registry_listener_destroy(struct scran *state)
 {
-    const struct client_state_globals *const globals = &state->globals;
+    const struct scran_globals *const globals = &state->globals;
 
     // TODO: Destroy properly per seat once multi-seat implemented
     seat_listener_destroy(&state->seat);

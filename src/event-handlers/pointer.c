@@ -15,8 +15,8 @@ handle_pointer_enter(
     wl_fixed_t x,
     wl_fixed_t y
 ) {
-    struct client_state *state = data;
-    struct client_state_seat_pointer *st_pointer = &state->seat.pointer;
+    struct scran *state = data;
+    struct scran_seat_pointer *st_pointer = &state->seat.pointer;
 
     // "When a seat's focus enters a surface, the pointer image is undefined..."
     wp_cursor_shape_device_v1_set_shape(
@@ -43,9 +43,9 @@ handle_pointer_leave(
     uint32_t serial,
     struct wl_surface *surface_left
 ) {
-    struct client_state *state = data;
+    struct scran *state = data;
 
-    // TODO: reset_selection((struct client_state *)data);
+    // TODO: reset_selection((struct scran *)data);
 
     for (int i = 0; i < state->n_outputs; ++i) {
         if (surface_left == state->outputs[i].surface.surface) {
@@ -64,9 +64,9 @@ handle_pointer_motion(
     wl_fixed_t x,
     wl_fixed_t y
 ) {
-    struct client_state *state = data;
-    struct client_state_output *st_output = state->seat.pointer.focused_output;
-    struct client_state_output_selection *st_selection = &st_output->selection;
+    struct scran *state = data;
+    struct scran_output *st_output = state->seat.pointer.focused_output;
+    struct scran_output_selection *st_selection = &st_output->selection;
 
     const int x_px = wl_fixed_to_int(x);
     const int y_px = wl_fixed_to_int(y);
@@ -180,8 +180,8 @@ handle_pointer_button(
     uint32_t button,
     enum wl_pointer_button_state button_state
 ) {
-    struct client_state *state = data;
-    struct client_state_output *st_output = state->seat.pointer.focused_output;
+    struct scran *state = data;
+    struct scran_output *st_output = state->seat.pointer.focused_output;
 
     // TODO: Implement dragging
 

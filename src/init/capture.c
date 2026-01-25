@@ -13,9 +13,9 @@
 bool
 init_capture(
     // TODO: Don't pass entire st_output if not required
-    struct client_state_output *st_output,
-    struct client_state_seat_datacontrol *st_datacontrol,
-    struct client_state_globals *globals
+    struct scran_output *st_output,
+    struct scran_seat_datacontrol *st_datacontrol,
+    struct scran_globals *globals
 ) {
     st_output->capture.source = ext_output_image_capture_source_manager_v1_create_source(
         globals->output_image_capture_source_manager,
@@ -55,7 +55,7 @@ init_capture(
 }
 
 void
-destroy_capture(struct client_state_output *st_output)
+destroy_capture(struct scran_output *st_output)
 {
     ext_image_capture_source_v1_destroy(st_output->capture.source);
     ext_image_copy_capture_session_v1_destroy(st_output->capture.session);

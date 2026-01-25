@@ -11,8 +11,8 @@
 
 bool
 init_output_surface(
-    struct client_state_output *st_output,
-    struct client_state_globals *st_globals
+    struct scran_output *st_output,
+    struct scran_globals *st_globals
 ) {
     // Must add role to surface and ack its configure event before adding a buffer.
     st_output->surface.surface = wl_compositor_create_surface(st_globals->compositor);
@@ -48,7 +48,7 @@ init_output_surface(
 }
 
 void
-destroy_output_surface(struct client_state_output *st_output)
+destroy_output_surface(struct scran_output *st_output)
 {
     zwlr_layer_surface_v1_destroy(st_output->surface.layer_surface);
     wl_surface_destroy(st_output->surface.surface);

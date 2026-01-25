@@ -17,7 +17,7 @@ handle_keyboard_keymap(
     int fd,
     uint32_t fd_size
 ) {
-    struct client_state *state = data;
+    struct scran *state = data;
 
     // No other formats are recognized by wayland atm.
     if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
@@ -71,7 +71,7 @@ handle_keyboard_leave (
 // TODO: Either roundtrip here or ensure that capture etc. pipelines get to
 // finish properly (can be either before or after this function exits)
 static inline void
-_set_state_to_exit_requested(struct client_state *state)
+_set_state_to_exit_requested(struct scran *state)
 {
     state->exit_requested = true;
     for (int i = 0; i < state->n_outputs; ++i) {
@@ -90,9 +90,9 @@ handle_keyboard_key(
     uint32_t key,
     enum wl_keyboard_key_state key_state
 ) {
-    struct client_state *state = data;
+    struct scran *state = data;
     // TODO: Figure out pointer vs keyboard focus
-    struct client_state_output *st_output = state->seat.pointer.focused_output;
+    struct scran_output *st_output = state->seat.pointer.focused_output;
 
     if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
         return;
@@ -154,7 +154,7 @@ handle_keyboard_modifiers(
     uint32_t mods_locked,
     uint32_t group
 ) {
-    struct client_state *state = data;
+    struct scran *state = data;
 
     // TODO(self): Understand this
     xkb_state_update_mask(
@@ -190,7 +190,7 @@ struct wl_keyboard_listener keyboard_listener = {
 };
 
 void
-keyboard_listener_destroy(struct client_state_seat *st_seat)
+keyboard_listener_destroy(struct scran_seat *st_seat)
 {
     xkb_context_unref(st_seat->keyboard.xkb_context);
     xkb_keymap_unref(st_seat->keyboard.xkb_keymap);

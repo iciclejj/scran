@@ -30,7 +30,7 @@
 
 
 static bool
-init_premem(struct client_state *state)
+init_premem(struct scran *state)
 {
     state->globals.display = wl_display_connect(SOCKNAME);
 
@@ -53,7 +53,7 @@ init_premem(struct client_state *state)
     //   Collect dynamic memory requirements
     // + Initialize otherwhat lacking extra dependencies (beyond globals)
     for (int i = 0; i < state->n_outputs; ++i) {
-        struct client_state_output *_st_output = &state->outputs[i];
+        struct scran_output *_st_output = &state->outputs[i];
 
         if (!init_output_surface(_st_output, &state->globals)) {
             return false;
@@ -71,7 +71,7 @@ init_premem(struct client_state *state)
 }
 
 static inline void
-_stay_alive_while_clipboard_active(struct client_state *state)
+_stay_alive_while_clipboard_active(struct scran *state)
 {
     bool *const clipboard_active = &state->seat.datacontrol.selection_active;
 
@@ -87,12 +87,12 @@ _stay_alive_while_clipboard_active(struct client_state *state)
 }
 
 static void
-init_premem_destroy(struct client_state *state)
+init_premem_destroy(struct scran *state)
 {
     assert(state->n_outputs <= MAX_OUTPUTS);
 
     for (int i = 0; i < state->n_outputs; ++i) {
-        struct client_state_output *_st_output = &state->outputs[i];
+        struct scran_output *_st_output = &state->outputs[i];
 
         destroy_output_surface(_st_output);
         destroy_capture(_st_output);
@@ -111,13 +111,13 @@ init_premem_destroy(struct client_state *state)
 //    extra frame buffers, etc.
 static bool
 init_meminit(
-    struct client_state *state,
+    struct scran *state,
     void **shm_addr,
     size_t *shm_size_bytes
 ) {
     // Calculate memory requirements
     for (int i = 0; i < state->n_outputs; ++i) {
-        struct client_state_output *_st_output = &state->outputs[i];
+        struct scran_output *_st_output = &state->outputs[i];
 
         // XXX: Handle this gracefully (and maybe in a nicer location?)
         if (_st_output->capture.shm_format == -1) {
@@ -153,7 +153,7 @@ init_meminit(
     // Assign allocated memory
     ssize_t curr_offset = 0;
     for (int i = 0; i < state->n_outputs; ++i) {
-        struct client_state_output *_st_output = &state->outputs[i];
+        struct scran_output *_st_output = &state->outputs[i];
 
         assert(SURFACE_BUF_COUNT == A_DOUBLE_BUFFER_HAS_TWO_BUFFERS && SURFACE_BUF_COUNT == 2);
 
@@ -210,11 +210,11 @@ init_meminit(
 }
 
 static bool
-init_postmem(struct client_state *state)
+init_postmem(struct scran *state)
 {
     assert(state->n_outputs <= MAX_OUTPUTS);
     for (int i = 0; i < state->n_outputs; ++i) {
-        struct client_state_output *_st_output = &state->outputs[i];
+        struct scran_output *_st_output = &state->outputs[i];
 
         if (!init_selection_and_blend2d(_st_output)) {
             return false;
@@ -242,7 +242,7 @@ init_postmem(struct client_state *state)
 }
 
 static void
-init_postmem_destroy(struct client_state *state)
+init_postmem_destroy(struct scran *state)
 {
     for (int i = 0; i < state->n_outputs; ++i) {
         destroy_selection_and_blend2d(&state->outputs[i]);
@@ -257,7 +257,7 @@ init_postmem_destroy(struct client_state *state)
 //           F.ex. 2559x1599 rect width/height
 int main(void)
 {
-    struct client_state state = { };
+    struct scran state = { };
     void *shm_addr = NULL;
     size_t shm_size_bytes = 0;
 

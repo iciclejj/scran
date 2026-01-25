@@ -21,10 +21,10 @@ extern struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_
 extern struct ext_data_control_source_v1_listener data_control_source_listener;
 
 extern struct wl_registry_listener registry_listener;
- void registry_listener_destroy(struct client_state *state);
+ void registry_listener_destroy(struct scran *state);
 extern struct wl_seat_listener seat_listener;
- void seat_listener_destroy(struct client_state_seat *seat);
+ void seat_listener_destroy(struct scran_seat *seat);
 extern struct wl_keyboard_listener keyboard_listener;
- void keyboard_listener_destroy(struct client_state_seat *st_seat);
+ void keyboard_listener_destroy(struct scran_seat *st_seat);
 
 #endif

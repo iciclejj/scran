@@ -15,7 +15,7 @@ handle_image_copy_capture_session_buffer_size(
     uint32_t width,
     uint32_t height
 ) {
-    struct client_state_output *st_output = data;
+    struct scran_output *st_output = data;
 
     // This seemingly always hold true, so use output::mode w/h only.
     // TODO: See if xdg_output can somehow be used as backing for the session.
@@ -31,7 +31,7 @@ handle_image_copy_capture_session_shm_format(
     struct ext_image_copy_capture_session_v1 *session,
     uint32_t shm_format
 ) {
-    struct client_state_output *st_output = data;
+    struct scran_output *st_output = data;
 
     DEBUG("session::shm_format received: %x\n", shm_format);
 
@@ -56,7 +56,7 @@ handle_image_copy_capture_session_stopped(
     void *data,
     struct ext_image_copy_capture_session_v1 *session
 ) {
-    struct client_state_output *st_output = data;
+    struct scran_output *st_output = data;
 
     ext_image_copy_capture_session_v1_destroy(*st_output->capture.frame_ctx.session);
 

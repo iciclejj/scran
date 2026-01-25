@@ -16,7 +16,7 @@
 //     // TODO: Do we need this if we only care about sending offers, and not
 //     // receiving? Destruction of our own sources/offers can happen through
 //     // source::cancelled.
-//     struct client_state_seat_datacontrol *st_datacontrol = data;
+//     struct scran_seat_datacontrol *st_datacontrol = data;
 // }
 //
 // struct ext_data_control_device_v1_listener data_control_device_listener = {
@@ -30,7 +30,7 @@ handle_data_control_source_send(
     const char *mime_type,
     int32_t fd
 ) {
-    struct client_state_seat_datacontrol *st_datacontrol = data;
+    struct scran_seat_datacontrol *st_datacontrol = data;
     const BLArrayCore *const bl_array = &st_datacontrol->data_to_send;
 
 
@@ -62,7 +62,7 @@ handle_data_control_source_cancelled(
     void *data,
     struct ext_data_control_source_v1 *source
 ) {
-    struct client_state_seat_datacontrol *st_datacontrol = data;
+    struct scran_seat_datacontrol *st_datacontrol = data;
 
     // TODO: Consider destroying the source here. At the moment it should not
     // be necessary (destroyed inside both image_capture::frame() and during

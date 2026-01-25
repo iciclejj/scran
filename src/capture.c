@@ -86,7 +86,7 @@ create_timestamped_filename(
 //      - Store defaults in a const struct (or whatever format libav prefers)
 //
 static inline bool
-init_ffmpeg(struct client_state_output *st_output)
+init_ffmpeg(struct scran_output *st_output)
 {
     struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
 
@@ -181,7 +181,7 @@ init_ffmpeg(struct client_state_output *st_output)
 }
 
 bool
-start_video_capture(struct client_state_output *st_output)
+start_video_capture(struct scran_output *st_output)
 {
     // TODO: Assert instead?
     if (st_output->capture.frame_ctx.capturing) {
@@ -209,7 +209,7 @@ start_video_capture(struct client_state_output *st_output)
 }
 
 void
-dispatch_image_capture_event(struct client_state_output_capture *st_capture)
+dispatch_image_capture_event(struct scran_output_capture *st_capture)
 {
     struct capture_frame_context *frame_ctx = &st_capture->frame_ctx;
 
@@ -227,7 +227,7 @@ dispatch_image_capture_event(struct client_state_output_capture *st_capture)
 
 
 bool
-start_image_capture(struct client_state_output *st_output)
+start_image_capture(struct scran_output *st_output)
 {
     // See TODO at call site
     assert(!st_output->capture.frame_ctx.capturing);
