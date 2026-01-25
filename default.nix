@@ -1,5 +1,6 @@
 {
   stdenv,
+  lib,
   pkg-config,
   wayland,
   wayland-scanner,
@@ -58,4 +59,11 @@ stdenv.mkDerivation {
       genericName = "Scran";
     })
   ];
+
+  meta = {
+    description = "Sway screen capture";
+    mainProgram = "scran";
+    license = lib.licenses.mit;
+    homepage = "https://github.com/iciclejj/scran";
+  };
 }
