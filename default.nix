@@ -44,7 +44,7 @@ stdenv.mkDerivation {
 
   installPhase = ''
     runHook preInstall
-    install -D build/release/main $out/bin/scran
+    install -D build/release/scran $out/bin/scran
     runHook postInstall
   '';
 

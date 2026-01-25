@@ -13,7 +13,7 @@ BUILD_DIR = build
 BUILD_DIR_REL = $(BUILD_DIR)/release
 BUILD_DIR_DBG = $(BUILD_DIR)/debug
 
-PROG = main
+PROG = scran
 PROG_REL = $(BUILD_DIR_REL)/$(PROG)
 PROG_DBG = $(BUILD_DIR_DBG)/$(PROG)
 LDLIBS = -lwayland-client -lblend2d
