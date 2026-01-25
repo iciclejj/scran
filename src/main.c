@@ -96,12 +96,12 @@ init_premem_destroy(struct scran *state)
 
         destroy_output_surface(_st_output);
         destroy_capture(_st_output);
-
-        // TODO: Make sure this happens at an appropriate point in time (memory
-        // footprint should be minimized), once the init/cleanup is more
-        // finalized.
-        _stay_alive_while_clipboard_active(state);
     }
+
+    // TODO: Make sure this happens at an appropriate point in time (memory
+    // footprint should be minimized), once the init/cleanup is more
+    // finalized.
+    _stay_alive_while_clipboard_active(state);
 
     registry_listener_destroy(state);
 }
