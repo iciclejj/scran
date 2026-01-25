@@ -149,7 +149,7 @@ init_ffmpeg(struct scran_output *st_output)
 
     // AVFormatContext
     char filename[NAME_MAX];
-    create_timestamped_filename(filename, _FORMAT_MPEGTS_NAME);
+    create_timestamped_filename(filename, _FORMAT_MPEGTS_FILE_EXTENSION);
     avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MPEGTS_NAME, filename);
 
 
