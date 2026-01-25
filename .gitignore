@@ -1,4 +1,5 @@
 main
+build/
 TODO.txt
 
 **/*.o
