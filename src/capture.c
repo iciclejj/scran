@@ -14,8 +14,11 @@
 #include "print.h"
 
 // TODO: Let user set this
-#define _FORMAT_MPEGTS_FILE_EXTENSION ".m2ts"
-#define _FORMAT_MPEGTS_NAME "mpegts"
+#define _FORMAT_MP4_FILE_EXTENSION ".mp4"
+// XXX: Seems like the underlying FFOutputFormat structs aren't exposed in the
+// public API (e.g. ff_mp4_muxer etc.), so we must let libavformat run its
+// "guessing"/scoring algorithm using a format-name string.
+#define _FORMAT_MP4_NAME "mp4"
 #define _CODEC_X264_NAME "libx264"
 
 void
@@ -149,8 +152,8 @@ init_ffmpeg(struct scran_output *st_output)
 
     // AVFormatContext
     char filename[NAME_MAX];
-    create_timestamped_filename(filename, _FORMAT_MPEGTS_FILE_EXTENSION);
-    avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MPEGTS_NAME, filename);
+    create_timestamped_filename(filename, _FORMAT_MP4_FILE_EXTENSION);
+    avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MP4_NAME, filename);
 
 
     // AVStream
@@ -163,10 +166,13 @@ init_ffmpeg(struct scran_output *st_output)
     _av_stream->time_base = frame_ctx->av_codec_ctx->framerate;
     avcodec_parameters_from_context(_av_stream->codecpar, frame_ctx->av_codec_ctx);
 
-
+    AVDictionary *opts = NULL;
+    // TODO: Ensure keyframes/i-frames are still frequent enough to take short
+    // videos whenever default values get decided on. (Works well as of now.)
+    av_dict_set(&opts, "movflags", "+frag_keyframe", 0);
     assert(!((frame_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
     avio_open(&(frame_ctx->av_format_ctx)->pb, filename, AVIO_FLAG_WRITE);
-    if (0 > avformat_write_header(frame_ctx->av_format_ctx, NULL)) {
+    if (0 > avformat_write_header(frame_ctx->av_format_ctx, &opts)) {
         eprintf("Failed to write file header (filename: %s)\n", filename);
 
         if (frame_ctx->av_format_ctx != NULL) {
