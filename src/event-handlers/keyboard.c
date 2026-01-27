@@ -17,7 +17,10 @@ handle_keyboard_keymap(
     int fd,
     uint32_t fd_size
 ) {
-    struct scran *state = data;
+    struct scran *const state = data;
+
+    // Sanity check...
+    assert((int)WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1 == (int)XKB_KEYMAP_FORMAT_TEXT_V1);
 
     // No other formats are recognized by wayland atm.
     if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
@@ -25,20 +28,16 @@ handle_keyboard_keymap(
         return;
     }
 
-    char *shm_keymap_str = mmap(
+    char *const shm_keymap_str = mmap(
         NULL, fd_size, PROT_READ, MAP_PRIVATE/*see wl xml*/, fd, 0
     );
 
-    // TODO: Maybe initialize this once elsewhere?
-    //           But keep in mind keymap event can come multiple times.
-    //               TODO: Make sure EVERY created instance is destroyed
     state->seat.keyboard.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-    state->seat.keyboard.xkb_keymap = xkb_keymap_new_from_string(
+    state->seat.keyboard.xkb_keymap = xkb_keymap_new_from_buffer(
         state->seat.keyboard.xkb_context,
         shm_keymap_str,
-        // NOTE: Should match the handler's `format` arg
-        //       TODO: Is `format` supposed to be safe to use directly here?
-        XKB_KEYMAP_FORMAT_TEXT_V1,
+        fd_size,
+        (enum xkb_keymap_format)WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1,
         XKB_KEYMAP_COMPILE_NO_FLAGS
     );
     state->seat.keyboard.xkb_state = xkb_state_new(state->seat.keyboard.xkb_keymap);
