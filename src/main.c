@@ -19,6 +19,8 @@
 #include "init.h"
 #include "print.h"
 
+struct scran g_state = { };
+
 // TODO:
 //     Move init/ code back in here or put init code in there consistently...
 //     Don't use libwayland..? Handle allocations etc. ourselves?
@@ -30,56 +32,56 @@
 
 
 static bool
-init_premem(struct scran *state)
+init_premem()
 {
-    state->globals.display = wl_display_connect(SOCKNAME);
+    g_state.globals.display = wl_display_connect(SOCKNAME);
 
-    if (state->globals.display == NULL) {
+    if (g_state.globals.display == NULL) {
         eprintf("Failed to connect to wayland socket.\n");
         return false;
     } else {
         eprintf("Connected to wayland socket.\n");
     }
 
-    state->globals.registry = wl_display_get_registry(state->globals.display);
+    g_state.globals.registry = wl_display_get_registry(g_state.globals.display);
 
     // Remaining globals get bound by registry_listener::global during the first roundtrip
     // TODO: Validate globals (at least non-stable protocols)
-    wl_registry_add_listener(state->globals.registry, &registry_listener, (void *)state);
-    wl_display_roundtrip(state->globals.display);
+    wl_registry_add_listener(g_state.globals.registry, &registry_listener, &g_state);
+    wl_display_roundtrip(g_state.globals.display);
     DEBUG("Roundtripped after adding registry listener()\n");
 
 
     //   Collect dynamic memory requirements
     // + Initialize otherwhat lacking extra dependencies (beyond globals)
-    for (int i = 0; i < state->n_outputs; ++i) {
-        struct scran_output *_st_output = &state->outputs[i];
+    for (int i = 0; i < g_state.n_outputs; ++i) {
+        struct scran_output *_st_output = &g_state.outputs[i];
 
-        if (!init_output_surface(_st_output, &state->globals)) {
+        if (!init_output_surface(_st_output, &g_state.globals)) {
             return false;
         }
 
-        if (!init_capture(_st_output, &state->seat.datacontrol, &state->globals)) {
+        if (!init_capture(_st_output, &g_state.seat.datacontrol, &g_state.globals)) {
             return false;
         }
     }
     // Then roundtrip to collect listener-provided memory requirements into our state struct.
     // This should be our last required roundtrip until the main event loop dispatch.
-    wl_display_roundtrip(state->globals.display);
+    wl_display_roundtrip(g_state.globals.display);
 
     return true;
 }
 
 static inline void
-_stay_alive_while_clipboard_active(struct scran *state)
+_stay_alive_while_clipboard_active()
 {
-    bool *const clipboard_active = &state->seat.datacontrol.selection_active;
+    bool *const clipboard_active = &g_state.seat.datacontrol.selection_active;
 
     if (*clipboard_active == true) {
         eprintf("Keeping clipboard selection alive until stolen...\n");
 
         while (*clipboard_active == true) {
-            wl_display_dispatch(state->globals.display);
+            wl_display_dispatch(g_state.globals.display);
         }
 
         eprintf("Clipboard selection stolen! Continuing exit.\n");
@@ -87,12 +89,12 @@ _stay_alive_while_clipboard_active(struct scran *state)
 }
 
 static void
-init_premem_destroy(struct scran *state)
+init_premem_destroy()
 {
-    assert(state->n_outputs <= MAX_OUTPUTS);
+    assert(g_state.n_outputs <= MAX_OUTPUTS);
 
-    for (int i = 0; i < state->n_outputs; ++i) {
-        struct scran_output *_st_output = &state->outputs[i];
+    for (int i = 0; i < g_state.n_outputs; ++i) {
+        struct scran_output *_st_output = &g_state.outputs[i];
 
         destroy_output_surface(_st_output);
         destroy_capture(_st_output);
@@ -101,9 +103,9 @@ init_premem_destroy(struct scran *state)
     // TODO: Make sure this happens at an appropriate point in time (memory
     // footprint should be minimized), once the init/cleanup is more
     // finalized.
-    _stay_alive_while_clipboard_active(state);
+    _stay_alive_while_clipboard_active();
 
-    registry_listener_destroy(state);
+    registry_listener_destroy(&g_state);
 }
 
 // TODO:
@@ -111,13 +113,12 @@ init_premem_destroy(struct scran *state)
 //    extra frame buffers, etc.
 static bool
 init_meminit(
-    struct scran *state,
     void **shm_addr,
     size_t *shm_size_bytes
 ) {
     // Calculate memory requirements
-    for (int i = 0; i < state->n_outputs; ++i) {
-        struct scran_output *_st_output = &state->outputs[i];
+    for (int i = 0; i < g_state.n_outputs; ++i) {
+        struct scran_output *_st_output = &g_state.outputs[i];
 
         // XXX: Handle this gracefully (and maybe in a nicer location?)
         if (_st_output->capture.shm_format == -1) {
@@ -145,15 +146,15 @@ init_meminit(
     // TODO: Only allocate what the server will actually need.
     //           F.ex., the server doesn't need to have libav objects.
     struct wl_shm_pool *global_pool_wl = wl_shm_create_pool(
-        state->globals.shm,
+        g_state.globals.shm,
         global_pool_shm_fd,
         *shm_size_bytes
     );
 
     // Assign allocated memory
     ssize_t curr_offset = 0;
-    for (int i = 0; i < state->n_outputs; ++i) {
-        struct scran_output *_st_output = &state->outputs[i];
+    for (int i = 0; i < g_state.n_outputs; ++i) {
+        struct scran_output *_st_output = &g_state.outputs[i];
 
         assert(SURFACE_BUF_COUNT == A_DOUBLE_BUFFER_HAS_TWO_BUFFERS && SURFACE_BUF_COUNT == 2);
 
@@ -210,11 +211,11 @@ init_meminit(
 }
 
 static bool
-init_postmem(struct scran *state)
+init_postmem()
 {
-    assert(state->n_outputs <= MAX_OUTPUTS);
-    for (int i = 0; i < state->n_outputs; ++i) {
-        struct scran_output *_st_output = &state->outputs[i];
+    assert(g_state.n_outputs <= MAX_OUTPUTS);
+    for (int i = 0; i < g_state.n_outputs; ++i) {
+        struct scran_output *_st_output = &g_state.outputs[i];
 
         if (!init_selection_and_blend2d(_st_output)) {
             return false;
@@ -242,10 +243,10 @@ init_postmem(struct scran *state)
 }
 
 static void
-init_postmem_destroy(struct scran *state)
+init_postmem_destroy()
 {
-    for (int i = 0; i < state->n_outputs; ++i) {
-        destroy_selection_and_blend2d(&state->outputs[i]);
+    for (int i = 0; i < g_state.n_outputs; ++i) {
+        destroy_selection_and_blend2d(&g_state.outputs[i]);
     }
 }
 
@@ -257,21 +258,20 @@ init_postmem_destroy(struct scran *state)
 //           F.ex. 2559x1599 rect width/height
 int main(void)
 {
-    struct scran state = { };
     void *shm_addr = NULL;
     size_t shm_size_bytes = 0;
 
-    if (!init_premem(&state)) {
+    if (!init_premem()) {
         eprintf("Failed pre-memory allocation initialization.\n");
         return EXIT_FAILURE;
     }
 
-    if (!init_meminit(&state, &shm_addr, &shm_size_bytes)) {
+    if (!init_meminit(&shm_addr, &shm_size_bytes)) {
         eprintf("Failed to initialize memory and/or shared memory buffers.\n");
         return EXIT_FAILURE;
     }
 
-    if (!init_postmem(&state)) {
+    if (!init_postmem()) {
         eprintf("Failed post-memory allocation initialization.\n");
         return EXIT_FAILURE;
     }
@@ -287,22 +287,22 @@ int main(void)
     //     fix it, if it is a bug.
     //     The initializing ::commit shouldn't need to be vsynced..?
     while (
-        !state.exit_requested
+        !g_state.exit_requested
         &&
-        -1 != wl_display_dispatch(state.globals.display)
+        -1 != wl_display_dispatch(g_state.globals.display)
     );
 
 
     // TODO: Assert capture has exited gracefully
     // TODO: Double-check and ensure that this roundtrip is enough to let
     // everything finalize (and that it's not redundant).
-    wl_display_roundtrip(state.globals.display);
+    wl_display_roundtrip(g_state.globals.display);
 
-    init_postmem_destroy(&state);
+    init_postmem_destroy();
     munmap(shm_addr, shm_size_bytes); // TODO: Put into init_meminit_destroy?
-    init_premem_destroy(&state);
+    init_premem_destroy();
 
-    wl_display_disconnect(state.globals.display);
+    wl_display_disconnect(g_state.globals.display);
     eprintf("Disconnected from wayland server (%s)\n", SOCKNAME);
 
     return 0;
