@@ -156,15 +156,18 @@ handle_keyboard_modifiers(
 ) {
     struct scran *state = data;
 
-    // TODO(self): Understand this
     xkb_state_update_mask(
         state->seat.keyboard.xkb_state,
         mods_depressed,
         mods_latched,
         mods_locked,
+        // INFO: Wayland doesn't give us more than one group to work with. Not
+        // sure if it matters which group we "pretend" to handle, but most
+        // clients, as well as xkbcommon's own wayland code, uses the 'locked'
+        // group, so let's go with that...
         0,
         0,
-        group // TODO: Is this correct ?
+        group
     );
 }
 
