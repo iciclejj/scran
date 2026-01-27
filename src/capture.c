@@ -169,7 +169,7 @@ init_ffmpeg(struct scran_output *st_output)
     AVDictionary *opts = NULL;
     // TODO: Ensure keyframes/i-frames are still frequent enough to take short
     // videos whenever default values get decided on. (Works well as of now.)
-    av_dict_set(&opts, "movflags", "+frag_keyframe", 0);
+    av_dict_set(&opts, "movflags", "frag_keyframe", 0);
     assert(!((frame_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
     avio_open(&(frame_ctx->av_format_ctx)->pb, filename, AVIO_FLAG_WRITE);
     if (0 > avformat_write_header(frame_ctx->av_format_ctx, &opts)) {
