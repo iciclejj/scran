@@ -116,6 +116,7 @@ handle_image_copy_capture_frame_ready__video_capture(
     // INFO: Width set during sws_ctx's init ensures crop
     // XXX: This sws_scale cropping "hack" needs to be updated to allow
     // non-equal length planes (e.g. YUV420).
+    //     TODO: Update it. Important for compatibility and cheaper decode.
     assert(frame_ctx->sws_ctx->src_w == blboxi_width_abs_unsafe(frame_ctx->capture_area_px));
     sws_scale(
         frame_ctx->sws_ctx,
