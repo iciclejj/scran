@@ -72,7 +72,7 @@ registry_handle_global(
         globals->data_control_manager = wl_registry_bind(registry, name, &ext_data_control_manager_v1_interface, 1);
     }
 
-    #undef _EVENT_INTERFACE_IS
+    #undef _INTERFACE_IS
 }
 
 struct wl_registry_listener registry_listener = {
