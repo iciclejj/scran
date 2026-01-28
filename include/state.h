@@ -53,8 +53,6 @@ struct scran_output_surface {
     struct zwlr_layer_surface_v1 *layer_surface;
 
     struct scran_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
-
-    bool is_focused;
 };
 
 struct scran_seat_pointer {

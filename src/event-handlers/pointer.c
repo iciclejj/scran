@@ -28,8 +28,6 @@ handle_pointer_enter(
     // TODO: Macro for_each_output ?
     for (int i = 0; i < state->n_outputs; ++i) {
         if (surface_entered == state->outputs[i].surface.surface) {
-            // TODO: Is is_focused useful?
-            state->outputs[i].surface.is_focused = true;
             st_pointer->focused_output = &state->outputs[i];
             break;
         }
@@ -43,17 +41,7 @@ handle_pointer_leave(
     uint32_t serial,
     struct wl_surface *surface_left
 ) {
-    struct scran *state = data;
-
-    // TODO: reset_selection((struct scran *)data);
-
-    for (int i = 0; i < state->n_outputs; ++i) {
-        if (surface_left == state->outputs[i].surface.surface) {
-            // TODO: Is is_focused useful?
-            state->outputs[i].surface.is_focused = false;
-            break;
-        }
-    }
+    // Nothing to do here yet...
 }
 
 static void
