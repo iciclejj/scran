@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <time.h>
 #include <stdatomic.h>
+#include <sys/stat.h>
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -155,9 +156,16 @@ init_ffmpeg(struct scran_output *st_output)
 
 
     // AVFormatContext
-    char filename[NAME_MAX];
-    create_timestamped_filename(filename, _FORMAT_MP4_FILE_EXTENSION);
-    avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MP4_NAME, filename);
+    // XXX TODO: Refactor path-related things once we implement custom save-path
+    // arg-parsing. Keep everything contained here until then, despite being
+    // inefficient. Also needs better error handling etc.
+    char filepath[PATH_MAX] = CAPTURE_OUTPUT_DEFAULT_DIRPATH "/";
+    mkdir(filepath, 0755);
+    const size_t _filename_offset = sizeof(CAPTURE_OUTPUT_DEFAULT_DIRPATH) - 1;
+    assert(filepath[_filename_offset - 1] == '/');
+    const char _file_extension[] = _FORMAT_MP4_FILE_EXTENSION;
+    create_timestamped_filename(filepath + _filename_offset, _file_extension);
+    avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MP4_NAME, filepath);
 
 
     // AVStream
@@ -175,9 +183,9 @@ init_ffmpeg(struct scran_output *st_output)
     // videos whenever default values get decided on. (Works well as of now.)
     av_dict_set(&opts, "movflags", "frag_keyframe", 0);
     assert(!((frame_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
-    avio_open(&(frame_ctx->av_format_ctx)->pb, filename, AVIO_FLAG_WRITE);
+    avio_open(&(frame_ctx->av_format_ctx)->pb, filepath, AVIO_FLAG_WRITE);
     if (0 > avformat_write_header(frame_ctx->av_format_ctx, &opts)) {
-        eprintf("Failed to write file header (filename: %s)\n", filename);
+        eprintf("Failed to write file header (filepath: %s)\n", filepath);
 
         if (frame_ctx->av_format_ctx != NULL) {
             avformat_free_context(frame_ctx->av_format_ctx);

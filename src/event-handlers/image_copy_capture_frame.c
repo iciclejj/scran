@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <assert.h>
+#include <sys/stat.h>
 
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
@@ -372,19 +373,25 @@ handle_image_copy_capture_frame_ready__image_capture(
     const size_t bytes_to_write = bl_array_get_size(&bl_array_img_encoded);
     size_t bytes_written;
 
-    char filename[NAME_MAX];
-    create_timestamped_filename(filename, _FORMAT_PNG_FILE_EXTENSION);
+    // XXX TODO: Refactor path-related things once we implement custom save-path
+    // arg-parsing. Keep everything contained here until then, despite being
+    // inefficient. Also needs better error handling etc.
+    char filepath[PATH_MAX] = CAPTURE_OUTPUT_DEFAULT_DIRPATH "/";
+    mkdir(filepath, 0755);
+    const size_t _filename_offset = sizeof(CAPTURE_OUTPUT_DEFAULT_DIRPATH);
+    const char _file_extension[] = _FORMAT_PNG_FILE_EXTENSION;
+    create_timestamped_filename(filepath + _filename_offset, _file_extension);
     res = bl_file_system_write_file(
-        filename,
+        filepath,
         bl_array_img_encoded_data,
         bytes_to_write,
         &bytes_written
     );
 
     if (res == BL_SUCCESS && bytes_written == bytes_to_write) {
-        eprintf("Image saved: %s (%ldKiB)\n", filename, bytes_written >> 10);
+        eprintf("Image saved: %s (%ldKiB)\n", filepath, bytes_written >> 10);
     } else {
-        eprintf("Error: Failed to save image (attempted: %s).", filename);
+        eprintf("Error: Failed to save image (attempted: %s).", filepath);
     }
 
 

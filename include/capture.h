@@ -14,11 +14,15 @@
 #define AV_FORMAT_STREAM_IDX_VIDEO 0
 // #define AV_FORMAT_STREAM_IDX_AUDIO 1
 
-// XXX TODO: Probably make a name based on program name, once we have one.
-#define CAPTURE_OUTPUT_FILENAME_MAX NAME_MAX
 // XXX: Semi-arbitrary value (highest built-in AVCodecDescriptor.name in
 // libavcodec atm. is 18, excl. null-terminator).
 #define CAPTURE_OUTPUT_FILE_EXTENSION_MAX 20
+// XXX TODO: Probably make a name based on program name, once we have one.
+#define CAPTURE_OUTPUT_FILENAME_MAX NAME_MAX
+#define CAPTURE_OUTPUT_FILEPATH_MAX PATH_MAX
+#define CAPTURE_OUTPUT_DIRPATH_MAX (PATH_MAX - CAPTURE_OUTPUT_FILENAME_MAX)
+
+#define CAPTURE_OUTPUT_DEFAULT_DIRPATH "/tmp/scran-capture"
 
 void create_timestamped_filename(char filename_ret[CAPTURE_OUTPUT_FILENAME_MAX], const char file_extension[CAPTURE_OUTPUT_FILE_EXTENSION_MAX]);
 
