@@ -242,14 +242,14 @@ struct scran_output {
 };
 
 struct scran {
-    struct scran_globals globals;
-    struct scran_seat seat;
-    // TODO: Pointers, probably. This entire state mess still needs cleaning up in general.
-    struct scran_output outputs[MAX_OUTPUTS];
-    uint32_t n_outputs;
-
     // TODO: Make this a state enum or a bitfield with datacontrol.selection_active etc. ?
     bool exit_requested;
+
+    struct scran_globals globals;
+    struct scran_seat seat;
+
+    uint32_t n_outputs;
+    struct scran_output outputs[MAX_OUTPUTS];
 };
 
 #endif
