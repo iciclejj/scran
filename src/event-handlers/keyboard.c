@@ -3,6 +3,7 @@
 #include <sys/mman.h>
 
 #include <wayland-client.h>
+#include <xkbcommon/xkbcommon.h>
 
 #include "state.h"
 #include "event-handlers.h"
@@ -128,6 +129,10 @@ handle_keyboard_key(
             eprintf("Screenshot during video capture not implemented yet, try again later :(\n");
         } else {
             start_image_capture(st_output);
+
+            if (!xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE)) {
+                state->exit_requested = true;
+            }
         }
 
         break;
