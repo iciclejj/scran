@@ -1,6 +1,8 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <time.h>
+#include <stdatomic.h>
+
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/pixfmt.h>
@@ -20,6 +22,8 @@
 // "guessing"/scoring algorithm using a format-name string.
 #define _FORMAT_MP4_NAME "mp4"
 #define _CODEC_X264_NAME "libx264"
+
+extern struct scran g_state;
 
 void
 dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
@@ -210,6 +214,7 @@ start_video_capture(struct scran_output *st_output)
     // frame::ready, similar to the wl_surface callback event loop
     dispatch_video_capture_event_loop(&st_output->capture.frame_ctx);
     st_output->capture.frame_ctx.capturing_video = true;
+    atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     return true;
 }
@@ -239,6 +244,7 @@ start_image_capture(struct scran_output *st_output)
     assert(!st_output->capture.frame_ctx.capturing_video);
 
     dispatch_image_capture_event(&st_output->capture);
+    atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     return true;
 }

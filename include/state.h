@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <sys/uio.h>
+#include <stdatomic.h>
 
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
@@ -245,6 +246,14 @@ struct scran_output {
 struct scran {
     // TODO: Make this a state enum or a bitfield with datacontrol.selection_active etc. ?
     bool exit_requested;
+    // NOTE: Consider a custom wl_event_queue if this for some reason ends up
+    // becoming convoluted in the future.
+    //     TODO: Consider doing this already so we can easily and safely
+    //           short-circuit all the other event loops while we block on the
+    //           capture-related ones.
+    // TODO: Consider separate for video vs image, for better asserts, if
+    // nothing else.
+    atomic_int n_captures_in_progress;
 
     struct scran_globals globals;
     struct scran_seat seat;

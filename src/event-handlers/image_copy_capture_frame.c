@@ -9,6 +9,7 @@
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
 #include <libavutil/frame.h>
+#include <stdatomic.h>
 
 #include "blend2d/core/api.h"
 #include "blend2d/core/array.h"
@@ -28,6 +29,8 @@
 #define _FORMAT_PNG_FILE_EXTENSION ".png"
 #define _FORMAT_PNG_BLEND2D_CODEC_NAME "PNG"
 #define _FORMAT_PNG_BLEND2D_OUTPUT_FORMAT BL_FORMAT_PRGB32 // pixel format
+
+extern struct scran g_state;
 
 static void
 handle_image_copy_capture_frame_transform__video_capture(
@@ -95,7 +98,12 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     ext_image_copy_capture_frame_v1_destroy(frame);
 
+    // TODO: Go through uses of capturing_video to check for redundancy now
+    // that we have a global state, with e.g. `.exit_requested`.
     if (!frame_ctx->capturing_video) {
+        goto end_capture;
+    } else if (g_state.exit_requested) {
+        frame_ctx->capturing_video = false;
         goto end_capture;
     }
 
@@ -186,6 +194,7 @@ end_capture_err:
     assert(frame_ctx->av_frame_encoded);
     av_frame_free(&frame_ctx->av_frame_encoded);
 
+    atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
     return;
 }
 
@@ -254,8 +263,9 @@ handle_image_copy_capture_frame_ready__image_capture(
     struct scran_output_capture *st_capture = data;
     struct capture_frame_context *frame_ctx = &st_capture->frame_ctx;
 
-    // XXX: Not implemented yet...
+    // XXX: Capturing image during video capture implemented yet...
     assert(!frame_ctx->capturing_video);
+    assert(g_state.n_captures_in_progress >= 1);
 
     ext_image_copy_capture_frame_v1_destroy(frame);
 
@@ -416,6 +426,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     DEBUG("image_capture::frame(): datacontrol_source::set_selection().\n");
 
     frame_ctx->st_datacontrol->selection_active = true;
+    atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 }
 
 

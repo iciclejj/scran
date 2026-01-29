@@ -293,15 +293,21 @@ int main(void)
     //     The initializing ::commit shouldn't need to be vsynced..?
     while (
         !g_state.exit_requested
-        &&
-        -1 != wl_display_dispatch(g_state.globals.display)
-    );
+        ||
+        g_state.n_captures_in_progress > 0
+    ) {
+        const int _dispatch_status = wl_display_dispatch(g_state.globals.display);
 
+        if (_dispatch_status == -1) {
+            // TODO: Check errno and print/handle error
+            eprintf("Error during wl_display_dispatch().\n");
+            break;
+        }
+    };
 
-    // TODO: Assert capture has exited gracefully
-    // TODO: Double-check and ensure that this roundtrip is enough to let
-    // everything finalize (and that it's not redundant).
+    wl_display_dispatch_pending(g_state.globals.display);
     wl_display_roundtrip(g_state.globals.display);
+
 
     init_postmem_destroy();
     munmap(shm_addr, shm_size_bytes); // TODO: Put into init_meminit_destroy?
