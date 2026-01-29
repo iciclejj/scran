@@ -19,6 +19,7 @@
 #include "init.h"
 #include "print.h"
 
+// XXX TODO: Rename this to g_scran or g_scran_state, probably.
 struct scran g_state = { };
 
 // TODO:
