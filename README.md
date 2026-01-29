@@ -9,7 +9,7 @@ Simple example (many ways to do it):
 ```nix
 let
   scran_src = builtins.fetchGit {
-    url = "git+ssh://git@github.com/iciclejj/scran.git";
+    url = "https://github.com/iciclejj/scran";
     ref = "main";
     # Desired commit (v0.1.0-beta)
     rev = "58e4fad53de6c9c229d5e3c40ce32e5f744006e0";
