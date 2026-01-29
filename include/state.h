@@ -163,6 +163,7 @@ struct scran_capture_buffer {
 };
 
 // TODO: More consistent naming?
+// TODO: Separate video/image capture context
 struct capture_frame_context {
     struct scran_capture_buffer st_buffer;
     void *img_data_2;
@@ -199,7 +200,7 @@ struct capture_frame_context {
     // TODO: Probably turn this into a union with some member that gets
     //       re-initialized with every start/stop capture.
     //         - Union with presentation_time ?
-    bool capturing;
+    bool capturing_video;
 };
 
 struct scran_output_capture {

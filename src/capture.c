@@ -190,7 +190,7 @@ bool
 start_video_capture(struct scran_output *st_output)
 {
     // TODO: Assert instead?
-    if (st_output->capture.frame_ctx.capturing) {
+    if (st_output->capture.frame_ctx.capturing_video) {
         DEBUG("Already capturing...\n");
         return false;
     }
@@ -209,7 +209,7 @@ start_video_capture(struct scran_output *st_output)
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
     dispatch_video_capture_event_loop(&st_output->capture.frame_ctx);
-    st_output->capture.frame_ctx.capturing = true;
+    st_output->capture.frame_ctx.capturing_video = true;
 
     return true;
 }
@@ -236,7 +236,7 @@ bool
 start_image_capture(struct scran_output *st_output)
 {
     // See TODO at call site
-    assert(!st_output->capture.frame_ctx.capturing);
+    assert(!st_output->capture.frame_ctx.capturing_video);
 
     dispatch_image_capture_event(&st_output->capture);
 

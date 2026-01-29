@@ -57,7 +57,7 @@ draw_frame(
     bl_path_add_box_i(&bl->path, &bl->box_outer, BL_GEOMETRY_DIRECTION_NONE);
     bl_path_add_box_i(&bl->path, &bl->box, BL_GEOMETRY_DIRECTION_NONE);
     bl_context_set_fill_rule(&bl->ctx, BL_FILL_RULE_EVEN_ODD);
-    if (st_output->capture.frame_ctx.capturing) {
+    if (st_output->capture.frame_ctx.capturing_video) {
         // TODO: How is 88880000 hitting red and alpha?
         //           Need to set endianness flag?
         //       Show red border instead of red background

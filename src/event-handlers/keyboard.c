@@ -110,11 +110,11 @@ handle_keyboard_key(
     // TODO: Probably reorganize all of this later
     case XKB_KEY_Escape:
         eprintf("Got escape key...");
-        if (st_output->capture.frame_ctx.capturing) {
+        if (st_output->capture.frame_ctx.capturing_video) {
             // TODO: Probably both stop capture and request exit
             //           Have dedicated start/stop capture key that doesn't exit
-            eprintf(" stopping capture.\n");
-            st_output->capture.frame_ctx.capturing = false;
+            eprintf(" stopping video capture.\n");
+            st_output->capture.frame_ctx.capturing_video = false;
         } else {
             eprintf(" exiting.\n");
             _set_state_to_exit_requested(state);
@@ -124,7 +124,7 @@ handle_keyboard_key(
         // TODO: Create two capture sessions so that we can take screenshots while
         // doing video capture? Probably just implement it as part of the video
         // capture pipeline, without two capture sessions.
-        if (st_output->capture.frame_ctx.capturing) {
+        if (st_output->capture.frame_ctx.capturing_video) {
             eprintf("Screenshot during video capture not implemented yet, try again later :(\n");
         } else {
             start_image_capture(st_output);
@@ -132,8 +132,8 @@ handle_keyboard_key(
 
         break;
     case XKB_KEY_space:
-        if (st_output->capture.frame_ctx.capturing) {
-            st_output->capture.frame_ctx.capturing = false;
+        if (st_output->capture.frame_ctx.capturing_video) {
+            st_output->capture.frame_ctx.capturing_video = false;
             // TODO: Need to ensure capture is fully properly fully finished
             //       before we allow new dispatch_capture_event_loop()
         } else {

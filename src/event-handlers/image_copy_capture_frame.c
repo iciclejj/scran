@@ -95,7 +95,7 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     ext_image_copy_capture_frame_v1_destroy(frame);
 
-    if (!frame_ctx->capturing) {
+    if (!frame_ctx->capturing_video) {
         goto end_capture;
     }
 
@@ -255,7 +255,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     struct capture_frame_context *frame_ctx = &st_capture->frame_ctx;
 
     // XXX: Not implemented yet...
-    assert(!frame_ctx->capturing);
+    assert(!frame_ctx->capturing_video);
 
     ext_image_copy_capture_frame_v1_destroy(frame);
 
