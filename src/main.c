@@ -51,6 +51,10 @@ init_premem()
     wl_display_roundtrip(g_state.globals.display);
     DEBUG("Roundtripped after adding registry listener()\n");
 
+    if (g_state.n_outputs < 1) {
+        eprintf("No outputs detected.\n");
+        return 0;
+    }
 
     //   Collect dynamic memory requirements
     // + Initialize otherwhat lacking extra dependencies (beyond globals)
