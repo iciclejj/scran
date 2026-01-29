@@ -46,7 +46,7 @@ dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
 void
 create_timestamped_filename(
     char filename_ret[CAPTURE_OUTPUT_FILENAME_MAX],
-    char file_extension[CAPTURE_OUTPUT_FILE_EXTENSION_MAX]
+    const char file_extension[CAPTURE_OUTPUT_FILE_EXTENSION_MAX]
 ) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);

@@ -20,7 +20,7 @@
 // libavcodec atm. is 18, excl. null-terminator).
 #define CAPTURE_OUTPUT_FILE_EXTENSION_MAX 20
 
-void create_timestamped_filename(char filename_ret[CAPTURE_OUTPUT_FILENAME_MAX], char file_extension[CAPTURE_OUTPUT_FILE_EXTENSION_MAX]);
+void create_timestamped_filename(char filename_ret[CAPTURE_OUTPUT_FILENAME_MAX], const char file_extension[CAPTURE_OUTPUT_FILE_EXTENSION_MAX]);
 
 bool start_video_capture(struct scran_output *st_output);
 void dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx);
