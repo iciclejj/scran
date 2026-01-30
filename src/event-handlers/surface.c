@@ -64,10 +64,10 @@ draw_frame_and_damage_buffer(
     struct BLPoint origin = { 0, 0 };
     const uint32_t buf_size = GET_SURFACE_BUF_SIZE(st_output->mode);
 
-    // TODO: Only write and mark damage where needed
-    memset(st_buffer->data, 0, buf_size);
-
     bl_context_begin(&bl->ctx, &st_buffer->bl_img, NULL);
+
+    // TODO: Only write and mark damage where needed
+    bl_context_clear_all(&bl->ctx);
 
     bl_path_add_box_i(&bl->path, &bl->box_outer, BL_GEOMETRY_DIRECTION_NONE);
     bl_path_add_box_i(&bl->path, &box_to_draw, BL_GEOMETRY_DIRECTION_NONE);
