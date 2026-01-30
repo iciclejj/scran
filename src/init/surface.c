@@ -21,7 +21,7 @@ init_output_surface(
         st_output->surface.surface,
         st_output->wl_output,
         ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,
-        "test_client_namespace" // TODO: Figure out a namespace name?
+        "scran-capture" // TODO: Figure out a namespace name?
     );
 
     zwlr_layer_surface_v1_set_exclusive_zone(st_output->surface.layer_surface, -1);
