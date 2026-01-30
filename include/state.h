@@ -109,12 +109,17 @@ struct scran_seat {
 struct scran_output_selection_blend2d {
     // TODO Drop the blend2d struct and just create handler context structs
     BLContextCore ctx;
+    // TODO: Either drop this as a member or actually retain the path state
+    // between redraws.
     BLPathCore path;
 
     // TODO Rename to box_px OR remove _px suffix from everything in state,
     //      now that all of state should have been standardized to pixel
     //      integer values (same for other boxes, resize_origin_pointer, etc.)
     struct BLBoxI box;
+    // TODO: This doesn't really need to be a state variable. Make a macro or
+    // something to calculate it inline to match output width/height and x=y=0.
+    // Also maybe make a macro or global BLPoint origin = {0,0}
     struct BLBoxI box_outer;
 
     // TODO: Clearer name? This should be used to store the pre-resize/rebase box
