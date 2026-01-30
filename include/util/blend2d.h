@@ -15,8 +15,13 @@
 
 
 static inline int
-get_blboxi_width(BLBoxI box) {
+blboxi_width(BLBoxI box) {
     return box.x1 - box.x0;
+}
+
+static inline int
+blboxi_height(BLBoxI box) {
+    return box.y1 - box.y0;
 }
 
 // NOTE: Not overflow-safe
