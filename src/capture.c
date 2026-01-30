@@ -160,7 +160,7 @@ init_ffmpeg(struct scran_output *st_output)
     // inefficient. Also needs better error handling etc.
     char filepath[PATH_MAX] = CAPTURE_OUTPUT_DEFAULT_DIRPATH "/";
     mkdir(filepath, 0755);
-    const size_t _filename_offset = sizeof(CAPTURE_OUTPUT_DEFAULT_DIRPATH) - 1;
+    const size_t _filename_offset = sizeof(CAPTURE_OUTPUT_DEFAULT_DIRPATH);
     assert(filepath[_filename_offset - 1] == '/');
     const char _file_extension[] = _FORMAT_MP4_FILE_EXTENSION;
     create_timestamped_filename(filepath + _filename_offset, _file_extension);
