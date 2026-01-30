@@ -7,6 +7,12 @@
 
 #include <blend2d/blend2d.h>
 
+// TODO: Figure out whether 0 height or weight should be allowed.
+#define SCRAN_BL_BOX_IS_INVERTED(box) ( \
+    box.x0 > box.x1 \
+ || box.y0 > box.y1 \
+)
+
 
 static inline int
 get_blboxi_width(BLBoxI box) {

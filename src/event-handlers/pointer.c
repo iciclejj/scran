@@ -5,6 +5,7 @@
 
 #include "state.h"
 #include "event-handlers.h"
+#include "util/blend2d.h"
 
 static void
 handle_pointer_enter(
@@ -95,8 +96,7 @@ handle_pointer_motion(
             };
 
             // The rebase should have been initiated with a valid box.
-            assert(box_before_rebase.x0 < box_before_rebase.x1);
-            assert(box_before_rebase.y0 < box_before_rebase.y1);
+            assert(!SCRAN_BL_BOX_IS_INVERTED(box_before_rebase));
             assert(box_before_rebase.x0 >= 0 && box_before_rebase.x1 <= st_output->mode.width_px);
             assert(box_before_rebase.y0 >= 0 && box_before_rebase.y1 <= st_output->mode.height_px);
 
