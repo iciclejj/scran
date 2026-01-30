@@ -241,6 +241,10 @@ init_postmem()
         //       globals. (Ex: ~2000us)
         //         - Second roundtrip where we collect memory requirements is
         //           relatively fast (Ex: ~130us)
+        //
+        //       XXX NOTE: First we commit to get configure event (during init),
+        //                 THEN we commit again (here) to "dispatch" the
+        //                 event loop (the recursive frame callback).
         wl_surface_commit(_st_output->surface.surface);
     }
 
