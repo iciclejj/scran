@@ -60,8 +60,7 @@ create_timestamped_filename(
     // length is deterministic.
     size_t _name_max = NAME_MAX;
 
-    // XXX TODO: Normal filename...
-    const int chars_added_after_sec = strftime(_filename, _name_max, "test-capture_%Y%m%d-%H%M%S", &time_now_tm);
+    const int chars_added_after_sec = strftime(_filename, _name_max, "scran-capture_%Y%m%d-%H%M%S", &time_now_tm);
     _filename += chars_added_after_sec;
     _name_max -= chars_added_after_sec;
 
