@@ -62,7 +62,6 @@ draw_frame_and_damage_buffer(
     }
 
     struct BLPoint origin = { 0, 0 };
-    const uint32_t buf_size = GET_SURFACE_BUF_SIZE(st_output->mode);
 
     bl_context_begin(&bl->ctx, &st_buffer->bl_img, NULL);
 
