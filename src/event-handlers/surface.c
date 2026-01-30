@@ -38,14 +38,29 @@ get_free_double_buffer(struct scran_output *st_output)
     return buffer;
 }
 
+static inline bool
+_boxes_are_equal(BLBoxI a, BLBoxI b)
+{
+    return  a.x0 == b.x0 &&
+            a.x1 == b.x1 &&
+            a.y0 == b.y0 &&
+            a.y1 == b.y1
+    ;
+}
+
 static void
-draw_frame(
+draw_frame_and_damage_buffer(
     struct scran_output *st_output,
     struct scran_output_surface_buffer *st_buffer
 ) {
-    // XXX TEST TODO: Improve draw_frame
-
+    // XXX TODO: Improve draw_frame
     struct scran_output_selection_blend2d *bl = &st_output->selection.bl;
+    const BLBoxI box_to_draw = bl->box;
+
+    if (_boxes_are_equal(box_to_draw, st_buffer->bl_box_rendered)) {
+        return;
+    }
+
     struct BLPoint origin = { 0, 0 };
     const uint32_t buf_size = GET_SURFACE_BUF_SIZE(st_output->mode);
 
@@ -55,7 +70,7 @@ draw_frame(
     bl_context_begin(&bl->ctx, &st_buffer->bl_img, NULL);
 
     bl_path_add_box_i(&bl->path, &bl->box_outer, BL_GEOMETRY_DIRECTION_NONE);
-    bl_path_add_box_i(&bl->path, &bl->box, BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&bl->path, &box_to_draw, BL_GEOMETRY_DIRECTION_NONE);
     bl_context_set_fill_rule(&bl->ctx, BL_FILL_RULE_EVEN_ODD);
     if (st_output->capture.frame_ctx.capturing_video) {
         // TODO: How is 88880000 hitting red and alpha?
@@ -69,11 +84,21 @@ draw_frame(
 
     // DEBUG(
     //     "box: x0=%d, x1=%d, y0=%d, y1=%d\n",
-    //     bl->box.x0, bl->box.x1, bl->box.y0, bl->box.y1
+    //     box_to_draw.x0, box_to_draw.x1, box_to_draw.y0, box_to_draw.y1
     // );
 
     bl_context_end(&bl->ctx);
+    st_buffer->bl_box_rendered = box_to_draw;
     bl_path_reset(&bl->path);
+
+    // TODO: Calculate damage area to not re-draw entire surface every frame
+    wl_surface_damage_buffer(
+        st_output->surface.surface,
+        0,
+        0,
+        st_output->mode.width_px,
+        st_output->mode.height_px
+    );
 }
 
 static inline struct BLBoxI
@@ -168,18 +193,9 @@ surface_frame_callback_handler(
         st_output->transform
     );
 
-    draw_frame(st_output, st_buffer);
+    draw_frame_and_damage_buffer(st_output, st_buffer);
     wl_surface_attach(st_output->surface.surface, st_buffer->buffer, 0, 0);
 
-    // TODO: Calculate damage area to not re-draw entire surface every frame
-    //       Probably call this within draw_frame?
-    wl_surface_damage_buffer(
-        st_output->surface.surface,
-        0,
-        0,
-        st_output->mode.width_px,
-        st_output->mode.height_px
-    );
 go_next:
     wl_callback_add_listener(
         wl_surface_frame(st_output->surface.surface),

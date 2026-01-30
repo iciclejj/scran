@@ -45,6 +45,7 @@ struct scran_output_surface_buffer {
     void *data;
     bool busy;
     BLImageCore bl_img;
+    BLBoxI bl_box_rendered;
 };
 
 // TODO: Optimize surface/selection event-loop struct sizes
