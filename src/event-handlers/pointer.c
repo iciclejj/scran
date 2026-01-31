@@ -7,6 +7,27 @@
 #include "event-handlers.h"
 #include "util/blend2d.h"
 
+
+static inline void
+_clamp_to_output_width(int *val, struct scran_output *st_output)
+{
+    if (*val < 0) {
+        *val = 0;
+    } else if (*val > st_output->mode.width_px) {
+        *val = st_output->mode.width_px;
+    }
+}
+
+static inline void
+_clamp_to_output_height(int *val, struct scran_output *st_output)
+{
+    if (*val < 0) {
+        *val = 0;
+    } else if (*val > st_output->mode.height_px) {
+        *val = st_output->mode.height_px;
+    }
+}
+
 static void
 handle_pointer_enter(
     void *data,
@@ -135,18 +156,26 @@ handle_pointer_motion(
             case SELECTION_RESIZE_TOP_LEFT:
                 st_selection->bl.box.x0 = box_before_resize.x0 + x_diff_px;
                 st_selection->bl.box.y0 = box_before_resize.y0 + y_diff_px;
+                _clamp_to_output_width(&st_selection->bl.box.x0, st_output);
+                _clamp_to_output_height(&st_selection->bl.box.y0, st_output);
                 break;
             case SELECTION_RESIZE_TOP_RIGHT:
                 st_selection->bl.box.x1 = box_before_resize.x1 + x_diff_px;
                 st_selection->bl.box.y0 = box_before_resize.y0 + y_diff_px;
+                _clamp_to_output_width(&st_selection->bl.box.x1, st_output);
+                _clamp_to_output_height(&st_selection->bl.box.y0, st_output);
                 break;
             case SELECTION_RESIZE_BOTTOM_LEFT:
                 st_selection->bl.box.x0 = box_before_resize.x0 + x_diff_px;
                 st_selection->bl.box.y1 = box_before_resize.y1 + y_diff_px;
+                _clamp_to_output_width(&st_selection->bl.box.x0, st_output);
+                _clamp_to_output_height(&st_selection->bl.box.y1, st_output);
                 break;
             case SELECTION_RESIZE_BOTTOM_RIGHT:
                 st_selection->bl.box.x1 = box_before_resize.x1 + x_diff_px;
                 st_selection->bl.box.y1 = box_before_resize.y1 + y_diff_px;
+                _clamp_to_output_width(&st_selection->bl.box.x1, st_output);
+                _clamp_to_output_height(&st_selection->bl.box.y1, st_output);
                 break;
             }
         }
