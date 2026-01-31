@@ -67,6 +67,9 @@ handle_pointer_motion(
         return;
     }
 
+    // TODO: Check if out of bounds
+    assert(!SCRAN_BL_BOX_IS_INVERTED(st_selection->bl.box_before_changes));
+
     switch (st_selection->selection_state) {
     case SELECTION_EXIT_REQUESTED:
         break;
