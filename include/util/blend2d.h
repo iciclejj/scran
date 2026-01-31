@@ -51,6 +51,20 @@ blrecti_deinvert(struct BLRectI *rect)
     }
 }
 
+static inline struct BLRectI
+get_blrecti_deinverted(struct BLRectI rect_in)
+{
+    const bool x_inverted = rect_in.w < 0;
+    const bool y_inverted = rect_in.h < 0;
+
+    return (struct BLRectI) {
+        .x = x_inverted ? rect_in.x + rect_in.w : rect_in.x,
+        .y = y_inverted ? rect_in.y + rect_in.h : rect_in.y,
+        .w = x_inverted ? -rect_in.w : rect_in.w,
+        .h = y_inverted ? -rect_in.h : rect_in.h,
+    };
+}
+
 static inline void
 blboxi_deinvert(struct BLBoxI *box)
 {
@@ -65,6 +79,20 @@ blboxi_deinvert(struct BLBoxI *box)
         box->y0 = box->y1;
         box->y1 = tmp;
     }
+}
+
+static inline struct BLBoxI
+get_blboxi_deinverted(struct BLBoxI box_in)
+{
+    const bool x_inverted = box_in.x1 < box_in.x0;
+    const bool y_inverted = box_in.y1 < box_in.y0;
+
+    return (struct BLBoxI) {
+        .x0 = x_inverted ? box_in.x1 : box_in.x0,
+        .x1 = x_inverted ? box_in.x0 : box_in.x1,
+        .y0 = y_inverted ? box_in.y1 : box_in.y0,
+        .y1 = y_inverted ? box_in.y0 : box_in.y1,
+    };
 }
 
 // NOTE: Not overflow-safe
