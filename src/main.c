@@ -245,7 +245,7 @@ init_postmem()
         //       XXX NOTE: First we commit to get configure event (during init),
         //                 THEN we commit again (here) to "dispatch" the
         //                 event loop (the recursive frame callback).
-        wl_surface_commit(_st_output->surface.surface);
+        dispatch_surface_event_loop(_st_output);
     }
 
     return true;
