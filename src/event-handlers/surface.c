@@ -23,6 +23,7 @@ get_free_double_buffer(struct scran_output *st_output)
     return buffer;
 }
 
+// TODO: Move into blend2d utils header
 static inline bool
 _boxes_are_equal(BLBoxI a, BLBoxI b)
 {
