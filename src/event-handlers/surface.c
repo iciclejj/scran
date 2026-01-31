@@ -8,20 +8,6 @@
 
 #include "print.h"
 
-static inline void
-normalize_rect_i(struct BLRectI *rect)
-{
-    if (rect->w < 0) {
-        rect->w = -rect->w;
-        rect->x -= rect->w;
-    }
-
-    if (rect->h < 0) {
-        rect->h = -rect->h;
-        rect->y -= rect->h;
-    }
-}
-
 static inline struct scran_output_surface_buffer *
 get_free_double_buffer(struct scran_output *st_output)
 {

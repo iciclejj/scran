@@ -37,6 +37,36 @@ blboxi_height_abs_unsafe(BLBoxI box) {
     return abs(box.y1 - box.y0);
 }
 
+static inline void
+blrecti_deinvert(struct BLRectI *rect)
+{
+    if (rect->w < 0) {
+        rect->w = -rect->w;
+        rect->x -= rect->w;
+    }
+
+    if (rect->h < 0) {
+        rect->h = -rect->h;
+        rect->y -= rect->h;
+    }
+}
+
+static inline void
+blboxi_deinvert(struct BLBoxI *box)
+{
+    if (box->x1 < box->x0) {
+        int tmp = box->x0;
+        box->x0 = box->x1;
+        box->x1 = tmp;
+    }
+
+    if (box->y1 < box->y0) {
+        int tmp = box->y0;
+        box->y0 = box->y1;
+        box->y1 = tmp;
+    }
+}
+
 // NOTE: Not overflow-safe
 static inline int
 blboxi_width_abs_unsafe(BLBoxI box) {
