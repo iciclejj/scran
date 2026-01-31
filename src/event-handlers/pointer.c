@@ -222,6 +222,10 @@ handle_pointer_button(
             st_output->selection.bl.box.x1 = x_px;
             st_output->selection.bl.box.y1 = y_px;
 
+            assert(sizeof(st_output->surface.double_buffer) == A_DOUBLE_BUFFER_HAS_TWO_BUFFERS * sizeof(struct scran_output_surface_buffer));
+            st_output->surface.double_buffer[0].bl_box_rendered = st_output->selection.bl.box;
+            st_output->surface.double_buffer[1].bl_box_rendered = st_output->selection.bl.box;
+
             st_output->selection.selection_state = SELECTION_IN_PROGRESS;
             break;
         case SELECTION_IN_PROGRESS:
