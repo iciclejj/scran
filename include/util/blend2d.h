@@ -108,5 +108,15 @@ blboxi_width_abs_unsafe(BLBoxI box) {
     return abs(box.x1 - box.x0);
 }
 
+static inline BLRectI
+blboxi_to_blrecti(BLBoxI box) {
+    return (BLRectI) {
+        box.x0,
+        box.y0,
+        blboxi_width(box),
+        blboxi_height(box),
+    };
+}
+
 
 #endif
