@@ -4,7 +4,6 @@
 
 #include "state.h"
 #include "event-handlers.h"
-#include "init.h"
 
 #include "print.h"
 
@@ -143,10 +142,10 @@ surface_frame_callback_handler(
     struct wl_callback *callback,
     uint32_t time_ms
 ) {
-    struct scran_output *st_output = data;
-
     // Destroy callback here and request new frame "recursively" within callback
     wl_callback_destroy(callback);
+
+    struct scran_output *st_output = data;
 
     if (st_output->selection.selection_state == SELECTION_EXIT_REQUESTED) {
         // Quit before requesting another frame
