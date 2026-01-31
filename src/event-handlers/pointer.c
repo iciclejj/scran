@@ -149,8 +149,6 @@ handle_pointer_motion(
         }
         break;
     }
-
-    // TODO: Dynamically resize visual selection
 }
 
 static inline int32_t
