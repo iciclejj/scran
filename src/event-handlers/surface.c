@@ -123,7 +123,6 @@ draw_frame_and_damage_buffer(
     struct BLRectI damage_region;
 
     // TODO: Is bl_context_clear_all the same as bl_context_clear_rect_i, if we do it after clipping?
-    // TODO: Find out if there's a more efficient way to handle the context than doing save+restore?
     // TODO: Probably make an inline function for this repetition. Also, maybe
     // just make _box_diffs an array that we can loop through.
 
