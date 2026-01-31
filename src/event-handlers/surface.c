@@ -2,6 +2,7 @@
 #include <blend2d/blend2d.h>
 #include <assert.h>
 
+#include "init.h"
 #include "state.h"
 #include "event-handlers.h"
 #include "util/blend2d.h"
@@ -130,7 +131,7 @@ draw_frame_and_damage_buffer(
     bl_path_add_box_i(&bl->path, &box_to_draw, BL_GEOMETRY_DIRECTION_NONE);
 
     const struct _box_diffs box_diffs = get_box_diffs(box_to_draw, box_already_drawn);
-    struct BLPoint origin = { 0, 0 };
+    struct BLPoint origin = SURFACE_BLCONTEXT_ORIGIN;
 
     struct BLRectI damage_region;
 

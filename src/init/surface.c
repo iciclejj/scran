@@ -53,7 +53,6 @@ dispatch_surface_event_loop(struct scran_output *st_output)
     struct scran_output_surface *const st_surface = &st_output->surface;
     struct scran_output_surface_buffer *const initial_buffer = &st_surface->double_buffer[0];
     struct scran_output_selection_blend2d *const bl = &st_output->selection.bl;
-    const struct BLPoint origin = { 0, 0 };
 
     bl_context_begin(&bl->ctx, &initial_buffer->bl_img, NULL);
 
@@ -61,7 +60,7 @@ dispatch_surface_event_loop(struct scran_output *st_output)
 
     // TODO: Use macros for colors
     bl_context_set_fill_style_rgba32(&bl->ctx, 0x88888888);
-    bl_context_fill_path_d(&bl->ctx, &origin, &bl->path);
+    bl_context_fill_path_d(&bl->ctx, &SURFACE_BLCONTEXT_ORIGIN, &bl->path);
 
     bl_context_end(&bl->ctx);
     bl_context_reset(&bl->ctx);

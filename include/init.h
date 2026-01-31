@@ -16,6 +16,8 @@
 #define GET_CAPTURE_BUF_2_SIZE(st_output) GET_CAPTURE_BUF_SIZE(st_output)
 #define GET_CAPTURE_STRIDE(st_output) (st_output.capture.frame_ctx.pixel_stride * st_output.mode.width_px)
 
+#define SURFACE_BLCONTEXT_ORIGIN ((BLPoint){0,0})
+
 
 bool init_output_surface_shm_buffers(struct scran_output *st_output, struct wl_shm *wl_shm_global);
 
