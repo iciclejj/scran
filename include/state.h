@@ -116,6 +116,7 @@ struct scran_output_selection_blend2d {
     // TODO Rename to box_px OR remove _px suffix from everything in state,
     //      now that all of state should have been standardized to pixel
     //      integer values (same for other boxes, resize_origin_pointer, etc.)
+    // NOTE: This is allowed to be inverted to make resizing simpler.
     struct BLBoxI box;
     // TODO: This doesn't really need to be a state variable. Make a macro or
     // something to calculate it inline to match output width/height and x=y=0.
