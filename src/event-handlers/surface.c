@@ -114,9 +114,8 @@ draw_frame_and_damage_buffer(
         return;
     }
 
-    bl_context_begin(&bl->ctx, &st_buffer->bl_img, NULL);
-
-    bl_context_set_fill_rule(&bl->ctx, BL_FILL_RULE_EVEN_ODD);
+    // TODO: Fix this. More of the image than just the box diffs needs to be
+    // damaged whenever the background changes.
     if (st_output->capture.frame_ctx.capturing_video) {
         // TODO: How is 88880000 hitting red and alpha?
         //           Need to set endianness flag?
@@ -141,41 +140,37 @@ draw_frame_and_damage_buffer(
     // just make _box_diffs an array that we can loop through.
 
     damage_region = blboxi_to_blrecti(box_diffs.left_full);
-    bl_context_save(&bl->ctx, NULL);
     bl_context_clip_to_rect_i(&bl->ctx, &damage_region);
     bl_context_clear_all(&bl->ctx);
     bl_context_fill_path_d(&bl->ctx, &origin, &bl->path);
-    bl_context_restore(&bl->ctx, NULL);
+    bl_context_restore_clipping(&bl->ctx);
     wl_surface_damage_buffer( st_output->surface.surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.right_full);
-    bl_context_save(&bl->ctx, NULL);
     bl_context_clip_to_rect_i(&bl->ctx, &damage_region);
     bl_context_clear_all(&bl->ctx);
     bl_context_fill_path_d(&bl->ctx, &origin, &bl->path);
-    bl_context_restore(&bl->ctx, NULL);
+    bl_context_restore_clipping(&bl->ctx);
     wl_surface_damage_buffer( st_output->surface.surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.top_remaining);
-    bl_context_save(&bl->ctx, NULL);
     bl_context_clip_to_rect_i(&bl->ctx, &damage_region);
     bl_context_clear_all(&bl->ctx);
     bl_context_fill_path_d(&bl->ctx, &origin, &bl->path);
-    bl_context_restore(&bl->ctx, NULL);
+    bl_context_restore_clipping(&bl->ctx);
     wl_surface_damage_buffer( st_output->surface.surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.bottom_remaining);
-    bl_context_save(&bl->ctx, NULL);
     bl_context_clip_to_rect_i(&bl->ctx, &damage_region);
     bl_context_clear_all(&bl->ctx);
     bl_context_fill_path_d(&bl->ctx, &origin, &bl->path);
-    bl_context_restore(&bl->ctx, NULL);
+    bl_context_restore_clipping(&bl->ctx);
     wl_surface_damage_buffer( st_output->surface.surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
@@ -183,8 +178,10 @@ draw_frame_and_damage_buffer(
     assert(_boxes_are_equal(box_already_drawn, st_buffer->bl_box_rendered));
     st_buffer->bl_box_rendered = box_to_draw;
 
+    // NOTE: Don't reset the BLContext here, unless intending to fully
+    // re-initialize it. Its state is initialized outside of this ::frame
+    // event loop. Shouldn't need flushing either unless doing async.
     bl_path_reset(&bl->path);
-    bl_context_end(&bl->ctx);
 }
 
 // TODO: Look at this again to see whether it handles inverted box. If not,
