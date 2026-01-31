@@ -114,18 +114,6 @@ draw_frame_and_damage_buffer(
         return;
     }
 
-    // TODO: Fix this. More of the image than just the box diffs needs to be
-    // damaged whenever the background changes.
-    if (st_output->capture.frame_ctx.capturing_video) {
-        // TODO: How is 88880000 hitting red and alpha?
-        //           Need to set endianness flag?
-        //       Show red border instead of red background
-        bl_context_set_fill_style_rgba32(&bl->ctx, 0x88887A7A);
-    } else {
-        // TODO: Macros for the colors
-        bl_context_set_fill_style_rgba32(&bl->ctx, 0x88888888);
-    }
-
     bl_path_add_box_i(&bl->path, &bl->box_outer, BL_GEOMETRY_DIRECTION_NONE);
     bl_path_add_box_i(&bl->path, &box_to_draw, BL_GEOMETRY_DIRECTION_NONE);
 

@@ -39,6 +39,11 @@ dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
         frame_ctx->st_buffer.buffer
     );
     ext_image_copy_capture_frame_v1_capture(frame);
+
+    // TODO: Set the output surface's background color to red, or add some
+    // other indicator that we started recording.
+    //     Example: bl_context_set_fill_style_rgba32(&bl->ctx, 0x88887A7A);
+    //              (then redraw and re-damage the surface)
 }
 
 
