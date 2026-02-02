@@ -63,7 +63,6 @@ struct scran_output_surface {
 };
 
 struct scran_seat_pointer {
-    struct wl_pointer *pointer;
     struct wp_cursor_shape_device_v1 *cursor_shape_device;
 
     // TODO: Should this be for the entire seat, and not just pointer?
@@ -79,8 +78,6 @@ struct scran_seat_pointer {
 };
 
 struct scran_seat_keyboard {
-    struct wl_keyboard *keyboard;
-
     struct xkb_context *xkb_context;
     struct xkb_keymap *xkb_keymap;
     struct xkb_state *xkb_state;
@@ -112,6 +109,9 @@ struct scran_seat {
     struct scran_seat_pointer pointer;
     struct scran_seat_keyboard keyboard;
     struct scran_seat_datacontrol datacontrol;
+
+    struct wl_pointer *wl_pointer;
+    struct wl_keyboard *wl_keyboard;
     // TODO: struct wl_touch *touch;
 };
 
