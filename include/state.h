@@ -25,6 +25,10 @@
 #define A_DOUBLE_BUFFER_HAS_TWO_BUFFERS 2
 #define SURFACE_BUF_COUNT A_DOUBLE_BUFFER_HAS_TWO_BUFFERS
 
+// TODO: Move these definitions elsewhere?
+#define BLCONTEXT_RGBA32_FILL_STYLE_DEFAULT ((struct BLRgba32){ 0x88888888 })
+#define BLCONTEXT_RGBA32_FILL_STYLE_VIDEO_CAPTURE ((struct BLRgba32){ 0x88887A7A })
+
 struct scran_globals {
     struct wl_display *display;
     struct wl_registry *registry;

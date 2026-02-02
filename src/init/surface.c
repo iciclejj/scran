@@ -55,8 +55,7 @@ dispatch_surface_event_loop(struct scran_output *st_output)
 
     bl_context_begin(&bl->ctx, &initial_buffer->bl_img, NULL);
 
-    // TODO: Use macros for colors
-    bl_context_set_fill_style_rgba32(&bl->ctx, 0x88888888);
+    bl_context_set_fill_style_rgba32(&bl->ctx, BLCONTEXT_RGBA32_FILL_STYLE_DEFAULT.value);
     // Even-odd fill rule because we will use two overlapping rects to create
     // our surface.
     //   NOTE: Just move this back into the ::frame handler if we will need it
