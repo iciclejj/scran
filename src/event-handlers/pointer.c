@@ -92,8 +92,6 @@ handle_pointer_motion(
     assert(!SCRAN_BL_BOX_IS_INVERTED(st_selection->bl.box_before_changes));
 
     switch (st_selection->selection_state) {
-    case SELECTION_EXIT_REQUESTED:
-        break;
     case SELECTION_NONE:
         break;
     case SELECTION_IN_PROGRESS:

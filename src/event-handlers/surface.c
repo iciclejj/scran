@@ -13,6 +13,9 @@
 #define MAX(a, b) (a > b ? a : b)
 
 
+extern struct scran g_state;
+
+
 struct _box_diffs {
     struct BLBoxI left_full;
     struct BLBoxI right_full;
@@ -234,7 +237,7 @@ surface_frame_callback_handler(
 
     struct scran_output *st_output = data;
 
-    if (st_output->selection.selection_state == SELECTION_EXIT_REQUESTED) {
+    if (g_state.exit_requested) {
         // Quit before requesting another frame
         return;
     }

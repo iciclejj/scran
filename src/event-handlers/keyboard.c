@@ -74,11 +74,6 @@ static inline void
 _set_state_to_exit_requested(struct scran *state)
 {
     state->exit_requested = true;
-    for (int i = 0; i < state->n_outputs; ++i) {
-        // TODO: Revisit this to check for a more elegant solution
-        //          (This isn't that bad, though.)
-        state->outputs[i].selection.selection_state = SELECTION_EXIT_REQUESTED;
-    }
 }
 
 static void
