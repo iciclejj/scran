@@ -13,13 +13,16 @@ handle_layer_surface_configure(
     void *data,
     struct zwlr_layer_surface_v1 *layer_surface,
     uint32_t serial,
-    // Should be equal to output resolution if layer surface is anchored to
-    // every edge. TODO: Check scale/transform interactions
+    // Should be equal to (non-transformed) output resolution if layer surface
+    // is anchored to every edge.
     uint32_t width_px_logical,
     uint32_t height_px_logical
 ) {
     struct scran_output *st_output = data;
 
+    //     XXX TODO: This breaks with rotation (and scale?) transform. Either
+    //     fix this after implementing xdg-output protocol or ensure we're not
+    //     doing redundant work.
     assert(st_output->mode.width_px == width_px_logical);
     assert(st_output->mode.height_px == height_px_logical);
 
