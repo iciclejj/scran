@@ -74,8 +74,6 @@ void
 destroy_output_surface(struct scran_output *st_output)
 {
     struct scran_output_selection_blend2d *const bl = &st_output->selection.bl;
-    bl_context_destroy(&bl->ctx);
-    bl_path_destroy(&bl->path);
 
     zwlr_layer_surface_v1_destroy(st_output->surface.layer_surface);
     wl_surface_destroy(st_output->surface.surface);

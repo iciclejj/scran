@@ -4,6 +4,10 @@
 #include "init.h"
 #include "state.h"
 
+// XXX NOTE: This is for basic initialization that does not care about what we
+// will render, other than ensuring buffers etc. are properly set up for the
+// given output. More specialized init happens in dispatch_surface_event_loop.
+// Maybe this should be refactored to be more immediately obvious...
 bool
 init_selection_and_blend2d(struct scran_output *st_output)
 {
