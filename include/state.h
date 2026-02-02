@@ -172,6 +172,7 @@ struct scran_capture_buffer {
 
 // TODO: More consistent naming?
 // TODO: Separate video/image capture context
+// TODO: We don't need pointers to parent struct members. Use offsetof or wl_container_of.
 struct capture_frame_context {
     struct scran_capture_buffer st_buffer;
     void *img_data_2;
