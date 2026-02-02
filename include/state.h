@@ -46,6 +46,7 @@ struct scran_globals {
 struct scran_output_surface_buffer {
     // TODO: Rename to wl_buffer to not mix it up with `data`?
     struct wl_buffer *buffer;
+    // TODO: Make sure frame data (here and in capture) gets proper alignment.
     void *data;
     bool busy;
     BLImageCore bl_img;
