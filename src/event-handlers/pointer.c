@@ -213,17 +213,19 @@ handle_pointer_button(
     case BTN_LEFT:
         switch(st_output->selection.selection_state) {
         case SELECTION_NONE:
-            st_output->selection.bl.box.x0 = x_px;
-            st_output->selection.bl.box.y0 = y_px;
+            {
+                const struct BLBoxI initial_selection_area = {
+                    .x0 = x_px,
+                    .y0 = y_px,
+                    .x1 = x_px,
+                    .y1 = y_px,
+                };
 
-            // XXX TEST: Might keep, though..
-            st_output->selection.bl.box.x1 = x_px;
-            st_output->selection.bl.box.y1 = y_px;
-
-            assert(sizeof(st_output->surface.double_buffer) == A_DOUBLE_BUFFER_HAS_TWO_BUFFERS * sizeof(struct scran_output_surface_buffer));
-            st_output->surface.double_buffer[0].bl_box_rendered = st_output->selection.bl.box;
-            st_output->surface.double_buffer[1].bl_box_rendered = st_output->selection.bl.box;
-
+                st_output->selection.bl.box = initial_selection_area;
+                for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
+                    st_output->surface.double_buffer[i].bl_box_rendered = initial_selection_area;
+                }
+            }
             st_output->selection.selection_state = SELECTION_IN_PROGRESS;
             break;
         case SELECTION_IN_PROGRESS:
