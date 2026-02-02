@@ -129,7 +129,6 @@ struct scran_output_selection_blend2d {
     struct BLBoxI box;
     // TODO: This doesn't really need to be a state variable. Make a macro or
     // something to calculate it inline to match output width/height and x=y=0.
-    // Also maybe make a macro or global BLPoint origin = {0,0}
     struct BLBoxI box_outer;
 
     // TODO: Clearer name? This should be used to store the pre-resize/rebase box
