@@ -51,20 +51,20 @@ void
 dispatch_surface_event_loop(struct scran_output *st_output)
 {
     struct scran_output_surface_buffer *const initial_buffer = &st_output->surface.double_buffer[0];
-    struct scran_output_selection_blend2d *const bl = &st_output->selection.bl;
+    struct scran_output_selectionContext *const st_selection = &st_output->selection;
 
-    bl_context_begin(&bl->ctx, &initial_buffer->bl_img, NULL);
+    bl_context_begin(&st_selection->bl_ctx, &initial_buffer->bl_img, NULL);
 
-    bl_context_set_fill_style_rgba32(&bl->ctx, BLCONTEXT_RGBA32_FILL_STYLE_DEFAULT.value);
+    bl_context_set_fill_style_rgba32(&st_selection->bl_ctx, BLCONTEXT_RGBA32_FILL_STYLE_DEFAULT.value);
     // Even-odd fill rule because we will use two overlapping rects to create
     // our surface.
     //   NOTE: Just move this back into the ::frame handler if we will need it
     //   for more complicated rendering in this blcontext than just a square...
-    bl_context_set_fill_rule(&bl->ctx, BL_FILL_RULE_EVEN_ODD);
+    bl_context_set_fill_rule(&st_selection->bl_ctx, BL_FILL_RULE_EVEN_ODD);
 
-    bl_path_add_box_i(&bl->path, &bl->box_outer, BL_GEOMETRY_DIRECTION_NONE);
-    bl_context_fill_path_d(&bl->ctx, &SURFACE_BLCONTEXT_ORIGIN, &bl->path);
-    bl_path_reset(&bl->path);
+    bl_path_add_box_i(&st_selection->bl_path, &st_selection->bl_box_outer, BL_GEOMETRY_DIRECTION_NONE);
+    bl_context_fill_path_d(&st_selection->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, &st_selection->bl_path);
+    bl_path_reset(&st_selection->bl_path);
 
     wl_surface_commit(st_output->surface.surface);
 }
@@ -72,8 +72,6 @@ dispatch_surface_event_loop(struct scran_output *st_output)
 void
 destroy_output_surface(struct scran_output *st_output)
 {
-    struct scran_output_selection_blend2d *const bl = &st_output->selection.bl;
-
     zwlr_layer_surface_v1_destroy(st_output->surface.layer_surface);
     wl_surface_destroy(st_output->surface.surface);
 }

@@ -115,26 +115,6 @@ struct scran_seat {
     // TODO: struct wl_touch *touch;
 };
 
-struct scran_output_selection_blend2d {
-    // TODO Drop the blend2d struct and just create handler context structs
-    BLContextCore ctx;
-    // TODO: Either drop this as a member or actually retain the path state
-    // between redraws.
-    BLPathCore path;
-
-    // TODO Rename to box_px OR remove _px suffix from everything in state,
-    //      now that all of state should have been standardized to pixel
-    //      integer values (same for other boxes, resize_origin_pointer, etc.)
-    // NOTE: This is allowed to be inverted to make resizing simpler.
-    struct BLBoxI box;
-    // TODO: This doesn't really need to be a state variable. Make a macro or
-    // something to calculate it inline to match output width/height and x=y=0.
-    struct BLBoxI box_outer;
-
-    // TODO: Clearer name? This should be used to store the pre-resize/rebase box
-    struct BLBoxI box_before_changes;
-};
-
 enum selection_state {
     // TODO: Bitmask and allow simultaneous f.ex. rebasing + resizing?
     SELECTION_NONE,
@@ -156,7 +136,20 @@ enum selection_resize_direction {
 // need to interact with the selection (capture area) state. Keep frequently
 // accessed members near the start.
 struct scran_output_selectionContext {
-    struct scran_output_selection_blend2d bl;
+    BLContextCore bl_ctx;
+    // TODO: Either drop this as a member or actually retain the path state
+    // between redraws.
+    BLPathCore bl_path;
+    // TODO Rename to box_px OR remove _px suffix from everything in state,
+    //      now that all of state should have been standardized to pixel
+    //      integer values (same for other boxes, resize_origin_pointer, etc.)
+    // NOTE: This is allowed to be inverted to make resizing simpler.
+    struct BLBoxI bl_box;
+    // TODO: This doesn't really need to be a state variable. Make a macro or
+    // something to calculate it inline to match output width/height and x=y=0.
+    struct BLBoxI bl_box_outer;
+    // TODO: Clearer name? This should be used to store the pre-resize/rebase box
+    struct BLBoxI bl_box_before_changes;
 
     enum selection_state selection_state;
     enum selection_resize_direction selection_resize_direction;

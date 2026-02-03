@@ -11,13 +11,13 @@
 bool
 init_selection_and_blend2d(struct scran_output *st_output)
 {
-    struct scran_output_selection_blend2d *bl = &st_output->selection.bl;
+    struct scran_output_selectionContext *const st_selection = &st_output->selection;
     struct scran_output_surface * st_surface = &st_output->surface;
 
-    bl_context_init(&bl->ctx);
-    bl_path_init(&bl->path);
+    bl_context_init(&st_selection->bl_ctx);
+    bl_path_init(&st_selection->bl_path);
 
-    bl->box_outer = (struct BLBoxI) {
+    st_selection->bl_box_outer = (struct BLBoxI) {
         .x0 = 0,
         .y0 = 0,
         .x1 = st_output->mode.width_px,
@@ -50,7 +50,7 @@ init_selection_and_blend2d(struct scran_output *st_output)
 void
 destroy_selection_and_blend2d(struct scran_output *st_output)
 {
-    struct scran_output_selection_blend2d *bl = &st_output->selection.bl;
+    struct scran_output_selectionContext *const st_selection = &st_output->selection;
     struct scran_output_surface * st_surface = &st_output->surface;
 
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
@@ -59,7 +59,7 @@ destroy_selection_and_blend2d(struct scran_output *st_output)
         bl_image_destroy(&st_buffer->bl_img);
     }
 
-    bl_context_destroy(&bl->ctx);
-    bl_path_destroy(&bl->path);
+    bl_context_destroy(&st_selection->bl_ctx);
+    bl_path_destroy(&st_selection->bl_path);
 }
 

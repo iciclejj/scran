@@ -214,8 +214,8 @@ start_video_capture(struct scran_output *st_output)
     // XXX: - Needs better asssert? Intent: make sure selection is complete and valid
     assert( st_output->selection.selection_state == SELECTION_COMPLETE
          || st_output->selection.selection_state == SELECTION_REBASING
-         && st_output->selection.bl.box.x1
-         && st_output->selection.bl.box.y1
+         && st_output->selection.bl_box.x1
+         && st_output->selection.bl_box.y1
     );
 
     struct capture_frame_context *const st_frame_ctx = &st_output->capture.frame_ctx;

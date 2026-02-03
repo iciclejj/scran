@@ -107,7 +107,7 @@ draw_frame_and_damage_buffer(
     struct scran_output_surface_buffer *st_buffer,
     struct BLBoxI box_to_draw
 ) {
-    struct scran_output_selection_blend2d *const bl = &st_output->selection.bl;
+    struct scran_output_selectionContext *const st_selection = &st_output->selection;
     const struct BLBoxI box_already_drawn = st_buffer->bl_box_rendered;
 
     assert(!SCRAN_BL_BOX_IS_INVERTED(box_to_draw));
@@ -117,8 +117,8 @@ draw_frame_and_damage_buffer(
         return;
     }
 
-    bl_path_add_box_i(&bl->path, &bl->box_outer, BL_GEOMETRY_DIRECTION_NONE);
-    bl_path_add_box_i(&bl->path, &box_to_draw, BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&st_selection->bl_path, &st_selection->bl_box_outer, BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&st_selection->bl_path, &box_to_draw, BL_GEOMETRY_DIRECTION_NONE);
 
     const struct _box_diffs box_diffs = get_box_diffs(box_to_draw, box_already_drawn);
     struct BLPoint origin = SURFACE_BLCONTEXT_ORIGIN;
@@ -130,37 +130,37 @@ draw_frame_and_damage_buffer(
     // just make _box_diffs an array that we can loop through.
 
     damage_region = blboxi_to_blrecti(box_diffs.left_full);
-    bl_context_clip_to_rect_i(&bl->ctx, &damage_region);
-    bl_context_clear_all(&bl->ctx);
-    bl_context_fill_path_d(&bl->ctx, &origin, &bl->path);
-    bl_context_restore_clipping(&bl->ctx);
+    bl_context_clip_to_rect_i(&st_selection->bl_ctx, &damage_region);
+    bl_context_clear_all(&st_selection->bl_ctx);
+    bl_context_fill_path_d(&st_selection->bl_ctx, &origin, &st_selection->bl_path);
+    bl_context_restore_clipping(&st_selection->bl_ctx);
     wl_surface_damage_buffer( st_output->surface.surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.right_full);
-    bl_context_clip_to_rect_i(&bl->ctx, &damage_region);
-    bl_context_clear_all(&bl->ctx);
-    bl_context_fill_path_d(&bl->ctx, &origin, &bl->path);
-    bl_context_restore_clipping(&bl->ctx);
+    bl_context_clip_to_rect_i(&st_selection->bl_ctx, &damage_region);
+    bl_context_clear_all(&st_selection->bl_ctx);
+    bl_context_fill_path_d(&st_selection->bl_ctx, &origin, &st_selection->bl_path);
+    bl_context_restore_clipping(&st_selection->bl_ctx);
     wl_surface_damage_buffer( st_output->surface.surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.top_remaining);
-    bl_context_clip_to_rect_i(&bl->ctx, &damage_region);
-    bl_context_clear_all(&bl->ctx);
-    bl_context_fill_path_d(&bl->ctx, &origin, &bl->path);
-    bl_context_restore_clipping(&bl->ctx);
+    bl_context_clip_to_rect_i(&st_selection->bl_ctx, &damage_region);
+    bl_context_clear_all(&st_selection->bl_ctx);
+    bl_context_fill_path_d(&st_selection->bl_ctx, &origin, &st_selection->bl_path);
+    bl_context_restore_clipping(&st_selection->bl_ctx);
     wl_surface_damage_buffer( st_output->surface.surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.bottom_remaining);
-    bl_context_clip_to_rect_i(&bl->ctx, &damage_region);
-    bl_context_clear_all(&bl->ctx);
-    bl_context_fill_path_d(&bl->ctx, &origin, &bl->path);
-    bl_context_restore_clipping(&bl->ctx);
+    bl_context_clip_to_rect_i(&st_selection->bl_ctx, &damage_region);
+    bl_context_clear_all(&st_selection->bl_ctx);
+    bl_context_fill_path_d(&st_selection->bl_ctx, &origin, &st_selection->bl_path);
+    bl_context_restore_clipping(&st_selection->bl_ctx);
     wl_surface_damage_buffer( st_output->surface.surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
@@ -171,7 +171,7 @@ draw_frame_and_damage_buffer(
     // NOTE: Don't reset the BLContext here, unless intending to fully
     // re-initialize it. Its state is initialized outside of this ::frame
     // event loop. Shouldn't need flushing either unless doing async.
-    bl_path_reset(&bl->path);
+    bl_path_reset(&st_selection->bl_path);
 }
 
 // TODO: Look at this again to see whether it handles inverted box. If not,
@@ -255,7 +255,7 @@ surface_frame_callback_handler(
     }
 
     // TODO: Also ensure it's clamped?
-    const struct BLBoxI normalized_box_to_draw = get_blboxi_deinverted(st_output->selection.bl.box);
+    const struct BLBoxI normalized_box_to_draw = get_blboxi_deinverted(st_output->selection.bl_box);
 
     // NOTE: Must be set here to sync with selection box rendering.
     //       Otherwise, rendered selection can lag behind the capture area,
