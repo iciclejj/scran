@@ -240,7 +240,7 @@ struct scran_output {
     enum wl_output_transform transform;
 
     struct scran_output_surface surface;
-    struct scran_output_selectionContext selection;
+    struct scran_output_selectionContext selection_ctx;
     struct scran_output_capture capture;
 };
 

@@ -76,7 +76,7 @@ handle_pointer_motion(
 ) {
     struct scran *state = data;
     struct scran_output *st_output = state->seat.pointer.focused_output;
-    struct scran_output_selectionContext *st_selection = &st_output->selection;
+    struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
     const int x_px = wl_fixed_to_int(x);
     const int y_px = wl_fixed_to_int(y);
@@ -84,14 +84,14 @@ handle_pointer_motion(
     state->seat.pointer.x_px = x_px;
     state->seat.pointer.y_px = y_px;
 
-    if (st_selection->selection_state == SELECTION_NONE) {
+    if (selection_ctx->selection_state == SELECTION_NONE) {
         return;
     }
 
     // TODO: Check if out of bounds
-    assert(!SCRAN_BL_BOX_IS_INVERTED(st_selection->bl_box_before_changes));
+    assert(!SCRAN_BL_BOX_IS_INVERTED(selection_ctx->bl_box_before_changes));
 
-    switch (st_selection->selection_state) {
+    switch (selection_ctx->selection_state) {
     case SELECTION_NONE:
         break;
     case SELECTION_IN_PROGRESS:
@@ -99,16 +99,16 @@ handle_pointer_motion(
         // TODO: Make this explicitly either output pixel coordinates or
         //       surface-local coordinates
         //       Also document the behavior/conversion (and make helper function?).
-        st_selection->bl_box.x1 = x_px;
-        st_selection->bl_box.y1 = y_px;
+        selection_ctx->bl_box.x1 = x_px;
+        selection_ctx->bl_box.y1 = y_px;
         break;
     case SELECTION_COMPLETE:
         break;
     case SELECTION_REBASING:
         {
-            int x_diff = x_px - st_selection->pointer_before_changes_x_px;
-            int y_diff = y_px - st_selection->pointer_before_changes_y_px;
-            const BLBoxI box_before_rebase = st_selection->bl_box_before_changes;
+            int x_diff = x_px - selection_ctx->pointer_before_changes_x_px;
+            int y_diff = y_px - selection_ctx->pointer_before_changes_y_px;
+            const BLBoxI box_before_rebase = selection_ctx->bl_box_before_changes;
 
             BLBoxI new_box = {
                 .x0 = box_before_rebase.x0 + x_diff,
@@ -139,41 +139,41 @@ handle_pointer_motion(
                 new_box.y1 = st_output->mode.height_px;
             }
 
-            st_selection->bl_box = new_box;
+            selection_ctx->bl_box = new_box;
         }
         break;
     case SELECTION_RESIZING:
         {
-            const int x_diff_px = x_px - st_selection->pointer_before_changes_x_px;
-            const int y_diff_px = y_px - st_selection->pointer_before_changes_y_px;
-            const BLBoxI box_before_resize = st_selection->bl_box_before_changes;
+            const int x_diff_px = x_px - selection_ctx->pointer_before_changes_x_px;
+            const int y_diff_px = y_px - selection_ctx->pointer_before_changes_y_px;
+            const BLBoxI box_before_resize = selection_ctx->bl_box_before_changes;
 
-            switch (st_selection->selection_resize_direction) {
+            switch (selection_ctx->selection_resize_direction) {
             case SELECTION_RESIZE_NONE:
                 break;
             case SELECTION_RESIZE_TOP_LEFT:
-                st_selection->bl_box.x0 = box_before_resize.x0 + x_diff_px;
-                st_selection->bl_box.y0 = box_before_resize.y0 + y_diff_px;
-                _clamp_to_output_width(&st_selection->bl_box.x0, st_output);
-                _clamp_to_output_height(&st_selection->bl_box.y0, st_output);
+                selection_ctx->bl_box.x0 = box_before_resize.x0 + x_diff_px;
+                selection_ctx->bl_box.y0 = box_before_resize.y0 + y_diff_px;
+                _clamp_to_output_width(&selection_ctx->bl_box.x0, st_output);
+                _clamp_to_output_height(&selection_ctx->bl_box.y0, st_output);
                 break;
             case SELECTION_RESIZE_TOP_RIGHT:
-                st_selection->bl_box.x1 = box_before_resize.x1 + x_diff_px;
-                st_selection->bl_box.y0 = box_before_resize.y0 + y_diff_px;
-                _clamp_to_output_width(&st_selection->bl_box.x1, st_output);
-                _clamp_to_output_height(&st_selection->bl_box.y0, st_output);
+                selection_ctx->bl_box.x1 = box_before_resize.x1 + x_diff_px;
+                selection_ctx->bl_box.y0 = box_before_resize.y0 + y_diff_px;
+                _clamp_to_output_width(&selection_ctx->bl_box.x1, st_output);
+                _clamp_to_output_height(&selection_ctx->bl_box.y0, st_output);
                 break;
             case SELECTION_RESIZE_BOTTOM_LEFT:
-                st_selection->bl_box.x0 = box_before_resize.x0 + x_diff_px;
-                st_selection->bl_box.y1 = box_before_resize.y1 + y_diff_px;
-                _clamp_to_output_width(&st_selection->bl_box.x0, st_output);
-                _clamp_to_output_height(&st_selection->bl_box.y1, st_output);
+                selection_ctx->bl_box.x0 = box_before_resize.x0 + x_diff_px;
+                selection_ctx->bl_box.y1 = box_before_resize.y1 + y_diff_px;
+                _clamp_to_output_width(&selection_ctx->bl_box.x0, st_output);
+                _clamp_to_output_height(&selection_ctx->bl_box.y1, st_output);
                 break;
             case SELECTION_RESIZE_BOTTOM_RIGHT:
-                st_selection->bl_box.x1 = box_before_resize.x1 + x_diff_px;
-                st_selection->bl_box.y1 = box_before_resize.y1 + y_diff_px;
-                _clamp_to_output_width(&st_selection->bl_box.x1, st_output);
-                _clamp_to_output_height(&st_selection->bl_box.y1, st_output);
+                selection_ctx->bl_box.x1 = box_before_resize.x1 + x_diff_px;
+                selection_ctx->bl_box.y1 = box_before_resize.y1 + y_diff_px;
+                _clamp_to_output_width(&selection_ctx->bl_box.x1, st_output);
+                _clamp_to_output_height(&selection_ctx->bl_box.y1, st_output);
                 break;
             }
         }
@@ -211,7 +211,7 @@ handle_pointer_button(
 
     switch (button) {
     case BTN_LEFT:
-        switch(st_output->selection.selection_state) {
+        switch(st_output->selection_ctx.selection_state) {
         case SELECTION_NONE:
             {
                 const struct BLBoxI initial_selection_area = {
@@ -221,26 +221,26 @@ handle_pointer_button(
                     .y1 = y_px,
                 };
 
-                st_output->selection.bl_box = initial_selection_area;
+                st_output->selection_ctx.bl_box = initial_selection_area;
                 for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
                     st_output->surface.double_buffer[i].bl_box_rendered = initial_selection_area;
                 }
             }
-            st_output->selection.selection_state = SELECTION_IN_PROGRESS;
+            st_output->selection_ctx.selection_state = SELECTION_IN_PROGRESS;
             break;
         case SELECTION_IN_PROGRESS:
-            st_output->selection.bl_box.x1 = x_px;
-            st_output->selection.bl_box.y1 = y_px;
-            st_output->selection.selection_state = SELECTION_COMPLETE;
+            st_output->selection_ctx.bl_box.x1 = x_px;
+            st_output->selection_ctx.bl_box.y1 = y_px;
+            st_output->selection_ctx.selection_state = SELECTION_COMPLETE;
             break;
         case SELECTION_COMPLETE:
-            st_output->selection.selection_state = SELECTION_REBASING;
-            st_output->selection.pointer_before_changes_x_px = x_px;
-            st_output->selection.pointer_before_changes_y_px = y_px;
-            st_output->selection.bl_box_before_changes = st_output->selection.bl_box;
+            st_output->selection_ctx.selection_state = SELECTION_REBASING;
+            st_output->selection_ctx.pointer_before_changes_x_px = x_px;
+            st_output->selection_ctx.pointer_before_changes_y_px = y_px;
+            st_output->selection_ctx.bl_box_before_changes = st_output->selection_ctx.bl_box;
             break;
         case SELECTION_REBASING:
-            st_output->selection.selection_state = SELECTION_COMPLETE;
+            st_output->selection_ctx.selection_state = SELECTION_COMPLETE;
             break;
         case SELECTION_RESIZING:
             // TODO: Allow BTN_LEFT to stop the resizing ?
@@ -248,37 +248,37 @@ handle_pointer_button(
         }
         break;
     case BTN_RIGHT:
-        switch(st_output->selection.selection_state) {
+        switch(st_output->selection_ctx.selection_state) {
         case SELECTION_COMPLETE:
-            st_output->selection.selection_state = SELECTION_RESIZING;
-            st_output->selection.bl_box_before_changes = st_output->selection.bl_box;
-            st_output->selection.pointer_before_changes_x_px = x_px;
-            st_output->selection.pointer_before_changes_y_px = y_px;
+            st_output->selection_ctx.selection_state = SELECTION_RESIZING;
+            st_output->selection_ctx.bl_box_before_changes = st_output->selection_ctx.bl_box;
+            st_output->selection_ctx.pointer_before_changes_x_px = x_px;
+            st_output->selection_ctx.pointer_before_changes_y_px = y_px;
 
             {
-                const BLBoxI box_before_changes = st_output->selection.bl_box_before_changes;
+                const BLBoxI box_before_changes = st_output->selection_ctx.bl_box_before_changes;
 
                 // TODO: Make this cleaner.....
                 if (x_px < get_center_value(box_before_changes.x0, box_before_changes.x1)) {
                     if (y_px < get_center_value(box_before_changes.y0, box_before_changes.y1)) {
-                        st_output->selection.selection_resize_direction = SELECTION_RESIZE_TOP_LEFT;
+                        st_output->selection_ctx.selection_resize_direction = SELECTION_RESIZE_TOP_LEFT;
                     } else {
-                        st_output->selection.selection_resize_direction = SELECTION_RESIZE_BOTTOM_LEFT;
+                        st_output->selection_ctx.selection_resize_direction = SELECTION_RESIZE_BOTTOM_LEFT;
                     }
                 } else {
                     if (y_px < get_center_value(box_before_changes.y0, box_before_changes.y1)) {
-                        st_output->selection.selection_resize_direction = SELECTION_RESIZE_TOP_RIGHT;
+                        st_output->selection_ctx.selection_resize_direction = SELECTION_RESIZE_TOP_RIGHT;
                     } else {
-                        st_output->selection.selection_resize_direction = SELECTION_RESIZE_BOTTOM_RIGHT;
+                        st_output->selection_ctx.selection_resize_direction = SELECTION_RESIZE_BOTTOM_RIGHT;
                     }
                 }
             }
             break;
         case SELECTION_RESIZING:
-            st_output->selection.selection_state = SELECTION_COMPLETE;
-            st_output->selection.selection_resize_direction = SELECTION_RESIZE_NONE;
+            st_output->selection_ctx.selection_state = SELECTION_COMPLETE;
+            st_output->selection_ctx.selection_resize_direction = SELECTION_RESIZE_NONE;
             
-            BLBoxI *const box = &st_output->selection.bl_box;
+            BLBoxI *const box = &st_output->selection_ctx.bl_box;
             if (box->x1 < box->x0) {
                 int tmp = box->x0;
                 box->x0 = box->x1;
