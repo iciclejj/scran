@@ -76,7 +76,7 @@ handle_pointer_motion(
 ) {
     struct scran *state = data;
     struct scran_output *st_output = state->seat.pointer.focused_output;
-    struct scran_output_selection *st_selection = &st_output->selection;
+    struct scran_output_selectionContext *st_selection = &st_output->selection;
 
     const int x_px = wl_fixed_to_int(x);
     const int y_px = wl_fixed_to_int(y);

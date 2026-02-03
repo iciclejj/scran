@@ -155,10 +155,7 @@ enum selection_resize_direction {
 // This struct is used as a shared context struct for event handlers that
 // need to interact with the selection (capture area) state. Keep frequently
 // accessed members near the start.
-//
-// TODO: Optimize surface/selection event-loop struct sizes
-//           Make a *_context struct, like for capture_frame
-struct scran_output_selection {
+struct scran_output_selectionContext {
     struct scran_output_selection_blend2d bl;
 
     enum selection_state selection_state;
@@ -250,7 +247,7 @@ struct scran_output {
     enum wl_output_transform transform;
 
     struct scran_output_surface surface;
-    struct scran_output_selection selection;
+    struct scran_output_selectionContext selection;
     struct scran_output_capture capture;
 };
 
