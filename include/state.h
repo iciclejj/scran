@@ -159,10 +159,10 @@ enum selection_resize_direction {
 // TODO: Optimize surface/selection event-loop struct sizes
 //           Make a *_context struct, like for capture_frame
 struct scran_output_selection {
+    struct scran_output_selection_blend2d bl;
+
     enum selection_state selection_state;
     enum selection_resize_direction selection_resize_direction;
-
-    struct scran_output_selection_blend2d bl;
 
     int pointer_before_changes_x_px;
     int pointer_before_changes_y_px;
