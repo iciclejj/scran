@@ -155,23 +155,15 @@ enum selection_resize_direction {
 // TODO: Optimize surface/selection event-loop struct sizes
 //           Make a *_context struct, like for capture_frame
 struct scran_output_selection {
-    // bool selection_started;
     enum selection_state selection_state;
     enum selection_resize_direction selection_resize_direction;
 
-    // TODO: Make a cleaner/more obvious interface for getting selection
-    //       height/width etc. than just getting the .bl.box coordinates?
     struct scran_output_selection_blend2d bl;
 
     int pointer_before_changes_x_px;
     int pointer_before_changes_y_px;
-
-    // TODO: Not needed? Just use box only?
-    // BLPoint bl_point_top_left;
-    // BLPoint bl_point_bottom_right;
 };
 
-// TODO: Merge all or parts of this with scran_surface_buffer?
 struct scran_capture_buffer {
     struct wl_buffer *buffer;
     void *data;
