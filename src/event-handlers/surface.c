@@ -117,8 +117,8 @@ draw_frame_and_damage_buffer(
         return;
     }
 
-    bl_path_add_box_i(&selection_ctx->bl_path, &selection_ctx->bl_box_outer, BL_GEOMETRY_DIRECTION_NONE);
-    bl_path_add_box_i(&selection_ctx->bl_path, &box_to_draw, BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&st_output->surface.bl_path, &selection_ctx->bl_box_outer, BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&st_output->surface.bl_path, &box_to_draw, BL_GEOMETRY_DIRECTION_NONE);
 
     const struct _box_diffs box_diffs = get_box_diffs(box_to_draw, box_already_drawn);
     struct BLPoint origin = SURFACE_BLCONTEXT_ORIGIN;
@@ -130,37 +130,37 @@ draw_frame_and_damage_buffer(
     // just make _box_diffs an array that we can loop through.
 
     damage_region = blboxi_to_blrecti(box_diffs.left_full);
-    bl_context_clip_to_rect_i(&selection_ctx->bl_ctx, &damage_region);
-    bl_context_clear_all(&selection_ctx->bl_ctx);
-    bl_context_fill_path_d(&selection_ctx->bl_ctx, &origin, &selection_ctx->bl_path);
-    bl_context_restore_clipping(&selection_ctx->bl_ctx);
+    bl_context_clear_all(&st_output->surface.bl_ctx);
+    bl_context_clip_to_rect_i(&st_output->surface.bl_ctx, &damage_region);
+    bl_context_fill_path_d(&st_output->surface.bl_ctx, &origin, &st_output->surface.bl_path);
+    bl_context_restore_clipping(&st_output->surface.bl_ctx);
     wl_surface_damage_buffer( st_output->surface.wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.right_full);
-    bl_context_clip_to_rect_i(&selection_ctx->bl_ctx, &damage_region);
-    bl_context_clear_all(&selection_ctx->bl_ctx);
-    bl_context_fill_path_d(&selection_ctx->bl_ctx, &origin, &selection_ctx->bl_path);
-    bl_context_restore_clipping(&selection_ctx->bl_ctx);
+    bl_context_clip_to_rect_i(&st_output->surface.bl_ctx, &damage_region);
+    bl_context_clear_all(&st_output->surface.bl_ctx);
+    bl_context_fill_path_d(&st_output->surface.bl_ctx, &origin, &st_output->surface.bl_path);
+    bl_context_restore_clipping(&st_output->surface.bl_ctx);
     wl_surface_damage_buffer( st_output->surface.wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.top_remaining);
-    bl_context_clip_to_rect_i(&selection_ctx->bl_ctx, &damage_region);
-    bl_context_clear_all(&selection_ctx->bl_ctx);
-    bl_context_fill_path_d(&selection_ctx->bl_ctx, &origin, &selection_ctx->bl_path);
-    bl_context_restore_clipping(&selection_ctx->bl_ctx);
+    bl_context_clip_to_rect_i(&st_output->surface.bl_ctx, &damage_region);
+    bl_context_clear_all(&st_output->surface.bl_ctx);
+    bl_context_fill_path_d(&st_output->surface.bl_ctx, &origin, &st_output->surface.bl_path);
+    bl_context_restore_clipping(&st_output->surface.bl_ctx);
     wl_surface_damage_buffer( st_output->surface.wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.bottom_remaining);
-    bl_context_clip_to_rect_i(&selection_ctx->bl_ctx, &damage_region);
-    bl_context_clear_all(&selection_ctx->bl_ctx);
-    bl_context_fill_path_d(&selection_ctx->bl_ctx, &origin, &selection_ctx->bl_path);
-    bl_context_restore_clipping(&selection_ctx->bl_ctx);
+    bl_context_clip_to_rect_i(&st_output->surface.bl_ctx, &damage_region);
+    bl_context_clear_all(&st_output->surface.bl_ctx);
+    bl_context_fill_path_d(&st_output->surface.bl_ctx, &origin, &st_output->surface.bl_path);
+    bl_context_restore_clipping(&st_output->surface.bl_ctx);
     wl_surface_damage_buffer( st_output->surface.wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
@@ -171,7 +171,7 @@ draw_frame_and_damage_buffer(
     // NOTE: Don't reset the BLContext here, unless intending to fully
     // re-initialize it. Its state is initialized outside of this ::frame
     // event loop. Shouldn't need flushing either unless doing async.
-    bl_path_reset(&selection_ctx->bl_path);
+    bl_path_reset(&st_output->surface.bl_path);
 }
 
 // TODO: Look at this again to see whether it handles inverted box. If not,

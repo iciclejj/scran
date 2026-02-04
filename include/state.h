@@ -58,6 +58,12 @@ struct scran_output_surface_buffer {
 //           Make a *_context struct, like for capture_frame
 struct scran_output_surface {
     struct wl_surface *wl_surface;
+
+    BLContextCore bl_ctx;
+    // TODO: Either drop this as a member or actually retain the path state
+    // between redraws.
+    BLPathCore bl_path;
+
     struct scran_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
 
     struct zwlr_layer_surface_v1 *layer_surface;
@@ -137,10 +143,6 @@ enum selection_resize_direction {
 // need to interact with the selection (capture area) state. Keep frequently
 // accessed members near the start.
 struct scran_output_selectionContext {
-    BLContextCore bl_ctx;
-    // TODO: Either drop this as a member or actually retain the path state
-    // between redraws.
-    BLPathCore bl_path;
     // TODO Rename to box_px OR remove _px suffix from everything in state,
     //      now that all of state should have been standardized to pixel
     //      integer values (same for other boxes, resize_origin_pointer, etc.)
