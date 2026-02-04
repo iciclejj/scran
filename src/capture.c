@@ -36,7 +36,7 @@ dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
     ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__video_capture, frame_ctx);
     ext_image_copy_capture_frame_v1_attach_buffer(
         frame,
-        frame_ctx->st_buffer.buffer
+        frame_ctx->st_buffer.wl_buffer
     );
     ext_image_copy_capture_frame_v1_capture(frame);
 
@@ -243,7 +243,7 @@ dispatch_image_capture_event(struct scran_output_capture *st_capture)
     ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__image_capture, st_capture);
     ext_image_copy_capture_frame_v1_attach_buffer(
         frame,
-        frame_ctx->st_buffer.buffer
+        frame_ctx->st_buffer.wl_buffer
     );
     ext_image_copy_capture_frame_v1_capture(frame);
 }

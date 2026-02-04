@@ -44,8 +44,7 @@ struct scran_globals {
 };
 
 struct scran_output_surface_buffer {
-    // TODO: Rename to wl_buffer to not mix it up with `data`?
-    struct wl_buffer *buffer;
+    struct wl_buffer *wl_buffer;
     // TODO: Make sure frame data (here and in capture) gets proper alignment.
     void *data;
 
@@ -161,7 +160,7 @@ struct scran_output_selectionContext {
 };
 
 struct scran_capture_buffer {
-    struct wl_buffer *buffer;
+    struct wl_buffer *wl_buffer;
     void *data;
 };
 

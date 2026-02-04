@@ -35,7 +35,7 @@ handle_layer_surface_closed(void *data, struct zwlr_layer_surface_v1 *layer_surf
     struct scran_output *st_output = data;
 
     for (int i = 0; i < SURFACE_BUF_COUNT; i++) {
-        wl_buffer_destroy(st_output->surface.double_buffer[i].buffer);
+        wl_buffer_destroy(st_output->surface.double_buffer[i].wl_buffer);
     }
 }
 

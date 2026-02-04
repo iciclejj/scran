@@ -266,7 +266,7 @@ surface_frame_callback_handler(
 
     st_buffer->busy = true;
     draw_frame_and_damage_buffer(st_output, st_buffer, normalized_box_to_draw);
-    wl_surface_attach(st_output->surface.surface, st_buffer->buffer, 0, 0);
+    wl_surface_attach(st_output->surface.surface, st_buffer->wl_buffer, 0, 0);
 go_next:
     wl_callback_add_listener(
         wl_surface_frame(st_output->surface.surface),
