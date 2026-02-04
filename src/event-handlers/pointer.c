@@ -76,13 +76,15 @@ handle_pointer_motion(
 ) {
     struct scran *state = data;
     struct scran_output *st_output = state->seat.pointer_ctx.focused_output;
+
+    struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
     const int x_px = wl_fixed_to_int(x);
     const int y_px = wl_fixed_to_int(y);
 
-    state->seat.pointer_ctx.x_px = x_px;
-    state->seat.pointer_ctx.y_px = y_px;
+    pointer_ctx->x_px = x_px;
+    pointer_ctx->y_px = y_px;
 
     if (selection_ctx->selection_state == SELECTION_NONE) {
         return;
@@ -198,12 +200,14 @@ handle_pointer_button(
 ) {
     struct scran *state = data;
     struct scran_output *st_output = state->seat.pointer_ctx.focused_output;
+
+    struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
     // TODO: Implement dragging
 
-    int x_px = state->seat.pointer_ctx.x_px;
-    int y_px = state->seat.pointer_ctx.y_px;
+    int x_px = pointer_ctx->x_px;
+    int y_px = pointer_ctx->y_px;
 
     // TODO: Add hold/click-and-drag functionality
     if (button_state != WL_POINTER_BUTTON_STATE_PRESSED) {
