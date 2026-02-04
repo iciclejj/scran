@@ -244,13 +244,8 @@ surface_frame_callback_handler(
 
     struct scran_output_surface_buffer *st_buffer = get_free_double_buffer(st_output);
 
-    if (st_buffer == NULL ||
-        st_output->selection_ctx.selection_state == SELECTION_NONE
-    ) {
-        #ifndef NDEBUG
-            if (st_buffer == NULL) DEBUG("Both buffers busy...\n");
-        #endif /* NDEBUG */
-
+    if (st_buffer == NULL) {
+        DEBUG("Both buffers busy...\n");
         goto go_next;
     }
 
