@@ -182,7 +182,7 @@ init_meminit(
             );
 
             // XXX TODO: Should this be done here?
-            wl_surface_attach(_st_output->surface.surface, _st_output->surface.double_buffer[0].wl_buffer, 0, 0);
+            wl_surface_attach(_st_output->surface.wl_surface, _st_output->surface.double_buffer[0].wl_buffer, 0, 0);
         }
 
         _st_output->capture.frame_ctx.st_buffer.data = *shm_addr + curr_offset;
@@ -229,7 +229,7 @@ init_postmem()
         // Initial frame callback request.
         // All subsequent requests are done "recursively" from within ::done
         wl_callback_add_listener(
-            wl_surface_frame(_st_output->surface.surface),
+            wl_surface_frame(_st_output->surface.wl_surface),
             &surface_frame_callback_listener,
             _st_output
         );

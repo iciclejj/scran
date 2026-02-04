@@ -134,7 +134,7 @@ draw_frame_and_damage_buffer(
     bl_context_clear_all(&selection_ctx->bl_ctx);
     bl_context_fill_path_d(&selection_ctx->bl_ctx, &origin, &selection_ctx->bl_path);
     bl_context_restore_clipping(&selection_ctx->bl_ctx);
-    wl_surface_damage_buffer( st_output->surface.surface,
+    wl_surface_damage_buffer( st_output->surface.wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
@@ -143,7 +143,7 @@ draw_frame_and_damage_buffer(
     bl_context_clear_all(&selection_ctx->bl_ctx);
     bl_context_fill_path_d(&selection_ctx->bl_ctx, &origin, &selection_ctx->bl_path);
     bl_context_restore_clipping(&selection_ctx->bl_ctx);
-    wl_surface_damage_buffer( st_output->surface.surface,
+    wl_surface_damage_buffer( st_output->surface.wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
@@ -152,7 +152,7 @@ draw_frame_and_damage_buffer(
     bl_context_clear_all(&selection_ctx->bl_ctx);
     bl_context_fill_path_d(&selection_ctx->bl_ctx, &origin, &selection_ctx->bl_path);
     bl_context_restore_clipping(&selection_ctx->bl_ctx);
-    wl_surface_damage_buffer( st_output->surface.surface,
+    wl_surface_damage_buffer( st_output->surface.wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
@@ -161,7 +161,7 @@ draw_frame_and_damage_buffer(
     bl_context_clear_all(&selection_ctx->bl_ctx);
     bl_context_fill_path_d(&selection_ctx->bl_ctx, &origin, &selection_ctx->bl_path);
     bl_context_restore_clipping(&selection_ctx->bl_ctx);
-    wl_surface_damage_buffer( st_output->surface.surface,
+    wl_surface_damage_buffer( st_output->surface.wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
@@ -266,14 +266,14 @@ surface_frame_callback_handler(
 
     st_buffer->busy = true;
     draw_frame_and_damage_buffer(st_output, st_buffer, normalized_box_to_draw);
-    wl_surface_attach(st_output->surface.surface, st_buffer->wl_buffer, 0, 0);
+    wl_surface_attach(st_output->surface.wl_surface, st_buffer->wl_buffer, 0, 0);
 go_next:
     wl_callback_add_listener(
-        wl_surface_frame(st_output->surface.surface),
+        wl_surface_frame(st_output->surface.wl_surface),
         &surface_frame_callback_listener,
         st_output
     );
-    wl_surface_commit(st_output->surface.surface);
+    wl_surface_commit(st_output->surface.wl_surface);
 }
 
 struct wl_callback_listener surface_frame_callback_listener = {

@@ -15,10 +15,10 @@ init_output_surface(
     struct scran_globals *st_globals
 ) {
     // Must add role to surface and ack its configure event before adding a buffer.
-    st_output->surface.surface = wl_compositor_create_surface(st_globals->compositor);
+    st_output->surface.wl_surface = wl_compositor_create_surface(st_globals->compositor);
     st_output->surface.layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         st_globals->layer_shell,
-        st_output->surface.surface,
+        st_output->surface.wl_surface,
         st_output->wl_output,
         ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,
         "scran-capture" // TODO: Figure out a namespace name?
@@ -42,7 +42,7 @@ init_output_surface(
 
     zwlr_layer_surface_v1_add_listener(st_output->surface.layer_surface, &layer_surface_listener, st_output);
     // Initial bufferless commit to trigger configure event
-    wl_surface_commit(st_output->surface.surface);
+    wl_surface_commit(st_output->surface.wl_surface);
 
     return true;
 }
@@ -66,13 +66,13 @@ dispatch_surface_event_loop(struct scran_output *st_output)
     bl_context_fill_path_d(&selection_ctx->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, &selection_ctx->bl_path);
     bl_path_reset(&selection_ctx->bl_path);
 
-    wl_surface_commit(st_output->surface.surface);
+    wl_surface_commit(st_output->surface.wl_surface);
 }
 
 void
 destroy_output_surface(struct scran_output *st_output)
 {
     zwlr_layer_surface_v1_destroy(st_output->surface.layer_surface);
-    wl_surface_destroy(st_output->surface.surface);
+    wl_surface_destroy(st_output->surface.wl_surface);
 }
 

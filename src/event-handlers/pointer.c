@@ -49,7 +49,7 @@ handle_pointer_enter(
 
     // TODO: Macro for_each_output ?
     for (int i = 0; i < state->n_outputs; ++i) {
-        if (surface_entered == state->outputs[i].surface.surface) {
+        if (surface_entered == state->outputs[i].surface.wl_surface) {
             pointer_ctx->focused_output = &state->outputs[i];
             break;
         }
