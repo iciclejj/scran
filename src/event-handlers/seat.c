@@ -30,7 +30,7 @@ handle_seat_capabilities(
         state->seat.wl_pointer = wl_seat_get_pointer(seat);
         // TODO: Consider using non-staging protocols for this? No real reason to use
         //       wp_cursor_shape_manager other than convenience.
-        state->seat.pointer.cursor_shape_device = wp_cursor_shape_manager_v1_get_pointer(
+        state->seat.pointer_ctx.cursor_shape_device = wp_cursor_shape_manager_v1_get_pointer(
             state->globals.cursor_shape_manager,
             state->seat.wl_pointer
         );
@@ -71,6 +71,6 @@ seat_listener_destroy(struct scran_seat *seat)
     keyboard_listener_destroy(seat);
 
     wl_pointer_destroy(seat->wl_pointer);
-    wp_cursor_shape_device_v1_destroy(seat->pointer.cursor_shape_device);
+    wp_cursor_shape_device_v1_destroy(seat->pointer_ctx.cursor_shape_device);
 }
 

@@ -87,7 +87,7 @@ handle_keyboard_key(
 ) {
     struct scran *state = data;
     // TODO: Figure out pointer vs keyboard focus
-    struct scran_output *st_output = state->seat.pointer.focused_output;
+    struct scran_output *st_output = state->seat.pointer_ctx.focused_output;
 
     if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
         return;

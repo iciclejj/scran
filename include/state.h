@@ -106,7 +106,7 @@ struct scran_seat_datacontrol {
 };
 
 struct scran_seat {
-    struct scran_seat_pointerContext pointer;
+    struct scran_seat_pointerContext pointer_ctx;
     struct scran_seat_keyboard keyboard;
     struct scran_seat_datacontrol datacontrol;
 

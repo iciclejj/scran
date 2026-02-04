@@ -38,7 +38,7 @@ handle_pointer_enter(
     wl_fixed_t y
 ) {
     struct scran *state = data;
-    struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer;
+    struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
 
     // "When a seat's focus enters a surface, the pointer image is undefined..."
     wp_cursor_shape_device_v1_set_shape(
@@ -75,14 +75,14 @@ handle_pointer_motion(
     wl_fixed_t y
 ) {
     struct scran *state = data;
-    struct scran_output *st_output = state->seat.pointer.focused_output;
+    struct scran_output *st_output = state->seat.pointer_ctx.focused_output;
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
     const int x_px = wl_fixed_to_int(x);
     const int y_px = wl_fixed_to_int(y);
 
-    state->seat.pointer.x_px = x_px;
-    state->seat.pointer.y_px = y_px;
+    state->seat.pointer_ctx.x_px = x_px;
+    state->seat.pointer_ctx.y_px = y_px;
 
     if (selection_ctx->selection_state == SELECTION_NONE) {
         return;
@@ -197,13 +197,13 @@ handle_pointer_button(
     enum wl_pointer_button_state button_state
 ) {
     struct scran *state = data;
-    struct scran_output *st_output = state->seat.pointer.focused_output;
+    struct scran_output *st_output = state->seat.pointer_ctx.focused_output;
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
     // TODO: Implement dragging
 
-    int x_px = state->seat.pointer.x_px;
-    int y_px = state->seat.pointer.y_px;
+    int x_px = state->seat.pointer_ctx.x_px;
+    int y_px = state->seat.pointer_ctx.y_px;
 
     // TODO: Add hold/click-and-drag functionality
     if (button_state != WL_POINTER_BUTTON_STATE_PRESSED) {
