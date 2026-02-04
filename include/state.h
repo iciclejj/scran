@@ -58,9 +58,9 @@ struct scran_output_surface_buffer {
 //           Make a *_context struct, like for capture_frame
 struct scran_output_surface {
     struct wl_surface *wl_surface;
-    struct zwlr_layer_surface_v1 *layer_surface;
-
     struct scran_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
+
+    struct zwlr_layer_surface_v1 *layer_surface;
 };
 
 struct scran_seat_pointerContext {
