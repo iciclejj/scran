@@ -48,9 +48,11 @@ struct scran_output_surface_buffer {
     struct wl_buffer *buffer;
     // TODO: Make sure frame data (here and in capture) gets proper alignment.
     void *data;
-    bool busy;
+
     BLImageCore bl_img;
     BLBoxI bl_box_rendered;
+
+    bool busy;
 };
 
 // TODO: Optimize surface/selection event-loop struct sizes
