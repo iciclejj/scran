@@ -63,18 +63,18 @@ struct scran_output_surface {
 };
 
 struct scran_seat_pointer {
-    struct wp_cursor_shape_device_v1 *cursor_shape_device;
-
-    // TODO: Should this be for the entire seat, and not just pointer?
-    //           NOTE: Both keyboard and pointer have ::enter events.
-    struct scran_output *focused_output;
-
     int x_px;
     int y_px;
 
     // TODO: Use this for click-and-hold or remove it. Also probably change it
     // to a bool
     enum wl_pointer_button_state btn_left_state;
+
+    // TODO: Should this be for the entire seat, and not just pointer?
+    //           NOTE: Both keyboard and pointer have ::enter events.
+    struct scran_output *focused_output;
+
+    struct wp_cursor_shape_device_v1 *cursor_shape_device;
 };
 
 struct scran_seat_keyboard {
