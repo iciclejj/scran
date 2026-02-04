@@ -108,7 +108,7 @@ draw_frame_and_damage_buffer(
     struct BLBoxI box_to_draw
 ) {
     struct scran_output_selectionContext *const selection_ctx = &st_output->selection_ctx;
-    const struct BLBoxI box_already_drawn = st_buffer->bl_box_rendered;
+    const struct BLBoxI box_already_drawn = st_output->surface.bl_box_rendered;
 
     assert(!SCRAN_BL_BOX_IS_INVERTED(box_to_draw));
     assert(!SCRAN_BL_BOX_IS_INVERTED(box_already_drawn));
@@ -165,8 +165,8 @@ draw_frame_and_damage_buffer(
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
-    assert(_boxes_are_equal(box_already_drawn, st_buffer->bl_box_rendered));
-    st_buffer->bl_box_rendered = box_to_draw;
+    assert(_boxes_are_equal(box_already_drawn, st_output->surface.bl_box_rendered));
+    st_output->surface.bl_box_rendered = box_to_draw;
 
     // NOTE: Don't reset the BLContext here, unless intending to fully
     // re-initialize it. Its state is initialized outside of this ::frame

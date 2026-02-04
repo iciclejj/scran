@@ -50,7 +50,6 @@ struct scran_output_surface_buffer {
 
     BLContextCore bl_ctx;
     BLImageCore bl_img;
-    BLBoxI bl_box_rendered;
 
     bool busy;
 };
@@ -63,6 +62,7 @@ struct scran_output_surface {
     // TODO: Either drop this as a member or actually retain the path state
     // between redraws.
     BLPathCore bl_path;
+    BLBoxI bl_box_rendered;
 
     struct scran_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
 
