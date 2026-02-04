@@ -77,6 +77,7 @@ dispatch_surface_event_loop(struct scran_output *st_output)
 
     struct scran_output_surface_buffer *const initial_buffer = &st_output->surface.double_buffer[0];
 
+    initial_buffer->busy = true;
     wl_surface_attach(st_output->surface.wl_surface, initial_buffer->wl_buffer, 0, 0);
     wl_surface_commit(st_output->surface.wl_surface);
 }
