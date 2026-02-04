@@ -307,7 +307,7 @@ handle_pointer_frame(
     void *data,
     struct wl_pointer *wl_pointer
 ) {
-    // TODO ?
+    // Don't need this yet...
 }
 
 static void
