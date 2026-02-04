@@ -50,23 +50,34 @@ init_output_surface(
 void
 dispatch_surface_event_loop(struct scran_output *st_output)
 {
-    struct scran_output_surface *const st_surface = &st_output->surface;
+    // TODO: Assert bl_ctx has already begun, or maybe just move its (entire?)
+    // init into here.
+
+    for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
+        struct scran_output_surface_buffer *st_buffer = &st_output->surface.double_buffer[i];
+        struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
+        struct BLPathCore *bl_path = &st_output->surface.bl_path;
+
+        bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, BLCONTEXT_RGBA32_FILL_STYLE_DEFAULT.value);
+        // Even-odd fill rule because we will use two overlapping rects to create
+        // our surface.
+        //   NOTE: Just move this back into the ::frame handler if we will need it
+        //   for more complicated rendering in this blcontext than just a square...
+        bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_EVEN_ODD);
+
+        bl_path_add_box_i(bl_path, &selection_ctx->bl_box_outer, BL_GEOMETRY_DIRECTION_NONE);
+
+        // XXX: At the moment, this function is only used at the start of the
+        // program. Handle busy buffers later if/when it will be necessary.
+        assert(st_buffer->busy == false);
+        bl_context_fill_path_d(&st_buffer->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, bl_path);
+
+        bl_path_reset(bl_path);
+    }
+
     struct scran_output_surface_buffer *const initial_buffer = &st_output->surface.double_buffer[0];
-    struct scran_output_selectionContext *const selection_ctx = &st_output->selection_ctx;
 
-    bl_context_begin(&st_surface->bl_ctx, &initial_buffer->bl_img, NULL);
-
-    bl_context_set_fill_style_rgba32(&st_surface->bl_ctx, BLCONTEXT_RGBA32_FILL_STYLE_DEFAULT.value);
-    // Even-odd fill rule because we will use two overlapping rects to create
-    // our surface.
-    //   NOTE: Just move this back into the ::frame handler if we will need it
-    //   for more complicated rendering in this blcontext than just a square...
-    bl_context_set_fill_rule(&st_surface->bl_ctx, BL_FILL_RULE_EVEN_ODD);
-
-    bl_path_add_box_i(&st_surface->bl_path, &selection_ctx->bl_box_outer, BL_GEOMETRY_DIRECTION_NONE);
-    bl_context_fill_path_d(&st_surface->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, &st_surface->bl_path);
-    bl_path_reset(&st_surface->bl_path);
-
+    wl_surface_attach(st_output->surface.wl_surface, initial_buffer->wl_buffer, 0, 0);
     wl_surface_commit(st_output->surface.wl_surface);
 }
 

@@ -14,23 +14,15 @@ init_selection_and_blend2d(struct scran_output *st_output)
     struct scran_output_selectionContext *const selection_ctx = &st_output->selection_ctx;
     struct scran_output_surface * st_surface = &st_output->surface;
 
-    bl_context_init(&st_surface->bl_ctx);
-    bl_path_init(&st_surface->bl_path);
-
-    selection_ctx->bl_box_outer = (struct BLBoxI) {
-        .x0 = 0,
-        .y0 = 0,
-        .x1 = st_output->mode.width_px,
-        .y1 = st_output->mode.height_px,
-    };
-
     // TODO: Should maybe be a separate function, f.ex. init_surface_buffers_blend2d
     //       and called directly from main, after init_surface_shm_buffers
+    // TODO: Probably move this into init/surface.c, and call this just
+    // init_selection, or remove this function entirely.
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
         struct scran_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
+
         // Shared memory must already be allocated.
         assert(st_buffer->data != NULL);
-
         bl_image_init_as_from_data(
             &st_buffer->bl_img,
             st_output->mode.width_px,
@@ -42,7 +34,18 @@ init_selection_and_blend2d(struct scran_output *st_output)
             NULL,
             NULL
         );
+
+        bl_context_init_as(&st_buffer->bl_ctx, &st_buffer->bl_img, NULL);
     }
+
+    bl_path_init(&st_surface->bl_path);
+
+    selection_ctx->bl_box_outer = (struct BLBoxI) {
+        .x0 = 0,
+        .y0 = 0,
+        .x1 = st_output->mode.width_px,
+        .y1 = st_output->mode.height_px,
+    };
 
     return true;
 }
@@ -56,10 +59,10 @@ destroy_selection_and_blend2d(struct scran_output *st_output)
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
         struct scran_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
 
+        bl_context_destroy(&st_buffer->bl_ctx);
         bl_image_destroy(&st_buffer->bl_img);
     }
 
-    bl_context_destroy(&st_surface->bl_ctx);
     bl_path_destroy(&st_surface->bl_path);
 }
 

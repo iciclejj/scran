@@ -180,9 +180,6 @@ init_meminit(
                 &surface_buffer_listener,
                 &_st_output->surface.double_buffer[i]
             );
-
-            // XXX TODO: Should this be done here?
-            wl_surface_attach(_st_output->surface.wl_surface, _st_output->surface.double_buffer[0].wl_buffer, 0, 0);
         }
 
         _st_output->capture.frame_ctx.st_buffer.data = *shm_addr + curr_offset;

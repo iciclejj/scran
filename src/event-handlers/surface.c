@@ -130,37 +130,37 @@ draw_frame_and_damage_buffer(
     // just make _box_diffs an array that we can loop through.
 
     damage_region = blboxi_to_blrecti(box_diffs.left_full);
-    bl_context_clear_all(&st_output->surface.bl_ctx);
-    bl_context_clip_to_rect_i(&st_output->surface.bl_ctx, &damage_region);
-    bl_context_fill_path_d(&st_output->surface.bl_ctx, &origin, &st_output->surface.bl_path);
-    bl_context_restore_clipping(&st_output->surface.bl_ctx);
+    bl_context_clear_all(&st_buffer->bl_ctx);
+    bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
+    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_output->surface.bl_path);
+    bl_context_restore_clipping(&st_buffer->bl_ctx);
     wl_surface_damage_buffer( st_output->surface.wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.right_full);
-    bl_context_clip_to_rect_i(&st_output->surface.bl_ctx, &damage_region);
-    bl_context_clear_all(&st_output->surface.bl_ctx);
-    bl_context_fill_path_d(&st_output->surface.bl_ctx, &origin, &st_output->surface.bl_path);
-    bl_context_restore_clipping(&st_output->surface.bl_ctx);
+    bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
+    bl_context_clear_all(&st_buffer->bl_ctx);
+    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_output->surface.bl_path);
+    bl_context_restore_clipping(&st_buffer->bl_ctx);
     wl_surface_damage_buffer( st_output->surface.wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.top_remaining);
-    bl_context_clip_to_rect_i(&st_output->surface.bl_ctx, &damage_region);
-    bl_context_clear_all(&st_output->surface.bl_ctx);
-    bl_context_fill_path_d(&st_output->surface.bl_ctx, &origin, &st_output->surface.bl_path);
-    bl_context_restore_clipping(&st_output->surface.bl_ctx);
+    bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
+    bl_context_clear_all(&st_buffer->bl_ctx);
+    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_output->surface.bl_path);
+    bl_context_restore_clipping(&st_buffer->bl_ctx);
     wl_surface_damage_buffer( st_output->surface.wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.bottom_remaining);
-    bl_context_clip_to_rect_i(&st_output->surface.bl_ctx, &damage_region);
-    bl_context_clear_all(&st_output->surface.bl_ctx);
-    bl_context_fill_path_d(&st_output->surface.bl_ctx, &origin, &st_output->surface.bl_path);
-    bl_context_restore_clipping(&st_output->surface.bl_ctx);
+    bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
+    bl_context_clear_all(&st_buffer->bl_ctx);
+    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_output->surface.bl_path);
+    bl_context_restore_clipping(&st_buffer->bl_ctx);
     wl_surface_damage_buffer( st_output->surface.wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );

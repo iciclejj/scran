@@ -48,6 +48,7 @@ struct scran_output_surface_buffer {
     // TODO: Make sure frame data (here and in capture) gets proper alignment.
     void *data;
 
+    BLContextCore bl_ctx;
     BLImageCore bl_img;
     BLBoxI bl_box_rendered;
 
@@ -59,7 +60,6 @@ struct scran_output_surface_buffer {
 struct scran_output_surface {
     struct wl_surface *wl_surface;
 
-    BLContextCore bl_ctx;
     // TODO: Either drop this as a member or actually retain the path state
     // between redraws.
     BLPathCore bl_path;
