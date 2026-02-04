@@ -148,12 +148,12 @@ struct scran_output_selectionContext {
     // TODO: This doesn't really need to be a state variable. Make a macro or
     // something to calculate it inline to match output width/height and x=y=0.
     struct BLBoxI bl_box_outer;
-    // TODO: Clearer name? This should be used to store the pre-resize/rebase box
-    struct BLBoxI bl_box_before_changes;
 
     enum selection_state selection_state;
-    enum selection_resize_direction selection_resize_direction;
 
+    // TODO: Clearer name? This should be used to store the pre-resize/rebase box
+    struct BLBoxI bl_box_before_changes;
+    enum selection_resize_direction selection_resize_direction;
     int pointer_before_changes_x_px;
     int pointer_before_changes_y_px;
 };
