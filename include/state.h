@@ -62,7 +62,7 @@ struct scran_output_surface {
     struct scran_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
 };
 
-struct scran_seat_pointer {
+struct scran_seat_pointerContext {
     int x_px;
     int y_px;
 
@@ -106,7 +106,7 @@ struct scran_seat_datacontrol {
 };
 
 struct scran_seat {
-    struct scran_seat_pointer pointer;
+    struct scran_seat_pointerContext pointer;
     struct scran_seat_keyboard keyboard;
     struct scran_seat_datacontrol datacontrol;
 

@@ -38,11 +38,11 @@ handle_pointer_enter(
     wl_fixed_t y
 ) {
     struct scran *state = data;
-    struct scran_seat_pointer *st_pointer = &state->seat.pointer;
+    struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer;
 
     // "When a seat's focus enters a surface, the pointer image is undefined..."
     wp_cursor_shape_device_v1_set_shape(
-        st_pointer->cursor_shape_device,
+        pointer_ctx->cursor_shape_device,
         serial,
         WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR
     );
@@ -50,7 +50,7 @@ handle_pointer_enter(
     // TODO: Macro for_each_output ?
     for (int i = 0; i < state->n_outputs; ++i) {
         if (surface_entered == state->outputs[i].surface.surface) {
-            st_pointer->focused_output = &state->outputs[i];
+            pointer_ctx->focused_output = &state->outputs[i];
             break;
         }
     }
