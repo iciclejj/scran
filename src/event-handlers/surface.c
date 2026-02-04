@@ -172,6 +172,7 @@ draw_frame_and_damage_buffer(
     // re-initialize it. Its state is initialized outside of this ::frame
     // event loop. Shouldn't need flushing either unless doing async.
     bl_path_reset(&st_output->surface.bl_path);
+    bl_context_flush(&st_buffer->bl_ctx, BL_CONTEXT_FLUSH_NO_FLAGS);
 }
 
 // TODO: Look at this again to see whether it handles inverted box. If not,
