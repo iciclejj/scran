@@ -47,7 +47,7 @@ init_capture(
     // Image capture
     bl_pixel_converter_init(&st_output->capture.frame_ctx.bl_pixel_converter);
     bl_image_init(&st_output->capture.frame_ctx.bl_img_captured);
-    bl_image_codec_init(&st_output->capture.frame_ctx.bl_img_codec);
+    bl_image_codec_init(&st_output->capture.frame_ctx.bl_imgcodec);
 
     st_output->capture.frame_ctx.st_datacontrol = st_datacontrol;
 
@@ -62,6 +62,6 @@ destroy_capture(struct scran_output *st_output)
 
     bl_pixel_converter_destroy(&st_output->capture.frame_ctx.bl_pixel_converter);
     bl_image_destroy(&st_output->capture.frame_ctx.bl_img_captured);
-    bl_image_codec_destroy(&st_output->capture.frame_ctx.bl_img_codec);
+    bl_image_codec_destroy(&st_output->capture.frame_ctx.bl_imgcodec);
 }
 

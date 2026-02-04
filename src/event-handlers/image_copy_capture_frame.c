@@ -351,7 +351,7 @@ handle_image_copy_capture_frame_ready__image_capture(
 
     // TODO: This should be called once, outside of the capture event pipeline,
     // unless between-capture format changing is implemented.
-    res = bl_image_codec_find_by_name(&frame_ctx->bl_img_codec, _FORMAT_PNG_BLEND2D_CODEC_NAME, SIZE_MAX, NULL);
+    res = bl_image_codec_find_by_name(&frame_ctx->bl_imgcodec, _FORMAT_PNG_BLEND2D_CODEC_NAME, SIZE_MAX, NULL);
 
     // TODO: This should be initialized in init_premem, so we don't re-allocate
     // the array backing every time. Must in that case either be a double-
@@ -361,7 +361,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     //     should to be enough, assuming no multi-threading?
     BLArrayCore bl_array_img_encoded;
     bl_array_init(&bl_array_img_encoded, BL_OBJECT_TYPE_ARRAY_UINT8);
-    res = bl_image_write_to_data(&frame_ctx->bl_img_captured, &bl_array_img_encoded, &frame_ctx->bl_img_codec);
+    res = bl_image_write_to_data(&frame_ctx->bl_img_captured, &bl_array_img_encoded, &frame_ctx->bl_imgcodec);
 
     // TODO: Conditional save to file and/or to clipboard selection
 
@@ -405,7 +405,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     // TODO: Is this the inteded way for a user to access members not exposed to
     // the C-API by bl_*_get_* functions ?
     //     See: https://blend2d.com/doc/group__bl__impl.html
-    const BLImageCodecImpl *const bl_img_codec_impl = (BLImageCodecImpl *)(frame_ctx->bl_img_codec._d.impl);
+    const BLImageCodecImpl *const bl_img_codec_impl = (BLImageCodecImpl *)(frame_ctx->bl_imgcodec._d.impl);
     // TODO: Double-check (lack of) refcounting behavior of _get_data functions
     //           XXX TODO: Also, if not refcounted, then ensure it is nulled
     //           when invalidated or that it will not matter that it isn't.
