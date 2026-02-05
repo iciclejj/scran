@@ -40,7 +40,7 @@ init_selection_and_blend2d(struct scran_output *st_output)
 
     bl_path_init(&st_surface->bl_path);
 
-    selection_ctx->bl_box_outer = (struct BLBoxI) {
+    selection_ctx->bl_box_bounds = (struct BLBoxI) {
         .x0 = 0,
         .y0 = 0,
         .x1 = st_output->mode.width_px,

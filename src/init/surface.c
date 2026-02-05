@@ -65,7 +65,7 @@ dispatch_surface_event_loop(struct scran_output *st_output)
         //   for more complicated rendering in this blcontext than just a square...
         bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_EVEN_ODD);
 
-        bl_path_add_box_i(bl_path, &selection_ctx->bl_box_outer, BL_GEOMETRY_DIRECTION_NONE);
+        bl_path_add_box_i(bl_path, &selection_ctx->bl_box_bounds, BL_GEOMETRY_DIRECTION_NONE);
 
         // XXX: At the moment, this function is only used at the start of the
         // program. Handle busy buffers later if/when it will be necessary.

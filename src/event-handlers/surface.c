@@ -117,7 +117,7 @@ draw_frame_and_damage_buffer(
         return;
     }
 
-    bl_path_add_box_i(&st_output->surface.bl_path, &selection_ctx->bl_box_outer, BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&st_output->surface.bl_path, &selection_ctx->bl_box_bounds, BL_GEOMETRY_DIRECTION_NONE);
     bl_path_add_box_i(&st_output->surface.bl_path, &box_to_draw, BL_GEOMETRY_DIRECTION_NONE);
 
     const struct _box_diffs box_diffs = get_box_diffs(box_to_draw, box_already_drawn);

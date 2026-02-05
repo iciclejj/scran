@@ -150,7 +150,7 @@ struct scran_output_selectionContext {
     struct BLBoxI bl_box;
     // TODO: This doesn't really need to be a state variable. Make a macro or
     // something to calculate it inline to match output width/height and x=y=0.
-    struct BLBoxI bl_box_outer;
+    struct BLBoxI bl_box_bounds;
 
     enum selection_state selection_state;
 
