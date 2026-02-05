@@ -103,22 +103,23 @@ _boxes_are_equal(BLBoxI a, BLBoxI b)
 
 static inline void
 draw_frame_and_damage_buffer(
-    struct scran_output *st_output,
+    struct scran_output_surface *st_surface,
     struct scran_output_surface_buffer *st_buffer,
-    struct BLBoxI box_to_draw
+    struct BLBoxI box_to_draw,
+    struct BLBoxI box_bounds
 ) {
-    struct scran_output_selectionContext *const selection_ctx = &st_output->selection_ctx;
-    const struct BLBoxI box_already_drawn = st_output->surface.bl_box_currently_drawn;
+    const struct BLBoxI box_already_drawn = st_surface->bl_box_currently_drawn;
 
     assert(!SCRAN_BL_BOX_IS_INVERTED(box_to_draw));
     assert(!SCRAN_BL_BOX_IS_INVERTED(box_already_drawn));
+    // TODO: Assert box_bounds fully surrounds box_to_draw
 
     if (_boxes_are_equal(box_to_draw, box_already_drawn)) {
         return;
     }
 
-    bl_path_add_box_i(&st_output->surface.bl_path, &selection_ctx->bl_box_bounds, BL_GEOMETRY_DIRECTION_NONE);
-    bl_path_add_box_i(&st_output->surface.bl_path, &box_to_draw, BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&st_surface->bl_path, &box_bounds, BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&st_surface->bl_path, &box_to_draw, BL_GEOMETRY_DIRECTION_NONE);
 
     const struct _box_diffs box_diffs = get_box_diffs(box_to_draw, box_already_drawn);
     struct BLPoint origin = SURFACE_BLCONTEXT_ORIGIN;
@@ -132,46 +133,46 @@ draw_frame_and_damage_buffer(
     damage_region = blboxi_to_blrecti(box_diffs.left_full);
     bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
     bl_context_clear_all(&st_buffer->bl_ctx);
-    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_output->surface.bl_path);
+    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_surface->bl_path);
     bl_context_restore_clipping(&st_buffer->bl_ctx);
-    wl_surface_damage_buffer( st_output->surface.wl_surface,
+    wl_surface_damage_buffer( st_surface->wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.right_full);
     bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
     bl_context_clear_all(&st_buffer->bl_ctx);
-    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_output->surface.bl_path);
+    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_surface->bl_path);
     bl_context_restore_clipping(&st_buffer->bl_ctx);
-    wl_surface_damage_buffer( st_output->surface.wl_surface,
+    wl_surface_damage_buffer( st_surface->wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.top_remaining);
     bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
     bl_context_clear_all(&st_buffer->bl_ctx);
-    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_output->surface.bl_path);
+    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_surface->bl_path);
     bl_context_restore_clipping(&st_buffer->bl_ctx);
-    wl_surface_damage_buffer( st_output->surface.wl_surface,
+    wl_surface_damage_buffer( st_surface->wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
     damage_region = blboxi_to_blrecti(box_diffs.bottom_remaining);
     bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
     bl_context_clear_all(&st_buffer->bl_ctx);
-    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_output->surface.bl_path);
+    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_surface->bl_path);
     bl_context_restore_clipping(&st_buffer->bl_ctx);
-    wl_surface_damage_buffer( st_output->surface.wl_surface,
+    wl_surface_damage_buffer( st_surface->wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 
-    assert(_boxes_are_equal(box_already_drawn, st_output->surface.bl_box_currently_drawn));
-    st_output->surface.bl_box_currently_drawn = box_to_draw;
+    assert(_boxes_are_equal(box_already_drawn, st_surface->bl_box_currently_drawn));
+    st_surface->bl_box_currently_drawn = box_to_draw;
 
     // NOTE: Don't reset the BLContext here, unless intending to fully
     // re-initialize it. Its state is initialized outside of this ::frame
     // event loop. Shouldn't need flushing either unless doing async.
-    bl_path_reset(&st_output->surface.bl_path);
+    bl_path_reset(&st_surface->bl_path);
     bl_context_flush(&st_buffer->bl_ctx, BL_CONTEXT_FLUSH_NO_FLAGS);
 }
 
@@ -266,7 +267,12 @@ surface_frame_callback_handler(
     );
 
     st_buffer->busy = true;
-    draw_frame_and_damage_buffer(st_output, st_buffer, normalized_box_to_draw);
+    draw_frame_and_damage_buffer(
+        &st_output->surface,
+        st_buffer,
+        normalized_box_to_draw,
+        st_output->selection_ctx.bl_box_bounds
+    );
     wl_surface_attach(st_output->surface.wl_surface, st_buffer->wl_buffer, 0, 0);
 go_next:
     wl_callback_add_listener(
