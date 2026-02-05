@@ -227,7 +227,7 @@ handle_pointer_button(
                 };
 
                 selection_ctx->bl_box = initial_selection_area;
-                st_output->surface.bl_box_rendered = initial_selection_area;
+                st_output->surface.bl_box_currently_drawn = initial_selection_area;
             }
             selection_ctx->selection_state = SELECTION_IN_PROGRESS;
             break;
