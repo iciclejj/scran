@@ -102,6 +102,21 @@ _boxes_are_equal(BLBoxI a, BLBoxI b)
 }
 
 static inline void
+_draw_and_damage_region(
+    struct scran_output_surface *st_surface,
+    struct scran_output_surface_buffer *st_buffer,
+    BLRectI damage_region
+) {
+    bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
+    bl_context_clear_all(&st_buffer->bl_ctx);
+    bl_context_fill_path_d(&st_buffer->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, &st_surface->bl_path);
+    bl_context_restore_clipping(&st_buffer->bl_ctx);
+    wl_surface_damage_buffer( st_surface->wl_surface,
+        damage_region.x, damage_region.y, damage_region.w, damage_region.h
+    );
+}
+
+static inline void
 draw_frame_and_damage_buffer(
     struct scran_output_surface *st_surface,
     struct scran_output_surface_buffer *st_buffer,
@@ -122,49 +137,13 @@ draw_frame_and_damage_buffer(
     bl_path_add_box_i(&st_surface->bl_path, &box_to_draw, BL_GEOMETRY_DIRECTION_NONE);
 
     const struct _box_diffs box_diffs = get_box_diffs(box_to_draw, box_already_drawn);
-    struct BLPoint origin = SURFACE_BLCONTEXT_ORIGIN;
-
-    struct BLRectI damage_region;
 
     // TODO: Is bl_context_clear_all the same as bl_context_clear_rect_i, if we do it after clipping?
-    // TODO: Probably make an inline function for this repetition. Also, maybe
-    // just make _box_diffs an array that we can loop through.
-
-    damage_region = blboxi_to_blrecti(box_diffs.left_full);
-    bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
-    bl_context_clear_all(&st_buffer->bl_ctx);
-    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_surface->bl_path);
-    bl_context_restore_clipping(&st_buffer->bl_ctx);
-    wl_surface_damage_buffer( st_surface->wl_surface,
-        damage_region.x, damage_region.y, damage_region.w, damage_region.h
-    );
-
-    damage_region = blboxi_to_blrecti(box_diffs.right_full);
-    bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
-    bl_context_clear_all(&st_buffer->bl_ctx);
-    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_surface->bl_path);
-    bl_context_restore_clipping(&st_buffer->bl_ctx);
-    wl_surface_damage_buffer( st_surface->wl_surface,
-        damage_region.x, damage_region.y, damage_region.w, damage_region.h
-    );
-
-    damage_region = blboxi_to_blrecti(box_diffs.top_remaining);
-    bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
-    bl_context_clear_all(&st_buffer->bl_ctx);
-    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_surface->bl_path);
-    bl_context_restore_clipping(&st_buffer->bl_ctx);
-    wl_surface_damage_buffer( st_surface->wl_surface,
-        damage_region.x, damage_region.y, damage_region.w, damage_region.h
-    );
-
-    damage_region = blboxi_to_blrecti(box_diffs.bottom_remaining);
-    bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
-    bl_context_clear_all(&st_buffer->bl_ctx);
-    bl_context_fill_path_d(&st_buffer->bl_ctx, &origin, &st_surface->bl_path);
-    bl_context_restore_clipping(&st_buffer->bl_ctx);
-    wl_surface_damage_buffer( st_surface->wl_surface,
-        damage_region.x, damage_region.y, damage_region.w, damage_region.h
-    );
+    // TODO: Just make get_box_diffs return rects, probably...
+    _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.left_full));
+    _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.right_full));
+    _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.top_remaining));
+    _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.bottom_remaining));
 
     assert(_boxes_are_equal(box_already_drawn, st_surface->bl_box_currently_drawn));
     st_surface->bl_box_currently_drawn = box_to_draw;
