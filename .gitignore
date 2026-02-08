@@ -13,3 +13,4 @@ cscope*.out
 vgcore.*
 
 .cache/
+.vscode/
