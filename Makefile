@@ -52,13 +52,19 @@ WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS = \
 WAYLAND_PROTOCOLS_REQUIRED_BASENAMES = $(foreach path, $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS), $(basename $(notdir $(path))))
 
 # $(1): Wayland protocol .xml path
+# $(2): Output file extension
+define _CREATE_PROTOCOL_OUTPUT_PATH
+$(WAYLAND_PROTOCOLS_DIR_LOCAL)/$(basename $(notdir $(1)))$(2)
+endef
+
+# $(1): Wayland protocol .xml path
 define WAYLAND_PROTOCOL_GEN_RULE
-$(WAYLAND_PROTOCOLS_DIR_LOCAL)/$(basename $(notdir $(1))).h \
-$(WAYLAND_PROTOCOLS_DIR_LOCAL)/$(basename $(notdir $(1))).c \
+$(call _CREATE_PROTOCOL_OUTPUT_PATH,$(1),.h) \
+$(call _CREATE_PROTOCOL_OUTPUT_PATH,$(1),.c) \
 : $(1)
 	@mkdir -p $(WAYLAND_PROTOCOLS_DIR_LOCAL)
-	$(WAYLAND_SCANNER) client-header $(1) $(WAYLAND_PROTOCOLS_DIR_LOCAL)/$(basename $(notdir $(1))).h
-	$(WAYLAND_SCANNER) private-code $(1) $(WAYLAND_PROTOCOLS_DIR_LOCAL)/$(basename $(notdir $(1))).c
+	$(WAYLAND_SCANNER) client-header $(1) $(call _CREATE_PROTOCOL_OUTPUT_PATH,$(1),.h)
+	$(WAYLAND_SCANNER) private-code $(1) $(call _CREATE_PROTOCOL_OUTPUT_PATH,$(1),.c)
 endef
 WAYLAND_PROTOCOLS_REQUIRED_C_FILENAMES = $(patsubst %, %.c, $(WAYLAND_PROTOCOLS_REQUIRED_BASENAMES))
 WAYLAND_PROTOCOLS_REQUIRED_H_FILENAMES = $(patsubst %, %.h, $(WAYLAND_PROTOCOLS_REQUIRED_BASENAMES))
