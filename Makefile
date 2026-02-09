@@ -14,8 +14,8 @@ BUILD_DIR_REL = $(BUILD_DIR)/release
 BUILD_DIR_DBG = $(BUILD_DIR)/debug
 
 PROG = scran
-PROG_REL = $(BUILD_DIR_REL)/$(PROG)
-PROG_DBG = $(BUILD_DIR_DBG)/$(PROG)
+PROG_RELEASE = $(BUILD_DIR_REL)/$(PROG)
+PROG_DEBUG = $(BUILD_DIR_DBG)/$(PROG)
 LDLIBS = -lwayland-client -lblend2d
 LDLIBS += $(foreach pkg, $(PKGCONF_LIBS), $(shell pkg-config --libs $(pkg)))
 INCDIRS = include/
@@ -74,7 +74,7 @@ WAYLAND_PROTOCOLS_REQUIRED_H_FILENAMES = $(patsubst %, %.h, $(WAYLAND_PROTOCOLS_
 .PHONY: all clean protocols debug
 
 
-$(foreach path, $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS), $(eval $(call WAYLAND_PROTOCOL_GEN_RULE, $(path))))
+$(foreach path, $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS), $(eval $(call WAYLAND_PROTOCOL_GEN_RULE,$(path))))
 
 WAYLAND_PROTOCOLS = $(addprefix \
 	$(WAYLAND_PROTOCOLS_DIR_LOCAL)/, \
@@ -91,15 +91,15 @@ $(BUILD_DIR_DBG)/%.o: %.c $(WAYLAND_PROTOCOLS)
 	@mkdir -p $(shell dirname $@)
 	$(CC) $(CFLAGS_DBG) -c $< -o $@
 
-$(PROG_REL): $(OBJS_REL)
-	$(CC) $(OBJS_REL) $(CFLAGS_REL) -o $(PROG_REL) $(LDLIBS)
-$(PROG_DBG): $(OBJS_DBG)
-	$(CC) $(OBJS_DBG) $(CFLAGS_DBG) -o $(PROG_DBG) $(LDLIBS)
+$(PROG_RELEASE): $(OBJS_REL)
+	$(CC) $(OBJS_REL) $(CFLAGS_REL) -o $(PROG_RELEASE) $(LDLIBS)
+$(PROG_DEBUG): $(OBJS_DBG)
+	$(CC) $(OBJS_DBG) $(CFLAGS_DBG) -o $(PROG_DEBUG) $(LDLIBS)
 
-all: $(PROG_REL) $(PROG_DBG)
+all: $(PROG_RELEASE) $(PROG_DEBUG)
 
-release: $(PROG_REL)
-debug: $(PROG_DBG)
+release: $(PROG_RELEASE)
+debug: $(PROG_DEBUG)
 
 clean: 
 	trash -rf ./build/ || rm -rf ./build/
