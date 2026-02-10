@@ -1,6 +1,7 @@
 # TODO: THIS IS ALL A MESS
 
 .DEFAULT_GOAL := debug
+.PHONY: all clean protocols debug release
 
 ENV_CFLAGS := $(CFLAGS)
 ENV_CFLAGS_REL := $(CFLAGS_REL)
