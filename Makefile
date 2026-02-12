@@ -107,6 +107,7 @@ debug: $(prog_debug)
 _wayland_protocols_objs_debug := $(addprefix $(build_dir_debug)/, $(wayland_protocols_srcs_c:.c=.o))
 protocols: $(wayland_protocols_srcs) _wayland_protocols_objs_debug
 
+CMD_RM := $(shell command -v trash || command -v rm)
 clean: 
-	trash -rf ./build/ || rm -rf ./build/
+	$(CMD_RM) -rf $(BUILD_DIR)
 
