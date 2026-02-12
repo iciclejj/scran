@@ -10,7 +10,8 @@ FFMPEG_LIBS := libavcodec libavutil libavformat libswscale
 PKGCONF_LIBS := xkbcommon $(FFMPEG_LIBS)
 
 BUILD_DIR := build
-WAYLAND_PROTOCOLS_DIR_LOCAL := $(BUILD_DIR)/wayland-protocols-generated-source
+wayland_protocols_generated_source_dir := $(BUILD_DIR)/wayland-protocols-generated-source
+WAYLAND_PROTOCOLS_DIR_LOCAL := $(wayland_protocols_generated_source_dir)
 
 PROG := scran
 LDLIBS := -lwayland-client -lblend2d
@@ -108,6 +109,13 @@ _wayland_protocols_objs_debug := $(addprefix $(build_dir_debug)/, $(wayland_prot
 protocols: $(wayland_protocols_srcs) _wayland_protocols_objs_debug
 
 CMD_RM := $(shell command -v trash || command -v rm)
+
 clean: 
 	$(CMD_RM) -rf $(BUILD_DIR)
+
+clean-objs:
+	$(CMD_RM) -f $(objs_release) $(objs_debug)
+
+clean-generated-src:
+	$(CMD_RM) -rf $(wayland_protocols_generated_source_dir)
 
