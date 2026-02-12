@@ -6,31 +6,35 @@ ENV_CFLAGS := $(CFLAGS)
 ENV_CFLAGS_REL := $(CFLAGS_REL)
 ENV_CFLAGS_DBG := $(CFLAGS_DBG)
 
-FFMPEG_LIBS = libavcodec libavutil libavformat libswscale
-PKGCONF_LIBS = xkbcommon $(FFMPEG_LIBS)
+FFMPEG_LIBS := libavcodec libavutil libavformat libswscale
+PKGCONF_LIBS := xkbcommon $(FFMPEG_LIBS)
 
-BUILD_DIR = build
+WAYLAND_PROTOCOLS_DIR_LOCAL := wayland-protocols
 
-PROG = scran
-LDLIBS = -lwayland-client -lblend2d
+BUILD_DIR := build
+
+PROG := scran
+LDLIBS := -lwayland-client -lblend2d
 LDLIBS += $(foreach pkg, $(PKGCONF_LIBS), $(shell pkg-config --libs $(pkg)))
-INCDIRS = include/
+INCDIRS := include/
 INCDIRS += $(WAYLAND_PROTOCOLS_DIR_LOCAL)
-CFLAGS = $(addprefix -I, $(INCDIRS))
+CFLAGS := $(addprefix -I, $(INCDIRS))
 CFLAGS += $(foreach pkg, $(PKGCONF_LIBS), $(shell pkg-config --cflags $(pkg)))
-CFLAGS_REL = $(CFLAGS) -DNDEBUG
+CFLAGS_REL := $(CFLAGS) -DNDEBUG
 CFLAGS_REL += $(ENV_CFLAGS) $(ENV_CFLAGS_REL)
-CFLAGS_DBG = $(CFLAGS) -g -O0 -U_FORTIFY_SOURCE
+CFLAGS_DBG := $(CFLAGS) -g -O0 -U_FORTIFY_SOURCE
 CFLAGS_DBG += $(ENV_CFLAGS) $(ENV_CFLAGS_DBG)
 
 
 # TODO: Ensure package versions. Flake?
-WAYLAND_SCANNER = $(shell pkg-config --variable=wayland_scanner wayland-scanner)
-WAYLAND_PROTOCOLS_DIR = $(shell pkg-config --variable=pkgdatadir wayland-protocols)
-WAYLAND_PROTOCOLS_DIR_WLR = $(shell pkg-config --variable=pkgdatadir wlr-protocols)
-WAYLAND_PROTOCOLS_DIR_LOCAL = wayland-protocols
+# TODO: Simply-expanded, but lazily initialized shell/pkg-config output variables
+# 			I.e. don't require shell commands to run for targets that don't
+# 			need them, but also don't evaluate them more times than necessary.
+WAYLAND_SCANNER := $(shell pkg-config --variable=wayland_scanner wayland-scanner)
+WAYLAND_PROTOCOLS_DIR := $(shell pkg-config --variable=pkgdatadir wayland-protocols)
+WAYLAND_PROTOCOLS_DIR_WLR := $(shell pkg-config --variable=pkgdatadir wlr-protocols)
 # TODO: Ensure sway-compatible protocol versions
-WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS = \
+WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS := \
 	$(WAYLAND_PROTOCOLS_DIR_WLR)/unstable/wlr-layer-shell-unstable-v1.xml \
 	$(WAYLAND_PROTOCOLS_DIR)/stable/xdg-shell/xdg-shell.xml \
 	$(WAYLAND_PROTOCOLS_DIR)/unstable/xdg-output/xdg-output-unstable-v1.xml \
