@@ -125,13 +125,11 @@ draw_frame_and_damage_buffer(
 ) {
     const struct BLBoxI box_already_drawn = st_surface->bl_box_currently_drawn;
 
+    // TODO: Assert box_bounds fully surrounds box_to_draw
     assert(!SCRAN_BL_BOX_IS_INVERTED(box_to_draw));
     assert(!SCRAN_BL_BOX_IS_INVERTED(box_already_drawn));
-    // TODO: Assert box_bounds fully surrounds box_to_draw
-
-    if (_boxes_are_equal(box_to_draw, box_already_drawn)) {
-        return;
-    }
+    // Equal boxes should have been skipped.
+    assert(!_boxes_are_equal(box_to_draw, box_already_drawn));
 
     bl_path_add_box_i(&st_surface->bl_path, &box_bounds, BL_GEOMETRY_DIRECTION_NONE);
     bl_path_add_box_i(&st_surface->bl_path, &box_to_draw, BL_GEOMETRY_DIRECTION_NONE);
@@ -232,6 +230,11 @@ surface_frame_callback_handler(
 
     // TODO: Also ensure it's clamped?
     const struct BLBoxI normalized_box_to_draw = get_blboxi_deinverted(st_output->selection_ctx.bl_box);
+    const struct BLBoxI box_currently_drawn = st_output->surface.bl_box_currently_drawn;
+
+    if (_boxes_are_equal(normalized_box_to_draw, box_currently_drawn)) {
+        goto go_next;
+    }
 
     // NOTE: Must be set here to sync with selection box rendering.
     //       Otherwise, rendered selection can lag behind the capture area,
