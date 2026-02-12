@@ -14,10 +14,13 @@ wayland_protocols_generated_source_dir := $(BUILD_DIR)/wayland-protocols-generat
 WAYLAND_PROTOCOLS_DIR_LOCAL := $(wayland_protocols_generated_source_dir)
 
 PROG := scran
+
 LDLIBS := -lwayland-client -lblend2d
 LDLIBS += $(foreach pkg, $(PKGCONF_LIBS), $(shell pkg-config --libs $(pkg)))
+
 INCDIRS := include/
 INCDIRS += $(WAYLAND_PROTOCOLS_DIR_LOCAL)
+
 CFLAGS := $(addprefix -I, $(INCDIRS))
 CFLAGS += $(foreach pkg, $(PKGCONF_LIBS), $(shell pkg-config --cflags $(pkg)))
 CFLAGS_REL := $(CFLAGS) -DNDEBUG
