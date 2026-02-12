@@ -1,7 +1,6 @@
 # TODO: THIS IS ALL A MESS
 
 .DEFAULT_GOAL := debug
-.PHONY: all clean protocols debug release
 
 ENV_CFLAGS := $(CFLAGS)
 ENV_CFLAGS_REL := $(CFLAGS_REL)
@@ -11,12 +10,8 @@ FFMPEG_LIBS = libavcodec libavutil libavformat libswscale
 PKGCONF_LIBS = xkbcommon $(FFMPEG_LIBS)
 
 BUILD_DIR = build
-BUILD_DIR_REL = $(BUILD_DIR)/release
-BUILD_DIR_DBG = $(BUILD_DIR)/debug
 
 PROG = scran
-PROG_RELEASE = $(BUILD_DIR_REL)/$(PROG)
-PROG_DEBUG = $(BUILD_DIR_DBG)/$(PROG)
 LDLIBS = -lwayland-client -lblend2d
 LDLIBS += $(foreach pkg, $(PKGCONF_LIBS), $(shell pkg-config --libs $(pkg)))
 INCDIRS = include/
@@ -27,12 +22,7 @@ CFLAGS_REL = $(CFLAGS) -DNDEBUG
 CFLAGS_REL += $(ENV_CFLAGS) $(ENV_CFLAGS_REL)
 CFLAGS_DBG = $(CFLAGS) -g -O0 -U_FORTIFY_SOURCE
 CFLAGS_DBG += $(ENV_CFLAGS) $(ENV_CFLAGS_DBG)
-SRCDIRS = src src/event-handlers src/init
-SRCS = $(foreach dir, $(SRCDIRS), $(wildcard $(dir)/*.c))
-SRCS += $(addprefix $(WAYLAND_PROTOCOLS_DIR_LOCAL)/, $(WAYLAND_PROTOCOLS_REQUIRED_C_FILENAMES))
-OBJS = $(SRCS:.c=.o)
-OBJS_REL = $(addprefix $(BUILD_DIR_REL)/, $(OBJS))
-OBJS_DBG = $(addprefix $(BUILD_DIR_DBG)/, $(OBJS))
+
 
 # TODO: Ensure package versions. Flake?
 WAYLAND_SCANNER = $(shell pkg-config --variable=wayland_scanner wayland-scanner)
@@ -50,14 +40,12 @@ WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS = \
 	$(WAYLAND_PROTOCOLS_DIR)/staging/ext-image-copy-capture/ext-image-copy-capture-v1.xml \
 	$(WAYLAND_PROTOCOLS_DIR)/staging/ext-foreign-toplevel-list/ext-foreign-toplevel-list-v1.xml \
 	$(WAYLAND_PROTOCOLS_DIR)/staging/ext-data-control/ext-data-control-v1.xml
-WAYLAND_PROTOCOLS_REQUIRED_BASENAMES = $(foreach path, $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS), $(basename $(notdir $(path))))
 
 # $(1): Wayland protocol .xml path
 # $(2): Output file extension
 define _CREATE_PROTOCOL_OUTPUT_PATH
 $(WAYLAND_PROTOCOLS_DIR_LOCAL)/$(basename $(notdir $(1)))$(2)
 endef
-
 # $(1): Wayland protocol .xml path
 define WAYLAND_PROTOCOL_GEN_RULE
 $(call _CREATE_PROTOCOL_OUTPUT_PATH,$(1),.h) \
@@ -67,40 +55,54 @@ $(call _CREATE_PROTOCOL_OUTPUT_PATH,$(1),.c) \
 	$(WAYLAND_SCANNER) client-header $(1) $(call _CREATE_PROTOCOL_OUTPUT_PATH,$(1),.h)
 	$(WAYLAND_SCANNER) private-code $(1) $(call _CREATE_PROTOCOL_OUTPUT_PATH,$(1),.c)
 endef
-WAYLAND_PROTOCOLS_REQUIRED_C_FILENAMES = $(patsubst %, %.c, $(WAYLAND_PROTOCOLS_REQUIRED_BASENAMES))
-WAYLAND_PROTOCOLS_REQUIRED_H_FILENAMES = $(patsubst %, %.h, $(WAYLAND_PROTOCOLS_REQUIRED_BASENAMES))
-
-
-
-.PHONY: all clean protocols debug
-
-
 $(foreach path, $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS), $(eval $(call WAYLAND_PROTOCOL_GEN_RULE,$(path))))
 
-WAYLAND_PROTOCOLS = $(addprefix \
-	$(WAYLAND_PROTOCOLS_DIR_LOCAL)/, \
-	$(WAYLAND_PROTOCOLS_REQUIRED_C_FILENAMES) \
-	$(WAYLAND_PROTOCOLS_REQUIRED_H_FILENAMES) \
-)
+# XXX: These should probably inputs to WAYLAND_PROTOCOL_GEN_RULE
+wayland_protocols_srcs_c := $(foreach path, $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS), $(call _CREATE_PROTOCOL_OUTPUT_PATH,$(path),.c))
+wayland_protocols_srcs_h := $(foreach path, $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS), $(call _CREATE_PROTOCOL_OUTPUT_PATH,$(path),.h))
+wayland_protocols_srcs := $(wayland_protocols_srcs_c) $(wayland_protocols_srcs_h)
 
-protocols: $(WAYLAND_PROTOCOLS)
+.PHONY: protocols_srcs
+protocols_srcs: $(wayland_protocols_srcs)
 
-$(BUILD_DIR_REL)/%.o: %.c $(WAYLAND_PROTOCOLS)
-	@mkdir -p $(shell dirname $@)
+
+build_dir_release := $(BUILD_DIR)/release
+build_dir_debug :=   $(BUILD_DIR)/debug
+
+$(build_dir_release)/%.o: %.c  protocols_srcs
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS_REL) -c $< -o $@
-$(BUILD_DIR_DBG)/%.o: %.c $(WAYLAND_PROTOCOLS)
-	@mkdir -p $(shell dirname $@)
+$(build_dir_debug)/%.o: %.c    protocols_srcs
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS_DBG) -c $< -o $@
 
-$(PROG_RELEASE): $(OBJS_REL)
-	$(CC) $(OBJS_REL) $(CFLAGS_REL) -o $(PROG_RELEASE) $(LDLIBS)
-$(PROG_DEBUG): $(OBJS_DBG)
-	$(CC) $(OBJS_DBG) $(CFLAGS_DBG) -o $(PROG_DEBUG) $(LDLIBS)
+# TODO: Handle changed header files
+_srcdirs := src src/event-handlers src/init
+srcs := $(foreach dir,$(_srcdirs),$(wildcard $(dir)/*.c))
 
-all: $(PROG_RELEASE) $(PROG_DEBUG)
+prog_release := $(build_dir_release)/$(PROG)
+prog_debug :=   $(build_dir_debug)/$(PROG)
 
-release: $(PROG_RELEASE)
-debug: $(PROG_DEBUG)
+_objs := $(srcs:.c=.o) $(wayland_protocols_srcs_c:.c=.o)
+objs_release := $(addprefix $(build_dir_release)/, $(_objs))
+objs_debug :=   $(addprefix $(build_dir_debug)/,   $(_objs))
+
+$(prog_release): $(objs_release)
+	$(CC) $(CFLAGS_REL) $^ $(LDLIBS) -o $(prog_release)
+$(prog_debug):	 $(objs_debug)
+	$(CC) $(CFLAGS_DBG) $^ $(LDLIBS) -o $(prog_debug)
+
+
+.PHONY: all
+all: $(prog_release) $(prog_debug)
+
+.PHONY: release debug
+release: $(prog_release)
+debug: $(prog_debug)
+
+.PHONY: protocols
+_wayland_protocols_objs_debug := $(addprefix $(build_dir_debug)/, $(wayland_protocols_srcs_c:.c=.o))
+protocols: $(wayland_protocols_srcs) _wayland_protocols_objs_debug
 
 clean: 
 	trash -rf ./build/ || rm -rf ./build/
