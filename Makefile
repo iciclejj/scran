@@ -22,7 +22,7 @@ CFLAGS := $(addprefix -I, $(INCDIRS))
 CFLAGS += $(foreach pkg, $(PKGCONF_LIBS), $(shell pkg-config --cflags $(pkg)))
 CFLAGS_REL := $(CFLAGS) -DNDEBUG
 CFLAGS_REL += $(ENV_CFLAGS) $(ENV_CFLAGS_REL)
-CFLAGS_DBG := $(CFLAGS) -g -O0 -U_FORTIFY_SOURCE
+CFLAGS_DBG := $(CFLAGS) -gdwarf-5 -O0 -U_FORTIFY_SOURCE
 CFLAGS_DBG += $(ENV_CFLAGS) $(ENV_CFLAGS_DBG)
 
 
