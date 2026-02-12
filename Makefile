@@ -9,9 +9,8 @@ ENV_CFLAGS_DBG := $(CFLAGS_DBG)
 FFMPEG_LIBS := libavcodec libavutil libavformat libswscale
 PKGCONF_LIBS := xkbcommon $(FFMPEG_LIBS)
 
-WAYLAND_PROTOCOLS_DIR_LOCAL := wayland-protocols
-
 BUILD_DIR := build
+WAYLAND_PROTOCOLS_DIR_LOCAL := $(BUILD_DIR)/wayland-protocols-generated-source
 
 PROG := scran
 LDLIBS := -lwayland-client -lblend2d
