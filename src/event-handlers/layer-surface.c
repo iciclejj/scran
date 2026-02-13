@@ -13,8 +13,7 @@ handle_layer_surface_configure(
     void *data,
     struct zwlr_layer_surface_v1 *layer_surface,
     uint32_t serial,
-    // Should be equal to (non-transformed) output resolution if layer surface
-    // is anchored to every edge.
+    // Equal to post-transform output resolution if layer surface is anchored to every edge.
     uint32_t width_px_logical,
     uint32_t height_px_logical
 ) {
