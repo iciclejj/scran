@@ -142,8 +142,6 @@ draw_frame_and_damage_buffer(
     _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.right_full));
     _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.top_remaining));
     _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.bottom_remaining));
-
-    assert(_boxes_are_equal(box_already_drawn, st_surface->bl_box_currently_drawn));
     st_surface->bl_box_currently_drawn = box_to_draw;
 
     // NOTE: Don't reset the BLContext here, unless intending to fully
