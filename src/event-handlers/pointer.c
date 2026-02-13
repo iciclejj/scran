@@ -66,6 +66,7 @@ handle_pointer_leave(
     // Nothing to do here yet...
 }
 
+// TODO: Benchmark with/without early exit on unchanged cursor position.
 static void
 handle_pointer_motion(
     void *data,
