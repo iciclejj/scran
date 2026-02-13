@@ -196,11 +196,11 @@ struct capture_frame_context {
     //        and capture's frame "draw".
     //        TODO: Double-check whether anything else should be synced like this.
     struct BLBoxI capture_area_px; // NOTE: Transform should be reversed.
-    uint32_t pixel_stride;
     // TODO: Get this through output.mode if we both end up pointing to it here,
     //       AND it is still asserted to be equal to session::buffer_size's
     //       width arg.
     int32_t source_width_px;
+    uint8_t pixel_stride;
 
     // TODO: Probably turn this into a union with some member that gets
     //       re-initialized with every start/stop capture.
