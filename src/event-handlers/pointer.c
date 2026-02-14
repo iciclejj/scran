@@ -234,9 +234,11 @@ handle_pointer_button(
             selection_ctx->selection_state = SELECTION_IN_PROGRESS;
             break;
         case SELECTION_IN_PROGRESS:
+            // TODO: Merge this with SELECTION_RESIZING?
             selection_ctx->bl_box.x1 = x_px;
             selection_ctx->bl_box.y1 = y_px;
             selection_ctx->selection_state = SELECTION_COMPLETE;
+            blboxi_deinvert(&selection_ctx->bl_box);
             break;
         case SELECTION_COMPLETE:
             selection_ctx->selection_state = SELECTION_REBASING;
