@@ -15,5 +15,7 @@
 #endif
 #define DEBUG(fmt, ...) _DEBUG("DEBUG: " fmt, ##__VA_ARGS__)
 
+#define DEBUG_BLBOXI(box) DEBUG("x0=%d, y0=%d, x1=%d, y1=%d\n", box.x0, box.y0, box.x1, box.y1)
+
 
 #endif
