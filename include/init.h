@@ -10,13 +10,40 @@
 #define SURFACE_SHM_FORMAT WL_SHM_FORMAT_ARGB8888
 #define SURFACE_SHM_FORMAT_BL BL_FORMAT_PRGB32
 #define SURFACE_PIXEL_STRIDE 4 // Bytes per pixel. Depends on SURFACE_SHM_FORMAT.
-#define GET_SURFACE_BUF_SIZE(output_mode) (SURFACE_PIXEL_STRIDE * output_mode.width_px * output_mode.height_px)
-#define GET_SURFACE_STRIDE(output_mode) (SURFACE_PIXEL_STRIDE * output_mode.width_px)
-#define GET_CAPTURE_BUF_SIZE(st_output) (st_output.capture.frame_ctx.pixel_stride * st_output.mode.width_px * st_output.mode.height_px)
-#define GET_CAPTURE_BUF_2_SIZE(st_output) GET_CAPTURE_BUF_SIZE(st_output)
-#define GET_CAPTURE_STRIDE(st_output) (st_output.capture.frame_ctx.pixel_stride * st_output.mode.width_px)
-
 #define SURFACE_BLCONTEXT_ORIGIN ((BLPoint){0,0})
+
+static inline int32_t
+get_surface_stride(struct scran_output_mode *mode) {
+    return mode->width_px * SURFACE_PIXEL_STRIDE;
+}
+
+static inline int32_t
+_get_framebuffer_size(struct scran_output_mode *mode, uint8_t pixel_stride) {
+    return mode->width_px * mode->height_px * pixel_stride;
+}
+
+static inline int32_t
+get_surface_buf_size(struct scran_output_mode *mode) {
+    return _get_framebuffer_size(mode, SURFACE_PIXEL_STRIDE);
+}
+
+static inline int32_t
+get_capture_buf_size(struct scran_output *st_output) {
+    return _get_framebuffer_size(&st_output->mode, st_output->capture.frame_ctx.pixel_stride);
+}
+
+// These will probably always stay equivalent, but dedicated function avoids
+// any second-guessing.
+static inline int32_t
+get_capture_buf_2_size(struct scran_output *st_output) {
+    return get_capture_buf_size(st_output);
+}
+
+static inline int32_t
+get_capture_stride(struct scran_output *st_output) {
+    return st_output->capture.frame_ctx.pixel_stride * st_output->mode.width_px;
+}
+
 
 bool init_output_surface_shm_buffers(struct scran_output *st_output, struct wl_shm *wl_shm_global);
 

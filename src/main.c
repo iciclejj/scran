@@ -132,9 +132,9 @@ init_meminit(
             return false;
         }
 
-        const ssize_t _surface_buf_bytes = SURFACE_BUF_COUNT * GET_SURFACE_BUF_SIZE(_st_output->mode);
-        const ssize_t _capture_buf_bytes = GET_CAPTURE_BUF_SIZE((*_st_output));
-        const ssize_t _capture_buf_2_bytes = GET_CAPTURE_BUF_2_SIZE((*_st_output));
+        const ssize_t _surface_buf_bytes = SURFACE_BUF_COUNT * get_surface_buf_size(&_st_output->mode);
+        const ssize_t _capture_buf_bytes = get_capture_buf_size(_st_output);
+        const ssize_t _capture_buf_2_bytes = get_capture_buf_2_size(_st_output);
         // TODO: persistent libav allocations
         // selection: No manual allocations
 
@@ -171,10 +171,10 @@ init_meminit(
                 curr_offset,
                 get_output_width_logical(_st_output),
                 get_output_height_logical(_st_output),
-                GET_SURFACE_STRIDE(_st_output->mode),
+                get_surface_stride(&_st_output->mode),
                 SURFACE_SHM_FORMAT
             );
-            curr_offset += GET_SURFACE_BUF_SIZE(_st_output->mode);
+            curr_offset += get_surface_buf_size(&_st_output->mode);
 
             wl_buffer_add_listener(
                 _st_output->surface.double_buffer[i].wl_buffer,
@@ -189,13 +189,13 @@ init_meminit(
             curr_offset,
             _st_output->mode.width_px,
             _st_output->mode.height_px,
-            GET_CAPTURE_STRIDE((*_st_output)),
+            get_capture_stride(_st_output),
             _st_output->capture.shm_format
         );
-        curr_offset += GET_CAPTURE_BUF_SIZE((*_st_output));
+        curr_offset += get_capture_buf_size(_st_output);
 
         _st_output->capture.frame_ctx.img_data_2 = *shm_addr + curr_offset;
-        curr_offset += GET_CAPTURE_BUF_2_SIZE((*_st_output));
+        curr_offset += get_capture_buf_2_size(_st_output);
 
         wl_buffer_add_listener(
             _st_output->capture.frame_ctx.st_buffer.wl_buffer,
