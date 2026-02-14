@@ -26,6 +26,7 @@
 #include "print.h"
 #include "util/blend2d.h"
 #include "lib_interop.h"
+#include "init.h"
 
 #define _FORMAT_PNG_FILE_EXTENSION ".png"
 #define _FORMAT_PNG_BLEND2D_CODEC_NAME "PNG"
@@ -198,6 +199,10 @@ end_capture_err:
     av_frame_free(&frame_ctx->av_frame_encoded);
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
+
+    struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
+    struct scran_output *const st_output = wl_container_of(st_capture, st_output, capture);
+    set_surface_theme(st_output, SURFACE_THEME_DEFAULT);
 
     DEBUG("FINISHED RECORDING.\n");
     return;

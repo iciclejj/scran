@@ -15,6 +15,7 @@
 #include "capture.h"
 #include "util/blend2d.h"
 #include "print.h"
+#include "init.h"
 
 // TODO: Let user set this
 #define _FORMAT_MP4_FILE_EXTENSION ".mp4"
@@ -39,11 +40,6 @@ dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
         frame_ctx->st_buffer.wl_buffer
     );
     ext_image_copy_capture_frame_v1_capture(frame);
-
-    // TODO: Set the output surface's background color to red, or add some
-    // other indicator that we started recording.
-    //     Example: bl_context_set_fill_style_rgba32(&bl->ctx, 0x88887A7A);
-    //              (then redraw and re-damage the surface)
 }
 
 
@@ -219,6 +215,8 @@ start_video_capture(struct scran_output *st_output)
     );
 
     init_ffmpeg(st_output);
+
+    set_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
