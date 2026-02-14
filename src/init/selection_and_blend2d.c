@@ -3,6 +3,7 @@
 
 #include "init.h"
 #include "state.h"
+#include "state-util.h"
 
 // XXX NOTE: This is for basic initialization that does not care about what we
 // will render, other than ensuring buffers etc. are properly set up for the
@@ -25,8 +26,8 @@ init_selection_and_blend2d(struct scran_output *st_output)
         assert(st_buffer->data != NULL);
         bl_image_init_as_from_data(
             &st_buffer->bl_img,
-            st_output->mode.width_px,
-            st_output->mode.height_px,
+            get_output_width_logical(st_output),
+            get_output_height_logical(st_output),
             SURFACE_SHM_FORMAT_BL,
             st_buffer->data,
             SURFACE_PIXEL_STRIDE * st_output->mode.width_px,
@@ -43,8 +44,8 @@ init_selection_and_blend2d(struct scran_output *st_output)
     selection_ctx->bl_box_bounds = (struct BLBoxI) {
         .x0 = 0,
         .y0 = 0,
-        .x1 = st_output->mode.width_px,
-        .y1 = st_output->mode.height_px,
+        .x1 = get_output_width_logical(st_output),
+        .y1 = get_output_height_logical(st_output),
     };
 
     return true;

@@ -18,7 +18,6 @@
 
 #define SURFACE_BLCONTEXT_ORIGIN ((BLPoint){0,0})
 
-
 bool init_output_surface_shm_buffers(struct scran_output *st_output, struct wl_shm *wl_shm_global);
 
 bool init_output_surface(struct scran_output *st_output, struct scran_globals *st_globals);

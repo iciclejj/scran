@@ -15,6 +15,7 @@
 #include "wayland-client-protocol.h"
 
 #include "state.h"
+#include "state-util.h"
 #include "event-handlers.h"
 #include "init.h"
 #include "print.h"
@@ -168,8 +169,8 @@ init_meminit(
             _st_output->surface.double_buffer[i].wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
                 curr_offset,
-                _st_output->mode.width_px,
-                _st_output->mode.height_px,
+                get_output_width_logical(_st_output),
+                get_output_height_logical(_st_output),
                 GET_SURFACE_STRIDE(_st_output->mode),
                 SURFACE_SHM_FORMAT
             );

@@ -6,6 +6,7 @@
 #include "wlr-layer-shell-unstable-v1.h"
 
 #include "state.h"
+#include "state-util.h"
 #include "event-handlers.h"
 
 static void
@@ -22,8 +23,8 @@ handle_layer_surface_configure(
     //     XXX TODO: This breaks with rotation (and scale?) transform. Either
     //     fix this after implementing xdg-output protocol or ensure we're not
     //     doing redundant work.
-    assert(st_output->mode.width_px == width_px_logical);
-    assert(st_output->mode.height_px == height_px_logical);
+    assert(width_px_logical == get_output_width_logical(st_output));
+    assert(height_px_logical == get_output_height_logical(st_output));
 
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 }

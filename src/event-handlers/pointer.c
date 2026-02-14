@@ -4,6 +4,7 @@
 #include <wayland-client.h>
 
 #include "state.h"
+#include "state-util.h"
 #include "event-handlers.h"
 #include "util/blend2d.h"
 
@@ -13,8 +14,8 @@ _clamp_to_output_width(int *val, struct scran_output *st_output)
 {
     if (*val < 0) {
         *val = 0;
-    } else if (*val > st_output->mode.width_px) {
-        *val = st_output->mode.width_px;
+    } else if (*val > get_output_width_logical(st_output)) {
+        *val = get_output_width_logical(st_output);
     }
 }
 
@@ -23,8 +24,8 @@ _clamp_to_output_height(int *val, struct scran_output *st_output)
 {
     if (*val < 0) {
         *val = 0;
-    } else if (*val > st_output->mode.height_px) {
-        *val = st_output->mode.height_px;
+    } else if (*val > get_output_height_logical(st_output)) {
+        *val = get_output_height_logical(st_output);
     }
 }
 
@@ -122,24 +123,24 @@ handle_pointer_motion(
 
             // The rebase should have been initiated with a valid box.
             assert(!SCRAN_BL_BOX_IS_INVERTED(box_before_rebase));
-            assert(box_before_rebase.x0 >= 0 && box_before_rebase.x1 <= st_output->mode.width_px);
-            assert(box_before_rebase.y0 >= 0 && box_before_rebase.y1 <= st_output->mode.height_px);
+            assert(box_before_rebase.x0 >= 0 && box_before_rebase.x1 <= get_output_width_logical(st_output));
+            assert(box_before_rebase.y0 >= 0 && box_before_rebase.y1 <= get_output_height_logical(st_output));
 
             // Restrict the area to be within the output's borders.
             // TODO: Maybe make this cleaner ?
             if (new_box.x0 < 0) {
                 new_box.x1 -= new_box.x0;
                 new_box.x0 = 0;
-            } else if (new_box.x1 > st_output->mode.width_px) {
-                new_box.x0 -= new_box.x1 - st_output->mode.width_px;
-                new_box.x1 = st_output->mode.width_px;
+            } else if (new_box.x1 > get_output_width_logical(st_output)) {
+                new_box.x0 -= new_box.x1 - get_output_width_logical(st_output);
+                new_box.x1 = get_output_width_logical(st_output);
             }
             if (new_box.y0 < 0) {
                 new_box.y1 -= new_box.y0;
                 new_box.y0 = 0;
-            } else if (new_box.y1 > st_output->mode.height_px) {
-                new_box.y0 -= new_box.y1 - st_output->mode.height_px;
-                new_box.y1 = st_output->mode.height_px;
+            } else if (new_box.y1 > get_output_height_logical(st_output)) {
+                new_box.y0 -= new_box.y1 - get_output_height_logical(st_output);
+                new_box.y1 = get_output_height_logical(st_output);
             }
 
             selection_ctx->bl_box = new_box;
