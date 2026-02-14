@@ -283,17 +283,7 @@ handle_pointer_button(
             selection_ctx->selection_state = SELECTION_COMPLETE;
             selection_ctx->selection_resize_direction = SELECTION_RESIZE_NONE;
             
-            BLBoxI *const box = &selection_ctx->bl_box;
-            if (box->x1 < box->x0) {
-                int tmp = box->x0;
-                box->x0 = box->x1;
-                box->x1 = tmp;
-            }
-            if (box->y1 < box->y0) {
-                int tmp = box->y0;
-                box->y0 = box->y1;
-                box->y1 = tmp;
-            }
+            blboxi_deinvert(&selection_ctx->bl_box);
             break;
         default:
             break;
