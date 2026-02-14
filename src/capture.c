@@ -218,8 +218,6 @@ start_video_capture(struct scran_output *st_output)
          && st_output->selection_ctx.bl_box.y1
     );
 
-    struct capture_frame_context *const st_frame_ctx = &st_output->capture.frame_ctx;
-
     init_ffmpeg(st_output);
 
     // Get initial frame. Subsequent capture requests happen within
