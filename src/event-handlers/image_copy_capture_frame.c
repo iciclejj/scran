@@ -181,6 +181,8 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     return;
 
+    // TODO: Probably define end_capture as an end_video_capture function, in the
+    // same file as start_video_capture, to make setup/teardown less disjointed.
 end_capture:
     av_write_trailer(frame_ctx->av_format_ctx);
 end_capture_err:
