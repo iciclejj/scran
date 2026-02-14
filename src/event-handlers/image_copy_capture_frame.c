@@ -198,6 +198,8 @@ end_capture_err:
     av_frame_free(&frame_ctx->av_frame_encoded);
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
+
+    DEBUG("FINISHED RECORDING.\n");
     return;
 }
 
