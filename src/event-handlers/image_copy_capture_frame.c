@@ -271,18 +271,6 @@ handle_image_copy_capture_frame_ready__image_capture(
     ext_image_copy_capture_frame_v1_destroy(frame);
 
 
-    // TODO: Clarify names, more in sync with start_capture names?
-    const int area_width = blboxi_width_abs_unsafe(frame_ctx->capture_area_px);
-    const int area_height = blboxi_height_abs_unsafe(frame_ctx->capture_area_px);
-    const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
-    const uint32_t area_row_bytes = frame_ctx->pixel_stride * area_width;
-    // XXX TODO: Either eparate buffer from video capture OR double-check that
-    // the shared buffer doesn't cause issues + add robust checks/asserts
-    const uint8_t *const area_start_addr =
-        frame_ctx->st_buffer.data
-        + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
-        + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
-
     // TODO: Do we ever actually need to call blend2d *_reset() fuctions before
     // re-entry into this event handler?
 
@@ -290,10 +278,10 @@ handle_image_copy_capture_frame_ready__image_capture(
     BLResult res;
 
     // XXX TODO: Ensure good defaults
-    BLFormatInfo _bl_format_info_dst = bl_format_info[_FORMAT_PNG_BLEND2D_OUTPUT_FORMAT];
-    BLFormatInfo _bl_format_info_src = wl_shm_format_to_blend2d_struct(st_capture->shm_format);
+    BLFormatInfo bl_format_info_src = wl_shm_format_to_blend2d_struct(st_capture->shm_format);
+    BLFormatInfo bl_format_info_dst = bl_format_info[_FORMAT_PNG_BLEND2D_OUTPUT_FORMAT];
 
-    if (_bl_format_info_src.depth == 0) {
+    if (bl_format_info_src.depth == 0) {
         eprintf("Error: Unsupported format. Aborting image capture.\n");
         return;
     }
@@ -304,13 +292,25 @@ handle_image_copy_capture_frame_ready__image_capture(
     //           Unless blend2d does that on its own. Find out.
     res = bl_pixel_converter_create(
         &frame_ctx->bl_pixel_converter,
-        &_bl_format_info_dst,
-        &_bl_format_info_src,
+        &bl_format_info_dst,
+        &bl_format_info_src,
         ( BL_PIXEL_CONVERTER_CREATE_FLAG_DONT_COPY_PALETTE
         | BL_PIXEL_CONVERTER_CREATE_FLAG_ALTERABLE_PALETTE
         )
     );
     DEBUG("image_copy_capture_frame.c: bl_pixel_converter_create:  %d\n", res);
+
+    // TODO: Clarify names, more in sync with start_capture names?
+    const int area_width = blboxi_width_abs_unsafe(frame_ctx->capture_area_px);
+    const int area_height = blboxi_height_abs_unsafe(frame_ctx->capture_area_px);
+    const uint32_t area_row_bytes = frame_ctx->pixel_stride * area_width;
+    const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
+    // XXX TODO: Either eparate buffer from video capture OR double-check that
+    // the shared buffer doesn't cause issues + add robust checks/asserts
+    const uint8_t *const area_start_addr =
+        frame_ctx->st_buffer.data
+        + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
+        + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
 
     // TODO: Double-check that this pointer doesn't get overwritten by blend2d
     //       and re-allocated.
