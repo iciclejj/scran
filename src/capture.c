@@ -152,6 +152,11 @@ init_ffmpeg(struct scran_output *st_output)
     // XXX TODO: Figure out good default options for predicted frames
     frame_ctx->av_codec_ctx->max_b_frames = 0;
     frame_ctx->av_codec_ctx->gop_size = 0;
+    // TODO: Figure out a good default qmin/qmax.
+    //      NOTE: This is the largest factor influencing init_ffmpeg's time
+    //      to finish (wide q-range => longer codec init time).
+    frame_ctx->av_codec_ctx->qmin = 20;
+    frame_ctx->av_codec_ctx->qmax = 30;
     avcodec_open2(frame_ctx->av_codec_ctx, codec, NULL);
 
 
