@@ -183,10 +183,12 @@ _get_reverse_transform(
     case WL_OUTPUT_TRANSFORM_FLIPPED_180:
         _flip_horizontally();
     case WL_OUTPUT_TRANSFORM_180:
+        tmp = box.y0;
         box.y0 = source_height - box.y1;
+        box.y1 = source_height - tmp;
+        tmp = box.x0;
         box.x0 = source_width - box.x1;
-         box.y1 = source_height - box.y0;
-         box.x1 = source_width - box.x0;
+        box.x1 = source_width - tmp;
         return box;
     case WL_OUTPUT_TRANSFORM_FLIPPED_270:
         _flip_horizontally();
