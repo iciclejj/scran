@@ -11,6 +11,8 @@ wayland-protocols/*
 compile_commands.json
 cscope*.out
 vgcore.*
+callgrind.out.*
+perf.data*
 
 .cache/
 .vscode/
