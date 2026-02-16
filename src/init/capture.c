@@ -10,6 +10,8 @@
 #include "state.h"
 #include "event-handlers.h"
 
+// TODO: Specify for all these init functions whether they need to be called
+// during premem_init or during postmem_init
 bool
 init_capture(
     // TODO: Don't pass entire st_output if not required
