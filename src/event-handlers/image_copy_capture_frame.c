@@ -25,7 +25,6 @@
 #include "capture.h"
 #include "print.h"
 #include "util/blend2d.h"
-#include "lib_interop.h"
 #include "init.h"
 
 extern struct scran g_state;
@@ -279,31 +278,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     // TODO: Do we ever actually need to call blend2d *_reset() fuctions before
     // re-entry into this event handler?
 
-    // TODO: Remove or actually use...
     BLResult res;
-
-    // XXX TODO: Ensure good defaults
-    BLFormatInfo bl_format_info_src = wl_shm_format_to_blend2d_struct(st_capture->shm_format);
-    BLFormatInfo bl_format_info_dst = bl_format_info[CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT];
-
-    if (bl_format_info_src.depth == 0) {
-        eprintf("Error: Unsupported format. Aborting image capture.\n");
-        return;
-    }
-
-    // XXX: We just always run it through the converter for now.
-    // TODO: Only convert if required (not natively supported pixel format by blend2d)
-    //       *maybe* also reconsider using a different library.
-    //           Unless blend2d does that on its own. Find out.
-    res = bl_pixel_converter_create(
-        &frame_ctx->bl_pixel_converter,
-        &bl_format_info_dst,
-        &bl_format_info_src,
-        ( BL_PIXEL_CONVERTER_CREATE_FLAG_DONT_COPY_PALETTE
-        | BL_PIXEL_CONVERTER_CREATE_FLAG_ALTERABLE_PALETTE
-        )
-    );
-    DEBUG("image_copy_capture_frame.c: bl_pixel_converter_create:  %d\n", res);
 
     // TODO: Clarify names, more in sync with start_capture names?
     const int area_width = blboxi_width_abs_unsafe(frame_ctx->capture_area_px);
@@ -325,6 +300,10 @@ handle_image_copy_capture_frame_ready__image_capture(
     //           is (at time of writing) set to equal the size of the raw
     //           capture source pixel buffer.
     void *const bl_buf_cropped_converted = frame_ctx->img_data_2;
+    // XXX: We just always run it through the converter for now.
+    // TODO: Only convert if required (not natively supported pixel format by blend2d)
+    //       *maybe* also reconsider using a different library.
+    //           Unless blend2d does that on its own. Find out.
     res = bl_pixel_converter_convert(
         &frame_ctx->bl_pixel_converter,
         bl_buf_cropped_converted,

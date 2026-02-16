@@ -257,6 +257,20 @@ init_postmem__destroy()
     }
 }
 
+// Init that should happen after all wayland-related init is finished
+static bool
+init_postwl()
+{
+    for (int i = 0; i < g_state.n_outputs; ++i) {
+        struct scran_output *_st_output = &g_state.outputs[i];
+
+        if (!init_postwl__capture(_st_output)) {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 // TODO: Allow selection before capture protocols are ready?
 //           Probably negligible and difficult without multithreading
@@ -280,6 +294,11 @@ int main(void)
 
     if (!init_postmem()) {
         eprintf("Failed post-memory allocation initialization.\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!init_postwl()) {
+        eprintf("Failed post-wayland allocation initialization.\n");
         return EXIT_FAILURE;
     }
 
