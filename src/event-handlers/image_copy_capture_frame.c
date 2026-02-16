@@ -28,10 +28,6 @@
 #include "lib_interop.h"
 #include "init.h"
 
-#define _FORMAT_PNG_FILE_EXTENSION ".png"
-#define _FORMAT_PNG_BLEND2D_CODEC_NAME "PNG"
-#define _FORMAT_PNG_BLEND2D_OUTPUT_FORMAT BL_FORMAT_PRGB32 // pixel format
-
 extern struct scran g_state;
 
 static void
@@ -288,7 +284,7 @@ handle_image_copy_capture_frame_ready__image_capture(
 
     // XXX TODO: Ensure good defaults
     BLFormatInfo bl_format_info_src = wl_shm_format_to_blend2d_struct(st_capture->shm_format);
-    BLFormatInfo bl_format_info_dst = bl_format_info[_FORMAT_PNG_BLEND2D_OUTPUT_FORMAT];
+    BLFormatInfo bl_format_info_dst = bl_format_info[CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT];
 
     if (bl_format_info_src.depth == 0) {
         eprintf("Error: Unsupported format. Aborting image capture.\n");
@@ -347,7 +343,7 @@ handle_image_copy_capture_frame_ready__image_capture(
         &frame_ctx->bl_img_captured,
         area_width,
         area_height,
-        _FORMAT_PNG_BLEND2D_OUTPUT_FORMAT,
+        CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT,
         bl_buf_cropped_converted,
         area_row_bytes,
         // XXX: Read-only access causes blend2d to make a copy if modified.
@@ -360,7 +356,7 @@ handle_image_copy_capture_frame_ready__image_capture(
 
     // TODO: This should be called once, outside of the capture event pipeline,
     // unless between-capture format changing is implemented.
-    res = bl_image_codec_find_by_name(&frame_ctx->bl_imgcodec, _FORMAT_PNG_BLEND2D_CODEC_NAME, SIZE_MAX, NULL);
+    res = bl_image_codec_find_by_name(&frame_ctx->bl_imgcodec, CAPTURE_IMAGE_OUTPUT_BLIMAGECODEC_NAME_DEFAULT, SIZE_MAX, NULL);
 
     // TODO: This should be initialized in init_premem, so we don't re-allocate
     // the array backing every time. Must in that case either be a double-
@@ -388,7 +384,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     char filepath[PATH_MAX] = CAPTURE_OUTPUT_DEFAULT_DIRPATH "/";
     mkdir(filepath, 0755);
     const size_t _filename_offset = sizeof(CAPTURE_OUTPUT_DEFAULT_DIRPATH);
-    const char _file_extension[] = _FORMAT_PNG_FILE_EXTENSION;
+    const char _file_extension[] = CAPTURE_IMAGE_OUTPUT_FILE_EXTENSION_DEFAULT;
     create_timestamped_filename(filepath + _filename_offset, _file_extension);
     res = bl_file_system_write_file(
         filepath,
