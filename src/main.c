@@ -63,11 +63,11 @@ init_premem()
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output *_st_output = &g_state.outputs[i];
 
-        if (!init_output_surface(_st_output, &g_state.globals)) {
+        if (!init_premem__surface(_st_output, &g_state.globals)) {
             return false;
         }
 
-        if (!init_capture(_st_output, &g_state.seat.datacontrol, &g_state.globals)) {
+        if (!init_premem__capture(_st_output, &g_state.seat.datacontrol, &g_state.globals)) {
             return false;
         }
     }
@@ -95,15 +95,15 @@ _stay_alive_while_clipboard_active()
 }
 
 static void
-init_premem_destroy()
+init_premem__destroy()
 {
     assert(g_state.n_outputs <= MAX_OUTPUTS);
 
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output *_st_output = &g_state.outputs[i];
 
-        destroy_output_surface(_st_output);
-        destroy_capture(_st_output);
+        init_premem__surface__destroy(_st_output);
+        init_premem__capture__destroy(_st_output);
     }
 
     // TODO: Make sure this happens at an appropriate point in time (memory
@@ -111,7 +111,7 @@ init_premem_destroy()
     // finalized.
     _stay_alive_while_clipboard_active();
 
-    registry_listener_destroy(&g_state);
+    registry_listener__destroy(&g_state);
 }
 
 // TODO:
@@ -250,7 +250,7 @@ init_postmem()
 }
 
 static void
-init_postmem_destroy()
+init_postmem__destroy()
 {
     for (int i = 0; i < g_state.n_outputs; ++i) {
         destroy_selection_and_blend2d(&g_state.outputs[i]);
@@ -311,9 +311,9 @@ int main(void)
     wl_display_roundtrip(g_state.globals.display);
 
 
-    init_postmem_destroy();
+    init_postmem__destroy();
     munmap(shm_addr, shm_size_bytes); // TODO: Put into init_meminit_destroy?
-    init_premem_destroy();
+    init_premem__destroy();
 
     wl_display_disconnect(g_state.globals.display);
     eprintf("Disconnected from wayland server (%s)\n", SOCKNAME);

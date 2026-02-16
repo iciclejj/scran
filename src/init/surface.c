@@ -10,7 +10,7 @@
 #include "init.h"
 
 bool
-init_output_surface(
+init_premem__surface(
     struct scran_output *st_output,
     struct scran_globals *st_globals
 ) {
@@ -112,7 +112,7 @@ dispatch_surface_event_loop(struct scran_output *st_output)
 }
 
 void
-destroy_output_surface(struct scran_output *st_output)
+init_premem__surface__destroy(struct scran_output *st_output)
 {
     zwlr_layer_surface_v1_destroy(st_output->surface.layer_surface);
     wl_surface_destroy(st_output->surface.wl_surface);

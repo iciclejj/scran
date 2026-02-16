@@ -60,7 +60,7 @@ struct wl_seat_listener seat_listener = {
 };
 
 void
-seat_listener_destroy(struct scran_seat *seat)
+seat_listener__destroy(struct scran_seat *seat)
 {
     ext_data_control_device_v1_destroy(seat->datacontrol.device);
     if (seat->datacontrol.source != NULL) {

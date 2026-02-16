@@ -6,14 +6,13 @@
 #include "ext-image-capture-source-v1.h"
 #include "ext-image-copy-capture-v1.h"
 
-#include "init.h"
 #include "state.h"
 #include "event-handlers.h"
 
 // TODO: Specify for all these init functions whether they need to be called
 // during premem_init or during postmem_init
 bool
-init_capture(
+init_premem__capture(
     // TODO: Don't pass entire st_output if not required
     struct scran_output *st_output,
     struct scran_seat_datacontrol *st_datacontrol,
@@ -57,7 +56,7 @@ init_capture(
 }
 
 void
-destroy_capture(struct scran_output *st_output)
+init_premem__capture__destroy(struct scran_output *st_output)
 {
     ext_image_capture_source_v1_destroy(st_output->capture.source);
     ext_image_copy_capture_session_v1_destroy(st_output->capture.session);

@@ -109,12 +109,12 @@ struct wl_registry_listener registry_listener = {
 // TODO: Well I guess I ended up basically documenting it already. Now put it
 // somewhere nice
 void
-registry_listener_destroy(struct scran *state)
+registry_listener__destroy(struct scran *state)
 {
     const struct scran_globals *const globals = &state->globals;
 
     // TODO: Destroy properly per seat once multi-seat implemented
-    seat_listener_destroy(&state->seat);
+    seat_listener__destroy(&state->seat);
 
     // TODO: Is a roundtrip necessary?
 
