@@ -132,6 +132,7 @@ init_meminit(
             return false;
         }
 
+        // TODO: Alignment
         const ssize_t _surface_buf_bytes = SURFACE_BUF_COUNT * get_surface_buf_size(&_st_output->mode);
         const ssize_t _capture_buf_bytes = get_capture_buf_size(_st_output);
         const ssize_t _capture_buf_2_bytes = get_capture_buf_2_size(_st_output);
