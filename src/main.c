@@ -114,15 +114,57 @@ init_premem__destroy()
     registry_listener__destroy(&g_state);
 }
 
+// Just bump this if/when we need more
+#define _ARENA_BLOCKS_MAX 8
+
+struct arena_context {
+    void *addr;
+    size_t size;
+
+    size_t block_count;
+    size_t block_offsets[_ARENA_BLOCKS_MAX];
+    void **block_recipients[_ARENA_BLOCKS_MAX];
+};
+
+static inline void
+_arena_add_block(
+    struct arena_context *arena_ctx,
+    int block_size,
+    int block_alignment,
+    void **block_pointer_recipient
+) {
+    const int block_idx = arena_ctx->block_count;
+    const int old_size = arena_ctx->size;
+
+    assert(block_idx < _ARENA_BLOCKS_MAX);
+
+    arena_ctx->block_recipients[block_idx] = block_pointer_recipient;
+
+    int bytes_past_alignment = old_size % block_alignment;
+    int block_alignment_front_padding = bytes_past_alignment == 0 ? 0 : block_alignment - bytes_past_alignment;
+
+    arena_ctx->block_offsets[block_idx] = old_size + block_alignment_front_padding;
+    arena_ctx->size += block_alignment_front_padding + block_size;
+    arena_ctx->block_count += 1;
+}
+
 // TODO:
 //  - Add --slim/--no-video arg that skips allocating video-only requirements,,
 //    extra frame buffers, etc.
+//  - persistent libav allocations
+//  - selection: No manual allocations
 static bool
 init_meminit(
-    void **shm_addr,
-    size_t *shm_size_bytes
+    struct arena_context *shm_arena_ctx
 ) {
-    // Calculate memory requirements
+    // XXX: This assert is not necessarily required for this function to run as it
+    // should, assuming the context was properly set up until this point.
+    assert(shm_arena_ctx->block_count == 0);
+
+
+    //
+    // Gather memory requirements
+    //
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output *_st_output = &g_state.outputs[i];
 
@@ -132,50 +174,71 @@ init_meminit(
             return false;
         }
 
-        // TODO: Alignment
-        const ssize_t _surface_buf_bytes = SURFACE_BUF_COUNT * get_surface_buf_size(&_st_output->mode);
-        const ssize_t _capture_buf_bytes = get_capture_buf_size(_st_output);
-        const ssize_t _capture_buf_2_bytes = get_capture_buf_2_size(_st_output);
-        // TODO: persistent libav allocations
-        // selection: No manual allocations
+        for (int i_buffer = 0; i_buffer < SURFACE_BUF_COUNT; i_buffer++) {
+            const ssize_t _surface_buf_size = get_surface_buf_size_padded(&_st_output->mode);
+            _arena_add_block( shm_arena_ctx,
+                _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->surface.double_buffer[i_buffer].data
+            );
+        };
 
-        *shm_size_bytes += _surface_buf_bytes + _capture_buf_bytes + _capture_buf_2_bytes;
+        const ssize_t _capture_buf_size = get_capture_buf_size_padded(_st_output);
+        _arena_add_block( shm_arena_ctx,
+            _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->capture.frame_ctx.st_buffer.data
+        );
+
+        const ssize_t _capture_buf_2_size = get_capture_buf_2_size_padded(_st_output);
+        _arena_add_block( shm_arena_ctx,
+            _capture_buf_2_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->capture.frame_ctx.img_data_2
+        );
     }
 
-    int global_pool_shm_fd = shm_open_anon();
-    if (ftruncate(global_pool_shm_fd, *shm_size_bytes) == -1) {
-        DEBUG("Failed to resize shm file to %zu\n", *shm_size_bytes);
+
+    //
+    // Get memory
+    //
+    const int global_pool_shm_fd = shm_open_anon();
+    if (ftruncate(global_pool_shm_fd, shm_arena_ctx->size) == -1) {
+        DEBUG("Failed to resize shm file to %zu\n", shm_arena_ctx->size);
         close(global_pool_shm_fd);
         return false;
     }
-
-    *shm_addr = mmap(NULL, *shm_size_bytes, PROT_READ | PROT_WRITE, MAP_SHARED, global_pool_shm_fd, 0);
+    shm_arena_ctx->addr = mmap(NULL, shm_arena_ctx->size, PROT_READ | PROT_WRITE, MAP_SHARED, global_pool_shm_fd, 0);
     // TODO: Only allocate what the server will actually need.
     //           F.ex., the server doesn't need to have libav objects.
     struct wl_shm_pool *global_pool_wl = wl_shm_create_pool(
         g_state.globals.shm,
         global_pool_shm_fd,
-        *shm_size_bytes
+        shm_arena_ctx->size
     );
 
-    // Assign allocated memory
-    ssize_t curr_offset = 0;
+
+    //
+    // Assign addresses
+    //
+    for (int i = 0; i < shm_arena_ctx->block_count; ++i) {
+        *shm_arena_ctx->block_recipients[i] = shm_arena_ctx->addr + shm_arena_ctx->block_offsets[i];
+    }
+
+
+    //
+    // Create wayland buffers
+    //
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output *_st_output = &g_state.outputs[i];
 
         for (int i_buffer = 0; i_buffer < SURFACE_BUF_COUNT; i_buffer++) {
             struct scran_output_surface_buffer *_st_buffer = &_st_output->surface.double_buffer[i_buffer];
 
-            _st_buffer->data = *shm_addr + curr_offset;
+            assert(_st_buffer->data != NULL);
+            const ptrdiff_t _surface_buffer_offset = _st_buffer->data - shm_arena_ctx->addr;
             _st_buffer->wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
-                curr_offset,
+                _surface_buffer_offset,
                 get_output_width_logical(_st_output),
                 get_output_height_logical(_st_output),
                 get_surface_stride(&_st_output->mode),
                 SURFACE_SHM_FORMAT
             );
-            curr_offset += get_surface_buf_size(&_st_output->mode);
 
             wl_buffer_add_listener(
                 _st_buffer->wl_buffer,
@@ -184,19 +247,16 @@ init_meminit(
             );
         }
 
-        _st_output->capture.frame_ctx.st_buffer.data = *shm_addr + curr_offset;
+        assert(_st_output->capture.frame_ctx.st_buffer.data != NULL);
+        const ptrdiff_t _capture_buffer_offset = _st_output->capture.frame_ctx.st_buffer.data - shm_arena_ctx->addr;
         _st_output->capture.frame_ctx.st_buffer.wl_buffer = wl_shm_pool_create_buffer(
             global_pool_wl,
-            curr_offset,
+            _capture_buffer_offset,
             _st_output->mode.width_px,
             _st_output->mode.height_px,
             get_capture_stride(_st_output),
             _st_output->capture.shm_format
         );
-        curr_offset += get_capture_buf_size(_st_output);
-
-        _st_output->capture.frame_ctx.img_data_2 = *shm_addr + curr_offset;
-        curr_offset += get_capture_buf_2_size(_st_output);
 
         wl_buffer_add_listener(
             _st_output->capture.frame_ctx.st_buffer.wl_buffer,
@@ -204,8 +264,6 @@ init_meminit(
             &_st_output->capture.frame_ctx.st_buffer
         );
     }
-
-    assert(curr_offset == *shm_size_bytes);
 
     // (wayland's mmaps and fd references live on)
     wl_shm_pool_destroy(global_pool_wl);
@@ -280,15 +338,14 @@ init_postwl()
 //           F.ex. 2559x1599 rect width/height
 int main(void)
 {
-    void *shm_addr = NULL;
-    size_t shm_size_bytes = 0;
+    struct arena_context arena_ctx = { };
 
     if (!init_premem()) {
         eprintf("Failed pre-memory allocation initialization.\n");
         return EXIT_FAILURE;
     }
 
-    if (!init_meminit(&shm_addr, &shm_size_bytes)) {
+    if (!init_meminit(&arena_ctx)) {
         eprintf("Failed to initialize memory and/or shared memory buffers.\n");
         return EXIT_FAILURE;
     }
@@ -332,7 +389,7 @@ int main(void)
 
 
     init_postmem__destroy();
-    munmap(shm_addr, shm_size_bytes); // TODO: Put into init_meminit_destroy?
+    munmap(arena_ctx.addr, arena_ctx.size); // TODO: Put into init_meminit_destroy?
     init_premem__destroy();
 
     wl_display_disconnect(g_state.globals.display);

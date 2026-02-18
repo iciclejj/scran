@@ -12,6 +12,9 @@
 #define SURFACE_PIXEL_STRIDE 4 // Bytes per pixel. Depends on SURFACE_SHM_FORMAT.
 #define SURFACE_BLCONTEXT_ORIGIN ((BLPoint){0,0})
 
+#define SSE_ALIGNMENT_BYTES 16
+#define FRAMEBUFFER_ALIGNMENT_BYTES SSE_ALIGNMENT_BYTES
+
 static inline int32_t
 get_surface_stride(struct scran_output_mode *mode) {
     return mode->width_px * SURFACE_PIXEL_STRIDE;
@@ -23,20 +26,25 @@ _get_framebuffer_size(struct scran_output_mode *mode, uint8_t pixel_stride) {
 }
 
 static inline int32_t
-get_surface_buf_size(struct scran_output_mode *mode) {
-    return _get_framebuffer_size(mode, SURFACE_PIXEL_STRIDE);
+_get_framebuffer_size_padded(struct scran_output_mode *mode, uint8_t pixel_stride) {
+    return _get_framebuffer_size(mode, pixel_stride) + FRAMEBUFFER_ALIGNMENT_BYTES;
 }
 
 static inline int32_t
-get_capture_buf_size(struct scran_output *st_output) {
-    return _get_framebuffer_size(&st_output->mode, st_output->capture.frame_ctx.pixel_stride);
+get_surface_buf_size_padded(struct scran_output_mode *mode) {
+    return _get_framebuffer_size_padded(mode, SURFACE_PIXEL_STRIDE);
+}
+
+static inline int32_t
+get_capture_buf_size_padded(struct scran_output *st_output) {
+    return _get_framebuffer_size_padded(&st_output->mode, st_output->capture.frame_ctx.pixel_stride);
 }
 
 // These will probably always stay equivalent, but dedicated function avoids
 // any second-guessing.
 static inline int32_t
-get_capture_buf_2_size(struct scran_output *st_output) {
-    return get_capture_buf_size(st_output);
+get_capture_buf_2_size_padded(struct scran_output *st_output) {
+    return get_capture_buf_size_padded(st_output);
 }
 
 static inline int32_t
