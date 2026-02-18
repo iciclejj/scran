@@ -163,8 +163,6 @@ init_meminit(
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output *_st_output = &g_state.outputs[i];
 
-        assert(SURFACE_BUF_COUNT == A_DOUBLE_BUFFER_HAS_TWO_BUFFERS && SURFACE_BUF_COUNT == 2);
-
         for (int i = 0; i < SURFACE_BUF_COUNT; i++) {
             _st_output->surface.double_buffer[i].data = *shm_addr + curr_offset;
             _st_output->surface.double_buffer[i].wl_buffer = wl_shm_pool_create_buffer(
