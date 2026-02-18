@@ -12,10 +12,6 @@
 #include <libavutil/frame.h>
 #include <stdatomic.h>
 
-#include "blend2d/core/api.h"
-#include "blend2d/core/array.h"
-#include "blend2d/core/imagecodec.h"
-#include "blend2d/core/pixelconverter.h"
 #include "ext-image-copy-capture-v1.h"
 #include "ext-data-control-v1.h"
 
