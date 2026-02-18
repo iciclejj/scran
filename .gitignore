@@ -1,3 +1,7 @@
+# XXX(iciclejj): Some custom files/directories I use
+include/_benchmark.h
+scran
+
 main
 build/
 TODO.txt
