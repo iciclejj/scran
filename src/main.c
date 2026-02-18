@@ -163,9 +163,11 @@ init_meminit(
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output *_st_output = &g_state.outputs[i];
 
-        for (int i = 0; i < SURFACE_BUF_COUNT; i++) {
-            _st_output->surface.double_buffer[i].data = *shm_addr + curr_offset;
-            _st_output->surface.double_buffer[i].wl_buffer = wl_shm_pool_create_buffer(
+        for (int i_buffer = 0; i_buffer < SURFACE_BUF_COUNT; i_buffer++) {
+            struct scran_output_surface_buffer *_st_buffer = &_st_output->surface.double_buffer[i_buffer];
+
+            _st_buffer->data = *shm_addr + curr_offset;
+            _st_buffer->wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
                 curr_offset,
                 get_output_width_logical(_st_output),
@@ -176,9 +178,9 @@ init_meminit(
             curr_offset += get_surface_buf_size(&_st_output->mode);
 
             wl_buffer_add_listener(
-                _st_output->surface.double_buffer[i].wl_buffer,
+                _st_buffer->wl_buffer,
                 &surface_buffer_listener,
-                &_st_output->surface.double_buffer[i]
+                _st_buffer
             );
         }
 
