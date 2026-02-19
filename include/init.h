@@ -14,6 +14,8 @@
 
 #define SSE_ALIGNMENT_BYTES 16
 #define FRAMEBUFFER_ALIGNMENT_BYTES SSE_ALIGNMENT_BYTES
+#define FRAMEBUFFER_PADDING_BYTES SSE_ALIGNMENT_BYTES
+#define FRAMEBUFFER_PADDING_PIXELS(pixel_stride) ((FRAMEBUFFER_PADDING_BYTES / pixel_stride) + (FRAMEBUFFER_PADDING_BYTES % pixel_stride != 0))
 
 static inline int32_t
 get_surface_stride(struct scran_output_mode *mode) {
@@ -21,13 +23,9 @@ get_surface_stride(struct scran_output_mode *mode) {
 }
 
 static inline int32_t
-_get_framebuffer_size(struct scran_output_mode *mode, uint8_t pixel_stride) {
-    return mode->width_px * mode->height_px * pixel_stride;
-}
-
-static inline int32_t
 _get_framebuffer_size_padded(struct scran_output_mode *mode, uint8_t pixel_stride) {
-    return _get_framebuffer_size(mode, pixel_stride) + FRAMEBUFFER_ALIGNMENT_BYTES;
+    const int32_t px_padding = FRAMEBUFFER_PADDING_PIXELS(pixel_stride);
+    return pixel_stride * (mode->width_px + px_padding) * (mode->height_px + px_padding);
 }
 
 static inline int32_t
