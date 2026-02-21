@@ -277,9 +277,9 @@ handle_image_copy_capture_frame_ready__image_capture(
     BLResult res;
 
     // TODO: Clarify names, more in sync with start_capture names?
-    const int area_width = blboxi_width_abs_unsafe(frame_ctx->capture_area_px);
-    const int area_height = blboxi_height_abs_unsafe(frame_ctx->capture_area_px);
-    const uint32_t area_row_bytes = frame_ctx->pixel_stride * area_width;
+    const int area_width_no_transform = blboxi_width_abs_unsafe(frame_ctx->capture_area_px);
+    const int area_height_no_transform = blboxi_height_abs_unsafe(frame_ctx->capture_area_px);
+    const uint32_t area_row_bytes = frame_ctx->pixel_stride * area_width_no_transform;
     const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
     // XXX TODO: Either eparate buffer from video capture OR double-check that
     // the shared buffer doesn't cause issues + add robust checks/asserts
@@ -306,8 +306,8 @@ handle_image_copy_capture_frame_ready__image_capture(
         area_row_bytes,
         area_start_addr,
         source_row_bytes,
-        area_width,
-        area_height,
+        area_width_no_transform,
+        area_height_no_transform,
         NULL
     );
     DEBUG("image_copy_capture_frame.c: bl_pixel_converter_convert:  %d\n", res);
@@ -316,8 +316,8 @@ handle_image_copy_capture_frame_ready__image_capture(
     // if it is not NULL (aka it is not freed here, at time of writing).
     res = bl_image_create_from_data(
         &frame_ctx->bl_img_captured,
-        area_width,
-        area_height,
+        area_width_no_transform,
+        area_height_no_transform,
         CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT,
         bl_buf_cropped_converted,
         area_row_bytes,
