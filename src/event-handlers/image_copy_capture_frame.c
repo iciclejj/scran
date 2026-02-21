@@ -22,6 +22,8 @@
 #include "print.h"
 #include "util/blend2d.h"
 #include "init.h"
+#include "simd.h"
+#include "state-util.h"
 
 extern struct scran g_state;
 
@@ -296,31 +298,47 @@ handle_image_copy_capture_frame_ready__image_capture(
     //           is (at time of writing) set to equal the size of the raw
     //           capture source pixel buffer.
     void *const bl_buf_cropped_converted = frame_ctx->img_data_2;
+
+    // XXX TODO: Rework the frame_ctx struct. Probably also just pass entire
+    // scran_output as the listener callback data.
+    struct scran_output *st_output = (void*)((char*)frame_ctx - (offsetof(struct scran_output, capture) + offsetof(struct scran_output_capture, frame_ctx)));
+
     // XXX: We just always run it through the converter for now.
     // TODO: Only convert if required (not natively supported pixel format by blend2d)
-    //       *maybe* also reconsider using a different library.
-    //           Unless blend2d does that on its own. Find out.
-    res = bl_pixel_converter_convert(
-        &frame_ctx->bl_pixel_converter,
-        bl_buf_cropped_converted,
-        area_row_bytes,
+    // TODO: Probably make some way to easily get padded height/widths etc.
+    //       with some centralized source of truth
+    // TODO: Assert we have available padding.
+    void *bl_buf_cropped_converted_with_offset = NULL;
+    uintptr_t bl_buf_cropped_converted_row_bytes = 0;
+
+    // TODO: More asserts before & after this + double-checking the padding and
+    // alignment logic both within transform_framebuffer after returning
+    transform_framebuffer(
         area_start_addr,
-        source_row_bytes,
+        bl_buf_cropped_converted,
         area_width_no_transform,
         area_height_no_transform,
-        NULL
+        source_row_bytes,
+        0x03020100,
+        st_output->transform,
+        &bl_buf_cropped_converted_with_offset,
+        &bl_buf_cropped_converted_row_bytes
     );
-    DEBUG("image_copy_capture_frame.c: bl_pixel_converter_convert:  %d\n", res);
+    const int area_width_transformed = get_transformed_width(area_width_no_transform, area_height_no_transform, st_output->transform);
+    const int area_height_transformed = get_transformed_height(area_width_no_transform, area_height_no_transform, st_output->transform);
+
 
     // NOTE: The data passed is not freed unless freed by passed destroy_func,
     // if it is not NULL (aka it is not freed here, at time of writing).
+    // const int _post_inverse_transform_area_width = area_height_no_transform;
+    // const int _post_inverse_transform_area_height = area_width_no_transform;
     res = bl_image_create_from_data(
         &frame_ctx->bl_img_captured,
-        area_width_no_transform,
-        area_height_no_transform,
+        area_width_transformed,
+        area_height_transformed,
         CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT,
-        bl_buf_cropped_converted,
-        area_row_bytes,
+        bl_buf_cropped_converted_with_offset,
+        bl_buf_cropped_converted_row_bytes,
         // XXX: Read-only access causes blend2d to make a copy if modified.
         // TODO: Probably just change to RW.
         BL_DATA_ACCESS_READ,

@@ -13,6 +13,8 @@
 #define SURFACE_BLCONTEXT_ORIGIN ((BLPoint){0,0})
 
 #define SSE_ALIGNMENT_BYTES 16
+// TODO: Use separate alignment values for the start of the buffer vs
+// for SIMD padding.
 #define FRAMEBUFFER_ALIGNMENT_BYTES SSE_ALIGNMENT_BYTES
 
 static inline int32_t

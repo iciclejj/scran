@@ -162,7 +162,8 @@ _get_reverse_transform(
 ) {
     uint32_t tmp, tmp2;
 
-    #define _flip_horizontally() \
+// TODO: -1 for len -> index
+#define _flip_horizontally() \
         box.x0 = source_width - box.x1; \
         box.x1 = source_width - box.x0;
 
@@ -202,7 +203,7 @@ _get_reverse_transform(
         return box;
     }
 
-    #undef _flip_horizontally
+#undef _flip_horizontally
 }
 
 static void

@@ -174,6 +174,12 @@ init_meminit(
             return false;
         }
 
+        // TODO: Don't add padding for buffers we don't need it for
+        //          - Makes things especially difficult and/or useless for
+        //            buffers like the capture "source" buffers, provided by
+        //            wayland, because we don't have control over the
+        //            padding/stride/etc.
+
         for (int i_buffer = 0; i_buffer < SURFACE_BUF_COUNT; i_buffer++) {
             const ssize_t _surface_buf_size = get_surface_buf_size_padded(&_st_output->mode);
             _arena_add_block( shm_arena_ctx,
@@ -203,6 +209,7 @@ init_meminit(
         return false;
     }
     shm_arena_ctx->addr = mmap(NULL, shm_arena_ctx->size, PROT_READ | PROT_WRITE, MAP_SHARED, global_pool_shm_fd, 0);
+    madvise(shm_arena_ctx->addr, shm_arena_ctx->size, MADV_HUGEPAGE);
     // TODO: Only allocate what the server will actually need.
     //           F.ex., the server doesn't need to have libav objects.
     struct wl_shm_pool *global_pool_wl = wl_shm_create_pool(
