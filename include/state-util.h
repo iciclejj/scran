@@ -25,6 +25,28 @@ get_output_height_logical(struct scran_output *st_output) {
          : st_output->mode.height_px;
 }
 
+static inline int
+get_transformed_height(int src_width, int src_height, enum wl_output_transform transform)
+{
+    return transform == WL_OUTPUT_TRANSFORM_90
+        || transform == WL_OUTPUT_TRANSFORM_FLIPPED_90
+        || transform == WL_OUTPUT_TRANSFORM_270
+        || transform == WL_OUTPUT_TRANSFORM_FLIPPED_270
+         ? src_width
+         : src_height;
+}
+
+static inline int
+get_transformed_width(int src_width, int src_height, enum wl_output_transform transform)
+{
+    return transform == WL_OUTPUT_TRANSFORM_90
+        || transform == WL_OUTPUT_TRANSFORM_FLIPPED_90
+        || transform == WL_OUTPUT_TRANSFORM_270
+        || transform == WL_OUTPUT_TRANSFORM_FLIPPED_270
+         ? src_height
+         : src_width;
+}
+
 static inline uint8_t
 get_output_array_index(const struct scran_output *st_output) {
     ptrdiff_t index = st_output - g_state.outputs;
