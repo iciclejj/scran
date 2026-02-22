@@ -115,7 +115,7 @@ init_premem__destroy()
 }
 
 // Just bump this if/when we need more
-#define _ARENA_BLOCKS_MAX 8
+#define _ARENA_BLOCKS_MAX (MAX_OUTPUTS * 3)
 
 struct arena_context {
     void *addr;
