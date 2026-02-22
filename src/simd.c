@@ -136,7 +136,9 @@ transform_framebuffer_fallback(
 
     const uint32_t rgba_shift_mask = rgba_shuffle_mask * 8;
 
+    // XXX TODO: Implement flipped
     switch (transform) {
+    case WL_OUTPUT_TRANSFORM_FLIPPED:
     case WL_OUTPUT_TRANSFORM_NORMAL:
         {
             static const int tile_height = FALLBACK_STRIDE_PX;
@@ -169,6 +171,7 @@ transform_framebuffer_fallback(
             }
         }
         break;
+    case WL_OUTPUT_TRANSFORM_FLIPPED_180:
     case WL_OUTPUT_TRANSFORM_180:
         {
             static const int tile_height = FALLBACK_STRIDE_PX;
@@ -209,6 +212,7 @@ transform_framebuffer_fallback(
             }
         }
         break;
+    case WL_OUTPUT_TRANSFORM_FLIPPED_90:
     case WL_OUTPUT_TRANSFORM_90:
         {
             const int dst_x_px_max = dst_width_px - 1;
@@ -244,6 +248,7 @@ transform_framebuffer_fallback(
             }
         }
         break;
+    case WL_OUTPUT_TRANSFORM_FLIPPED_270:
     case WL_OUTPUT_TRANSFORM_270:
         {
             const int dst_y_px_max = dst_height_px - 1;
@@ -280,8 +285,6 @@ transform_framebuffer_fallback(
 
         }
         break;
-    default:
-        eprintf("ERROR: XXXXXX Transform not implemented yet.");
     }
 }
 
@@ -621,9 +624,14 @@ _transform_framebuffer_sse41__unaligned(
         transform_fn = transform_framebuffer__sse41_unaligned__rotate_90;  break;
     case WL_OUTPUT_TRANSFORM_NORMAL:
         transform_fn = transform_framebuffer__sse41_unaligned__rotate_0;  break;
-        return;
     default:
-        eprintf("ERROR: XXXXXX Transform not implemented yet.");
+        // XXX TODO: Implement flipped
+        transform_framebuffer_fallback(
+                src, dst,
+                src_width_px, src_height_px, src_stride_bytes,
+                rgba_shuffle_mask, transform,
+                dst_with_offset, dst_stride
+        );
         return;
     }
 
