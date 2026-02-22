@@ -319,6 +319,8 @@ handle_image_copy_capture_frame_ready__image_capture(
         area_width_no_transform,
         area_height_no_transform,
         source_row_bytes,
+        // XXX TODO(!!!): Create helper functions to convert from wl_shm_format
+        // to our desired format here.
         0x03020100,
         st_output->transform,
         &bl_buf_cropped_converted_with_offset,
