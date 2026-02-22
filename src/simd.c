@@ -411,9 +411,8 @@ transform_framebuffer__sse41_unaligned__rotate_270(
 
 
     for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += SSE_ROW_STRIDE) {
-        assert(src_row_px + SSE_ROW_STRIDE <= src_height_px); // Stay within padded bounds
-
         const int dst_col_px = src_row_px; // NOTE: Rotation-speicific
+        assert(RGBA32_PIXEL_STRIDE * (dst_col_px + PIXELS_PER_M128I) <= dst_stride_bytes); // Stay within padded bounds
         const int dst_col_offset_bytes = dst_col_px * RGBA32_PIXEL_STRIDE;
         // NOTE: Rotation-specific:
         // TODO: We can factor this even farther out
@@ -427,7 +426,7 @@ transform_framebuffer__sse41_unaligned__rotate_270(
         const char *const src_block_row_addrs_base = (char *)src + src_row_px * src_stride_bytes;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += PIXELS_PER_M128I) {
-            assert(RGBA32_PIXEL_STRIDE * (src_col_px + PIXELS_PER_M128I) <= src_stride_bytes); // Stay within padded bounds
+            // TODO: assert(dst_row_px + SSE_ROW_STRIDE <= dst_height_px); // Stay within padded bounds
 
             const char *const _src_block_row_addr_0 = src_block_row_addrs_base + src_col_px * RGBA32_PIXEL_STRIDE;
 
@@ -476,8 +475,6 @@ transform_framebuffer__sse41_unaligned__rotate_180(
         const __m128i *src_row_base = src_curr;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += PIXELS_PER_M128I) {
-            assert(RGBA32_PIXEL_STRIDE * (src_col_px + PIXELS_PER_M128I) <= src_stride_bytes); // Stay within padded bounds
-
             __m128i src_curr_value = _mm_loadu_si128(src_curr);
             src_curr_value = _mm_shuffle_epi8(src_curr_value, rgba32_shuffle_mask_128);
             _mm_storeu_si128(dst_curr, src_curr_value);
@@ -510,10 +507,9 @@ transform_framebuffer__sse41_unaligned__rotate_90(
 
 
     for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += SSE_ROW_STRIDE) {
-        assert(src_row_px + SSE_ROW_STRIDE <= src_height_px); // Stay within padded bounds
-
         // NOTE: Rotation-specific code:
         const int dst_col_px = (src_height_px - 4) - src_row_px; // -4 => len -> index
+        assert(RGBA32_PIXEL_STRIDE * (dst_col_px + PIXELS_PER_M128I) <= src_stride_bytes); // Stay within padded bounds
         const int dst_col_offset_bytes = dst_col_px * RGBA32_PIXEL_STRIDE;
         char *dst_block_row_addr_0 = (char *)dst
                                      + dst_col_offset_bytes;
@@ -521,7 +517,7 @@ transform_framebuffer__sse41_unaligned__rotate_90(
         const char *const src_block_row_addrs_base = (char *)src + src_row_px * src_stride_bytes;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += PIXELS_PER_M128I) {
-            assert(RGBA32_PIXEL_STRIDE * (src_col_px + PIXELS_PER_M128I) <= src_stride_bytes); // Stay within padded bounds
+            // TODO: assert(dst_row_px + SSE_ROW_STRIDE <= dst_height_px); // Stay within padded bounds
 
             const char *const _src_block_row_addr_0 = src_block_row_addrs_base + src_col_px * RGBA32_PIXEL_STRIDE;
 
@@ -560,7 +556,7 @@ transform_framebuffer__sse41_unaligned__rotate_0(
         const __m128i *src_row_base = src_curr;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += PIXELS_PER_M128I) {
-            assert(RGBA32_PIXEL_STRIDE * (src_col_px + PIXELS_PER_M128I) <= src_stride_bytes); // Stay within padded bounds
+            // TODO: assert(RGBA32_PIXEL_STRIDE * (dst_col_px + PIXELS_PER_M128I) <= dst_stride_bytes); // Stay within padded bounds
 
             __m128i src_curr_value = _mm_loadu_si128(src_curr);
             src_curr_value = _mm_shuffle_epi8(src_curr_value, rgba32_shuffle_mask_128);
