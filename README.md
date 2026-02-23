@@ -34,13 +34,16 @@ Image/video is saved to current directory.
 
 Image also sent to clipboard
 
-### Keymap (as of v0.1.0-beta)
+### Keymap (as of v0.1.0)
 - Left mouse button
   - Init selection
-  - Toggle move selection (after init)
+  - After init: Toggle move selection
 - Right mouse button
   - Toggle resize selection
 - Enter
+  - Capture image and exit
+      - Stays alive in the background to handle clipboard. (Optional integration with external clipboard managers is planned.)
+- Shift + Enter
   - Capture image
 - Space
   - Capture video (start/stop)
