@@ -24,6 +24,7 @@
 #include "init.h"
 #include "simd.h"
 #include "state-util.h"
+#include "lib_interop.h"
 
 extern struct scran g_state;
 
@@ -310,6 +311,12 @@ handle_image_copy_capture_frame_ready__image_capture(
     // TODO: Assert we have available padding.
     void *bl_buf_cropped_converted_with_offset = NULL;
     uintptr_t bl_buf_cropped_converted_row_bytes = 0;
+    uint32_t rgba32_shuffle = wl_shm_format_to_blend2d_scran_rgba32_shuffle(st_output->capture.shm_format);
+
+    if (rgba32_shuffle == RGBA32_SHUFFLE_ERROR) {
+        eprintf("WARNING: Output's pixel format is not supported. Attempting anyways...");
+        rgba32_shuffle = RGBA32_SHUFFLE_NO_CHANGE;
+    }
 
     // TODO: More asserts before & after this + double-checking the padding and
     // alignment logic both within transform_framebuffer after returning
@@ -321,7 +328,7 @@ handle_image_copy_capture_frame_ready__image_capture(
         source_row_bytes,
         // XXX TODO(!!!): Create helper functions to convert from wl_shm_format
         // to our desired format here.
-        0x03020100,
+        rgba32_shuffle,
         st_output->transform,
         &bl_buf_cropped_converted_with_offset,
         &bl_buf_cropped_converted_row_bytes

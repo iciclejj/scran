@@ -1,3 +1,5 @@
+#include "lib_interop.h"
+#include "capture.h"
 #include <assert.h>
 
 #include <wayland-client.h>
@@ -59,6 +61,30 @@ wl_shm_format_to_blend2d_struct(enum wl_shm_format wl_shm_format)
     }
 }
 
+uint32_t
+wl_shm_format_to_blend2d_scran_rgba32_shuffle(enum wl_shm_format wl_shm_format)
+{
+    assert(CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT == BL_FORMAT_PRGB32);
+#ifndef NDEBUG
+    enum wl_shm_format bl_default_to_wl = WL_SHM_FORMAT_ARGB8888;
+    assert(wl_shm_format_to_blend2d(bl_default_to_wl) == CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT);
+#endif
+
+    switch (wl_shm_format) {
+        // XXX: These are the native formats that we check for above. Putting
+        // them here for completeness.
+        case WL_SHM_FORMAT_ARGB8888: return 0x03020100;
+        case WL_SHM_FORMAT_XRGB8888: return 0x03020100; // TODO: Verify this will be fine
+
+        case WL_SHM_FORMAT_ABGR8888: return 0x03000102;
+        case WL_SHM_FORMAT_XBGR8888: return 0x03000102;
+
+        case WL_SHM_FORMAT_RGBX8888: return 0x02010003;
+        case WL_SHM_FORMAT_RGBA8888: return 0x02010003;
+
+        default: return RGBA32_SHUFFLE_ERROR;
+    }
+}
 
 enum AVPixelFormat
 wl_shm_format_to_ffmpeg(enum wl_shm_format wl_shm_format)
