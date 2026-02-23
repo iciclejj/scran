@@ -23,6 +23,12 @@ in
   ];
 }
 ```
+
+Sway config example:
+```
+bindsym Print exec scran
+```
+
 ## Usage & Behavior
 Image/video is saved to current directory.
 
