@@ -35,6 +35,9 @@ dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
             *frame_ctx->session
         );
     ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__video_capture, frame_ctx);
+    // TODO: Check ffmpeg's buffering behavior and maybe use ring buffer for
+    // this, with a size that ensures frames still buffered by
+    // avcodec/avfiltergraph etc. stay untouched.
     ext_image_copy_capture_frame_v1_attach_buffer(
         frame,
         frame_ctx->st_buffer.wl_buffer
