@@ -10,6 +10,8 @@
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
 #include <libavutil/frame.h>
+#include <libavfilter/buffersrc.h>
+#include <libavfilter/buffersink.h>
 #include <stdatomic.h>
 
 #include "ext-image-copy-capture-v1.h"
@@ -77,10 +79,6 @@ handle_image_copy_capture_frame_presentation_time__video_capture(
 //  - Either assert width/height isn't 0 (and enforce in selection logic)
 //    or handle it properly here
 //  - Allow resizing capture frame during recording
-//     - Should be built around sws_scale and/or encoder filters,
-//       whichever will be in use for cropping and scaling whenever
-//       resizing gets implemented.
-//
 //  - Perform libav allocations in meminit
 //       NOTE: Read up on the libav refcount mechanisms first.
 //       https://www.ffmpeg.org/doxygen/trunk/group__lavc__encdec.html
@@ -107,30 +105,48 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     // TODO: Clarify names, more in sync with start_capture names?
     const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
-    const uint8_t *const area_start_addr =
+    uint8_t *const area_start_addr =
         frame_ctx->st_buffer.data
         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
 
-    // XXX: We won't ever get planar src frame buffers... right..?
-    const uint8_t *const _captured_planebufs[1] = { area_start_addr };
-    const int _captured_linesizes[1] = { (int)source_row_bytes };
-    // TODO: Is this necessary? Can we manage refs etc. more efficiently manually?
-    av_frame_make_writable(frame_ctx->av_frame_encoded);
-    // INFO: Width set during sws_ctx's init ensures crop
-    // XXX: This sws_scale cropping "hack" needs to be updated to allow
-    // non-equal length planes (e.g. YUV420).
-    //     TODO: Update it. Important for compatibility and cheaper decode.
-    assert(frame_ctx->sws_ctx->src_w == blboxi_width_abs_unsafe(frame_ctx->capture_area_px));
-    sws_scale(
-        frame_ctx->sws_ctx,
-        _captured_planebufs, _captured_linesizes, 0, blboxi_height_abs_unsafe(frame_ctx->capture_area_px),
-        frame_ctx->av_frame_encoded->data, frame_ctx->av_frame_encoded->linesize
-    );
-    assert(frame_ctx->av_codec_ctx->time_base.den == NSEC_PER_SEC);
-    frame_ctx->av_frame_encoded->pts = frame_ctx->presentation_time_nsec;
 
-    int _retval_enc = avcodec_send_frame(frame_ctx->av_codec_ctx, frame_ctx->av_frame_encoded);
+    // Convert
+
+    int _retval_filter;
+    // XXX: Can we make this const so area_start_addr can be const? It should
+    // not change for the lifetime of this function (well, at least until the
+    // next frame's dispatch at the end).
+    frame_ctx->av_frame_captured->data[0] = area_start_addr;
+    frame_ctx->av_frame_captured->pts = frame_ctx->presentation_time_nsec;
+
+    _retval_filter = av_buffersrc_add_frame_flags(
+            frame_ctx->av_filter_buffersrc_ctx,
+            frame_ctx->av_frame_captured,
+            // TODO: AV_BUFFERSRC_FLAG_KEEP_REF, but need safe setup, e.g.
+            //       a ring buffer, so we know the frame doesn't get
+            //       overwritten
+            //           TODO: Check whether the graph can actually buffer
+            //           frames in a way where this matters, beyond the
+            //           life of this function (until next capture frame
+            //           dispatch). In any case we will probably need a
+            //           safe setup like this for the encoder.
+            0
+    );
+    assert(0 <= _retval_filter);
+
+    _retval_filter = av_buffersink_get_frame(
+            frame_ctx->av_filter_buffersink_ctx,
+            frame_ctx->av_frame_converted
+    );
+    assert(0 <= _retval_filter);
+
+
+    // Encode
+
+    av_frame_make_writable(frame_ctx->av_frame_converted);
+
+    int _retval_enc = avcodec_send_frame(frame_ctx->av_codec_ctx, frame_ctx->av_frame_converted);
     assert(_retval_enc != AVERROR(EINVAL));
     AVPacket *av_packet = av_packet_alloc(); // XXX: Redundant with av_new_packet? And maybe vise-versa in our case?
     while (_retval_enc >= 0) {
@@ -189,8 +205,8 @@ end_capture_err:
     avformat_free_context(frame_ctx->av_format_ctx);
     assert(frame_ctx->av_codec_ctx);
     avcodec_free_context(&frame_ctx->av_codec_ctx);
-    assert(frame_ctx->av_frame_encoded);
-    av_frame_free(&frame_ctx->av_frame_encoded);
+    assert(frame_ctx->av_frame_converted);
+    av_frame_free(&frame_ctx->av_frame_converted);
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 

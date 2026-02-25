@@ -6,7 +6,7 @@ ENV_CFLAGS := $(CFLAGS)
 ENV_CFLAGS_REL := $(CFLAGS_REL)
 ENV_CFLAGS_DBG := $(CFLAGS_DBG)
 
-FFMPEG_LIBS := libavcodec libavutil libavformat libswscale
+FFMPEG_LIBS := libavcodec libavutil libavformat libavfilter libswscale
 PKGCONF_LIBS := xkbcommon $(FFMPEG_LIBS)
 
 BUILD_DIR := build

@@ -8,8 +8,10 @@
 #include <libavformat/avformat.h>
 #include <libavutil/pixfmt.h>
 #include <libswscale/swscale.h>
+#include <libavutil/opt.h>
 
 #include "state.h"
+#include "state-util.h"
 #include "event-handlers.h"
 #include "lib_interop.h"
 #include "capture.h"
@@ -101,40 +103,86 @@ init_ffmpeg(struct scran_output *st_output)
 {
     struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
 
-    const int width_px_captured = blboxi_width_abs_unsafe(frame_ctx->capture_area_px);
-    const int height_px_captured = blboxi_height_abs_unsafe(frame_ctx->capture_area_px);
+    // NOTE: Zeroing out the last bit because x264 needs the dimensions to be
+    // divisible by 2. TODO: Also update selection area visuals to this width.
+    const int width_px_captured = blboxi_width_abs_unsafe(frame_ctx->capture_area_px) & ~0b1;
+    const int height_px_captured = blboxi_height_abs_unsafe(frame_ctx->capture_area_px) & ~0b1;
     const enum AVPixelFormat av_pixel_format_captured = wl_shm_format_to_ffmpeg(st_output->capture.shm_format);
-    const int width_px_encoded = width_px_captured;
-    const int height_px_encoded = height_px_captured;
+    const AVRational av_framerate_captured = { st_output->mode.refresh_rate_mHz, MILLIHZ_PER_HZ };
+    const AVRational av_time_base_captured = { 1, NSEC_PER_SEC };
+
+    enum ScranAVTransposeDir av_transpose_direction =
+        wl_output_transform_to_ffmpeg_transpose_dir__inverse(st_output->transform);
+
+    const int width_px_converted = get_transformed_width(width_px_captured, height_px_captured, st_output->transform);
+    const int height_px_converted = get_transformed_height(width_px_captured, height_px_captured, st_output->transform);
     // NOTE: Some pixel formats (and some file formats), e.g. YUV420P, require
     //       even-numbered (or some other multiplier) height and/or width.
     //       Others, e.g. YUV444P and RGBA32, do not.
-    const enum AVPixelFormat av_pixel_format_encoded = AV_PIX_FMT_YUV444P;
+    const enum AVPixelFormat av_pixel_format_converted = AV_PIX_FMT_YUV420P;
 
 
-    // SwsContext
-    const enum SwsFlags sws_flags = SWS_FAST_BILINEAR;
-    // TODO: Use lower-level functions than sws_getContext ?
-    //       Or getCachedContext?
-    frame_ctx->sws_ctx = sws_getContext(
-        width_px_captured, height_px_captured, av_pixel_format_captured,
-        width_px_encoded, height_px_encoded, av_pixel_format_encoded,
-        // TODO: What is src/dstFilter ?
-        sws_flags, NULL, NULL, NULL
+    // AVFrame (captured)
+    frame_ctx->av_frame_captured = av_frame_alloc();
+    frame_ctx->av_frame_captured->width = width_px_captured;
+    frame_ctx->av_frame_captured->height = height_px_captured;
+    frame_ctx->av_frame_captured->format = av_pixel_format_captured;
+    // XXX: We won't ever get planar src frame buffers... right..?
+    frame_ctx->av_frame_captured->linesize[0] = get_capture_stride(st_output);
+
+
+    // AVFilter
+    // TODO: Ensure filters are freed before clipboard mode and/or before
+    // subsequent video captures. (And do the same for all the other ffmpeg
+    // context objects as well)
+    frame_ctx->av_filter_graph = avfilter_graph_alloc();
+
+    // AVFilter: Source (receives av_frame_captured)
+    frame_ctx->av_filter_buffersrc_ctx = avfilter_graph_alloc_filter(
+            frame_ctx->av_filter_graph, avfilter_get_by_name("buffer"), "in"
     );
+    av_opt_set_image_size(frame_ctx->av_filter_buffersrc_ctx,
+            "video_size", width_px_captured, height_px_captured, AV_OPT_SEARCH_CHILDREN);
+    av_opt_set_pixel_fmt(frame_ctx->av_filter_buffersrc_ctx,
+            "pix_fmt", av_pixel_format_captured, AV_OPT_SEARCH_CHILDREN);
+    av_opt_set_q(frame_ctx->av_filter_buffersrc_ctx,
+            "time_base", av_time_base_captured, AV_OPT_SEARCH_CHILDREN);
+    av_opt_set_q(frame_ctx->av_filter_buffersrc_ctx,
+            "pixel_aspect", (AVRational){1,4}, AV_OPT_SEARCH_CHILDREN);
+    avfilter_init_dict(frame_ctx->av_filter_buffersrc_ctx, NULL);
+
+    // AVFilter: Transpose
+    frame_ctx->av_filter_transpose_ctx = avfilter_graph_alloc_filter(
+            frame_ctx->av_filter_graph, avfilter_get_by_name("transpose"), "transpose"
+    );
+    av_opt_set_int(frame_ctx->av_filter_transpose_ctx,
+            "dir", av_transpose_direction, AV_OPT_SEARCH_CHILDREN);
+    avfilter_init_dict(frame_ctx->av_filter_transpose_ctx, NULL);
+
+    avfilter_link(frame_ctx->av_filter_buffersrc_ctx, 0,
+                  frame_ctx->av_filter_transpose_ctx, 0);
+
+    // AVFilter: Sink (writes into av_frame_converted)
+    frame_ctx->av_filter_buffersink_ctx = avfilter_graph_alloc_filter(
+            frame_ctx->av_filter_graph, avfilter_get_by_name("buffersink"), "out"
+    );
+    av_opt_set_array( frame_ctx->av_filter_buffersink_ctx,
+            "pixel_formats", AV_OPT_SEARCH_CHILDREN,
+            0, 1, AV_OPT_TYPE_PIXEL_FMT, &av_pixel_format_converted
+    );
+    avfilter_init_dict(frame_ctx->av_filter_buffersink_ctx, NULL);
+
+    avfilter_link(frame_ctx->av_filter_transpose_ctx, 0,
+                  frame_ctx->av_filter_buffersink_ctx, 0);
+
+    avfilter_graph_config(frame_ctx->av_filter_graph, NULL);
 
 
-    //AVFrame (encoded)
-    frame_ctx->av_frame_encoded = av_frame_alloc();
-    frame_ctx->av_frame_encoded->width = width_px_captured;
-    frame_ctx->av_frame_encoded->height = height_px_captured;
-    frame_ctx->av_frame_encoded->format = av_pixel_format_encoded;
-    // TODO:
-    // "@warning: if frame already has been allocated, calling this function
-    //  will leak memory. In addition, undefined behavior can occur in certain cases."
-    //    - Seemingly refers to the buffers of the frame, not the AVFrame itself ?
-    //        Maybe open an ffmpeg issue/PR that clarifies it, if true?
-    av_frame_get_buffer(frame_ctx->av_frame_encoded, 0);
+    // AVFrame (converted, ready to be fed to encoder)
+    frame_ctx->av_frame_converted = av_frame_alloc();
+    frame_ctx->av_frame_converted->width = width_px_converted;
+    frame_ctx->av_frame_converted->height = height_px_converted;
+    frame_ctx->av_frame_converted->format = av_pixel_format_converted;
 
 
     // AVCodec
@@ -142,15 +190,20 @@ init_ffmpeg(struct scran_output *st_output)
 
     // AVCodecContext (encoder)
     frame_ctx->av_codec_ctx = avcodec_alloc_context3(codec);
-    frame_ctx->av_codec_ctx->width = width_px_captured;
-    frame_ctx->av_codec_ctx->height = height_px_captured;
+    assert(frame_ctx->av_frame_converted->width != 0);
+    assert(frame_ctx->av_frame_converted->height != 0);
+    frame_ctx->av_codec_ctx->width = frame_ctx->av_frame_converted->width;
+    frame_ctx->av_codec_ctx->height = frame_ctx->av_frame_converted->height;
     // TODO: Variable framerate
     //       Is output::mode framerate_mhz same as the capture framerate?
-    frame_ctx->av_codec_ctx->framerate = (AVRational){st_output->mode.refresh_rate_mHz, MILLIHZ_PER_HZ};
+    frame_ctx->av_codec_ctx->framerate = av_framerate_captured;
     // INFO: Using NSEC_PER_SEC due to (wayland's) frame::presentation_time()
     // giving time with nanosecond precision.
     frame_ctx->av_codec_ctx->time_base = (AVRational){1, NSEC_PER_SEC};
-    frame_ctx->av_codec_ctx->pix_fmt = frame_ctx->av_frame_encoded->format;
+    // TODO: Assert or use common format here.
+    //       XXX: Also probably consistently use either the top-defined vars
+    //       *or* the av_frame_converted properties.
+    frame_ctx->av_codec_ctx->pix_fmt = frame_ctx->av_frame_converted->format;
     frame_ctx->av_codec_ctx->bit_rate = 20 * BITS_PER_MEGABIT;
     // XXX TODO: Figure out good default options for predicted frames
     frame_ctx->av_codec_ctx->max_b_frames = 0;
@@ -183,6 +236,8 @@ init_ffmpeg(struct scran_output *st_output)
     // libav after write_header. av_packet_rescale_ts() exists to convert from
     // Encoder timestamps to Format timestamps prior to handing off the packet.
     // TODO: Should we set this to framerate? To encoder time_base?
+    assert(frame_ctx->av_codec_ctx->framerate.num != 0);
+    assert(frame_ctx->av_codec_ctx->framerate.den != 0);
     _av_stream->time_base = frame_ctx->av_codec_ctx->framerate;
     avcodec_parameters_from_context(_av_stream->codecpar, frame_ctx->av_codec_ctx);
 
