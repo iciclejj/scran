@@ -6,6 +6,7 @@
 #include <blend2d/blend2d.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/pixdesc.h>
+#include <libavfilter/avfilter.h>
 
 // XXX TODO: Verify that this assignment happens at compile time.
 //           Also, maybe make it prettier if possible...
@@ -106,4 +107,41 @@ const char *
 wl_shm_format_to_ffmpeg_cli_str(enum wl_shm_format wl_shm_format)
 {
     return av_get_pix_fmt_name(wl_shm_format_to_ffmpeg(wl_shm_format));
+}
+
+// enum ScranAVTransposeDir
+// wl_output_transform_to_ffmpeg_transpose_dir(enum wl_output_transform transform)
+// {
+//     switch (transform) {
+//         case WL_OUTPUT_TRANSFORM_NORMAL: return SCRAN_AV_TRANSPOSE_DIR_NORMAL;
+//         // XXX: This is seemingly not supported..?
+//         //          TODO: I guess allow two filter passes to correctly flip this,
+//         //                if we don't end up switching to our own conversion code
+//         case WL_OUTPUT_TRANSFORM_FLIPPED_180: return SCRAN_AV_TRANSPOSE_DIR_UNSUPPORTED;
+//
+//         case WL_OUTPUT_TRANSFORM_90:     return SCRAN_AV_TRANSPOSE_DIR_90;
+//         case WL_OUTPUT_TRANSFORM_180:    return SCRAN_AV_TRANSPOSE_DIR_180;
+//         case WL_OUTPUT_TRANSFORM_270:    return SCRAN_AV_TRANSPOSE_DIR_270;
+//         case WL_OUTPUT_TRANSFORM_FLIPPED:     return SCRAN_AV_TRANSPOSE_DIR_FLIPPED;
+//         case WL_OUTPUT_TRANSFORM_FLIPPED_90:  return SCRAN_AV_TRANSPOSE_DIR_FLIPPED_90;
+//         case WL_OUTPUT_TRANSFORM_FLIPPED_270: return SCRAN_AV_TRANSPOSE_DIR_FLIPPED_270;
+//     }
+// }
+enum ScranAVTransposeDir
+wl_output_transform_to_ffmpeg_transpose_dir__inverse(enum wl_output_transform transform)
+{
+    switch (transform) {
+        case WL_OUTPUT_TRANSFORM_NORMAL: return SCRAN_AV_TRANSPOSE_DIR_NORMAL;
+        // XXX: This is seemingly not supported..?
+        //          TODO: I guess allow two filter passes to correctly flip this,
+        //                if we don't end up switching to our own conversion code
+        case WL_OUTPUT_TRANSFORM_FLIPPED_180: return SCRAN_AV_TRANSPOSE_DIR_UNSUPPORTED;
+
+        case WL_OUTPUT_TRANSFORM_90:     return SCRAN_AV_TRANSPOSE_DIR_270;
+        case WL_OUTPUT_TRANSFORM_180:    return SCRAN_AV_TRANSPOSE_DIR_180;
+        case WL_OUTPUT_TRANSFORM_270:    return SCRAN_AV_TRANSPOSE_DIR_90;
+        case WL_OUTPUT_TRANSFORM_FLIPPED:     return SCRAN_AV_TRANSPOSE_DIR_FLIPPED;
+        case WL_OUTPUT_TRANSFORM_FLIPPED_90:  return SCRAN_AV_TRANSPOSE_DIR_FLIPPED_270;
+        case WL_OUTPUT_TRANSFORM_FLIPPED_270: return SCRAN_AV_TRANSPOSE_DIR_FLIPPED_90;
+    }
 }
