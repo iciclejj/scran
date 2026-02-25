@@ -151,16 +151,26 @@ init_ffmpeg(struct scran_output *st_output)
             "pixel_aspect", (AVRational){1,4}, AV_OPT_SEARCH_CHILDREN);
     avfilter_init_dict(frame_ctx->av_filter_buffersrc_ctx, NULL);
 
-    // AVFilter: Transpose
-    frame_ctx->av_filter_transpose_ctx = avfilter_graph_alloc_filter(
-            frame_ctx->av_filter_graph, avfilter_get_by_name("transpose"), "transpose"
-    );
-    av_opt_set_int(frame_ctx->av_filter_transpose_ctx,
-            "dir", av_transpose_direction, AV_OPT_SEARCH_CHILDREN);
-    avfilter_init_dict(frame_ctx->av_filter_transpose_ctx, NULL);
 
-    avfilter_link(frame_ctx->av_filter_buffersrc_ctx, 0,
-                  frame_ctx->av_filter_transpose_ctx, 0);
+    AVFilterContext *_sink_input_filter;
+    if (av_transpose_direction == SCRAN_AV_TRANSPOSE_DIR_NORMAL
+        || av_transpose_direction == SCRAN_AV_TRANSPOSE_DIR_UNSUPPORTED
+    ) {
+        _sink_input_filter = frame_ctx->av_filter_buffersrc_ctx;
+    } else {
+        // AVFilter: Transpose
+        frame_ctx->av_filter_transpose_ctx = avfilter_graph_alloc_filter(
+                frame_ctx->av_filter_graph, avfilter_get_by_name("transpose"), "transpose"
+        );
+        av_opt_set_int(frame_ctx->av_filter_transpose_ctx,
+                "dir", av_transpose_direction, AV_OPT_SEARCH_CHILDREN);
+        avfilter_init_dict(frame_ctx->av_filter_transpose_ctx, NULL);
+
+        avfilter_link(frame_ctx->av_filter_buffersrc_ctx, 0,
+                      frame_ctx->av_filter_transpose_ctx, 0);
+
+        _sink_input_filter = frame_ctx->av_filter_transpose_ctx;
+    }
 
     // AVFilter: Sink (writes into av_frame_converted)
     frame_ctx->av_filter_buffersink_ctx = avfilter_graph_alloc_filter(
@@ -172,7 +182,7 @@ init_ffmpeg(struct scran_output *st_output)
     );
     avfilter_init_dict(frame_ctx->av_filter_buffersink_ctx, NULL);
 
-    avfilter_link(frame_ctx->av_filter_transpose_ctx, 0,
+    avfilter_link(_sink_input_filter, 0,
                   frame_ctx->av_filter_buffersink_ctx, 0);
 
     avfilter_graph_config(frame_ctx->av_filter_graph, NULL);
