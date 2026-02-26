@@ -10,6 +10,7 @@
 #include <libswscale/swscale.h>
 #include <libavutil/opt.h>
 
+#include "ext-image-copy-capture-v1.h"
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
@@ -28,6 +29,23 @@
 #define _CODEC_X264_NAME "libx264"
 
 extern struct scran g_state;
+
+void
+init_wl_capture_frame__video(struct capture_frame_context *frame_ctx)
+{
+    frame_ctx->frame =
+        ext_image_copy_capture_session_v1_create_frame(
+            *frame_ctx->session
+        );
+    ext_image_copy_capture_frame_v1_add_listener(frame_ctx->frame, &image_copy_capture_frame_listener__video_capture, frame_ctx);
+    // TODO: Check ffmpeg's buffering behavior and maybe use ring buffer for
+    // this, with a size that ensures frames still buffered by
+    // avcodec/avfiltergraph etc. stay untouched.
+    ext_image_copy_capture_frame_v1_attach_buffer(
+        frame_ctx->frame,
+        frame_ctx->st_buffer.wl_buffer
+    );
+}
 
 void
 dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
@@ -293,7 +311,13 @@ start_video_capture(struct scran_output *st_output)
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
-    dispatch_video_capture_event_loop(&st_output->capture.frame_ctx);
+    init_wl_capture_frame__video(&st_output->capture.frame_ctx);
+
+    // Ensure sure first frame is fully rendered
+    ext_image_copy_capture_frame_v1_damage_buffer(
+        st_output->capture.frame_ctx.frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px
+    );
+    ext_image_copy_capture_frame_v1_capture(st_output->capture.frame_ctx.frame);
     st_output->capture.frame_ctx.capturing_video = true;
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 

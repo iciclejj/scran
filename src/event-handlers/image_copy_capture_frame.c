@@ -189,7 +189,8 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     // TODO: avio_flush ?
 
-    dispatch_video_capture_event_loop(frame_ctx);
+    init_wl_capture_frame__video(frame_ctx);
+    ext_image_copy_capture_frame_v1_capture(frame_ctx->frame);
 
     return;
 

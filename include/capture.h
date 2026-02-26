@@ -30,7 +30,7 @@
 void create_timestamped_filename(char filename_ret[CAPTURE_OUTPUT_FILENAME_MAX], const char file_extension[CAPTURE_OUTPUT_FILE_EXTENSION_MAX]);
 
 bool start_video_capture(struct scran_output *st_output);
-void dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx);
+void init_wl_capture_frame__video(struct capture_frame_context *frame_ctx);
 
 bool start_image_capture(struct scran_output *st_output);
 void dispatch_image_capture_event(struct scran_output_capture *capture);
