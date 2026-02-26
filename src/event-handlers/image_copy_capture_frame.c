@@ -148,7 +148,8 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     int _retval_enc = avcodec_send_frame(frame_ctx->av_codec_ctx, frame_ctx->av_frame_converted);
     assert(_retval_enc != AVERROR(EINVAL));
-    AVPacket *av_packet = av_packet_alloc(); // XXX: Redundant with av_new_packet? And maybe vise-versa in our case?
+    // TODO: Initialize this once, and put in frame_ctx
+    AVPacket *av_packet = av_packet_alloc();
     while (_retval_enc >= 0) {
         _retval_enc = avcodec_receive_packet(frame_ctx->av_codec_ctx, av_packet);
         assert(_retval_enc != AVERROR(EINVAL));
