@@ -73,6 +73,35 @@ handle_image_copy_capture_frame_presentation_time__video_capture(
     frame_ctx->presentation_time_nsec = tv_sec_to_nsec + tv_nsec;
 }
 
+static inline void
+_write_video_frame(
+    struct capture_frame_context *frame_ctx,
+    AVPacket *av_packet // Encoded frame
+) {
+    assert(av_packet != NULL);
+
+    const AVStream *const _av_stream = frame_ctx->av_format_ctx->streams[AV_FORMAT_STREAM_IDX_VIDEO];
+
+    av_packet->stream_index = AV_FORMAT_STREAM_IDX_VIDEO;
+    assert(av_packet->stream_index == _av_stream->index);
+
+    // NOTE: This is doing the work of av_packet_rescale_ts(), but with
+    // asserts instead of conditionals. Just switch to that or to
+    // if-statements if indeterminism becomes necessary.
+    assert(av_packet->pts != AV_NOPTS_VALUE);
+    av_packet->pts = av_rescale_q(av_packet->pts, frame_ctx->av_codec_ctx->time_base, _av_stream->time_base);
+    assert(av_packet->dts != AV_NOPTS_VALUE);
+    av_packet->dts = av_rescale_q(av_packet->dts, frame_ctx->av_codec_ctx->time_base, _av_stream->time_base);
+
+    assert(av_packet->duration <= 0);
+
+    // TODO: Look into conditionally using av_write_frame for sequential
+    //       encoding
+    av_interleaved_write_frame(frame_ctx->av_format_ctx, av_packet);
+
+    // INFO: packet gets unreferenced at start of loop by avcodec_receive_packet
+}
+
 // TODO:
 //  - Can we fully avoid capturing the overlay (beyond just 
 //    making sure it's out of frame) ?
@@ -91,15 +120,6 @@ handle_image_copy_capture_frame_ready__video_capture(
     struct capture_frame_context *frame_ctx = data;
 
     ext_image_copy_capture_frame_v1_destroy(frame);
-
-    // TODO: Go through uses of capturing_video to check for redundancy now
-    // that we have a global state, with e.g. `.exit_requested`.
-    if (!frame_ctx->capturing_video) {
-        goto end_capture;
-    } else if (g_state.exit_requested) {
-        frame_ctx->capturing_video = false;
-        goto end_capture;
-    }
 
     // TODO: Find a way to clean this up and make it prettier
 
@@ -164,23 +184,25 @@ handle_image_copy_capture_frame_ready__video_capture(
             return;
         }
 
-        av_packet->stream_index = AV_FORMAT_STREAM_IDX_VIDEO;
-        const AVStream *const _av_stream = frame_ctx->av_format_ctx->streams[AV_FORMAT_STREAM_IDX_VIDEO];
-        assert(av_packet->stream_index == _av_stream->index);
-        // NOTE: This is doing the work of av_packet_rescale_ts(), but with
-        // asserts instead of conditionals. Just switch to that or to
-        // if-statements if indeterminism becomes necessary.
-        assert(av_packet->pts != AV_NOPTS_VALUE);
-        av_packet->pts = av_rescale_q(av_packet->pts, frame_ctx->av_codec_ctx->time_base, _av_stream->time_base);
-        assert(av_packet->dts != AV_NOPTS_VALUE);
-        av_packet->dts = av_rescale_q(av_packet->dts, frame_ctx->av_codec_ctx->time_base, _av_stream->time_base);
-        assert(av_packet->duration <= 0);
-
-        // TODO: Look into conditionally using av_write_frame for sequential
-        //       encoding
-        av_interleaved_write_frame(frame_ctx->av_format_ctx, av_packet);
+        _write_video_frame(frame_ctx, av_packet);
 
         // INFO: packet gets unreferenced at start of loop by avcodec_receive_packet
+    }
+
+    // NOTE: We do this check *after* writing the incoming frame. This ensures
+    // that the video will not be cut short at the end if we're only capturing
+    // frames on demand (with variable framerate) and nothing has changed for
+    // the last x amount of time.
+    // Calling capture_frame::damage_buffer() when signaling to end the capture
+    // should trigger the necessary final frame.
+    //
+    // TODO: Go through uses of capturing_video to check for redundancy now
+    // that we have a global state, with e.g. `.exit_requested`.
+    if (!frame_ctx->capturing_video) {
+        goto end_capture;
+    } else if (g_state.exit_requested) {
+        frame_ctx->capturing_video = false;
+        goto end_capture;
     }
 
     // TODO: Double-check that freeing is safe wrt. encoder interleaving etc.,
@@ -197,7 +219,17 @@ handle_image_copy_capture_frame_ready__video_capture(
     // TODO: Probably define end_capture as an end_video_capture function, in the
     // same file as start_video_capture, to make setup/teardown less disjointed.
 end_capture:
+    // Drain codec
+    avcodec_send_frame(frame_ctx->av_codec_ctx, NULL);
+    assert(av_packet != NULL);
+    while (avcodec_receive_packet(frame_ctx->av_codec_ctx, av_packet) != AVERROR_EOF) {
+        _write_video_frame(frame_ctx, av_packet);
+    }
+    av_packet_free(&av_packet);
+
+    // Finalize file
     av_write_trailer(frame_ctx->av_format_ctx);
+
 end_capture_err:
     // Note: Most (all?) of these are fine to call with null pointers, despite
     // the asserts
