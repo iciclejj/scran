@@ -13,10 +13,10 @@
 
 #include "state.h"
 #include "state-util.h"
-#include "event-handlers.h"
-#include "lib-interop.h"
-#include "capture.h"
 #include "util/blend2d.h"
+#include "util/lib-interop.h"
+#include "event-handlers.h"
+#include "capture.h"
 #include "print.h"
 #include "init.h"
 #include "selection.h"

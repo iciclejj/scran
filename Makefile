@@ -87,7 +87,7 @@ $(build_dir_debug)/%.o: %.c    protocols_srcs
 	$(CC) $(CFLAGS_DBG) -c $< -o $@
 
 # TODO: Handle changed header files
-_srcdirs := src src/event-handlers src/init
+_srcdirs := src src/event-handlers src/init src/util
 srcs := $(foreach dir,$(_srcdirs),$(wildcard $(dir)/*.c))
 
 prog_release := $(build_dir_release)/$(PROG)

@@ -4,10 +4,10 @@
 #include <ext-image-copy-capture-v1.h>
 
 #include "state.h"
-#include "state-util.h" // TODO: Move this into util/
-#include "capture.h"
+#include "state-util.h" // TODO: Move this into util/ ?
 #include "util/blend2d.h"
-#include "lib-interop.h" // TODO: Move this into util/
+#include "util/lib-interop.h"
+#include "capture.h"
 #include "print.h"
 #include "simd.h"
 #include "event-handlers.h"
