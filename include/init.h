@@ -80,6 +80,4 @@ bool init_selection_and_blend2d(struct scran_output *st_output);
 
 bool init_postwl__capture(struct scran_output *st_output);
 
-int shm_open_anon(void);
-
 #endif

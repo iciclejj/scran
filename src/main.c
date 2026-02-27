@@ -152,6 +152,22 @@ _arena_add_block(
 }
 
 
+// Open shm file, get fd, unlink file, return fd.
+// The underlying file survives unlinking.
+int
+_shm_open_anon(void)
+{
+    static const char *shm_tmp_filename = "/icicle-wayland-client-jfkdsalfj";
+    // TODO: Generate random filenames in case file already exists?
+    int fd = shm_open(shm_tmp_filename, O_CREAT | O_RDWR | O_EXCL, 0600);
+
+    if (fd >= 0) {
+        shm_unlink(shm_tmp_filename);
+    }
+
+    return fd;
+}
+
 // TODO:
 //  - Add --slim/--no-video arg that skips allocating video-only requirements,,
 //    extra frame buffers, etc.
@@ -206,7 +222,7 @@ init_meminit(
     //
     // Get memory
     //
-    const int global_pool_shm_fd = shm_open_anon();
+    const int global_pool_shm_fd = _shm_open_anon();
     if (ftruncate(global_pool_shm_fd, shm_arena_ctx->size) == -1) {
         DEBUG("Failed to resize shm file to %zu\n", shm_arena_ctx->size);
         close(global_pool_shm_fd);
