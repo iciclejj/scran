@@ -223,6 +223,10 @@ init_meminit(
     // Get memory
     //
     const int global_pool_shm_fd = _shm_open_anon();
+    if (global_pool_shm_fd == -1) {
+        eprintf("Failed to open shared memory.\n");
+        return false;
+    }
     if (ftruncate(global_pool_shm_fd, shm_arena_ctx->size) == -1) {
         DEBUG("Failed to resize shm file to %zu\n", shm_arena_ctx->size);
         close(global_pool_shm_fd);
