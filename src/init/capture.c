@@ -9,11 +9,7 @@
 #include "ext-image-copy-capture-v1.h"
 
 #include "state.h"
-#include "state-util.h"
 #include "event-handlers.h"
-#include "lib_interop.h"
-#include "print.h"
-#include "capture.h"
 
 
 // TODO: Specify for all these init functions whether they need to be called
