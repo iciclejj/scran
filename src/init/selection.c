@@ -11,7 +11,7 @@
 // given output. More specialized init happens in dispatch_surface_event_loop.
 // Maybe this should be refactored to be more immediately obvious...
 bool
-init_selection_and_blend2d(struct scran_output *st_output)
+init_postmem__selection(struct scran_output *st_output)
 {
     struct scran_output_selectionContext *const selection_ctx = &st_output->selection_ctx;
     struct scran_output_surface * st_surface = &st_output->surface;
@@ -54,7 +54,7 @@ init_selection_and_blend2d(struct scran_output *st_output)
 
 
 void
-destroy_selection_and_blend2d(struct scran_output *st_output)
+init_postmem__selection__destroy(struct scran_output *st_output)
 {
     struct scran_output_selectionContext *const selection_ctx = &st_output->selection_ctx;
     struct scran_output_surface * st_surface = &st_output->surface;

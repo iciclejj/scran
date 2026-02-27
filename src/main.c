@@ -311,7 +311,7 @@ init_postmem()
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output *_st_output = &g_state.outputs[i];
 
-        if (!init_selection_and_blend2d(_st_output)) {
+        if (!init_postmem__selection(_st_output)) {
             return false;
         }
 
@@ -345,7 +345,7 @@ static void
 init_postmem__destroy()
 {
     for (int i = 0; i < g_state.n_outputs; ++i) {
-        destroy_selection_and_blend2d(&g_state.outputs[i]);
+        init_postmem__selection__destroy(&g_state.outputs[i]);
     }
 }
 

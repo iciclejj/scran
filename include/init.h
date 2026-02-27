@@ -75,7 +75,7 @@ void set_surface_theme(struct scran_output *st_output, enum surface_theme action
 bool init_premem__capture(struct scran_output *st_output, struct scran_seat_datacontrol *st_datacontrol, struct scran_globals *globals);
 void init_premem__capture__destroy(struct scran_output *st_output);
 
-bool init_selection_and_blend2d(struct scran_output *st_output);
- void destroy_selection_and_blend2d(struct scran_output *st_output);
+bool init_postmem__selection(struct scran_output *st_output);
+ void init_postmem__selection__destroy(struct scran_output *st_output);
 
 #endif
