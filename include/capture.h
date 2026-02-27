@@ -2,6 +2,7 @@
 #define CAPTURE_H
 
 #include <stdbool.h>
+
 #include <libavutil/rational.h>
 
 #include "state.h"

@@ -1,5 +1,3 @@
-#include "lib_interop.h"
-#include "capture.h"
 #include <assert.h>
 
 #include <wayland-client.h>
@@ -7,6 +5,10 @@
 #include <libavcodec/avcodec.h>
 #include <libavutil/pixdesc.h>
 #include <libavfilter/avfilter.h>
+
+#include "lib_interop.h"
+#include "capture.h"
+
 
 // XXX TODO: Verify that this assignment happens at compile time.
 //           Also, maybe make it prettier if possible...
@@ -32,6 +34,7 @@
 //                   case WL_SHM_FORMAT_XBGR8888: return AV_PIX_FMT_RGB0;
 //               At least when comparing to session::shm_format's output.
 
+
 // Natively supported formats (index into bl_image_format global)
 enum BLFormat
 wl_shm_format_to_blend2d(enum wl_shm_format wl_shm_format)
@@ -44,6 +47,7 @@ wl_shm_format_to_blend2d(enum wl_shm_format wl_shm_format)
         default:                     return BL_FORMAT_NONE;
     }
 }
+
 
 struct BLFormatInfo
 wl_shm_format_to_blend2d_struct(enum wl_shm_format wl_shm_format)
@@ -61,6 +65,7 @@ wl_shm_format_to_blend2d_struct(enum wl_shm_format wl_shm_format)
     default: return (BLFormatInfo){ 0 };
     }
 }
+
 
 uint32_t
 wl_shm_format_to_blend2d_scran_rgba32_shuffle(enum wl_shm_format wl_shm_format)
@@ -87,6 +92,7 @@ wl_shm_format_to_blend2d_scran_rgba32_shuffle(enum wl_shm_format wl_shm_format)
     }
 }
 
+
 enum AVPixelFormat
 wl_shm_format_to_ffmpeg(enum wl_shm_format wl_shm_format)
 {
@@ -103,11 +109,13 @@ wl_shm_format_to_ffmpeg(enum wl_shm_format wl_shm_format)
     }
 }
 
+
 const char *
 wl_shm_format_to_ffmpeg_cli_str(enum wl_shm_format wl_shm_format)
 {
     return av_get_pix_fmt_name(wl_shm_format_to_ffmpeg(wl_shm_format));
 }
+
 
 // enum ScranAVTransposeDir
 // wl_output_transform_to_ffmpeg_transpose_dir(enum wl_output_transform transform)
@@ -145,3 +153,4 @@ wl_output_transform_to_ffmpeg_transpose_dir__inverse(enum wl_output_transform tr
         case WL_OUTPUT_TRANSFORM_FLIPPED_270: return SCRAN_AV_TRANSPOSE_DIR_FLIPPED_90;
     }
 }
+

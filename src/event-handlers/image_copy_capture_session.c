@@ -8,6 +8,7 @@
 #include "event-handlers.h"
 #include "print.h"
 
+
 static void
 handle_image_copy_capture_session_buffer_size(
     void *data,
@@ -24,6 +25,7 @@ handle_image_copy_capture_session_buffer_size(
     assert(height == st_output->mode.height_px);
     st_output->capture.frame_ctx.source_width_px = width;
 }
+
 
 static void
 handle_image_copy_capture_session_shm_format(
@@ -51,6 +53,7 @@ handle_image_copy_capture_session_shm_format(
     }
 }
 
+
 static void
 handle_image_copy_capture_session_stopped(
     void *data,
@@ -63,6 +66,7 @@ handle_image_copy_capture_session_stopped(
     // TODO: Destroy dynamically allocated memory (e.g. libav objects)
 }
 
+
 void
 handle_image_copy_capture_session_dmabuf_device(
     void *data,
@@ -71,6 +75,7 @@ handle_image_copy_capture_session_dmabuf_device(
 ) {
     // TODO
 }
+
 
 void
 handle_image_copy_capture_session_dmabuf_format(
@@ -82,6 +87,7 @@ handle_image_copy_capture_session_dmabuf_format(
     // TODO
 }
 
+
 void
 handle_image_copy_capture_session_done(
     void *data,
@@ -89,6 +95,7 @@ handle_image_copy_capture_session_done(
 ) {
     // TODO
 }
+
 
 struct ext_image_copy_capture_session_v1_listener image_copy_capture_session_listener = {
     .buffer_size = handle_image_copy_capture_session_buffer_size,
@@ -98,3 +105,4 @@ struct ext_image_copy_capture_session_v1_listener image_copy_capture_session_lis
     .done = handle_image_copy_capture_session_done,
     .stopped = handle_image_copy_capture_session_stopped,
 };
+

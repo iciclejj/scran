@@ -2,6 +2,7 @@
 #define SCRAN_SIMD_H
 
 #include <stdint.h>
+
 #include <wayland-client.h>
 
 void

@@ -1,16 +1,16 @@
-#include <emmintrin.h>
-#include <immintrin.h>
 #include <stdint.h>
 #include <assert.h>
 #include <stdalign.h>
-#include <wayland-client-protocol.h>
+#include <tmmintrin.h>
+#include <emmintrin.h>
 #include <xmmintrin.h>
 
-#include "simd.h"
+#include <wayland-client.h>
 
-#include "state-util.h"
+#include "simd.h"
 #include "init.h"
-#include "print.h"
+#include "state-util.h"
+
 
 #define RGBA32_PIXEL_STRIDE 4
 
@@ -30,6 +30,7 @@ static_assert(sizeof(__m128i) % RGBA32_PIXEL_STRIDE == 0, "sizeof(__m128i) is no
     __attribute__((optimize("O3"))) \
     __attribute__((optimize("no-tree-vectorize"))) \
     __attribute__((target("no-sse")))
+
 
 static inline void *
 _floor_align_pointer_sse41(const void *ptr)
@@ -287,6 +288,7 @@ transform_framebuffer_fallback(
         break;
     }
 }
+
 
 // TODO: Use SSE_ROW_STRIDE for an unrolled loop in these for easier tweaking
 _TARGET_SSE41 _INLINE
@@ -643,6 +645,7 @@ _transform_framebuffer_sse41__unaligned(
     );
 }
 
+
 // TODO: Consider adding aligned and/or streamed versions of the sse functions
 //           Initial testing did not show a significant difference for simple
 //           image capture, on a 5600h CPU. Not tested for video, since we'll
@@ -662,7 +665,6 @@ typedef void (*transform_framebuffer_fn)(
     void **dst_with_offset,
     uintptr_t *dst_stride
 );
-
 
 // Rotates frame buffer, shuffles pixel geometry, and stores result to dst
 //

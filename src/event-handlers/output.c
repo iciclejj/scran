@@ -24,6 +24,7 @@ handle_output_geometry(
     // TODO: h_phys_mm, y_phys_mm ? For ruler or something?
 }
 
+
 static void
 handle_output_scale(
     void *data,
@@ -32,6 +33,7 @@ handle_output_scale(
 ) {
     // TODO
 }
+
 
 // TODO:
 //     Figure out some simple but robust set of asserts or conditions that
@@ -61,6 +63,7 @@ handle_output_mode(
     st_output->mode.height_px = height;
     st_output->mode.refresh_rate_mHz = refresh_rate_mHz;
 }
+
 
 static void
 handle_output_done(
@@ -100,3 +103,4 @@ struct wl_output_listener output_listener = {
     .name = handle_output_name,
     .description = handle_output_description,
 };
+

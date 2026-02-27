@@ -6,6 +6,7 @@
 #include "state.h"
 #include "stddef.h"
 
+
 extern struct scran g_state;
 
 

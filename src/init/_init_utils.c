@@ -1,5 +1,4 @@
 #include <fcntl.h>
-
 #include <sys/mman.h>
 
 #include "init.h"

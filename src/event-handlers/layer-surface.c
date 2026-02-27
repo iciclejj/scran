@@ -9,6 +9,7 @@
 #include "state-util.h"
 #include "event-handlers.h"
 
+
 static void
 handle_layer_surface_configure(
     void *data,
@@ -29,6 +30,7 @@ handle_layer_surface_configure(
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 }
 
+
 static void
 handle_layer_surface_closed(void *data, struct zwlr_layer_surface_v1 *layer_surface)
 {
@@ -39,7 +41,9 @@ handle_layer_surface_closed(void *data, struct zwlr_layer_surface_v1 *layer_surf
     }
 }
 
+
 struct zwlr_layer_surface_v1_listener layer_surface_listener = {
     .configure = handle_layer_surface_configure,
     .closed = handle_layer_surface_closed
 };
+

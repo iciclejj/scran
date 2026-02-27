@@ -12,16 +12,12 @@
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 
-#include "wayland-client-protocol.h"
-
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
 #include "init.h"
 #include "print.h"
 
-// XXX TODO: Rename this to g_scran or g_scran_state, probably.
-struct scran g_state = { };
 
 // TODO:
 //     Move init/ code back in here or put init code in there consistently...
@@ -31,6 +27,10 @@ struct scran g_state = { };
 // TODO: Dynamically find this name
 #define SOCKNAME "wayland-1"
 #define SOCKPATH "/run/user/1000/" SOCKNAME
+
+
+// XXX TODO: Rename this to g_scran or g_scran_state, probably.
+struct scran g_state = { };
 
 
 static bool
@@ -78,6 +78,7 @@ init_premem()
     return true;
 }
 
+
 static inline void
 _stay_alive_while_clipboard_active()
 {
@@ -93,6 +94,7 @@ _stay_alive_while_clipboard_active()
         eprintf("Clipboard selection stolen! Continuing exit.\n");
     }
 }
+
 
 static void
 init_premem__destroy()
@@ -113,6 +115,7 @@ init_premem__destroy()
 
     registry_listener__destroy(&g_state);
 }
+
 
 // Just bump this if/when we need more
 #define _ARENA_BLOCKS_MAX (MAX_OUTPUTS * 3)
@@ -147,6 +150,7 @@ _arena_add_block(
     arena_ctx->size += block_alignment_front_padding + block_size;
     arena_ctx->block_count += 1;
 }
+
 
 // TODO:
 //  - Add --slim/--no-video arg that skips allocating video-only requirements,,
@@ -279,6 +283,7 @@ init_meminit(
     return true;
 }
 
+
 static bool
 init_postmem()
 {
@@ -315,6 +320,7 @@ init_postmem()
     return true;
 }
 
+
 static void
 init_postmem__destroy()
 {
@@ -322,6 +328,7 @@ init_postmem__destroy()
         destroy_selection_and_blend2d(&g_state.outputs[i]);
     }
 }
+
 
 // Init that should happen after all wayland-related init is finished
 static bool
@@ -337,6 +344,7 @@ init_postwl()
 
     return true;
 }
+
 
 // TODO: Allow selection before capture protocols are ready?
 //           Probably negligible and difficult without multithreading

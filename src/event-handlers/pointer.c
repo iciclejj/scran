@@ -5,8 +5,8 @@
 
 #include "state.h"
 #include "state-util.h"
-#include "event-handlers.h"
 #include "util/blend2d.h"
+#include "event-handlers.h"
 
 
 static inline void
@@ -19,6 +19,7 @@ _clamp_to_output_width(int *val, struct scran_output *st_output)
     }
 }
 
+
 static inline void
 _clamp_to_output_height(int *val, struct scran_output *st_output)
 {
@@ -28,6 +29,7 @@ _clamp_to_output_height(int *val, struct scran_output *st_output)
         *val = get_output_height_logical(st_output);
     }
 }
+
 
 static void
 handle_pointer_enter(
@@ -57,6 +59,7 @@ handle_pointer_enter(
     }
 }
 
+
 static void
 handle_pointer_leave(
     void *data,
@@ -66,6 +69,7 @@ handle_pointer_leave(
 ) {
     // Nothing to do here yet...
 }
+
 
 // TODO: Benchmark with/without early exit on unchanged cursor position.
 static void
@@ -185,11 +189,13 @@ handle_pointer_motion(
     }
 }
 
+
 static inline int32_t
 get_center_value(int32_t x0, int32_t x1)
 {
     return x0 + ((x1 - x0) / 2);
 }
+
 
 static void
 handle_pointer_button(
@@ -294,6 +300,7 @@ handle_pointer_button(
     }
 }
 
+
 static void
 handle_pointer_frame(
     void *data,
@@ -361,6 +368,7 @@ handle_axis_value120(
 ) {
     // TODO
 }
+
 
 struct wl_pointer_listener pointer_listener = {
     .enter = handle_pointer_enter,

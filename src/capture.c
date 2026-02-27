@@ -7,10 +7,10 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/pixfmt.h>
-#include <libswscale/swscale.h>
 #include <libavutil/opt.h>
 
 #include "ext-image-copy-capture-v1.h"
+
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
@@ -20,6 +20,7 @@
 #include "print.h"
 #include "init.h"
 
+
 // TODO: Let user set this
 #define _FORMAT_MP4_FILE_EXTENSION ".mp4"
 // XXX: Seems like the underlying FFOutputFormat structs aren't exposed in the
@@ -28,7 +29,9 @@
 #define _FORMAT_MP4_NAME "mp4"
 #define _CODEC_X264_NAME "libx264"
 
+
 extern struct scran g_state;
+
 
 void
 init_wl_capture_frame__video(struct capture_frame_context *frame_ctx)
@@ -46,6 +49,7 @@ init_wl_capture_frame__video(struct capture_frame_context *frame_ctx)
         frame_ctx->st_buffer.wl_buffer
     );
 }
+
 
 void
 dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
@@ -102,6 +106,7 @@ create_timestamped_filename(
 
     snprintf(_filename, _name_max, "%s", file_extension);
 }
+
 
 // TODO:
 //  - Make all the libav code prettier.
@@ -289,6 +294,7 @@ init_ffmpeg(struct scran_output *st_output)
     return true;
 }
 
+
 bool
 start_video_capture(struct scran_output *st_output)
 {
@@ -324,6 +330,7 @@ start_video_capture(struct scran_output *st_output)
     return true;
 }
 
+
 void
 dispatch_image_capture_event(struct scran_output_capture *st_capture)
 {
@@ -353,3 +360,4 @@ start_image_capture(struct scran_output *st_output)
 
     return true;
 }
+

@@ -1,6 +1,7 @@
+#include <assert.h>
+
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
-#include <assert.h>
 
 #include "init.h"
 #include "state.h"
@@ -8,6 +9,7 @@
 #include "util/blend2d.h"
 
 #include "print.h"
+
 
 #define MIN(a, b) (a < b ? a : b)
 #define MAX(a, b) (a > b ? a : b)
@@ -23,6 +25,7 @@ struct _box_diffs {
     struct BLBoxI top_remaining;
     struct BLBoxI bottom_remaining;
 };
+
 
 // Call wl_surface_damage_buffer on the difference between the areas of two
 // BLBoxI boxes (i.e. union minus intersection).
@@ -74,6 +77,7 @@ get_box_diffs(struct BLBoxI a, struct BLBoxI b)
     return diff;
 }
 
+
 static inline struct scran_output_surface_buffer *
 get_free_double_buffer(struct scran_output *st_output)
 {
@@ -90,6 +94,7 @@ get_free_double_buffer(struct scran_output *st_output)
     return buffer;
 }
 
+
 // TODO: Move into blend2d utils header
 static inline bool
 _boxes_are_equal(BLBoxI a, BLBoxI b)
@@ -100,6 +105,7 @@ _boxes_are_equal(BLBoxI a, BLBoxI b)
             a.y1 == b.y1
     ;
 }
+
 
 static inline void
 _draw_and_damage_region(
@@ -115,6 +121,7 @@ _draw_and_damage_region(
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 }
+
 
 static inline void
 draw_frame_and_damage_buffer(
@@ -150,6 +157,7 @@ draw_frame_and_damage_buffer(
     bl_path_reset(&st_surface->bl_path);
     bl_context_flush(&st_buffer->bl_ctx, BL_CONTEXT_FLUSH_NO_FLAGS);
 }
+
 
 // TODO: Look at this again to see whether it handles inverted box. If not,
 // then assert not inverted
@@ -205,6 +213,7 @@ _get_reverse_transform(
 
 #undef _flip_horizontally
 }
+
 
 static void
 surface_frame_callback_handler(
@@ -265,6 +274,7 @@ go_next:
     );
     wl_surface_commit(st_output->surface.wl_surface);
 }
+
 
 struct wl_callback_listener surface_frame_callback_listener = {
     .done = surface_frame_callback_handler

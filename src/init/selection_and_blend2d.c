@@ -5,6 +5,7 @@
 #include "state.h"
 #include "state-util.h"
 
+
 // XXX NOTE: This is for basic initialization that does not care about what we
 // will render, other than ensuring buffers etc. are properly set up for the
 // given output. More specialized init happens in dispatch_surface_event_loop.
@@ -50,6 +51,7 @@ init_selection_and_blend2d(struct scran_output *st_output)
 
     return true;
 }
+
 
 void
 destroy_selection_and_blend2d(struct scran_output *st_output)

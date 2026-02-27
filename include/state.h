@@ -2,15 +2,14 @@
 #define STATE_H
 
 #include <stdbool.h>
-#include <sys/uio.h>
 #include <stdatomic.h>
+#include <sys/uio.h>
 
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 #include <xkbcommon/xkbcommon.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <libswscale/swscale.h>
 #include <libavfilter/avfilter.h>
 
 #include "wlr-layer-shell-unstable-v1.h"

@@ -1,10 +1,9 @@
-#include "capture.h"
-#include <blend2d/core/api.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <assert.h>
 
 #include <wayland-client.h>
+#include <blend2d/blend2d.h>
 
 #include "ext-image-capture-source-v1.h"
 #include "ext-image-copy-capture-v1.h"
@@ -14,6 +13,8 @@
 #include "event-handlers.h"
 #include "lib_interop.h"
 #include "print.h"
+#include "capture.h"
+
 
 // TODO: Specify for all these init functions whether they need to be called
 // during premem_init or during postmem_init
@@ -72,6 +73,8 @@ init_premem__capture__destroy(struct scran_output *st_output)
     bl_image_codec_destroy(&st_output->capture.frame_ctx.bl_imgcodec);
 }
 
+
+// XXX TODO: We don't use this anymore. Remove.
 static inline bool
 _init_bl_pixel_converter(struct scran_output *st_output)
 {
@@ -104,6 +107,7 @@ _init_bl_pixel_converter(struct scran_output *st_output)
 
     return true;
 }
+
 
 bool
 init_postwl__capture(

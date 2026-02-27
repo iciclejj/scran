@@ -9,6 +9,7 @@
 #include "event-handlers.h"
 #include "init.h"
 
+
 bool
 init_premem__surface(
     struct scran_output *st_output,
@@ -46,6 +47,7 @@ init_premem__surface(
 
     return true;
 }
+
 
 // XXX TODO: Probably move this somewhere other than init/surface.c
 void
@@ -85,6 +87,7 @@ set_surface_theme(
     st_surface->bl_box_currently_drawn = st_output->selection_ctx.bl_box_bounds;
 }
 
+
 void
 dispatch_surface_event_loop(struct scran_output *st_output)
 {
@@ -110,6 +113,7 @@ dispatch_surface_event_loop(struct scran_output *st_output)
     wl_surface_attach(st_output->surface.wl_surface, initial_buffer->wl_buffer, 0, 0);
     wl_surface_commit(st_output->surface.wl_surface);
 }
+
 
 void
 init_premem__surface__destroy(struct scran_output *st_output)

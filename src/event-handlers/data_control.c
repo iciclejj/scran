@@ -57,6 +57,7 @@ handle_data_control_source_send(
     return;
 }
 
+
 void
 handle_data_control_source_cancelled(
     void *data,
@@ -72,7 +73,9 @@ handle_data_control_source_cancelled(
     DEBUG("Clipboard selection de-activated\n");
 }
 
+
 struct ext_data_control_source_v1_listener data_control_source_listener = {
     .send = handle_data_control_source_send,
     .cancelled = handle_data_control_source_cancelled,
 };
+

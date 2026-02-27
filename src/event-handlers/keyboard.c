@@ -10,6 +10,7 @@
 #include "capture.h"
 #include "print.h"
 
+
 static void
 handle_keyboard_keymap(
     void *data,
@@ -47,6 +48,7 @@ handle_keyboard_keymap(
     close(fd);
 }
 
+
 static void
 handle_keyboard_enter (
     void *data,
@@ -58,6 +60,7 @@ handle_keyboard_enter (
     // TODO
 }
 
+
 static void
 handle_keyboard_leave (
     void *data,
@@ -68,6 +71,7 @@ handle_keyboard_leave (
     // TODO
 }
 
+
 // TODO: Either roundtrip here or ensure that capture etc. pipelines get to
 // finish properly (can be either before or after this function exits)
 static inline void
@@ -75,6 +79,7 @@ _set_state_to_exit_requested(struct scran *state)
 {
     state->exit_requested = true;
 }
+
 
 static void
 handle_keyboard_key(
@@ -158,6 +163,7 @@ handle_keyboard_key(
     }
 }
 
+
 static void
 handle_keyboard_modifiers(
     void *data,
@@ -184,6 +190,7 @@ handle_keyboard_modifiers(
         group
     );
 }
+
 
 static void
 handle_keyboard_repeat_info(
@@ -213,3 +220,4 @@ keyboard_listener_destroy(struct scran_seat *st_seat)
     xkb_keymap_unref(st_seat->keyboard.xkb_keymap);
     xkb_state_unref(st_seat->keyboard.xkb_state);
 }
+

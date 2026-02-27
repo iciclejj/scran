@@ -12,6 +12,7 @@
 #include "event-handlers.h"
 #include "print.h"
 
+
 static void
 registry_handle_global(
     void *data,
@@ -75,6 +76,7 @@ registry_handle_global(
     #undef _INTERFACE_IS
 }
 
+
 struct wl_registry_listener registry_listener = {
     .global = registry_handle_global,
     .global_remove = NULL,
@@ -129,3 +131,4 @@ registry_listener__destroy(struct scran *state)
 
     wl_registry_destroy(globals->registry);
 }
+

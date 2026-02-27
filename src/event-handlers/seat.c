@@ -2,8 +2,8 @@
 #include <blend2d/blend2d.h>
 
 #include "state.h"
-
 #include "event-handlers.h"
+
 
 static void
 handle_seat_name(
@@ -13,6 +13,7 @@ handle_seat_name(
 ) {
     // TODO
 }
+
 
 static void
 handle_seat_capabilities(
@@ -53,6 +54,7 @@ handle_seat_capabilities(
 
     st_datacontrol->manager = &state->globals.data_control_manager;
 }
+
 
 struct wl_seat_listener seat_listener = {
     .name = handle_seat_name,
