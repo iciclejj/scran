@@ -63,7 +63,7 @@ init_premem()
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output *_st_output = &g_state.outputs[i];
 
-        if (!init_premem__surface(_st_output, &g_state.globals)) {
+        if (!init_premem__selection(_st_output, &g_state.globals)) {
             return false;
         }
 
@@ -104,7 +104,7 @@ init_premem__destroy()
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output *_st_output = &g_state.outputs[i];
 
-        init_premem__surface__destroy(_st_output);
+        init_premem__selection__destroy(_st_output);
         init_premem__capture__destroy(_st_output);
     }
 
@@ -334,7 +334,7 @@ init_postmem()
         //       XXX NOTE: First we commit to get configure event (during init),
         //                 THEN we commit again (here) to "dispatch" the
         //                 event loop (the recursive frame callback).
-        dispatch_surface_event_loop(_st_output);
+        dispatch_selection_surface_event_loop(_st_output);
     }
 
     return true;

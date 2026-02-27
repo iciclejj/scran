@@ -63,19 +63,18 @@ get_capture_stride(struct scran_output *st_output) {
 
 bool init_output_surface_shm_buffers(struct scran_output *st_output, struct wl_shm *wl_shm_global);
 
-bool init_premem__surface(struct scran_output *st_output, struct scran_globals *st_globals);
- void init_premem__surface__destroy(struct scran_output *st_output);
-void dispatch_surface_event_loop(struct scran_output *st_output);
+bool init_premem__capture(struct scran_output *st_output, struct scran_seat_datacontrol *st_datacontrol, struct scran_globals *globals);
+void init_premem__capture__destroy(struct scran_output *st_output);
+
+bool init_premem__selection(struct scran_output *st_output, struct scran_globals *st_globals);
+ void init_premem__selection__destroy(struct scran_output *st_output);
+bool init_postmem__selection(struct scran_output *st_output);
+ void init_postmem__selection__destroy(struct scran_output *st_output);
+void dispatch_selection_surface_event_loop(struct scran_output *st_output);
 enum surface_theme {
     SURFACE_THEME_DEFAULT,
     SURFACE_THEME_VIDEO_CAPTURE,
 };
-void set_surface_theme(struct scran_output *st_output, enum surface_theme action);
-
-bool init_premem__capture(struct scran_output *st_output, struct scran_seat_datacontrol *st_datacontrol, struct scran_globals *globals);
-void init_premem__capture__destroy(struct scran_output *st_output);
-
-bool init_postmem__selection(struct scran_output *st_output);
- void init_postmem__selection__destroy(struct scran_output *st_output);
+void set_selection_surface_theme(struct scran_output *st_output, enum surface_theme action);
 
 #endif

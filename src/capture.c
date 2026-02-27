@@ -313,7 +313,7 @@ start_video_capture(struct scran_output *st_output)
 
     init_ffmpeg(st_output);
 
-    set_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
+    set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
