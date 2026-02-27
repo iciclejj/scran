@@ -6,7 +6,7 @@
 #include <libavutil/pixdesc.h>
 #include <libavfilter/avfilter.h>
 
-#include "lib_interop.h"
+#include "lib-interop.h"
 #include "capture.h"
 
 

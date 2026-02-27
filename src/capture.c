@@ -14,7 +14,7 @@
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
-#include "lib_interop.h"
+#include "lib-interop.h"
 #include "capture.h"
 #include "util/blend2d.h"
 #include "print.h"

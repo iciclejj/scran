@@ -7,7 +7,7 @@
 #include "state-util.h" // TODO: Move this into util/
 #include "capture.h"
 #include "util/blend2d.h"
-#include "lib_interop.h" // TODO: Move this into util/
+#include "lib-interop.h" // TODO: Move this into util/
 #include "print.h"
 #include "simd.h"
 #include "event-handlers.h"
