@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <assert.h>
+#include <stdatomic.h>
 #include <sys/stat.h>
 
 #include <wayland-client.h>
@@ -7,22 +8,17 @@
 #include <libavcodec/codec.h>
 #include <libavcodec/packet.h>
 #include <libavformat/avformat.h>
-#include <libavutil/imgutils.h>
-#include <libswscale/swscale.h>
-#include <libavutil/frame.h>
 #include <libavfilter/buffersrc.h>
 #include <libavfilter/buffersink.h>
-#include <stdatomic.h>
 
 #include "ext-image-copy-capture-v1.h"
 
-#include "libavutil/avutil.h"
 #include "state.h"
+#include "state-util.h"
 #include "event-handlers.h"
 #include "capture.h"
 #include "print.h"
 #include "init.h"
-#include "state-util.h"
 
 
 extern struct scran g_state;
