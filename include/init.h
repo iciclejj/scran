@@ -71,10 +71,5 @@ bool init_premem__selection(struct scran_output *st_output, struct scran_globals
 bool init_postmem__selection(struct scran_output *st_output);
  void init_postmem__selection__destroy(struct scran_output *st_output);
 void dispatch_selection_surface_event_loop(struct scran_output *st_output);
-enum surface_theme {
-    SURFACE_THEME_DEFAULT,
-    SURFACE_THEME_VIDEO_CAPTURE,
-};
-void set_selection_surface_theme(struct scran_output *st_output, enum surface_theme action);
 
 #endif

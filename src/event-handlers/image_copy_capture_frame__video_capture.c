@@ -18,7 +18,7 @@
 #include "event-handlers.h"
 #include "capture.h"
 #include "print.h"
-#include "init.h"
+#include "selection.h"
 
 
 extern struct scran g_state;

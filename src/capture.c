@@ -19,6 +19,7 @@
 #include "util/blend2d.h"
 #include "print.h"
 #include "init.h"
+#include "selection.h"
 
 
 // TODO: Let user set this
