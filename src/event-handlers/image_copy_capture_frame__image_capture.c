@@ -11,6 +11,7 @@
 #include "print.h"
 #include "simd.h"
 #include "event-handlers.h"
+#include "options.h"
 
 extern struct scran g_state;
 
@@ -183,25 +184,20 @@ handle_image_copy_capture_frame_ready__image_capture(
     const size_t bytes_to_write = bl_array_get_size(&bl_array_img_encoded);
     size_t bytes_written;
 
-    // XXX TODO: Refactor path-related things once we implement custom save-path
-    // arg-parsing. Keep everything contained here until then, despite being
-    // inefficient. Also needs better error handling etc.
-    char filepath[PATH_MAX] = CAPTURE_OUTPUT_DEFAULT_DIRPATH "/";
-    mkdir(filepath, 0755);
-    const size_t _filename_offset = sizeof(CAPTURE_OUTPUT_DEFAULT_DIRPATH);
-    const char _file_extension[] = CAPTURE_IMAGE_OUTPUT_FILE_EXTENSION_DEFAULT;
-    create_timestamped_filename(filepath + _filename_offset, _file_extension);
+    const struct scran_options *const st_options = &g_state.options;
+
+    scran_update_output_filepath(st_options, CAPTURE_IMAGE_OUTPUT_FILE_EXTENSION_DEFAULT);
     res = bl_file_system_write_file(
-        filepath,
+        st_options->output_filepath,
         bl_array_img_encoded_data,
         bytes_to_write,
         &bytes_written
     );
 
     if (res == BL_SUCCESS && bytes_written == bytes_to_write) {
-        eprintf("Image saved: %s (%ldKiB)\n", filepath, bytes_written >> 10);
+        eprintf("Image saved: %s (%ldKiB)\n", st_options->output_filepath, bytes_written >> 10);
     } else {
-        eprintf("Error: Failed to save image (attempted: %s).", filepath);
+        eprintf("Error: Failed to save image (attempted: %s).", st_options->output_filepath);
     }
 
 

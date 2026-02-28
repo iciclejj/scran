@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <assert.h>
-#include <time.h>
 #include <stdatomic.h>
 #include <sys/stat.h>
 
@@ -20,6 +19,7 @@
 #include "print.h"
 #include "init.h"
 #include "selection.h"
+#include "options.h"
 
 
 // TODO: Let user set this
@@ -68,44 +68,6 @@ dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
         frame_ctx->st_buffer.wl_buffer
     );
     ext_image_copy_capture_frame_v1_capture(frame);
-}
-
-
-// TODO: Maybe optimize this a bit (and/or make it a bit cleaner somehow).
-//       Also ensure string/array safety. Either asserts or live.
-void
-create_timestamped_filename(
-    char filename_ret[CAPTURE_OUTPUT_FILENAME_MAX],
-    const char file_extension[CAPTURE_OUTPUT_FILE_EXTENSION_MAX]
-) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-
-    struct tm time_now_tm;
-    localtime_r(&ts.tv_sec, &time_now_tm);
-
-    char *_filename = filename_ret;
-    // TODO: Remove this eventually and just use asserts. Resulting filename
-    // length is deterministic.
-    size_t _name_max = NAME_MAX;
-
-    const int chars_added_after_sec = strftime(_filename, _name_max, "scran-capture_%Y%m%d-%H%M%S", &time_now_tm);
-    _filename += chars_added_after_sec;
-    _name_max -= chars_added_after_sec;
-
-    // INFO: Assumes 4 decimal points (10khz) is the smallest safe divisor that
-    // doesn't risk file-overwriting during rapid consecutive screenshots.
-    const long _tv_usec = ts.tv_nsec / 100000;
-    const int chars_added_after_usec = snprintf(_filename, _name_max, ".%04ld", _tv_usec);
-    _filename += chars_added_after_usec;
-    _name_max -= chars_added_after_usec;
-
-    // XXX: %z is a gnu extension. (Timezone offset.)
-    const int chars_added_after_timezone = strftime(_filename, _name_max, "%z", &time_now_tm);
-    _filename += chars_added_after_timezone;
-    _name_max -= chars_added_after_timezone;
-
-    snprintf(_filename, _name_max, "%s", file_extension);
 }
 
 
@@ -250,17 +212,11 @@ init_ffmpeg(struct scran_output *st_output)
     avcodec_open2(frame_ctx->av_codec_ctx, codec, NULL);
 
 
-    // AVFormatContext
-    // XXX TODO: Refactor path-related things once we implement custom save-path
-    // arg-parsing. Keep everything contained here until then, despite being
-    // inefficient. Also needs better error handling etc.
-    char filepath[PATH_MAX] = CAPTURE_OUTPUT_DEFAULT_DIRPATH "/";
-    mkdir(filepath, 0755);
-    const size_t _filename_offset = sizeof(CAPTURE_OUTPUT_DEFAULT_DIRPATH);
-    assert(filepath[_filename_offset - 1] == '/');
-    const char _file_extension[] = _FORMAT_MP4_FILE_EXTENSION;
-    create_timestamped_filename(filepath + _filename_offset, _file_extension);
-    avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MP4_NAME, filepath);
+    const struct scran_options *const st_options = &g_state.options;
+
+    // AVFormat
+    scran_update_output_filepath(st_options, _FORMAT_MP4_FILE_EXTENSION);
+    avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MP4_NAME, st_options->output_filepath);
 
 
     // AVStream
@@ -275,14 +231,15 @@ init_ffmpeg(struct scran_output *st_output)
     _av_stream->time_base = frame_ctx->av_codec_ctx->framerate;
     avcodec_parameters_from_context(_av_stream->codecpar, frame_ctx->av_codec_ctx);
 
+
     AVDictionary *opts = NULL;
     // TODO: Ensure keyframes/i-frames are still frequent enough to take short
     // videos whenever default values get decided on. (Works well as of now.)
     av_dict_set(&opts, "movflags", "frag_keyframe", 0);
     assert(!((frame_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
-    avio_open(&(frame_ctx->av_format_ctx)->pb, filepath, AVIO_FLAG_WRITE);
+    avio_open(&(frame_ctx->av_format_ctx)->pb, st_options->output_filepath, AVIO_FLAG_WRITE);
     if (0 > avformat_write_header(frame_ctx->av_format_ctx, &opts)) {
-        eprintf("Failed to write file header (filepath: %s)\n", filepath);
+        eprintf("Failed to write file header (filepath: %s)\n", st_options->output_filepath);
 
         if (frame_ctx->av_format_ctx != NULL) {
             avformat_free_context(frame_ctx->av_format_ctx);

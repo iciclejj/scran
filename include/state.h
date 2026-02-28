@@ -29,6 +29,15 @@
 #define BLCONTEXT_RGBA32_FILL_STYLE_DEFAULT ((struct BLRgba32){ 0x88888888 })
 #define BLCONTEXT_RGBA32_FILL_STYLE_VIDEO_CAPTURE ((struct BLRgba32){ 0x88887A7A })
 
+// TODO: Allow longer dir path if filename is short enough..?
+// XXX: -1 is to make room for trailing slash.
+#define SCRAN_OUTPUT_DIRPATH_STRLEN_MAX (PATH_MAX - NAME_MAX - 1) // Null terminator *not* counted
+#define SCRAN_OUTPUT_DIRPATH_SIZE_MAX (SCRAN_OUTPUT_DIRPATH_STRLEN_MAX + 1) // Null terminator *is* counted
+// XXX: Semi-arbitrary value (highest built-in AVCodecDescriptor.name in
+// libavcodec atm. is 18, excl. null-terminator).
+#define SCRAN_OUTPUT_FILE_EXTENSION_MAX 20
+
+
 struct scran_globals {
     struct wl_display *display;
     struct wl_registry *registry;
@@ -256,6 +265,11 @@ struct scran_output {
     struct scran_output_capture capture;
 };
 
+struct scran_options {
+    char *output_filepath_filename_pointer;
+    char output_filepath[PATH_MAX];
+};
+
 struct scran {
     // TODO: Make this a state enum or a bitfield with datacontrol.selection_active etc. ?
     bool exit_requested;
@@ -267,6 +281,8 @@ struct scran {
     // TODO: Consider separate for video vs image, for better asserts, if
     // nothing else.
     atomic_int n_captures_in_progress;
+
+    struct scran_options options;
 
     struct scran_globals globals;
     struct scran_seat seat;

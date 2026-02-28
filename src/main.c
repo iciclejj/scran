@@ -17,6 +17,7 @@
 #include "event-handlers.h"
 #include "init.h"
 #include "print.h"
+#include "options.h"
 
 
 // TODO:
@@ -355,8 +356,13 @@ init_postmem__destroy()
 //       Probably find a cleaner way to do this multi-step init?
 //       Remember to fix off-by-one bug when selecting corner to corner
 //           F.ex. 2559x1599 rect width/height
-int main(void)
+int main(int argc, char *argv[])
 {
+    if (!scran_parse_args(&g_state.options, argc, argv)) {
+        return EXIT_FAILURE;
+    }
+
+
     struct arena_context arena_ctx = { };
 
     if (!init_premem()) {
