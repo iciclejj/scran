@@ -60,6 +60,9 @@ scran_update_output_filepath(
 static inline bool
 _handle_dirpath(struct scran_options *restrict st_options, const char *restrict dirpath_arg)
 {
+    // TODO: Benchmark all the string storage/logic (including downstream
+    // path/filename handling) once we have more options and maybe optimize.
+
     size_t dirpath_strlen = 0;
     {
         // output_filepath will only contain the dirpath part throughout this scope
@@ -108,10 +111,6 @@ _handle_dirpath(struct scran_options *restrict st_options, const char *restrict 
 bool
 scran_parse_args(struct scran_options *st_options, int argc, char *const *argv)
 {
-    // TODO: Benchmark all the string storage/logic (including downstream
-    // path/filename handling) once we have more options and maybe optimize.
-    // Keeping it simple and concise for now.
-
     char *dirpath_arg = NULL;
 
     int opt;
