@@ -134,7 +134,7 @@ struct scran_seat {
 enum selection_state {
     // TODO: Bitmask and allow simultaneous f.ex. rebasing + resizing?
     SELECTION_NONE,
-    SELECTION_IN_PROGRESS,
+    SELECTION_INITIALIZING,
     SELECTION_COMPLETE,
     SELECTION_REBASING,
     SELECTION_RESIZING,

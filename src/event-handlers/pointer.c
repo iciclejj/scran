@@ -86,6 +86,7 @@ handle_pointer_motion(
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
+    // TODO: Document this conversion and/or make appropriately named wrapper
     const int x_px = wl_fixed_to_int(x);
     const int y_px = wl_fixed_to_int(y);
 
@@ -102,11 +103,7 @@ handle_pointer_motion(
     switch (selection_ctx->selection_state) {
     case SELECTION_NONE:
         break;
-    case SELECTION_IN_PROGRESS:
-        // TODO: Merge this with SELECTION_RESIZING?
-        // TODO: Make this explicitly either output pixel coordinates or
-        //       surface-local coordinates
-        //       Also document the behavior/conversion (and make helper function?).
+    case SELECTION_INITIALIZING:
         selection_ctx->bl_box.x1 = x_px;
         selection_ctx->bl_box.y1 = y_px;
         break;
@@ -237,10 +234,9 @@ handle_pointer_button(
                 selection_ctx->bl_box = initial_selection_area;
                 st_output->surface.bl_box_currently_drawn = initial_selection_area;
             }
-            selection_ctx->selection_state = SELECTION_IN_PROGRESS;
+            selection_ctx->selection_state = SELECTION_INITIALIZING;
             break;
-        case SELECTION_IN_PROGRESS:
-            // TODO: Merge this with SELECTION_RESIZING?
+        case SELECTION_INITIALIZING:
             selection_ctx->bl_box.x1 = x_px;
             selection_ctx->bl_box.y1 = y_px;
             selection_ctx->selection_state = SELECTION_COMPLETE;
