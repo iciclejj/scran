@@ -243,6 +243,7 @@ init_meminit(
         shm_arena_ctx->size
     );
 
+    // TODO: Assert alignments
 
     //
     // Assign addresses
