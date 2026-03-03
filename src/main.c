@@ -129,23 +129,26 @@ struct arena_context {
 
 static inline void
 _arena_add_block(
-    struct arena_context *arena_ctx,
+    struct arena_context *restrict arena_ctx,
     int block_size,
     int block_alignment,
     void **block_pointer_recipient
 ) {
-    const int block_idx = arena_ctx->block_count;
-    const int old_size = arena_ctx->size;
+    const int i_block = arena_ctx->block_count;
+    const int arena_size_old = arena_ctx->size;
 
-    assert(block_idx < _ARENA_BLOCKS_MAX);
+    assert(i_block < _ARENA_BLOCKS_MAX);
 
-    arena_ctx->block_recipients[block_idx] = block_pointer_recipient;
+    int _bytes_past_alignment = block_alignment == 0 ? 0 : arena_size_old % block_alignment;
+    int _bytes_to_next_alignment = block_alignment - _bytes_past_alignment;
+    const int block_pre_padding = _bytes_past_alignment == 0 ? 0 : _bytes_to_next_alignment;
 
-    int bytes_past_alignment = old_size % block_alignment;
-    int block_alignment_front_padding = bytes_past_alignment == 0 ? 0 : block_alignment - bytes_past_alignment;
+    arena_ctx->block_offsets[i_block]
+        = arena_size_old + block_pre_padding;
+    arena_ctx->size
+        = arena_size_old + block_pre_padding + block_size;
 
-    arena_ctx->block_offsets[block_idx] = old_size + block_alignment_front_padding;
-    arena_ctx->size += block_alignment_front_padding + block_size;
+    arena_ctx->block_recipients[i_block] = block_pointer_recipient;
     arena_ctx->block_count += 1;
 }
 
