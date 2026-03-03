@@ -109,7 +109,7 @@ _handle_dirpath(struct scran_options *restrict st_options, const char *restrict 
 
 
 bool
-scran_parse_args(int argc, char *const *argv)
+scran_handle_args(int argc, char *const *argv)
 {
     extern struct scran g_state;
     char *dirpath_arg = NULL;
