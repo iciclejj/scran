@@ -22,6 +22,8 @@ get_surface_stride(struct scran_output_mode *mode) {
     return mode->width_px * SURFACE_PIXEL_STRIDE;
 }
 
+// TODO: Maybe don't have _padded functions, and instead just have padding size
+// macros to send as args to the allocator?
 static inline int32_t
 _get_framebuffer_size_padded(struct scran_output_mode *mode, uint8_t pixel_stride) {
     size_t width_bytes = pixel_stride * mode->width_px;
