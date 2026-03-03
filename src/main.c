@@ -354,8 +354,6 @@ init_postmem__destroy()
 // TODO: Allow selection before capture protocols are ready?
 //           Probably negligible and difficult without multithreading
 //       Probably find a cleaner way to do this multi-step init?
-//       Remember to fix off-by-one bug when selecting corner to corner
-//           F.ex. 2559x1599 rect width/height
 int main(int argc, char *argv[])
 {
     if (!scran_handle_args(argc, argv)) {
