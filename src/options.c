@@ -115,7 +115,7 @@ scran_handle_args(int argc, char *const *argv)
     char *dirpath_arg = NULL;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:p")) != -1) {
+    while ((opt = getopt(argc, argv, "d:ph")) != -1) {
         switch (opt) {
         case 'd':
             dirpath_arg = optarg;
@@ -123,8 +123,25 @@ scran_handle_args(int argc, char *const *argv)
         case 'p':
             g_state.seat.pointer_ctx.use_presses_only = true;
             break;
+        case 'h':
+            // TODO: exit with EXIT_SUCESS after printing the help string
         default:
-            // TODO: Print help/usage string
+            printf(
+                "Usage: scran [options]\n"
+                "Capture images and videos\n"
+                "\n"
+                "Keymap\n"
+                "  Left mouse button    Initialize and move selection\n"
+                "  Right mouse button   Resize selection\n"
+                "  Enter                Capture image and exit\n"
+                "  Shift+Enter          Capture image\n"
+                "  Space                Capture video (start/stop)\n"
+                "\n"
+                "Options\n"
+                "  -d   output-directory path\n"
+                "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
+                "  -h   print this help message\n"
+            );
             return false;
         }
     }
