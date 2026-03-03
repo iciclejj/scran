@@ -78,7 +78,6 @@ init_premem()
     return true;
 }
 
-
 static inline void
 _stay_alive_while_clipboard_active()
 {
@@ -94,7 +93,6 @@ _stay_alive_while_clipboard_active()
         eprintf("Clipboard selection stolen! Continuing exit.\n");
     }
 }
-
 
 static void
 init_premem__destroy()
@@ -150,7 +148,6 @@ _arena_add_block(
     arena_ctx->size += block_alignment_front_padding + block_size;
     arena_ctx->block_count += 1;
 }
-
 
 // Open shm file, get fd, unlink file, return fd.
 // The underlying file survives unlinking.
