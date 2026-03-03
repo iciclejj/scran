@@ -115,13 +115,16 @@ scran_handle_args(int argc, char *const *argv)
     char *dirpath_arg = NULL;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:ph")) != -1) {
+    while ((opt = getopt(argc, argv, "d:peh")) != -1) {
         switch (opt) {
         case 'd':
             dirpath_arg = optarg;
             break;
         case 'p':
             g_state.seat.pointer_ctx.use_presses_only = true;
+            break;
+        case 'e':
+            g_state.options.capture_and_exit_after_selection_init = true;
             break;
         case 'h':
             // TODO: exit with EXIT_SUCESS after printing the help string
@@ -140,6 +143,7 @@ scran_handle_args(int argc, char *const *argv)
                 "Options\n"
                 "  -d   directory path for output files\n"
                 "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
+                "  -e   automatically capture and exit immediately after initial selection"
                 "  -h   show this help message and exit\n"
             );
             return false;

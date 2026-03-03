@@ -7,6 +7,7 @@
 #include "state-util.h"
 #include "util/blend2d.h"
 #include "event-handlers.h"
+#include "capture.h"
 
 
 #define SCRAN_BTN_NONE 0 // linux/input-event-codes.h: #define KEY_RESERVED 0
@@ -250,6 +251,10 @@ handle_pointer_button(
             selection_ctx->bl_box.y1 = y_px;
             selection_ctx->selection_state = SELECTION_COMPLETE;
             blboxi_deinvert(&selection_ctx->bl_box);
+            if (g_state.options.capture_and_exit_after_selection_init) {
+                start_image_capture(st_output);
+                g_state.exit_requested = true;
+            }
             break;
         case SELECTION_COMPLETE:
             selection_ctx->selection_state = SELECTION_REBASING;
