@@ -143,7 +143,7 @@ scran_handle_args(int argc, char *const *argv)
                 "Options\n"
                 "  -d   directory path for output files\n"
                 "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
-                "  -e   automatically capture and exit immediately after initial selection"
+                "  -e   automatically capture and exit immediately after initial selection\n"
                 "  -h   show this help message and exit\n"
             );
             return false;
