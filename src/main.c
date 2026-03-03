@@ -358,7 +358,7 @@ init_postmem__destroy()
 //           F.ex. 2559x1599 rect width/height
 int main(int argc, char *argv[])
 {
-    if (!scran_parse_args(&g_state.options, argc, argv)) {
+    if (!scran_parse_args(argc, argv)) {
         return EXIT_FAILURE;
     }
 

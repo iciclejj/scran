@@ -109,8 +109,9 @@ _handle_dirpath(struct scran_options *restrict st_options, const char *restrict 
 
 
 bool
-scran_parse_args(struct scran_options *st_options, int argc, char *const *argv)
+scran_parse_args(int argc, char *const *argv)
 {
+    extern struct scran g_state;
     char *dirpath_arg = NULL;
 
     int opt;
@@ -125,7 +126,7 @@ scran_parse_args(struct scran_options *st_options, int argc, char *const *argv)
         }
     }
 
-    if (!_handle_dirpath(st_options, dirpath_arg)) {
+    if (!_handle_dirpath(&g_state.options, dirpath_arg)) {
         return false;
     }
 
