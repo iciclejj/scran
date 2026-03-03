@@ -19,10 +19,8 @@
 #include "print.h"
 #include "options.h"
 
-
-// TODO:
-//     Move init/ code back in here or put init code in there consistently...
-//     Don't use libwayland..? Handle allocations etc. ourselves?
+//  General TODO:
+//  - Don't use libwayland..? Handle its allocations etc. ourselves?
 //
 
 // TODO: Dynamically find this name
@@ -49,10 +47,11 @@ init_premem()
     g_state.globals.registry = wl_display_get_registry(g_state.globals.display);
 
     // Remaining globals get bound by registry_listener::global during the first roundtrip
-    // TODO: Validate globals (at least non-stable protocols)
     wl_registry_add_listener(g_state.globals.registry, &registry_listener, &g_state);
     wl_display_roundtrip(g_state.globals.display);
     DEBUG("Roundtripped after adding registry listener()\n");
+
+    // TODO: Validate globals (at least non-stable protocols)
 
     if (g_state.n_outputs < 1) {
         eprintf("No outputs detected.\n");
@@ -170,7 +169,7 @@ _shm_open_anon(void)
 }
 
 // TODO:
-//  - Add --slim/--no-video arg that skips allocating video-only requirements,,
+//  - Add --slim/--no-video arg that skips allocating video-only requirements,
 //    extra frame buffers, etc.
 //  - persistent libav allocations
 //  - selection: No manual allocations
@@ -236,7 +235,8 @@ init_meminit(
     shm_arena_ctx->addr = mmap(NULL, shm_arena_ctx->size, PROT_READ | PROT_WRITE, MAP_SHARED, global_pool_shm_fd, 0);
     madvise(shm_arena_ctx->addr, shm_arena_ctx->size, MADV_HUGEPAGE);
     // TODO: Only allocate what the server will actually need.
-    //           F.ex., the server doesn't need to have libav objects.
+    //         - For exmaple, the server doesn't need to have libav objects or
+    //           capture_buf_2.
     struct wl_shm_pool *global_pool_wl = wl_shm_create_pool(
         g_state.globals.shm,
         global_pool_shm_fd,
@@ -341,7 +341,6 @@ init_postmem()
     return true;
 }
 
-
 static void
 init_postmem__destroy()
 {
@@ -352,8 +351,7 @@ init_postmem__destroy()
 
 
 // TODO: Allow selection before capture protocols are ready?
-//           Probably negligible and difficult without multithreading
-//       Probably find a cleaner way to do this multi-step init?
+//           Probably negligible benefit for the added complexity
 int main(int argc, char *argv[])
 {
     if (!scran_handle_args(argc, argv)) {
@@ -407,7 +405,7 @@ int main(int argc, char *argv[])
 
 
     init_postmem__destroy();
-    munmap(arena_ctx.addr, arena_ctx.size); // TODO: Put into init_meminit_destroy?
+    munmap(arena_ctx.addr, arena_ctx.size); // TODO: Put into init_meminit__destroy?
     init_premem__destroy();
 
     wl_display_disconnect(g_state.globals.display);

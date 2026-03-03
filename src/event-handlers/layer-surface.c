@@ -21,9 +21,6 @@ handle_layer_surface_configure(
 ) {
     struct scran_output *st_output = data;
 
-    //     XXX TODO: This breaks with rotation (and scale?) transform. Either
-    //     fix this after implementing xdg-output protocol or ensure we're not
-    //     doing redundant work.
     assert(width_px_logical == get_output_width_logical(st_output));
     assert(height_px_logical == get_output_height_logical(st_output));
 

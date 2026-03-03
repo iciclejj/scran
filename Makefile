@@ -1,4 +1,4 @@
-# TODO: THIS IS ALL A MESS
+# XXX TODO: Clean up in this entire file
 
 .DEFAULT_GOAL := debug
 
@@ -32,14 +32,14 @@ CFLAGS_DBG += -gembed-source
 endif
 
 
-# TODO: Ensure package versions. Flake?
+# TODO(!!!): Ensure package versions. Flake?
 # TODO: Simply-expanded, but lazily initialized shell/pkg-config output variables
 # 			I.e. don't require shell commands to run for targets that don't
 # 			need them, but also don't evaluate them more times than necessary.
 WAYLAND_SCANNER := $(shell pkg-config --variable=wayland_scanner wayland-scanner)
 WAYLAND_PROTOCOLS_DIR := $(shell pkg-config --variable=pkgdatadir wayland-protocols)
 WAYLAND_PROTOCOLS_DIR_WLR := $(shell pkg-config --variable=pkgdatadir wlr-protocols)
-# TODO: Ensure sway-compatible protocol versions
+# TODO(!!!): Ensure sway-compatible protocol versions
 WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS := \
 	$(WAYLAND_PROTOCOLS_DIR_WLR)/unstable/wlr-layer-shell-unstable-v1.xml \
 	$(WAYLAND_PROTOCOLS_DIR)/stable/xdg-shell/xdg-shell.xml \

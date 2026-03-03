@@ -1,7 +1,6 @@
 #include "state.h"
 #include "selection.h"
 
-// XXX TODO: Probably move this somewhere other than init/surface.c
 void
 set_selection_surface_theme(
     struct scran_output *st_output,

@@ -6,8 +6,10 @@
 #include "state.h"
 
 // TODO:
-//   * Find out how to check whether a given event handler is required.
-//   * Go through every listener and make sure we have all desired events handled
+//   - Find out how to check whether a given event handler is required.
+//      - I.e. some event handlers are not useful to us, but required by the
+//        wayland server.
+//   - Go through every listener and make sure we have all desired events handled
 
 extern struct wl_pointer_listener pointer_listener;
 extern struct zwlr_layer_surface_v1_listener layer_surface_listener;

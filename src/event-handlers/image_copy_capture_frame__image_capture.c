@@ -88,8 +88,9 @@ handle_image_copy_capture_frame_ready__image_capture(
     const int area_height_no_transform = blboxi_height_abs_unsafe(frame_ctx->capture_area_px);
     const uint32_t area_row_bytes = frame_ctx->pixel_stride * area_width_no_transform;
     const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
-    // XXX TODO: Either eparate buffer from video capture OR double-check that
-    // the shared buffer doesn't cause issues + add robust checks/asserts
+    // XXX TODO: Either separate buffer from video capture OR double-check that
+    // the shared buffer doesn't cause issues + add robust checks/asserts.
+    // (Primarily for when we implement simultaneous image+video capture)
     const uint8_t *const area_start_addr =
         frame_ctx->st_buffer.data
         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
@@ -130,8 +131,6 @@ handle_image_copy_capture_frame_ready__image_capture(
         area_width_no_transform,
         area_height_no_transform,
         source_row_bytes,
-        // XXX TODO(!!!): Create helper functions to convert from wl_shm_format
-        // to our desired format here.
         rgba32_shuffle,
         st_output->transform,
         &bl_buf_cropped_converted_with_offset,
@@ -160,8 +159,8 @@ handle_image_copy_capture_frame_ready__image_capture(
     );
     DEBUG("image_copy_capture_frame.c: bl_image_init_as_from_data:  %d\n", res);
 
-    // TODO: This should be called once, outside of the capture event pipeline,
-    // unless between-capture format changing is implemented.
+    // TODO: This should only be called once, outside of the capture event
+    // pipeline, unless between-capture format changing is implemented.
     res = bl_image_codec_find_by_name(&frame_ctx->bl_imgcodec, CAPTURE_IMAGE_OUTPUT_BLIMAGECODEC_NAME_DEFAULT, SIZE_MAX, NULL);
 
     // TODO: This should be initialized in init_premem, so we don't re-allocate
@@ -174,12 +173,12 @@ handle_image_copy_capture_frame_ready__image_capture(
     bl_array_init(&bl_array_img_encoded, BL_OBJECT_TYPE_ARRAY_UINT8);
     res = bl_image_write_to_data(&frame_ctx->bl_img_captured, &bl_array_img_encoded, &frame_ctx->bl_imgcodec);
 
-    // TODO: Conditional save to file and/or to clipboard selection
+    // TODO: Arg/option to choose: save to file only, clipboard only, or both.
 
-    // XXX: Everything here is so bad... Should really switch to a more
-    // c-friendly library...
-    //     TODO: Are the internal functions reasonably stable and/or easy to
-    //     use directly?
+    // TODO: Are the internal functions reasonably stable and/or easy to use
+    //       directly?
+    //           blend2d is not very pretty in plain C for what we're doing
+    //           here and in the rest of this function...
     const void *const bl_array_img_encoded_data = bl_array_get_data(&bl_array_img_encoded);
     const size_t bytes_to_write = bl_array_get_size(&bl_array_img_encoded);
     size_t bytes_written;
@@ -202,7 +201,7 @@ handle_image_copy_capture_frame_ready__image_capture(
 
 
     // TODO: Consider loading image back from storage, instead of storing it
-    // in memory?
+    // in memory? At least for videos, which we probably won't keep in memory.
 
     // TODO: Verify that init_move doesn't leak memory without explicit reset
     //           And also that the moved-*from* instance doesn't need explicit

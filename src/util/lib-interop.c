@@ -142,7 +142,8 @@ wl_output_transform_to_ffmpeg_transpose_dir__inverse(enum wl_output_transform tr
         case WL_OUTPUT_TRANSFORM_NORMAL: return SCRAN_AV_TRANSPOSE_DIR_NORMAL;
         // XXX: This is seemingly not supported..?
         //          TODO: I guess allow two filter passes to correctly flip this,
-        //                if we don't end up switching to our own conversion code
+        //                if we don't end up switching to our own simd conversion
+        //                code (would have to implement rgb->yuv conversion)
         case WL_OUTPUT_TRANSFORM_FLIPPED_180: return SCRAN_AV_TRANSPOSE_DIR_UNSUPPORTED;
 
         case WL_OUTPUT_TRANSFORM_90:     return SCRAN_AV_TRANSPOSE_DIR_270;

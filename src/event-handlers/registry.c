@@ -27,7 +27,7 @@ registry_handle_global(
 
     #define _INTERFACE_IS(desired) (strcmp(interface, desired.name) == 0)
 
-    // TODO: Determine desired minimum versions.
+    // TODO(!!!): Determine desired minimum versions.
     if (_INTERFACE_IS(wl_compositor_interface)) {
         globals->compositor = wl_registry_bind(registry, name, &wl_compositor_interface, version);
     } else if (_INTERFACE_IS(wl_seat_interface)) {
@@ -63,7 +63,7 @@ registry_handle_global(
 
         ++state->n_outputs;
     } else if (_INTERFACE_IS(zxdg_output_manager_v1_interface)) {
-        // TODO: Acutally implement this...
+        // TODO: Acutally implement this..?
         globals->xdg_output_manager = wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface, 3);
     } else if (_INTERFACE_IS(ext_output_image_capture_source_manager_v1_interface)) {
         globals->output_image_capture_source_manager = wl_registry_bind(registry, name, &ext_output_image_capture_source_manager_v1_interface, 1);
@@ -109,7 +109,9 @@ struct wl_registry_listener registry_listener = {
 //       }
 //
 // TODO: Well I guess I ended up basically documenting it already. Now put it
-// somewhere nice
+// somewhere nice?
+//     TODO: Maybe just change this entirely, e.g. keep track of __destroy
+//     function pointers in a list, one for pre-clipboard, and one for the rest?
 void
 registry_listener__destroy(struct scran *state)
 {

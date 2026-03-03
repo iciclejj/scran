@@ -93,7 +93,7 @@ handle_output_description(
 
 
 // TODO: How to handle done event properly/efficiently?
-//           version >= 2: geometry event followed by done event
+//           version >= 2: geometry event is followed by done event
 struct wl_output_listener output_listener = {
     // xdg_output is preferred for most of this.
     .geometry = handle_output_geometry,

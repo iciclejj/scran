@@ -266,7 +266,6 @@ handle_pointer_button(
             selection_ctx->selection_state = SELECTION_COMPLETE;
             break;
         case SELECTION_RESIZING:
-            // TODO: Allow BTN_LEFT to stop the resizing ?
             break;
         }
         break;

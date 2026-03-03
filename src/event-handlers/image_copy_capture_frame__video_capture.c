@@ -118,7 +118,6 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     ext_image_copy_capture_frame_v1_destroy(frame);
 
-    // TODO: Find a way to clean this up and make it prettier
 
     // TODO: Clarify names, more in sync with start_capture names?
     const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
@@ -146,7 +145,7 @@ handle_image_copy_capture_frame_ready__video_capture(
             //           TODO: Check whether the graph can actually buffer
             //           frames in a way where this matters, beyond the
             //           life of this function (until next capture frame
-            //           dispatch). In any case we will probably need a
+            //           dispatch). In any case, we will probably need a
             //           safe setup like this for the encoder.
             0
     );
@@ -250,7 +249,6 @@ end_capture_err:
 }
 
 
-// TODO: Maybe find some nicer naming convention than __video_capture etc., idk
 struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener__video_capture = {
     .transform = handle_image_copy_capture_frame_transform__video_capture,
     .damage = handle_image_copy_capture_frame_damage__video_capture,

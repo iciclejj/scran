@@ -12,11 +12,8 @@
 #include "event-handlers.h"
 
 
-// TODO: Specify for all these init functions whether they need to be called
-// during premem_init or during postmem_init
 bool
 init_premem__capture(
-    // TODO: Don't pass entire st_output if not required
     struct scran_output *st_output,
     struct scran_seat_datacontrol *st_datacontrol,
     struct scran_globals *globals
@@ -29,7 +26,7 @@ init_premem__capture(
     st_output->capture.session = ext_image_copy_capture_manager_v1_create_session(
         globals->image_copy_capture_manager,
         st_output->capture.source,
-        // TODO: Make this optional
+        // TODO: Make this a scran arg option
         // TODO: Not a big deal, but cursor doesn't seem in sync with area
         //       movement.
         EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS

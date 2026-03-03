@@ -36,6 +36,9 @@ init_premem__selection(
     zwlr_layer_surface_v1_set_keyboard_interactivity(
         st_output->surface.layer_surface,
         // TODO: Figure out whether this should rather be set to "exclusive"
+        //          (Though both pointer and keyboard focus mechanics will be
+        //           reworked soon anyways to support handing off/retaking
+        //           focus)
         ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND
     );
 
@@ -64,10 +67,6 @@ init_postmem__selection(struct scran_output *st_output)
     struct scran_output_selectionContext *const selection_ctx = &st_output->selection_ctx;
     struct scran_output_surface * st_surface = &st_output->surface;
 
-    // TODO: Should maybe be a separate function, f.ex. init_surface_buffers_blend2d
-    //       and called directly from main, after init_surface_shm_buffers
-    // TODO: Probably move this into init/surface.c, and call this just
-    // init_selection, or remove this function entirely.
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
         struct scran_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
 
@@ -121,7 +120,7 @@ void
 dispatch_selection_surface_event_loop(struct scran_output *st_output)
 {
     // TODO: Assert bl_ctx has already begun, or maybe just move its (entire?)
-    // init into here.
+    //       init into here. Or, inversely, move blend2d setup out of here...
     struct BLPathCore *bl_path = &st_output->surface.bl_path;
 
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
@@ -129,7 +128,7 @@ dispatch_selection_surface_event_loop(struct scran_output *st_output)
     struct scran_output_surface_buffer *const initial_buffer = &st_output->surface.double_buffer[0];
     struct BLBoxI *selection_box_bounds = &st_output->selection_ctx.bl_box_bounds;
 
-    // TODO: Verify whether we acutally need to draw the "dispatch"-commit to
+    // TODO: Verify whether we actually need to draw the "dispatch"-commit to
     // not get a frame of startup delay.
     bl_path_add_box_i(bl_path, selection_box_bounds, BL_GEOMETRY_DIRECTION_NONE);
     // XXX: At the moment, this function is only used at the start of the

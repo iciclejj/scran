@@ -112,8 +112,7 @@ handle_keyboard_key(
     case XKB_KEY_Escape:
         eprintf("Got escape key...");
         if (st_output->capture.frame_ctx.capturing_video) {
-            // TODO: Probably both stop capture and request exit
-            //           Have dedicated start/stop capture key that doesn't exit
+            // TODO: Both stop capture and request exit?
             eprintf(" stopping video capture.\n");
             st_output->capture.frame_ctx.capturing_video = false;
         } else {
@@ -155,7 +154,7 @@ handle_keyboard_key(
             st_output->capture.frame_ctx.capturing_video = false;
             ext_image_copy_capture_frame_v1_capture(st_output->capture.frame_ctx.frame);
         } else {
-            // TODO: Need to ensure capture is fully properly fully finished
+            // TODO: Need to ensure capture is fully properly finished
             //       before we allow new dispatch_capture_event_loop()
             start_video_capture(st_output);
         }

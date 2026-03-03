@@ -113,6 +113,7 @@ _draw_and_damage_region(
     struct scran_output_surface_buffer *st_buffer,
     BLRectI damage_region
 ) {
+    // TODO: Is bl_context_clear_all the same as bl_context_clear_rect_i, if we do it after clipping?
     bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
     bl_context_clear_all(&st_buffer->bl_ctx);
     bl_context_fill_path_d(&st_buffer->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, &st_surface->bl_path);
@@ -143,7 +144,6 @@ draw_frame_and_damage_buffer(
 
     const struct _box_diffs box_diffs = get_box_diffs(box_to_draw, box_already_drawn);
 
-    // TODO: Is bl_context_clear_all the same as bl_context_clear_rect_i, if we do it after clipping?
     // TODO: Just make get_box_diffs return rects, probably...
     _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.left_full));
     _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.right_full));
@@ -170,7 +170,7 @@ _get_reverse_transform(
 ) {
     uint32_t tmp, tmp2;
 
-// TODO: -1 for len -> index
+// TODO: -1 to turn length into index?
 #define _flip_horizontally() \
         box.x0 = source_width - box.x1; \
         box.x1 = source_width - box.x0;
@@ -238,7 +238,7 @@ surface_frame_callback_handler(
         goto go_next;
     }
 
-    // TODO: Also ensure it's clamped?
+    // TODO: Also assert it's clamped?
     const struct BLBoxI normalized_box_to_draw = get_blboxi_deinverted(st_output->selection_ctx.bl_box);
     const struct BLBoxI box_currently_drawn = st_output->surface.bl_box_currently_drawn;
 

@@ -393,7 +393,10 @@ _sse41_rotate_90(
     dst_rows[3] = _mm_unpackhi_epi64(dst_row_2lo_3lo, dst_row_2hi_3hi);
 }
 
-// TODO: Prefetch? Tiling? Seems to end up neutral or worse compared to naive implementation.
+// SSE41 TODOs:
+// - Prefetch? Tiling? Seems to end up neutral or worse compared to naive implementation.
+//
+
 _TARGET_SSE41
 static void
 transform_framebuffer__sse41_unaligned__rotate_270(

@@ -89,7 +89,7 @@ init_ffmpeg(struct scran_output *st_output)
 {
     struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
 
-    // NOTE: Zeroing out the last bit because x264 needs the dimensions to be
+    // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be
     // divisible by 2. TODO: Also update selection area visuals to this width.
     const int width_px_captured = blboxi_width_abs_unsafe(frame_ctx->capture_area_px) & ~0b1;
     const int height_px_captured = blboxi_height_abs_unsafe(frame_ctx->capture_area_px) & ~0b1;
@@ -190,13 +190,12 @@ init_ffmpeg(struct scran_output *st_output)
     assert(frame_ctx->av_frame_converted->height != 0);
     frame_ctx->av_codec_ctx->width = frame_ctx->av_frame_converted->width;
     frame_ctx->av_codec_ctx->height = frame_ctx->av_frame_converted->height;
-    // TODO: Variable framerate
-    //       Is output::mode framerate_mhz same as the capture framerate?
+    // TODO: Is output::mode framerate_mhz same as the capture framerate?
     frame_ctx->av_codec_ctx->framerate = av_framerate_captured;
     // INFO: Using NSEC_PER_SEC due to (wayland's) frame::presentation_time()
     // giving time with nanosecond precision.
     frame_ctx->av_codec_ctx->time_base = (AVRational){1, NSEC_PER_SEC};
-    // TODO: Assert or use common format here.
+    // TODO: Assert format matches av_frame_converted
     //       XXX: Also probably consistently use either the top-defined vars
     //       *or* the av_frame_converted properties.
     frame_ctx->av_codec_ctx->pix_fmt = frame_ctx->av_frame_converted->format;
@@ -233,8 +232,8 @@ init_ffmpeg(struct scran_output *st_output)
 
 
     AVDictionary *opts = NULL;
-    // TODO: Ensure keyframes/i-frames are still frequent enough to take short
-    // videos whenever default values get decided on. (Works well as of now.)
+    // TODO: If/when we implement strict non-variable framerate:
+    //          Ensure keyframes/i-frames are frequent enough to take short videos.
     av_dict_set(&opts, "movflags", "frag_keyframe", 0);
     assert(!((frame_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
     avio_open(&(frame_ctx->av_format_ctx)->pb, st_options->output_filepath, AVIO_FLAG_WRITE);

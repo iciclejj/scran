@@ -21,7 +21,6 @@
 
 #define MAX_OUTPUTS 64
 
-// TODO: Buffer file/header?
 #define A_DOUBLE_BUFFER_HAS_TWO_BUFFERS 2
 #define SURFACE_BUF_COUNT A_DOUBLE_BUFFER_HAS_TWO_BUFFERS
 
@@ -106,19 +105,19 @@ struct scran_seat_keyboard {
 
 // XXX: Rename this?
 struct scran_seat_datacontrol {
-    // TODO: Avoid double-dereference (change double-derefs in other state
-    // structs as well)
+    // TODO: Avoid unnecessary pointers to parent struct members
+    //           change it in other state structs as well
     struct ext_data_control_manager_v1 **manager;
     struct ext_data_control_device_v1 *device;
     struct ext_data_control_source_v1 *source;
-    // TODO: Get data from save-path
 
     // NOTE: Handed over from ::frame event. Remember to destroy/unref on
     // data_control::cancelled (or if overwriting pointer), if required based
     // on ::frame (required at time of writing).
-    // TODO: Check whether a BLImage maintains a reference to the BLCoded (and,
-    // by extension, the mimetype string), and consider just handing over the
-    // entire BLImage instead. Maybe doesn't make sense to do even then, though.
+    // TODO: Check whether a BLImage maintains a reference to the BLImageCodec
+    // (and, by extension, the mimetype string), and consider just handing over
+    // the entire BLImage instead. Maybe doesn't make sense to do even then,
+    // though.
     BLArrayCore data_to_send;
     // TODO: Allow multiple mimetypes?
     const char *data_to_send_mime_type;
@@ -137,7 +136,6 @@ struct scran_seat {
 };
 
 enum selection_state {
-    // TODO: Bitmask and allow simultaneous f.ex. rebasing + resizing?
     SELECTION_NONE,
     SELECTION_INITIALIZING,
     SELECTION_COMPLETE,
@@ -205,7 +203,7 @@ struct capture_frame_context {
     AVFilterContext *av_filter_transpose_ctx;
     AVFilterContext *av_filter_buffersink_ctx;
 
-    // TODO: Maybe union with libav or a separate frame_ctx or similar
+    // TODO: Separate context struct for image vs video
     BLImageCore bl_img_captured;
     BLPixelConverterCore bl_pixel_converter;
     BLImageCodecCore bl_imgcodec;
@@ -261,7 +259,6 @@ struct scran_output {
     //         cross-output capture, or other features requiring awareness of
     //         global geometry
 
-    // TODO: Clearer name ?
     struct scran_output_mode mode;
     enum wl_output_transform transform;
 
