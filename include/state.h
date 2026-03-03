@@ -82,9 +82,14 @@ struct scran_seat_pointerContext {
     int x_px;
     int y_px;
 
-    // TODO: Use this for click-and-hold or remove it. Also probably change it
-    // to a bool
-    enum wl_pointer_button_state btn_left_state;
+    // We only handle one button at a time
+    // KEY_MAX is 2ff, but pointer::button sends uint32_t, so let's use that for now
+    //     See: linux/input_event_codes.h.
+    uint32_t active_button;
+    // Only use press events; ignore release events.
+    //     I.e. no button holding, and presses toggle the actions on/off
+    //     (actions like rebasing, resizing, etc.).
+    bool use_presses_only;
 
     // TODO: Should this be for the entire seat, and not just pointer?
     //           NOTE: Both keyboard and pointer have ::enter events.

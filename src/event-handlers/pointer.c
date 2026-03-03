@@ -9,6 +9,9 @@
 #include "event-handlers.h"
 
 
+#define SCRAN_BTN_NONE 0 // linux/input-event-codes.h: #define KEY_RESERVED 0
+
+
 static inline void
 _clamp_to_output_width(int *val, struct scran_output *st_output)
 {
@@ -204,20 +207,26 @@ handle_pointer_button(
     enum wl_pointer_button_state button_state
 ) {
     struct scran *state = data;
-    struct scran_output *st_output = state->seat.pointer_ctx.focused_output;
-
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
-    struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
-    // TODO: Implement dragging
+    bool is_press   = button_state == WL_POINTER_BUTTON_STATE_PRESSED;
+    bool is_release = button_state == WL_POINTER_BUTTON_STATE_RELEASED;
+    bool allowed =
+           (is_press   && pointer_ctx->active_button == SCRAN_BTN_NONE )
+        || (is_release && pointer_ctx->active_button == button && !pointer_ctx->use_presses_only)
+    ;
+
+    if (!allowed) {
+        return;
+    }
+
+
+    struct scran_output *st_output = state->seat.pointer_ctx.focused_output;
+    assert(st_output != NULL);
+    struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
     int x_px = pointer_ctx->x_px;
     int y_px = pointer_ctx->y_px;
-
-    // TODO: Add hold/click-and-drag functionality
-    if (button_state != WL_POINTER_BUTTON_STATE_PRESSED) {
-        return;
-    }
 
     switch (button) {
     case BTN_LEFT:
@@ -294,6 +303,9 @@ handle_pointer_button(
         }
         break;
     }
+
+    // Toggle button
+    pointer_ctx->active_button = pointer_ctx->active_button ? SCRAN_BTN_NONE : button;
 }
 
 

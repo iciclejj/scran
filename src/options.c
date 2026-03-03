@@ -115,10 +115,13 @@ scran_handle_args(int argc, char *const *argv)
     char *dirpath_arg = NULL;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:")) != -1) {
+    while ((opt = getopt(argc, argv, "d:p")) != -1) {
         switch (opt) {
         case 'd':
             dirpath_arg = optarg;
+            break;
+        case 'p':
+            g_state.seat.pointer_ctx.use_presses_only = true;
             break;
         default:
             // TODO: Print help/usage string
