@@ -138,9 +138,9 @@ scran_handle_args(int argc, char *const *argv)
                 "  Space                Capture video (start/stop)\n"
                 "\n"
                 "Options\n"
-                "  -d   output-directory path\n"
+                "  -d   directory path for output files\n"
                 "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
-                "  -h   print this help message\n"
+                "  -h   show this help message and exit\n"
             );
             return false;
         }
