@@ -2,6 +2,9 @@
 #define PRINT_H
 
 
+#include <stdio.h>
+
+
 #ifdef _DISABLE_eprintf
 #define eprintf(fmt, ...) ((void)0)
 #else
