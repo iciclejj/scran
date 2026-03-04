@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 
@@ -65,9 +67,6 @@ void
 seat_listener__destroy(struct scran_seat *seat)
 {
     ext_data_control_device_v1_destroy(seat->datacontrol.device);
-    if (seat->datacontrol.source != NULL) {
-        ext_data_control_source_v1_destroy(seat->datacontrol.source);
-    }
 
     wl_keyboard_destroy(seat->wl_keyboard);
     keyboard_listener_destroy(seat);

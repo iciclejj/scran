@@ -1,8 +1,10 @@
 #include <assert.h>
+#include <stdatomic.h>
 #include <sys/stat.h>
 
 #include <ext-image-copy-capture-v1.h>
 
+#include "ext-data-control-v1.h"
 #include "state.h"
 #include "state-util.h" // TODO: Move this into util/ ?
 #include "util/blend2d.h"
@@ -216,28 +218,25 @@ handle_image_copy_capture_frame_ready__image_capture(
     //           when invalidated or that it will not matter that it isn't.
     frame_ctx->st_datacontrol->data_to_send_mime_type = bl_string_get_data(&bl_img_codec_impl->mime_type);
 
-    // XXX: Calling this directly from here makes sense for now, since we only
-    // support one seat. TODO: Make a function to decide which seat's
-    // data_control_device should handle this.
-    if (frame_ctx->st_datacontrol->source != NULL) {
-        ext_data_control_source_v1_destroy(frame_ctx->st_datacontrol->source);
-    }
-    frame_ctx->st_datacontrol->source = ext_data_control_manager_v1_create_data_source(
-        *frame_ctx->st_datacontrol->manager
-    );
+    struct ext_data_control_source_v1 *data_control_source =
+        ext_data_control_manager_v1_create_data_source(
+            *frame_ctx->st_datacontrol->manager
+        );
     ext_data_control_source_v1_add_listener(
-        frame_ctx->st_datacontrol->source,
+        data_control_source,
         &data_control_source_listener,
         frame_ctx->st_datacontrol
     );
     ext_data_control_source_v1_offer(
-        frame_ctx->st_datacontrol->source,
+        data_control_source,
         frame_ctx->st_datacontrol->data_to_send_mime_type
     );
-    ext_data_control_device_v1_set_selection(frame_ctx->st_datacontrol->device, frame_ctx->st_datacontrol->source);
-    DEBUG("image_capture::frame(): datacontrol_source::set_selection().\n");
+    DEBUG("image_capture::frame: set_selection (clipboard)\n");
+    ext_data_control_device_v1_set_selection(frame_ctx->st_datacontrol->device, data_control_source);
+    // TODO: Relaxed might not end up being enough. Revisit this if we ever do
+    // go multithreaded (atomics are not doing anything useful at the moment).
+    atomic_fetch_add_explicit(&frame_ctx->st_datacontrol->selection_refcount, 1, memory_order_relaxed);
 
-    frame_ctx->st_datacontrol->selection_active = true;
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 }
 

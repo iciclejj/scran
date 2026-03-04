@@ -81,12 +81,13 @@ init_premem()
 static inline void
 _stay_alive_while_clipboard_active()
 {
-    bool *const clipboard_active = &g_state.seat.datacontrol.selection_active;
+    atomic_int *clipboard_refcount = &g_state.seat.datacontrol.selection_refcount;
+    assert(*clipboard_refcount >= 0);
 
-    if (*clipboard_active == true) {
+    if (*clipboard_refcount > 0) {
         eprintf("Keeping clipboard selection alive until stolen...\n");
 
-        while (*clipboard_active == true) {
+        while (*clipboard_refcount > 0) {
             wl_display_dispatch(g_state.globals.display);
         }
 

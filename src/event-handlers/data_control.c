@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <string.h>
+#include <stdatomic.h>
 
 #include "ext-data-control-v1.h"
 
@@ -69,8 +70,11 @@ handle_data_control_source_cancelled(
     // be necessary (destroyed inside both image_capture::frame() and during
     // exit cleanup)
 
-    st_datacontrol->selection_active = false;
-    DEBUG("Clipboard selection de-activated\n");
+    ext_data_control_source_v1_destroy(source);
+    DEBUG("clipboard selection destroyed\n");
+
+    atomic_fetch_sub_explicit(&st_datacontrol->selection_refcount, 1, memory_order_relaxed);
+    assert(atomic_load(&st_datacontrol->selection_refcount) >= 0);
 }
 
 

@@ -109,7 +109,6 @@ struct scran_seat_datacontrol {
     //           change it in other state structs as well
     struct ext_data_control_manager_v1 **manager;
     struct ext_data_control_device_v1 *device;
-    struct ext_data_control_source_v1 *source;
 
     // NOTE: Handed over from ::frame event. Remember to destroy/unref on
     // data_control::cancelled (or if overwriting pointer), if required based
@@ -122,7 +121,10 @@ struct scran_seat_datacontrol {
     // TODO: Allow multiple mimetypes?
     const char *data_to_send_mime_type;
 
-    bool selection_active;
+    // XXX: We can only have one actual active selection at a time (per seat),
+    // but we use a refcount, rather than a bool, to not need to care about
+    // the order of creating new_source vs triggering old_source::cancelled.
+    atomic_int selection_refcount;
 };
 
 struct scran_seat {
@@ -274,7 +276,7 @@ struct scran_options {
 };
 
 struct scran {
-    // TODO: Make this a state enum or a bitfield with datacontrol.selection_active etc. ?
+    // TODO: Make this a state enum or a bitfield with datacontrol.selection_refcount etc. ?
     bool exit_requested;
     // NOTE: Consider a custom wl_event_queue if this for some reason ends up
     // becoming convoluted in the future.
