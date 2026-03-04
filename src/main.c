@@ -230,6 +230,7 @@ init_meminit(
     //
     // Get shared memory
     //
+    // TODO: Hugepages? (Shared memory must request it through madvise.)
     const int global_pool_shm_fd = _shm_open_anon();
     if (global_pool_shm_fd == -1) {
         eprintf("Failed to open shared memory.\n");
@@ -241,7 +242,6 @@ init_meminit(
         return false;
     }
     shm_arena_ctx->addr = mmap(NULL, shm_arena_ctx->size, PROT_READ | PROT_WRITE, MAP_SHARED, global_pool_shm_fd, 0);
-    madvise(shm_arena_ctx->addr, shm_arena_ctx->size, MADV_HUGEPAGE);
     struct wl_shm_pool *global_pool_wl = wl_shm_create_pool(
         g_state.globals.shm,
         global_pool_shm_fd,
