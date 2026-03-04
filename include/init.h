@@ -30,12 +30,12 @@ get_required_padding(
     return units_past_alignment == 0 ? 0 : units_to_next_alignment;
 }
 
-static inline int32_t
+static inline size_t
 get_surface_stride(struct scran_output_mode *mode) {
     return mode->width_px * SURFACE_PIXEL_STRIDE;
 }
 
-static inline int32_t
+static inline size_t
 _get_framebuffer_size_padded(struct scran_output_mode *mode, uint8_t pixel_stride) {
     size_t width_bytes = pixel_stride * mode->width_px;
     size_t right_padding_bytes = get_required_padding(width_bytes, FRAMEBUFFER_RIGHT_ALIGNMENT_BYTES);
@@ -45,24 +45,24 @@ _get_framebuffer_size_padded(struct scran_output_mode *mode, uint8_t pixel_strid
            * (mode->height_px + bottom_padding_pixels);
 }
 
-static inline int32_t
+static inline size_t
 get_surface_buf_size_padded(struct scran_output_mode *mode) {
     return _get_framebuffer_size_padded(mode, SURFACE_PIXEL_STRIDE);
 }
 
-static inline int32_t
+static inline size_t
 get_capture_buf_size_padded(struct scran_output *st_output) {
     return _get_framebuffer_size_padded(&st_output->mode, st_output->capture.frame_ctx.pixel_stride);
 }
 
 // These will probably always stay equivalent, but dedicated function avoids
 // any second-guessing.
-static inline int32_t
+static inline size_t
 get_capture_buf_2_size_padded(struct scran_output *st_output) {
     return get_capture_buf_size_padded(st_output);
 }
 
-static inline int32_t
+static inline size_t
 get_capture_stride(struct scran_output *st_output) {
     return st_output->capture.frame_ctx.pixel_stride * st_output->mode.width_px;
 }

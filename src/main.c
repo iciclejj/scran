@@ -130,16 +130,16 @@ struct arena_context {
 static inline void
 _arena_add_block(
     struct arena_context *restrict arena_ctx,
-    int block_size,
-    int block_alignment,
+    size_t block_size,
+    size_t block_alignment,
     void **block_pointer_recipient
 ) {
-    const int i_block = arena_ctx->block_count;
-    const int arena_size_old = arena_ctx->size;
+    const size_t i_block = arena_ctx->block_count;
+    const size_t arena_size_old = arena_ctx->size;
 
     assert(i_block < _ARENA_BLOCKS_MAX);
 
-    const int block_pre_padding = get_required_padding(arena_size_old, block_alignment);
+    const size_t block_pre_padding = get_required_padding(arena_size_old, block_alignment);
 
     arena_ctx->block_offsets[i_block]
         = arena_size_old + block_pre_padding;
@@ -199,18 +199,18 @@ init_meminit(
         //            padding/stride/etc.
 
         for (int i_buffer = 0; i_buffer < SURFACE_BUF_COUNT; i_buffer++) {
-            const ssize_t _surface_buf_size = get_surface_buf_size_padded(&_st_output->mode);
+            const size_t _surface_buf_size = get_surface_buf_size_padded(&_st_output->mode);
             _arena_add_block( shm_arena_ctx,
                 _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->surface.double_buffer[i_buffer].data
             );
         };
 
-        const ssize_t _capture_buf_size = get_capture_buf_size_padded(_st_output);
+        const size_t _capture_buf_size = get_capture_buf_size_padded(_st_output);
         _arena_add_block( shm_arena_ctx,
             _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->capture.frame_ctx.st_buffer.data
         );
 
-        const ssize_t _capture_buf_2_size = get_capture_buf_2_size_padded(_st_output);
+        const size_t _capture_buf_2_size = get_capture_buf_2_size_padded(_st_output);
         _arena_add_block( shm_arena_ctx,
             _capture_buf_2_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->capture.frame_ctx.img_data_2
         );
