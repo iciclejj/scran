@@ -44,6 +44,11 @@ get_output_height_logical(struct scran_output *st_output) {
 
 static inline uint8_t
 get_output_array_index(const struct scran_output *st_output) {
+    // Assert we're within g_state.output[]
+    assert((uintptr_t)st_output  < (uintptr_t)&g_state.outputs + sizeof(g_state)
+        && (uintptr_t)st_output >= (uintptr_t)&g_state.outputs
+    );
+
     ptrdiff_t index = st_output - g_state.outputs;
 
     assert(index >= 0);
