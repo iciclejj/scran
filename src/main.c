@@ -118,7 +118,7 @@ init_premem__destroy()
 // Just bump this if/when we need more
 #define _ARENA_BLOCKS_MAX (MAX_OUTPUTS * 3)
 
-struct arena_context {
+struct _arena_context {
     void *addr;
     size_t size;
 
@@ -129,7 +129,7 @@ struct arena_context {
 
 static inline void
 _arena_add_block(
-    struct arena_context *restrict arena_ctx,
+    struct _arena_context *restrict arena_ctx,
     size_t block_size,
     size_t block_alignment,
     void **block_pointer_recipient
@@ -151,7 +151,7 @@ _arena_add_block(
 }
 
 static inline void
-_arena_hand_out_pointers_to_recipients(struct arena_context *arena) {
+_arena_hand_out_pointers_to_recipients(struct _arena_context *arena) {
     assert(arena->addr != NULL);
 
     for (int i = 0; i < arena->block_count; ++i) {
@@ -182,12 +182,12 @@ _shm_open_anon(void)
 //  - selection: No manual allocations
 static bool
 init_meminit(
-    struct arena_context *shm_arena_ctx,
-    struct arena_context *private_arena_ctx
+    struct _arena_context *shm_arena,
+    struct _arena_context *private_arena
 ) {
     // XXX: This assert is not necessarily required for this function to run as it
     // should, assuming the context was properly set up until this point.
-    assert(shm_arena_ctx->block_count == 0);
+    assert(shm_arena->block_count == 0);
 
 
     //
@@ -210,21 +210,26 @@ init_meminit(
 
         for (int i_buffer = 0; i_buffer < SURFACE_BUF_COUNT; i_buffer++) {
             const size_t _surface_buf_size = get_surface_buf_size_padded(&_st_output->mode);
-            _arena_add_block( shm_arena_ctx,
+            _arena_add_block(
+                shm_arena,
                 _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->surface.double_buffer[i_buffer].data
             );
         };
 
         const size_t _capture_buf_size = get_capture_buf_size_padded(_st_output);
-        _arena_add_block( shm_arena_ctx,
+        _arena_add_block(
+            shm_arena,
             _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->capture.frame_ctx.st_buffer.data
         );
 
         const size_t _capture_buf_2_size = get_capture_buf_2_size_padded(_st_output);
-        _arena_add_block( private_arena_ctx,
+        _arena_add_block(
+            private_arena,
             _capture_buf_2_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->capture.frame_ctx.img_data_2
         );
     }
+
+    bench_add("START");
 
 
     //
@@ -236,23 +241,23 @@ init_meminit(
         eprintf("Failed to open shared memory.\n");
         return false;
     }
-    if (ftruncate(global_pool_shm_fd, shm_arena_ctx->size) == -1) {
-        DEBUG("Failed to resize shm file to %zu\n", shm_arena_ctx->size);
+    if (ftruncate(global_pool_shm_fd, shm_arena->size) == -1) {
+        DEBUG("Failed to resize shm file to %zu\n", shm_arena->size);
         close(global_pool_shm_fd);
         return false;
     }
-    shm_arena_ctx->addr = mmap(NULL, shm_arena_ctx->size, PROT_READ | PROT_WRITE, MAP_SHARED, global_pool_shm_fd, 0);
+    shm_arena->addr = mmap(NULL, shm_arena->size, PROT_READ | PROT_WRITE, MAP_SHARED, global_pool_shm_fd, 0);
     struct wl_shm_pool *global_pool_wl = wl_shm_create_pool(
         g_state.globals.shm,
         global_pool_shm_fd,
-        shm_arena_ctx->size
+        shm_arena->size
     );
 
 
     //
     // Get private memory
     //
-    private_arena_ctx->addr = mmap(NULL, private_arena_ctx->size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    private_arena->addr = mmap(NULL, private_arena->size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
 
     // TODO: Assert alignments
@@ -260,8 +265,8 @@ init_meminit(
     //
     // Assign addresses
     //
-    _arena_hand_out_pointers_to_recipients(shm_arena_ctx);
-    _arena_hand_out_pointers_to_recipients(private_arena_ctx);
+    _arena_hand_out_pointers_to_recipients(shm_arena);
+    _arena_hand_out_pointers_to_recipients(private_arena);
 
 
     //
@@ -274,7 +279,7 @@ init_meminit(
             struct scran_output_surface_buffer *_st_buffer = &_st_output->surface.double_buffer[i_buffer];
 
             assert(_st_buffer->data != NULL);
-            const ptrdiff_t _surface_buffer_offset = _st_buffer->data - shm_arena_ctx->addr;
+            const ptrdiff_t _surface_buffer_offset = _st_buffer->data - shm_arena->addr;
             _st_buffer->wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
                 _surface_buffer_offset,
@@ -292,7 +297,7 @@ init_meminit(
         }
 
         assert(_st_output->capture.frame_ctx.st_buffer.data != NULL);
-        const ptrdiff_t _capture_buffer_offset = _st_output->capture.frame_ctx.st_buffer.data - shm_arena_ctx->addr;
+        const ptrdiff_t _capture_buffer_offset = _st_output->capture.frame_ctx.st_buffer.data - shm_arena->addr;
         _st_output->capture.frame_ctx.st_buffer.wl_buffer = wl_shm_pool_create_buffer(
             global_pool_wl,
             _capture_buffer_offset,
@@ -371,15 +376,15 @@ int main(int argc, char *argv[])
     }
 
 
-    struct arena_context shm_arena_ctx = { };
-    struct arena_context private_arena_ctx = { };
+    struct _arena_context shm_arena = { };
+    struct _arena_context private_arena = { };
 
     if (!init_premem()) {
         eprintf("Failed pre-memory allocation initialization.\n");
         return EXIT_FAILURE;
     }
 
-    if (!init_meminit(&shm_arena_ctx, &private_arena_ctx)) {
+    if (!init_meminit(&shm_arena, &private_arena)) {
         eprintf("Failed to initialize memory and/or shared memory buffers.\n");
         return EXIT_FAILURE;
     }
@@ -418,9 +423,9 @@ int main(int argc, char *argv[])
 
 
     init_postmem__destroy();
-    assert(shm_arena_ctx.addr != NULL && private_arena_ctx.addr != NULL);
-    munmap(shm_arena_ctx.addr, shm_arena_ctx.size); // TODO: Put into init_meminit__destroy?
-    munmap(private_arena_ctx.addr, private_arena_ctx.size); // TODO: Put into init_meminit__destroy?
+    assert(shm_arena.addr != NULL && private_arena.addr != NULL);
+    munmap(shm_arena.addr, shm_arena.size); // TODO: Put into init_meminit__destroy?
+    munmap(private_arena.addr, private_arena.size); // TODO: Put into init_meminit__destroy?
     init_premem__destroy();
 
     wl_display_disconnect(g_state.globals.display);
