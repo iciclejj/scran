@@ -179,14 +179,12 @@ struct scran_capture_buffer {
 
 // TODO: More consistent naming?
 // TODO: Separate video/image capture context
-// TODO: We don't need pointers to parent struct members. Use offsetof or wl_container_of.
 struct capture_frame_context {
     struct ext_image_copy_capture_frame_v1 *frame;
 
     struct scran_capture_buffer st_buffer;
     void *img_data_2; // Extra buffer for copying/intermediate operations
 
-    // TODO: This entire frame context badly needs re-reorganizing and slimming
     struct ext_image_copy_capture_session_v1 *wl_capture_session;
     struct scran_seat_datacontrol *st_datacontrol;
 
@@ -202,7 +200,6 @@ struct capture_frame_context {
     AVFilterContext *av_filter_transpose_ctx;
     AVFilterContext *av_filter_buffersink_ctx;
 
-    // TODO: Separate context struct for image vs video
     BLImageCore bl_img_captured;
     BLPixelConverterCore bl_pixel_converter;
     BLImageCodecCore bl_imgcodec;
@@ -280,6 +277,7 @@ struct scran {
     //           capture-related ones.
     // TODO: Consider separate for video vs image, for better asserts, if
     // nothing else.
+    // TODO: Atomic
     atomic_int n_captures_in_progress;
 
     struct scran_options options;
@@ -287,6 +285,7 @@ struct scran {
     struct scran_globals globals;
     struct scran_seat seat;
 
+    // TODO: Probably allocate this dynamically, after all.
     uint32_t n_outputs;
     struct scran_output outputs[MAX_OUTPUTS];
 };
