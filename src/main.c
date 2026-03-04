@@ -139,9 +139,7 @@ _arena_add_block(
 
     assert(i_block < _ARENA_BLOCKS_MAX);
 
-    int _bytes_past_alignment = block_alignment == 0 ? 0 : arena_size_old % block_alignment;
-    int _bytes_to_next_alignment = block_alignment - _bytes_past_alignment;
-    const int block_pre_padding = _bytes_past_alignment == 0 ? 0 : _bytes_to_next_alignment;
+    const int block_pre_padding = get_required_padding(arena_size_old, block_alignment);
 
     arena_ctx->block_offsets[i_block]
         = arena_size_old + block_pre_padding;

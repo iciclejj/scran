@@ -19,6 +19,17 @@
 #define FRAMEBUFFER_BOTTOM_ALIGNMENT_PX    SSE_ROW_STRIDE
 
 
+static inline size_t
+get_required_padding(
+    size_t size_or_offset,
+    size_t alignment
+) {
+    size_t units_past_alignment = alignment == 0 ? 0 : size_or_offset % alignment;
+    size_t units_to_next_alignment = alignment - units_past_alignment;
+
+    return units_past_alignment == 0 ? 0 : units_to_next_alignment;
+}
+
 static inline int32_t
 get_surface_stride(struct scran_output_mode *mode) {
     return mode->width_px * SURFACE_PIXEL_STRIDE;
@@ -27,16 +38,10 @@ get_surface_stride(struct scran_output_mode *mode) {
 static inline int32_t
 _get_framebuffer_size_padded(struct scran_output_mode *mode, uint8_t pixel_stride) {
     size_t width_bytes = pixel_stride * mode->width_px;
+    size_t right_padding_bytes = get_required_padding(width_bytes, FRAMEBUFFER_RIGHT_ALIGNMENT_BYTES);
+    size_t bottom_padding_pixels = get_required_padding(mode->height_px, FRAMEBUFFER_BOTTOM_ALIGNMENT_PX);
 
-    size_t _bytes_past_right_alignment = width_bytes % FRAMEBUFFER_RIGHT_ALIGNMENT_BYTES;
-    size_t _bytes_to_next_right_alignment = FRAMEBUFFER_RIGHT_ALIGNMENT_BYTES - _bytes_past_right_alignment;
-    size_t right_padding_bytes = _bytes_past_right_alignment == 0 ? 0 : _bytes_to_next_right_alignment;
-
-    size_t _pixels_past_bottom_alignment = mode->height_px % FRAMEBUFFER_BOTTOM_ALIGNMENT_PX;
-    size_t _pixels_to_next_bottom_alignment = FRAMEBUFFER_BOTTOM_ALIGNMENT_PX - _pixels_past_bottom_alignment;
-    size_t bottom_padding_pixels = _pixels_past_bottom_alignment == 0 ? 0 : _pixels_to_next_bottom_alignment;
-
-    return   (width_bytes     + right_padding_bytes)
+    return   (width_bytes + right_padding_bytes)
            * (mode->height_px + bottom_padding_pixels);
 }
 
