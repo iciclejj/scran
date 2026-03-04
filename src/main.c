@@ -185,9 +185,10 @@ init_meminit(
     struct _arena_context *shm_arena,
     struct _arena_context *private_arena
 ) {
-    // XXX: This assert is not necessarily required for this function to run as it
-    // should, assuming the context was properly set up until this point.
+    // XXX: These asserts are not necessarily required for this function to run
+    // as it should, assuming the context was properly set up until this point.
     assert(shm_arena->block_count == 0);
+    assert(private_arena->block_count == 0);
 
 
     //
