@@ -53,8 +53,6 @@ handle_seat_capabilities(
         state->globals.data_control_manager,
         state->globals.seat
     );
-
-    st_datacontrol->manager = &state->globals.data_control_manager;
 }
 
 

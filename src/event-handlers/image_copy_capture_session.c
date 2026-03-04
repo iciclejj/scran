@@ -61,7 +61,7 @@ handle_image_copy_capture_session_stopped(
 ) {
     struct scran_output *st_output = data;
 
-    ext_image_copy_capture_session_v1_destroy(*st_output->capture.frame_ctx.session);
+    ext_image_copy_capture_session_v1_destroy(st_output->capture.frame_ctx.wl_capture_session);
 
     // TODO: Destroy dynamically allocated memory (e.g. libav objects)
 }

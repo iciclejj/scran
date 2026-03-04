@@ -220,7 +220,7 @@ handle_image_copy_capture_frame_ready__image_capture(
 
     struct ext_data_control_source_v1 *data_control_source =
         ext_data_control_manager_v1_create_data_source(
-            *frame_ctx->st_datacontrol->manager
+            g_state.globals.data_control_manager
         );
     ext_data_control_source_v1_add_listener(
         data_control_source,

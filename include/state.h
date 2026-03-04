@@ -105,9 +105,6 @@ struct scran_seat_keyboard {
 
 // XXX: Rename this?
 struct scran_seat_datacontrol {
-    // TODO: Avoid unnecessary pointers to parent struct members
-    //           change it in other state structs as well
-    struct ext_data_control_manager_v1 **manager;
     struct ext_data_control_device_v1 *device;
 
     // NOTE: Handed over from ::frame event. Remember to destroy/unref on
@@ -190,7 +187,7 @@ struct capture_frame_context {
     void *img_data_2; // Extra buffer for copying/intermediate operations
 
     // TODO: This entire frame context badly needs re-reorganizing and slimming
-    struct ext_image_copy_capture_session_v1 **session;
+    struct ext_image_copy_capture_session_v1 *wl_capture_session;
     struct scran_seat_datacontrol *st_datacontrol;
 
     AVFormatContext *av_format_ctx;
@@ -234,9 +231,7 @@ struct capture_frame_context {
 struct scran_output_capture {
     struct capture_frame_context frame_ctx;
 
-    // Inconsistent naming, but my eyes are bleeding
     struct ext_image_capture_source_v1 *source;
-    struct ext_image_copy_capture_session_v1 *session;
 
     // TODO: Probably put this into a separate struct. Mode?
     //       Something to separate it from both capture/output and from xdg output

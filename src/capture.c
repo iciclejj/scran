@@ -37,10 +37,9 @@ extern struct scran g_state;
 void
 init_wl_capture_frame__video(struct capture_frame_context *frame_ctx)
 {
-    frame_ctx->frame =
-        ext_image_copy_capture_session_v1_create_frame(
-            *frame_ctx->session
-        );
+    frame_ctx->frame = ext_image_copy_capture_session_v1_create_frame(
+        frame_ctx->wl_capture_session
+    );
     ext_image_copy_capture_frame_v1_add_listener(frame_ctx->frame, &image_copy_capture_frame_listener__video_capture, frame_ctx);
     // TODO: Check ffmpeg's buffering behavior and maybe use ring buffer for
     // this, with a size that ensures frames still buffered by
@@ -57,7 +56,7 @@ dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
 {
     struct ext_image_copy_capture_frame_v1 *frame =
         ext_image_copy_capture_session_v1_create_frame(
-            *frame_ctx->session
+            frame_ctx->wl_capture_session
         );
     ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__video_capture, frame_ctx);
     // TODO: Check ffmpeg's buffering behavior and maybe use ring buffer for
@@ -295,7 +294,7 @@ dispatch_image_capture_event(struct scran_output_capture *st_capture)
 
     struct ext_image_copy_capture_frame_v1 *frame =
         ext_image_copy_capture_session_v1_create_frame(
-            *frame_ctx->session
+            frame_ctx->wl_capture_session
         );
     ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__image_capture, st_capture);
     ext_image_copy_capture_frame_v1_attach_buffer(
