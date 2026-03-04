@@ -230,8 +230,6 @@ init_meminit(
         );
     }
 
-    bench_add("START");
-
 
     //
     // Get shared memory
