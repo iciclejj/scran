@@ -17,7 +17,6 @@
 // TODO: Check stride performance on other systems (tested on 5600h)
 static_assert(sizeof(__m128i) % RGBA32_PIXEL_STRIDE == 0, "sizeof(__m128i) is not divisible by RGBA32_PIXEL_STRIDE");
 #define PIXELS_PER_M128I (sizeof(__m128i) / RGBA32_PIXEL_STRIDE)
-#define SSE_ROW_STRIDE 4
 #define FALLBACK_STRIDE_PX 4
 
 #define _INLINE __attribute__((always_inline))

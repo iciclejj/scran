@@ -5,6 +5,11 @@
 
 #include <wayland-client.h>
 
+
+// TODO: Rename to SCRAN_ something
+#define SSE_ROW_STRIDE 4 // Number of rows we will process at a time
+
+
 void
 transform_framebuffer(
     const void *src, void *dst,

@@ -4,6 +4,7 @@
 #include <wayland-client.h>
 
 #include "state.h"
+#include "simd.h"
 
 
 // ARGB8888 and XRGB8888 are always supported (wayland spec)
@@ -13,31 +14,30 @@
 #define SURFACE_BLCONTEXT_ORIGIN ((BLPoint){0,0})
 
 #define SSE_ALIGNMENT_BYTES 16
-// TODO: Use separate alignment values for the start of the buffer vs
-// for SIMD padding.
-#define FRAMEBUFFER_ALIGNMENT_BYTES SSE_ALIGNMENT_BYTES
+#define FRAMEBUFFER_ALIGNMENT_BYTES 64 // 64 should cover most bases (cache, simd)
+#define FRAMEBUFFER_RIGHT_ALIGNMENT_BYTES  SSE_ALIGNMENT_BYTES
+#define FRAMEBUFFER_BOTTOM_ALIGNMENT_PX    SSE_ROW_STRIDE
+
 
 static inline int32_t
 get_surface_stride(struct scran_output_mode *mode) {
     return mode->width_px * SURFACE_PIXEL_STRIDE;
 }
 
-// TODO: Maybe don't have _padded functions, and instead just have padding size
-// macros to send as args to the allocator?
 static inline int32_t
 _get_framebuffer_size_padded(struct scran_output_mode *mode, uint8_t pixel_stride) {
     size_t width_bytes = pixel_stride * mode->width_px;
 
-    size_t right_padding_bytes =
-            (FRAMEBUFFER_ALIGNMENT_BYTES - width_bytes % FRAMEBUFFER_ALIGNMENT_BYTES)
-            * width_bytes % FRAMEBUFFER_ALIGNMENT_BYTES != 0;
+    size_t _bytes_past_right_alignment = width_bytes % FRAMEBUFFER_RIGHT_ALIGNMENT_BYTES;
+    size_t _bytes_to_next_right_alignment = FRAMEBUFFER_RIGHT_ALIGNMENT_BYTES - _bytes_past_right_alignment;
+    size_t right_padding_bytes = _bytes_past_right_alignment == 0 ? 0 : _bytes_to_next_right_alignment;
 
-    // XXX TODO: Set this according to SSE_STRIDE from simd.h
-    int32_t bottom_padding_pixels =
-            (FRAMEBUFFER_ALIGNMENT_BYTES / pixel_stride)
-            + (FRAMEBUFFER_ALIGNMENT_BYTES % pixel_stride != 0);
+    size_t _pixels_past_bottom_alignment = mode->height_px % FRAMEBUFFER_BOTTOM_ALIGNMENT_PX;
+    size_t _pixels_to_next_bottom_alignment = FRAMEBUFFER_BOTTOM_ALIGNMENT_PX - _pixels_past_bottom_alignment;
+    size_t bottom_padding_pixels = _pixels_past_bottom_alignment == 0 ? 0 : _pixels_to_next_bottom_alignment;
 
-    return (width_bytes + right_padding_bytes) * (mode->height_px + bottom_padding_pixels);
+    return   (width_bytes     + right_padding_bytes)
+           * (mode->height_px + bottom_padding_pixels);
 }
 
 static inline int32_t
