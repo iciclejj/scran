@@ -53,7 +53,6 @@ struct scran_globals {
 
 struct scran_output_surface_buffer {
     struct wl_buffer *wl_buffer;
-    // TODO: Make sure frame data (here and in capture) gets proper alignment.
     void *data;
 
     BLContextCore bl_ctx;
@@ -267,6 +266,7 @@ struct scran_options {
     bool capture_and_exit_after_selection_init;
 };
 
+// TODO: Struct alignments
 struct scran {
     // TODO: Make this a state enum or a bitfield with datacontrol.selection_refcount etc. ?
     bool exit_requested;
