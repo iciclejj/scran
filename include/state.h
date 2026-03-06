@@ -1,6 +1,7 @@
 #ifndef STATE_H
 #define STATE_H
 
+#include <signal.h>
 #include <stdbool.h>
 #include <stdatomic.h>
 #include <sys/uio.h>
@@ -284,6 +285,10 @@ struct scran {
 
     struct scran_globals globals;
     struct scran_seat seat;
+
+    // Used for releasing focus
+    struct wl_region *empty_wl_region;
+    sig_atomic_t sig_focus_requested;
 
     // TODO: Probably allocate this dynamically, after all.
     uint32_t n_outputs;

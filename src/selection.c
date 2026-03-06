@@ -1,5 +1,10 @@
 #include "state.h"
 #include "selection.h"
+#include "print.h"
+
+
+extern struct scran g_state;
+
 
 void
 set_selection_surface_theme(
@@ -36,5 +41,31 @@ set_selection_surface_theme(
     //               might change the dirty-rect dynamics that we take
     //               advantage of here.)
     st_surface->bl_box_currently_drawn = st_output->selection_ctx.bl_box_bounds;
+}
+
+
+void
+start_grabbing_focus()
+{
+    DEBUG("Grabbing focus\n");
+
+    for (int i = 0; i < g_state.n_outputs; ++i) {
+        struct scran_output *st_output = &g_state.outputs[i];
+        // NULL sets an infinite region
+        wl_surface_set_input_region(st_output->surface.wl_surface, NULL);
+        wl_surface_commit(st_output->surface.wl_surface);
+    }
+}
+
+void
+stop_grabbing_focus()
+{
+    DEBUG("Releasing focus\n");
+
+    for (int i = 0; i < g_state.n_outputs; ++i) {
+        struct scran_output *st_output = &g_state.outputs[i];
+        wl_surface_set_input_region(st_output->surface.wl_surface, g_state.empty_wl_region);
+        wl_surface_commit(st_output->surface.wl_surface);
+    }
 }
 

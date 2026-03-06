@@ -9,6 +9,7 @@
 #include "event-handlers.h"
 #include "capture.h"
 #include "print.h"
+#include "selection.h"
 
 
 static void
@@ -109,6 +110,9 @@ handle_keyboard_key(
     assert(key_state != WL_KEYBOARD_KEY_STATE_RELEASED);
     switch (xkb_key) {
     // TODO: Probably reorganize all of this later
+    case XKB_KEY_Tab:
+        stop_grabbing_focus();
+        break;
     case XKB_KEY_Escape:
         eprintf("Got escape key...");
         if (st_output->capture.frame_ctx.capturing_video) {

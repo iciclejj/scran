@@ -3,24 +3,31 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <assert.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/mman.h>
+#include <sys/epoll.h>
 
 #include <linux/input-event-codes.h>
 
+#include <wayland-client-core.h>
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 
+#include "selection.h"
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
 #include "init.h"
 #include "print.h"
 #include "options.h"
+#include "signal-handlers.h"
 
 //  General TODO:
 //  - Don't use libwayland..? Handle its allocations etc. ourselves?
+//  - Do we need error handling for all the various wayland functions?
+//      - Probably worthwhile during init
 //
 
 // TODO: Dynamically find this name
@@ -71,6 +78,9 @@ init_premem()
             return false;
         }
     }
+
+    g_state.empty_wl_region = wl_compositor_create_region(g_state.globals.compositor);
+
     // Then roundtrip to collect listener-provided memory requirements into our state struct.
     // This should be our last required roundtrip until the main event loop dispatch.
     wl_display_roundtrip(g_state.globals.display);
@@ -106,6 +116,8 @@ init_premem__destroy()
         init_premem__selection__destroy(_st_output);
         init_premem__capture__destroy(_st_output);
     }
+
+    wl_region_destroy(g_state.empty_wl_region);
 
     // TODO: Make sure this happens at an appropriate point in time (memory
     // footprint should be minimized), once the init/cleanup is more
@@ -367,6 +379,132 @@ init_postmem__destroy()
 }
 
 
+struct _scran_signal_masks {
+    sigset_t original;
+    sigset_t with_scran_handlers_unmasked;
+    sigset_t with_scran_handlers_masked;
+};
+
+static inline bool
+_init_signal(int signo, struct sigaction *sigaction_, sigset_t *mask_inplace, sigset_t *unmask_inplace)
+{
+    // INFO: A sigaction.sa_mask is for signals blocked during handler
+    // execution, and is separate from our global block mask (that we
+    // use for epoll_pwait). The signal that triggered the handler is
+    // blocked by default, even with an empty mask (unless SA_NODEFER).
+    sigemptyset(&sigaction_->sa_mask); 
+
+    assert(sigaction_->sa_handler != NULL);
+
+    if (sigaction(signo, sigaction_, NULL) == -1) {
+        eprintf("sigaction failed (signal number: %d): %s\n",
+                signo, strerror(errno));
+        return false;
+    }
+
+    sigaddset(mask_inplace, signo);
+    sigdelset(unmask_inplace, signo);
+
+    return true;
+}
+
+static bool
+init_signals(struct _scran_signal_masks *masks)
+{
+    // Get already blocked signals
+    // TODO: Is getting the old mask actually worthwhile? Also, if we do care
+    // about the old mask, e.g. one set before a parent's exec, then maybe just
+    // warn about blocked handlers, rather than simply unblocking them?
+    if (sigprocmask(SIG_SETMASK, NULL, &masks->original)) {
+        eprintf("sigprocmask failed: %s\n", strerror(errno));
+        return false;
+    }
+    masks->with_scran_handlers_unmasked = masks->original;
+    masks->with_scran_handlers_masked = masks->original;
+
+    static struct sigaction sa_grab_focus_unsafe = { .sa_handler = sig_grab_focus };
+    if (!_init_signal(SIGUSR1, &sa_grab_focus_unsafe, &masks->with_scran_handlers_masked, &masks->with_scran_handlers_unmasked)) {
+        return false;
+    }
+
+    return true;
+}
+
+
+// TODO: More asserts
+// epoll_fd_out: closed by caller to make error handling simpler
+static bool
+run_main_loop(int *const restrict epoll_fd_out, struct _scran_signal_masks *signal_masks)
+{
+    // TODO: Verify whether that this isn't redundant
+    wl_display_flush(g_state.globals.display);
+
+    int wl_display_fd = wl_display_get_fd(g_state.globals.display);
+    const int epoll_fd = epoll_create(1); // TODO: O_CLOEXEC if threading
+    if (epoll_fd == -1) {
+        eprintf("epoll_create() failed: %s\n", strerror(errno));
+        return false;
+    }
+    *epoll_fd_out = epoll_fd;
+
+    struct epoll_event wl_display_epoll_event = { .events = EPOLLIN };
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wl_display_fd, &wl_display_epoll_event);
+
+    // Block/defer our signal handlers until explicit unblock during epoll
+    if (sigprocmask(SIG_BLOCK, &signal_masks->with_scran_handlers_masked, NULL) == -1) {
+        eprintf("sigprocmask failed: %s\n", strerror(errno));
+        return false;
+    }
+
+    // Main event loop.
+    //
+    // This will also finalize any initialization that has not roundtripped yet.
+    //
+    // TODO:
+    //   - Find out if we can bypass (sway/wlroot's?) seemingly framerate-bound
+    //     startup latency for reaching layer_surface::configure. Or potentially
+    //     fix it, if it is a bug.
+    //     The initializing ::commit shouldn't need to be vsynced..?
+    while (
+        !g_state.exit_requested
+        ||
+        g_state.n_captures_in_progress > 0
+    ) {
+        while (wl_display_prepare_read(g_state.globals.display) != 0) {
+            if (wl_display_dispatch_pending(g_state.globals.display) == -1) {
+                // TODO: Check errno and print/handle error better
+                eprintf("Error during wl_display_dispatch().\n");
+                wl_display_cancel_read(g_state.globals.display);
+                return false;
+            }
+        }
+        wl_display_flush(g_state.globals.display);
+
+        // Let blocked unsafe signals fire synchronously here
+        if (-1 == epoll_pwait(epoll_fd, &wl_display_epoll_event, 1, -1, &signal_masks->with_scran_handlers_unmasked)) {
+            wl_display_cancel_read(g_state.globals.display);
+            if (errno != EINTR) {
+                // TODO: Read errno
+                eprintf("Error during epoll_pwait().\n");
+                return false;
+            }
+        } else {
+            // TODO: Handle error (-1) ?
+            wl_display_read_events(g_state.globals.display);
+        }
+
+        if (g_state.sig_focus_requested == true) {
+            start_grabbing_focus();
+            // TODO: Make this a tiered enum to prevent handling it twice?
+            g_state.sig_focus_requested = false;
+        }
+
+        wl_display_dispatch_pending(g_state.globals.display);
+    };
+
+    return true;
+}
+
 // TODO: Allow selection before capture protocols are ready?
 //           Probably negligible benefit for the added complexity
 int main(int argc, char *argv[])
@@ -394,29 +532,22 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    struct _scran_signal_masks signal_masks;
+    if (!init_signals(&signal_masks)) {
+        eprintf("Failed to initialize signals.\n");
+        return EXIT_FAILURE;
+    }
 
-    // Main event loop.
-    //
-    // This will also finalize any initialization that has not roundtripped yet.
-    //
-    // TODO:
-    //   - Find out if we can bypass (sway/wlroot's?) seemingly framerate-bound
-    //     startup latency for reaching layer_surface::configure. Or potentially
-    //     fix it, if it is a bug.
-    //     The initializing ::commit shouldn't need to be vsynced..?
-    while (
-        !g_state.exit_requested
-        ||
-        g_state.n_captures_in_progress > 0
-    ) {
-        const int _dispatch_status = wl_display_dispatch(g_state.globals.display);
 
-        if (_dispatch_status == -1) {
-            // TODO: Check errno and print/handle error
-            eprintf("Error during wl_display_dispatch().\n");
-            break;
-        }
-    };
+    int epoll_fd = -1; // Closed by caller
+
+    if (!run_main_loop(&epoll_fd, &signal_masks)) {
+        eprintf("Main loop returned with error. Attempting normal cleanup.\n");
+    }
+
+    close(epoll_fd);
+
+
 
     wl_display_dispatch_pending(g_state.globals.display);
     wl_display_roundtrip(g_state.globals.display);
@@ -430,6 +561,8 @@ int main(int argc, char *argv[])
 
     wl_display_disconnect(g_state.globals.display);
     eprintf("Disconnected from wayland server (%s)\n", SOCKNAME);
+
+    eprintf("Scran exited successfully.\n");
 
     return 0;
 }
