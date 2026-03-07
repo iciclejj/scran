@@ -112,7 +112,7 @@ $(prog_debug):	 $(objs_debug)
 
 
 .PHONY: all
-all: $(prog_release) $(prog_debug)
+all: release debug
 
 .PHONY: release debug
 release: validate_dependencies $(prog_release)
