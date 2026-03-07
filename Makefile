@@ -2,21 +2,21 @@
 
 .DEFAULT_GOAL := debug
 
-FFMPEG_LIBS := libavcodec libavutil libavformat libavfilter libswscale
-PKGCONF_LIBS := xkbcommon $(FFMPEG_LIBS)
+PROG := scran
 
 BUILD_DIR := build
 wayland_protocols_generated_source_dir := $(BUILD_DIR)/wayland-protocols-generated-source
-WAYLAND_PROTOCOLS_DIR_LOCAL := $(wayland_protocols_generated_source_dir)
+WL_PROTOCOLS_DIR_LOCAL := $(wayland_protocols_generated_source_dir)
 
-PROG := scran
+ffmpeg_libs := libavcodec libavutil libavformat libavfilter libswscale
+PKGCONF_LIBS := xkbcommon $(ffmpeg_libs)
 
 _LDLIBS := -lwayland-client -lblend2d
 _LDLIBS += $(shell pkg-config --libs $(PKGCONF_LIBS))
 ALL_LDLIBS = $(_LDLIBS) $(LDLIBS)
 
 INCDIRS := include/
-INCDIRS += $(WAYLAND_PROTOCOLS_DIR_LOCAL)
+INCDIRS += $(WL_PROTOCOLS_DIR_LOCAL)
 
 # TODO: CPPFLAGS?
 _CFLAGS := $(addprefix -I, $(INCDIRS))
@@ -33,40 +33,40 @@ ALL_CFLAGS_DBG = $(ALL_CFLAGS) $(CFLAGS_DBG)
 # TODO: Simply-expanded, but lazily initialized shell/pkg-config output variables
 # 			I.e. don't require shell commands to run for targets that don't
 # 			need them, but also don't evaluate them more times than necessary.
-WAYLAND_SCANNER := $(shell pkg-config --variable=wayland_scanner wayland-scanner)
-WAYLAND_PROTOCOLS_DIR := $(shell pkg-config --variable=pkgdatadir wayland-protocols)
-WAYLAND_PROTOCOLS_DIR_WLR := $(shell pkg-config --variable=pkgdatadir wlr-protocols)
+WAYLAND_SCANNER   := $(shell pkg-config --variable=wayland_scanner wayland-scanner)
+WL_PROTOCOLS_DIR  := $(shell pkg-config --variable=pkgdatadir wayland-protocols)
+WLR_PROTOCOLS_DIR := $(shell pkg-config --variable=pkgdatadir wlr-protocols)
 # TODO(!!!): Ensure sway-compatible protocol versions
-WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS := \
-	$(WAYLAND_PROTOCOLS_DIR_WLR)/unstable/wlr-layer-shell-unstable-v1.xml \
-	$(WAYLAND_PROTOCOLS_DIR)/stable/xdg-shell/xdg-shell.xml \
-	$(WAYLAND_PROTOCOLS_DIR)/unstable/xdg-output/xdg-output-unstable-v1.xml \
-	$(WAYLAND_PROTOCOLS_DIR)/stable/tablet/tablet-v2.xml \
-	$(WAYLAND_PROTOCOLS_DIR)/staging/cursor-shape/cursor-shape-v1.xml \
-	$(WAYLAND_PROTOCOLS_DIR)/staging/ext-image-capture-source/ext-image-capture-source-v1.xml \
-	$(WAYLAND_PROTOCOLS_DIR)/staging/ext-image-copy-capture/ext-image-copy-capture-v1.xml \
-	$(WAYLAND_PROTOCOLS_DIR)/staging/ext-foreign-toplevel-list/ext-foreign-toplevel-list-v1.xml \
-	$(WAYLAND_PROTOCOLS_DIR)/staging/ext-data-control/ext-data-control-v1.xml
+wl_protocols_required_xml_paths := \
+	$(WLR_PROTOCOLS_DIR)/unstable/wlr-layer-shell-unstable-v1.xml \
+	$(WL_PROTOCOLS_DIR)/stable/xdg-shell/xdg-shell.xml \
+	$(WL_PROTOCOLS_DIR)/unstable/xdg-output/xdg-output-unstable-v1.xml \
+	$(WL_PROTOCOLS_DIR)/stable/tablet/tablet-v2.xml \
+	$(WL_PROTOCOLS_DIR)/staging/cursor-shape/cursor-shape-v1.xml \
+	$(WL_PROTOCOLS_DIR)/staging/ext-image-capture-source/ext-image-capture-source-v1.xml \
+	$(WL_PROTOCOLS_DIR)/staging/ext-image-copy-capture/ext-image-copy-capture-v1.xml \
+	$(WL_PROTOCOLS_DIR)/staging/ext-foreign-toplevel-list/ext-foreign-toplevel-list-v1.xml \
+	$(WL_PROTOCOLS_DIR)/staging/ext-data-control/ext-data-control-v1.xml
 
 # $(1): Wayland protocol .xml path
 # $(2): Output file extension
-define _CREATE_PROTOCOL_OUTPUT_PATH
-$(WAYLAND_PROTOCOLS_DIR_LOCAL)/$(basename $(notdir $(1)))$(2)
+define create_protocol_output_path
+$(WL_PROTOCOLS_DIR_LOCAL)/$(basename $(notdir $(1)))$(2)
 endef
 # $(1): Wayland protocol .xml path
-define WAYLAND_PROTOCOL_GEN_RULE
-$(call _CREATE_PROTOCOL_OUTPUT_PATH,$(1),.h) \
-$(call _CREATE_PROTOCOL_OUTPUT_PATH,$(1),.c) \
+define wl_protocol_rule
+$(call create_protocol_output_path,$(1),.h) \
+$(call create_protocol_output_path,$(1),.c) \
 : $(1)
-	@mkdir -p $(WAYLAND_PROTOCOLS_DIR_LOCAL)
-	$(WAYLAND_SCANNER) client-header $(1) $(call _CREATE_PROTOCOL_OUTPUT_PATH,$(1),.h)
-	$(WAYLAND_SCANNER) private-code $(1) $(call _CREATE_PROTOCOL_OUTPUT_PATH,$(1),.c)
+	@mkdir -p $(WL_PROTOCOLS_DIR_LOCAL)
+	$(WAYLAND_SCANNER) client-header $(1) $(call create_protocol_output_path,$(1),.h)
+	$(WAYLAND_SCANNER) private-code  $(1) $(call create_protocol_output_path,$(1),.c)
 endef
-$(foreach path, $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS), $(eval $(call WAYLAND_PROTOCOL_GEN_RULE,$(path))))
+$(foreach path, $(wl_protocols_required_xml_paths), $(eval $(call wl_protocol_rule,$(path))))
 
-# XXX: These should probably inputs to WAYLAND_PROTOCOL_GEN_RULE
-wayland_protocols_srcs_c := $(foreach path, $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS), $(call _CREATE_PROTOCOL_OUTPUT_PATH,$(path),.c))
-wayland_protocols_srcs_h := $(foreach path, $(WAYLAND_PROTOCOLS_REQUIRED_XML_PATHS), $(call _CREATE_PROTOCOL_OUTPUT_PATH,$(path),.h))
+# XXX: These should probably inputs to wl_protocol_rule
+wayland_protocols_srcs_c := $(foreach path, $(wl_protocols_required_xml_paths), $(call create_protocol_output_path,$(path),.c))
+wayland_protocols_srcs_h := $(foreach path, $(wl_protocols_required_xml_paths), $(call create_protocol_output_path,$(path),.h))
 wayland_protocols_srcs := $(wayland_protocols_srcs_c) $(wayland_protocols_srcs_h)
 
 .PHONY: protocols_srcs
