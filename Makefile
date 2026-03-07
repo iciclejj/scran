@@ -1,5 +1,3 @@
-# XXX TODO: Clean up in this entire file
-
 .DEFAULT_GOAL := debug
 
 PROG := scran
