@@ -2,10 +2,6 @@
 
 .DEFAULT_GOAL := debug
 
-ENV_CFLAGS := $(CFLAGS)
-ENV_CFLAGS_REL := $(CFLAGS_REL)
-ENV_CFLAGS_DBG := $(CFLAGS_DBG)
-
 FFMPEG_LIBS := libavcodec libavutil libavformat libavfilter libswscale
 PKGCONF_LIBS := xkbcommon $(FFMPEG_LIBS)
 
@@ -21,12 +17,13 @@ LDLIBS += $(shell pkg-config --libs $(PKGCONF_LIBS))
 INCDIRS := include/
 INCDIRS += $(WAYLAND_PROTOCOLS_DIR_LOCAL)
 
-CFLAGS := $(addprefix -I, $(INCDIRS))
-CFLAGS += $(shell pkg-config --cflags $(PKGCONF_LIBS))
-CFLAGS_REL := $(CFLAGS) -DNDEBUG
-CFLAGS_REL += $(ENV_CFLAGS) $(ENV_CFLAGS_REL)
-CFLAGS_DBG := $(CFLAGS) -gdwarf-5 -O0 -U_FORTIFY_SOURCE
-CFLAGS_DBG += $(ENV_CFLAGS) $(ENV_CFLAGS_DBG)
+_CFLAGS := $(addprefix -I, $(INCDIRS))
+_CFLAGS += $(shell pkg-config --cflags $(PKGCONF_LIBS))
+
+_CFLAGS_REL := -DNDEBUG
+ALL_CFLAGS_REL = $(_CFLAGS) $(CFLAGS) $(_CFLAGS_REL) $(CFLAGS_REL)
+_CFLAGS_DBG := -gdwarf-5 -O0 -U_FORTIFY_SOURCE
+ALL_CFLAGS_DBG = $(_CFLAGS) $(CFLAGS) $(_CFLAGS_DBG) $(CFLAGS_DBG)
 
 
 # TODO(!!!): Ensure package versions. Flake?
@@ -78,10 +75,10 @@ build_dir_debug :=   $(BUILD_DIR)/debug
 
 $(build_dir_release)/%.o: %.c  protocols_srcs
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS_REL) -c $< -o $@
+	$(CC) $(ALL_CFLAGS_REL) -c $< -o $@
 $(build_dir_debug)/%.o: %.c    protocols_srcs
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS_DBG) -c $< -o $@
+	$(CC) $(ALL_CFLAGS_DBG) -c $< -o $@
 
 # TODO: Handle changed header files
 _srcdirs := src src/event-handlers src/init src/util
@@ -95,9 +92,9 @@ objs_release := $(addprefix $(build_dir_release)/, $(_objs))
 objs_debug :=   $(addprefix $(build_dir_debug)/,   $(_objs))
 
 $(prog_release): $(objs_release)
-	$(CC) $(CFLAGS_REL) $^ $(LDLIBS) -o $(prog_release)
+	$(CC) $(ALL_CFLAGS_REL) $^ $(LDLIBS) -o $(prog_release)
 $(prog_debug):	 $(objs_debug)
-	$(CC) $(CFLAGS_DBG) $^ $(LDLIBS) -o $(prog_debug)
+	$(CC) $(ALL_CFLAGS_DBG) $^ $(LDLIBS) -o $(prog_debug)
 
 
 .PHONY: all
