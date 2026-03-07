@@ -17,13 +17,15 @@ LDLIBS += $(shell pkg-config --libs $(PKGCONF_LIBS))
 INCDIRS := include/
 INCDIRS += $(WAYLAND_PROTOCOLS_DIR_LOCAL)
 
+# TODO: CPPFLAGS?
 _CFLAGS := $(addprefix -I, $(INCDIRS))
 _CFLAGS += $(shell pkg-config --cflags $(PKGCONF_LIBS))
+ALL_CFLAGS = $(_CFLAGS) $(CFLAGS)
 
 CFLAGS_REL ?= -DNDEBUG
-ALL_CFLAGS_REL = $(_CFLAGS) $(CFLAGS) $(CFLAGS_REL)
+ALL_CFLAGS_REL = $(ALL_CFLAGS) $(CFLAGS_REL)
 CFLAGS_DBG ?= -gdwarf-5 -O0 -U_FORTIFY_SOURCE
-ALL_CFLAGS_DBG = $(_CFLAGS) $(CFLAGS) $(CFLAGS_DBG)
+ALL_CFLAGS_DBG = $(ALL_CFLAGS) $(CFLAGS_DBG)
 
 
 # TODO(!!!): Ensure package versions. Flake?
