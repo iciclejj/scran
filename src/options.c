@@ -139,12 +139,18 @@ scran_handle_args(int argc, char *const *argv)
                 "  Enter                Capture image and exit\n"
                 "  Shift+Enter          Capture image\n"
                 "  Space                Capture video (start/stop)\n"
+                "  Tab                  Release focus (see Signals section for how to retake focus)\n"
                 "\n"
                 "Options\n"
                 "  -d   directory path for output files\n"
                 "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
                 "  -e   automatically capture and exit immediately after initial selection\n"
                 "  -h   show this help message and exit\n"
+                "\n"
+                "Signals\n"
+                "  Send SIGUSR1 to the running scran to start grabbing inputs again after releasing with <Tab>.\n"
+                "  - Example:            `pkill -SIGUSR1 scran`\n"
+                "  - As sway keybinding: `bindsym Shift+Alt+Tab exec 'pkill -SIGUSR1 scran'`\n"
             );
             return false;
         }
