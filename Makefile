@@ -120,14 +120,12 @@ debug:   validate_dependencies $(prog_debug)
 _wayland_protocols_objs_debug := $(addprefix $(build_dir_debug)/, $(wayland_protocols_srcs_c:.c=.o))
 protocols: $(wayland_protocols_srcs) _wayland_protocols_objs_debug
 
-CMD_RM := $(shell command -v trash || command -v rm)
-
 clean: 
-	$(CMD_RM) -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR)
 
 clean-objs:
-	$(CMD_RM) -f $(objs_release) $(objs_debug)
+	rm -f $(objs_release) $(objs_debug)
 
 clean-generated-src:
-	$(CMD_RM) -rf $(wayland_protocols_generated_source_dir)
+	rm -rf $(wayland_protocols_generated_source_dir)
 
