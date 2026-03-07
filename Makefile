@@ -8,11 +8,13 @@ BUILD_DIR := build
 wayland_protocols_generated_source_dir := $(BUILD_DIR)/wayland-protocols-generated-source
 WL_PROTOCOLS_DIR_LOCAL := $(wayland_protocols_generated_source_dir)
 
+PKG_CONFIG ?= pkg-config
+
 ffmpeg_libs := libavcodec libavutil libavformat libavfilter libswscale
 PKGCONF_LIBS := xkbcommon $(ffmpeg_libs)
 
 _LDLIBS := -lwayland-client -lblend2d
-_LDLIBS += $(shell pkg-config --libs $(PKGCONF_LIBS))
+_LDLIBS += $(shell $(PKG_CONFIG) --libs $(PKGCONF_LIBS))
 ALL_LDLIBS = $(_LDLIBS) $(LDLIBS)
 
 INCDIRS := include/
@@ -20,7 +22,7 @@ INCDIRS += $(WL_PROTOCOLS_DIR_LOCAL)
 
 # TODO: CPPFLAGS?
 _CFLAGS := $(addprefix -I, $(INCDIRS))
-_CFLAGS += $(shell pkg-config --cflags $(PKGCONF_LIBS))
+_CFLAGS += $(shell $(PKG_CONFIG) --cflags $(PKGCONF_LIBS))
 ALL_CFLAGS = $(_CFLAGS) $(CFLAGS)
 
 CFLAGS_REL ?= -DNDEBUG
@@ -33,19 +35,19 @@ ALL_CFLAGS_DBG = $(ALL_CFLAGS) $(CFLAGS_DBG)
 # TODO: More comprehensive version validation
 validate_dependencies:
 	# wayland-scanner private-code subcommand introduced in 1.14.91 
-	pkg-config --atleast-version=1.14.91 wayland-scanner
+	$(PKG_CONFIG) --atleast-version=1.14.91 wayland-scanner
 	# TODO: Should we verify protocol versions, or is the xml files existing
 	# enough, then verify rest at runtime?
-	pkg-config --exists wayland-protocols
-	pkg-config --exists wlr-protocols
-	pkg-config --exists $(PKGCONF_LIBS)
+	$(PKG_CONFIG) --exists wayland-protocols
+	$(PKG_CONFIG) --exists wlr-protocols
+	$(PKG_CONFIG) --exists $(PKGCONF_LIBS)
 
-# TODO: Simply-expanded, but lazily initialized shell/pkg-config output variables
+# TODO: Simply-expanded, but lazily initialized shell/$(PKG_CONFIG) output variables
 # 			I.e. don't require shell commands to run for targets that don't
 # 			need them, but also don't evaluate them more times than necessary.
-WAYLAND_SCANNER   := $(shell pkg-config --variable=wayland_scanner wayland-scanner)
-WL_PROTOCOLS_DIR  := $(shell pkg-config --variable=pkgdatadir wayland-protocols)
-WLR_PROTOCOLS_DIR := $(shell pkg-config --variable=pkgdatadir wlr-protocols)
+WAYLAND_SCANNER   := $(shell $(PKG_CONFIG) --variable=wayland_scanner wayland-scanner)
+WL_PROTOCOLS_DIR  := $(shell $(PKG_CONFIG) --variable=pkgdatadir wayland-protocols)
+WLR_PROTOCOLS_DIR := $(shell $(PKG_CONFIG) --variable=pkgdatadir wlr-protocols)
 wl_protocols_required_xml_paths := \
 	$(WLR_PROTOCOLS_DIR)/unstable/wlr-layer-shell-unstable-v1.xml \
 	$(WL_PROTOCOLS_DIR)/stable/xdg-shell/xdg-shell.xml \
