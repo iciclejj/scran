@@ -47,8 +47,8 @@ handle_seat_capabilities(
         // TODO
     }
 
+    // TODO: Probably initialize this somewhere else
     struct scran_seat_datacontrol *const st_datacontrol = &state->seat.datacontrol;
-
     st_datacontrol->device = ext_data_control_manager_v1_get_data_device(
         state->globals.data_control_manager,
         state->globals.seat
