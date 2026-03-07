@@ -11,8 +11,9 @@ WAYLAND_PROTOCOLS_DIR_LOCAL := $(wayland_protocols_generated_source_dir)
 
 PROG := scran
 
-LDLIBS := -lwayland-client -lblend2d
-LDLIBS += $(shell pkg-config --libs $(PKGCONF_LIBS))
+_LDLIBS := -lwayland-client -lblend2d
+_LDLIBS += $(shell pkg-config --libs $(PKGCONF_LIBS))
+ALL_LDLIBS = $(_LDLIBS) $(LDLIBS)
 
 INCDIRS := include/
 INCDIRS += $(WAYLAND_PROTOCOLS_DIR_LOCAL)
@@ -94,9 +95,9 @@ objs_release := $(addprefix $(build_dir_release)/, $(_objs))
 objs_debug :=   $(addprefix $(build_dir_debug)/,   $(_objs))
 
 $(prog_release): $(objs_release)
-	$(CC) $(ALL_CFLAGS_REL) $^ $(LDLIBS) -o $(prog_release)
+	$(CC) $(ALL_CFLAGS_REL) $^ $(ALL_LDLIBS) -o $(prog_release)
 $(prog_debug):	 $(objs_debug)
-	$(CC) $(ALL_CFLAGS_DBG) $^ $(LDLIBS) -o $(prog_debug)
+	$(CC) $(ALL_CFLAGS_DBG) $^ $(ALL_LDLIBS) -o $(prog_debug)
 
 
 .PHONY: all
