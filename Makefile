@@ -28,15 +28,24 @@ ALL_CFLAGS_REL = $(ALL_CFLAGS) $(CFLAGS_REL)
 CFLAGS_DBG ?= -gdwarf-5 -O0 -U_FORTIFY_SOURCE
 ALL_CFLAGS_DBG = $(ALL_CFLAGS) $(CFLAGS_DBG)
 
+.PHONY: validate_dependencies
+# TODO: Add flake as well
+# TODO: More comprehensive version validation
+validate_dependencies:
+	# wayland-scanner private-code subcommand introduced in 1.14.91 
+	pkg-config --atleast-version=1.14.91 wayland-scanner
+	# TODO: Should we verify protocol versions, or is the xml files existing
+	# enough, then verify rest at runtime?
+	pkg-config --exists wayland-protocols
+	pkg-config --exists wlr-protocols
+	pkg-config --exists $(PKGCONF_LIBS)
 
-# TODO(!!!): Ensure package versions. Flake?
 # TODO: Simply-expanded, but lazily initialized shell/pkg-config output variables
 # 			I.e. don't require shell commands to run for targets that don't
 # 			need them, but also don't evaluate them more times than necessary.
 WAYLAND_SCANNER   := $(shell pkg-config --variable=wayland_scanner wayland-scanner)
 WL_PROTOCOLS_DIR  := $(shell pkg-config --variable=pkgdatadir wayland-protocols)
 WLR_PROTOCOLS_DIR := $(shell pkg-config --variable=pkgdatadir wlr-protocols)
-# TODO(!!!): Ensure sway-compatible protocol versions
 wl_protocols_required_xml_paths := \
 	$(WLR_PROTOCOLS_DIR)/unstable/wlr-layer-shell-unstable-v1.xml \
 	$(WL_PROTOCOLS_DIR)/stable/xdg-shell/xdg-shell.xml \
@@ -104,8 +113,8 @@ $(prog_debug):	 $(objs_debug)
 all: $(prog_release) $(prog_debug)
 
 .PHONY: release debug
-release: $(prog_release)
-debug: $(prog_debug)
+release: validate_dependencies $(prog_release)
+debug:   validate_dependencies $(prog_debug)
 
 .PHONY: protocols
 _wayland_protocols_objs_debug := $(addprefix $(build_dir_debug)/, $(wayland_protocols_srcs_c:.c=.o))
