@@ -35,7 +35,7 @@ Image also sent to clipboard
   -d   directory path for output files
   -p   press-only mouse buttons (presses toggle pressed/released state)
   -e   automatically capture and exit immediately after initial selection
-  -h   show this help message and exit
+  -h   show help message and exit
 ```
 ### Keymap (as of v0.2.0)
 For different versions, use `scran -h`.
