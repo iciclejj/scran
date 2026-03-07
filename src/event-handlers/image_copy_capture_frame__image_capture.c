@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdatomic.h>
+#include <unistd.h>
 #include <sys/stat.h>
 
 #include <ext-image-copy-capture-v1.h>
@@ -183,22 +184,32 @@ handle_image_copy_capture_frame_ready__image_capture(
     //           here and in the rest of this function...
     const void *const bl_array_img_encoded_data = bl_array_get_data(&bl_array_img_encoded);
     const size_t bytes_to_write = bl_array_get_size(&bl_array_img_encoded);
-    size_t bytes_written;
 
     const struct scran_options *const st_options = &g_state.options;
 
-    scran_update_output_filepath(st_options, CAPTURE_IMAGE_OUTPUT_FILE_EXTENSION_DEFAULT);
-    res = bl_file_system_write_file(
-        st_options->output_filepath,
-        bl_array_img_encoded_data,
-        bytes_to_write,
-        &bytes_written
-    );
+    if (st_options->output_to_stdout) {
+        // TODO: Assert nothing else was written to stdout?
+        ssize_t bytes_written = write(STDOUT_FILENO, bl_array_img_encoded_data, bytes_to_write);
 
-    if (res == BL_SUCCESS && bytes_written == bytes_to_write) {
-        eprintf("Image saved: %s (%ldKiB)\n", st_options->output_filepath, bytes_written >> 10);
+        if (bytes_written != bytes_to_write) {
+            eprintf("Failed to write image to stdout. Bytes written: %zd/%zu\n",
+                     bytes_written, bytes_to_write);
+        }
     } else {
-        eprintf("Error: Failed to save image (attempted: %s).", st_options->output_filepath);
+        size_t bytes_written = 0;
+        scran_update_output_filepath(st_options, CAPTURE_IMAGE_OUTPUT_FILE_EXTENSION_DEFAULT);
+        res = bl_file_system_write_file(
+            st_options->output_filepath,
+            bl_array_img_encoded_data,
+            bytes_to_write,
+            &bytes_written
+        );
+
+        if (res == BL_SUCCESS && bytes_written == bytes_to_write) {
+            eprintf("Image saved: %s (%zuKiB)\n", st_options->output_filepath, bytes_written >> 10);
+        } else {
+            eprintf("Error: Failed to save image (attempted: %s).\n", st_options->output_filepath);
+        }
     }
 
 

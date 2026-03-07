@@ -210,12 +210,16 @@ init_ffmpeg(struct scran_output *st_output)
     avcodec_open2(frame_ctx->av_codec_ctx, codec, NULL);
 
 
-    const struct scran_options *const st_options = &g_state.options;
+    const char *output_filepath = NULL;
+    if (g_state.options.output_to_stdout) {
+        output_filepath = "pipe:1";
+    } else {
+        scran_update_output_filepath(&g_state.options, _FORMAT_MP4_FILE_EXTENSION);
+        output_filepath = g_state.options.output_filepath;
+    }
 
     // AVFormat
-    scran_update_output_filepath(st_options, _FORMAT_MP4_FILE_EXTENSION);
-    avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MP4_NAME, st_options->output_filepath);
-
+    avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MP4_NAME, output_filepath);
 
     // AVStream
     AVStream *_av_stream = avformat_new_stream(frame_ctx->av_format_ctx, codec);
@@ -235,9 +239,9 @@ init_ffmpeg(struct scran_output *st_output)
     //          Ensure keyframes/i-frames are frequent enough to take short videos.
     av_dict_set(&opts, "movflags", "frag_keyframe", 0);
     assert(!((frame_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
-    avio_open(&(frame_ctx->av_format_ctx)->pb, st_options->output_filepath, AVIO_FLAG_WRITE);
+    avio_open(&(frame_ctx->av_format_ctx)->pb, output_filepath, AVIO_FLAG_WRITE);
     if (0 > avformat_write_header(frame_ctx->av_format_ctx, &opts)) {
-        eprintf("Failed to write file header (filepath: %s)\n", st_options->output_filepath);
+        eprintf("Failed to write file header (filepath: %s)\n", output_filepath);
 
         if (frame_ctx->av_format_ctx != NULL) {
             avformat_free_context(frame_ctx->av_format_ctx);

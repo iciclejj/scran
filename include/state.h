@@ -264,6 +264,7 @@ struct scran_output {
 struct scran_options {
     char *output_filepath_filename_pointer;
     char output_filepath[PATH_MAX];
+    bool output_to_stdout;
     bool no_keepalive;
     bool capture_and_exit_after_selection_init;
 };

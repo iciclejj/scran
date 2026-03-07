@@ -133,7 +133,7 @@ scran_handle_args(int argc, char *const *argv)
             // TODO: exit with EXIT_SUCESS after printing the help string
         default:
             printf(
-                "Usage: scran [options]\n"
+                "Usage: scran [options] [-]\n"
                 "Capture images and videos\n"
                 "\n"
                 "Keymap\n"
@@ -149,16 +149,46 @@ scran_handle_args(int argc, char *const *argv)
                 "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
                 "  -e   automatically capture and exit immediately after initial selection\n"
                 "  -B   do not keep background process alive\n"
-                "         By default, scran stays alive after exit to manage the clipboard, \n"
-                "         until another process takes over (e.g. you copied some text in a web\n"
-                "         browser).\n"
+                "         Example: 'scran -B - | satty -f -'\n"
+                "          By default, scran stays alive after exit to manage the clipboard\n"
+                "         (until another process takes over, e.g. you copied some text in a web\n"
+                "         browser). Useful if you want to pipe scran's output to an application\n"
+                "         that is waiting for scran to fully exit.\n"
                 "  -h   show this help message and exit\n"
+                "\n"
+                // XXX: This is actually a positional arg.
+                //      TODO: allow this arg to be a custom output file path as well
+                "Positional arguments\n"
+                "  -    output to stdout instead of file\n"
                 "\n"
                 "Signals\n"
                 "  Send SIGUSR1 to the running scran to start grabbing inputs again after releasing with <Tab>.\n"
                 "  - Example:            `pkill -SIGUSR1 scran`\n"
                 "  - As sway keybinding: `bindsym Shift+Alt+Tab exec 'pkill -SIGUSR1 scran'`\n"
             );
+            return false;
+        }
+    }
+    // NOTE: getopt reorders argv and puts positional/non-option args at the end,
+    // making optind point to them, unless POSIXLY_CORRECT or optstring[0] == '+'.
+    const int i_posarg_0 = optind;
+
+    // XXX: See TODO in help string
+    if (argv[i_posarg_0] != NULL) {
+        if (argv[i_posarg_0 + 1] != NULL) {
+            eprintf("Error: Too many non-option arguments: ");
+            for (int i = i_posarg_0; i < argc; ++i) {
+                eprintf(" '%s'", argv[i]);
+            }
+            eprintf(".\n");
+            return false;
+        }
+
+        char *arg_0 = argv[i_posarg_0];
+        if (arg_0[0] == '-' && arg_0[1] == '\0') {
+            g_state.options.output_to_stdout = true;
+        } else {
+            eprintf("Unrecognized argument: %s\n", arg_0);
             return false;
         }
     }
