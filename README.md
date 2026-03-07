@@ -39,22 +39,22 @@ Image also sent to clipboard
 ```
 ### Keymap (as of v0.2.0)
 For different versions, use `scran -h`.
-- Left mouse button
+- **Left mouse button**
   - Init selection
   - After init: Toggle move selection
-- Right mouse button
+- **Right mouse button**
   - Toggle resize selection
-- Enter
+- **Enter**
   - Capture image and exit
       - Stays alive in the background to handle clipboard. (Optional integration with external clipboard managers is planned.)
-- Shift + Enter
+- **Shift + Enter**
   - Capture image
-- Space
+- **Space**
   - Capture video (start/stop)
-- Escape
+- **Escape**
   - Stop video capture
   - Exit
-- Tab (New!)
+- **Tab (New!)**
   - Release focus
     - See [Sway config example](#sway-config-example) and [Signals](#signals)
 
