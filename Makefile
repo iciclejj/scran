@@ -27,9 +27,6 @@ CFLAGS_REL := $(CFLAGS) -DNDEBUG
 CFLAGS_REL += $(ENV_CFLAGS) $(ENV_CFLAGS_REL)
 CFLAGS_DBG := $(CFLAGS) -gdwarf-5 -O0 -U_FORTIFY_SOURCE
 CFLAGS_DBG += $(ENV_CFLAGS) $(ENV_CFLAGS_DBG)
-ifeq ($(CC),clang)
-CFLAGS_DBG += -gembed-source
-endif
 
 
 # TODO(!!!): Ensure package versions. Flake?
