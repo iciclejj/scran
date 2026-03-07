@@ -115,7 +115,7 @@ scran_handle_args(int argc, char *const *argv)
     char *dirpath_arg = NULL;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:peh")) != -1) {
+    while ((opt = getopt(argc, argv, "d:peBh")) != -1) {
         switch (opt) {
         case 'd':
             dirpath_arg = optarg;
@@ -125,6 +125,9 @@ scran_handle_args(int argc, char *const *argv)
             break;
         case 'e':
             g_state.options.capture_and_exit_after_selection_init = true;
+            break;
+        case 'B':
+            g_state.options.no_keepalive = true;
             break;
         case 'h':
             // TODO: exit with EXIT_SUCESS after printing the help string
@@ -145,6 +148,10 @@ scran_handle_args(int argc, char *const *argv)
                 "  -d   directory path for output files\n"
                 "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
                 "  -e   automatically capture and exit immediately after initial selection\n"
+                "  -B   do not keep background process alive\n"
+                "         By default, scran stays alive after exit to manage the clipboard, \n"
+                "         until another process takes over (e.g. you copied some text in a web\n"
+                "         browser).\n"
                 "  -h   show this help message and exit\n"
                 "\n"
                 "Signals\n"

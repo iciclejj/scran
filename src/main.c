@@ -122,7 +122,9 @@ init_premem__destroy()
     // TODO: Make sure this happens at an appropriate point in time (memory
     // footprint should be minimized), once the init/cleanup is more
     // finalized.
-    _stay_alive_while_clipboard_active();
+    if (!g_state.options.no_keepalive) {
+        _stay_alive_while_clipboard_active();
+    }
 
     registry_listener__destroy(&g_state);
 }
