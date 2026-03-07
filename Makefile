@@ -16,13 +16,13 @@ WAYLAND_PROTOCOLS_DIR_LOCAL := $(wayland_protocols_generated_source_dir)
 PROG := scran
 
 LDLIBS := -lwayland-client -lblend2d
-LDLIBS += $(foreach pkg, $(PKGCONF_LIBS), $(shell pkg-config --libs $(pkg)))
+LDLIBS += $(shell pkg-config --libs $(PKGCONF_LIBS))
 
 INCDIRS := include/
 INCDIRS += $(WAYLAND_PROTOCOLS_DIR_LOCAL)
 
 CFLAGS := $(addprefix -I, $(INCDIRS))
-CFLAGS += $(foreach pkg, $(PKGCONF_LIBS), $(shell pkg-config --cflags $(pkg)))
+CFLAGS += $(shell pkg-config --cflags $(PKGCONF_LIBS))
 CFLAGS_REL := $(CFLAGS) -DNDEBUG
 CFLAGS_REL += $(ENV_CFLAGS) $(ENV_CFLAGS_REL)
 CFLAGS_DBG := $(CFLAGS) -gdwarf-5 -O0 -U_FORTIFY_SOURCE
