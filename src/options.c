@@ -225,6 +225,54 @@ _cli_arg_output_path(
     return true;
 }
 
+#define SCRAN_USAGE "Usage: scran [options] [output_path]"
+
+static const char help_string[] =
+    SCRAN_USAGE "\n"
+    "Capture images and videos\n"
+    "\n"
+    "Keymap\n"
+    "  Left mouse button    Initialize and move selection\n"
+    "  Right mouse button   Resize selection\n"
+    "  Enter                Capture image and exit\n"
+    "  Shift+Enter          Capture image\n"
+    "  Space                Capture video (start/stop)\n"
+    "  Tab                  Release focus (see Signals section for how to retake focus)\n"
+    "\n"
+    "Positional arguments\n"
+    // TODO: Once we implement desktop notifications, we should probably remove
+    // the recursive directory structure creation by default, and just give an
+    // error message notification that directory doesn't exist. (Maybe still keep
+    // the functionality behind an --mkdir flag.)
+    "  output_path   path to output file or directory.\n"
+    "                output_path is -:\n"
+    "                  -  scran writes to stdout (See also: -B)\n"
+    "                output_path is an existing directory:\n"
+    "                  -  scran writes to <output_path>/<default_filename>\n"
+    "                output_path does not exist, but ends with '/':\n"
+    "                  1. scran creates directory structure\n"
+    "                  2. scran writes to <output_path>/<default_filename>\n"
+    "                output_path does not exist:\n"
+    "                  1. scran creates directory structure if necessary\n"
+    "                  2. scran writes to <output_path>\n"
+    "                  NOTE: the *exact* given file path is used for both image and video\n"
+    "\n"
+    "Options\n"
+    "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
+    "  -e   automatically capture and exit immediately after initial selection\n"
+    "  -B   do not keep background process alive\n"
+    "         Example: 'scran -B - | satty -f -'\n"
+    "          By default, scran stays alive after exit to manage the clipboard\n"
+    "         (until another process takes over, e.g. you copied some text in a web\n"
+    "         browser). Useful if you want to pipe scran's output to an application\n"
+    "         that is waiting for scran to fully exit.\n"
+    "  -h   show this help message and exit\n"
+    "\n"
+    "Signals\n"
+    "  Send SIGUSR1 to the running scran to start grabbing inputs again after releasing with <Tab>.\n"
+    "  - Example:            `pkill -SIGUSR1 scran`\n"
+    "  - As sway keybinding: `bindsym Shift+Alt+Tab exec 'pkill -SIGUSR1 scran'`\n"
+;
 
 bool
 scran_handle_args(int argc, char *const *argv)
@@ -243,54 +291,11 @@ scran_handle_args(int argc, char *const *argv)
             g_state.options.no_keepalive = true;
             break;
         case 'h':
+            printf("%s", help_string);
             // TODO: exit with EXIT_SUCESS after printing the help string
+            break;
         default:
-            printf(
-                "Usage: scran [options] [output_path]\n"
-                "Capture images and videos\n"
-                "\n"
-                "Keymap\n"
-                "  Left mouse button    Initialize and move selection\n"
-                "  Right mouse button   Resize selection\n"
-                "  Enter                Capture image and exit\n"
-                "  Shift+Enter          Capture image\n"
-                "  Space                Capture video (start/stop)\n"
-                "  Tab                  Release focus (see Signals section for how to retake focus)\n"
-                "\n"
-                "Positional arguments\n"
-                // TODO: Once we implement desktop notifications, we should probably remove
-                // the recursive directory structure creation by default, and just give an
-                // error message notification that directory doesn't exist. (Maybe still keep
-                // the functionality behind an --mkdir flag.)
-                "  output_path   path to output file or directory.\n"
-                "                output_path is -:\n"
-                "                  -  scran writes to stdout (See also: -B)\n"
-                "                output_path is an existing directory:\n"
-                "                  -  scran writes to <output_path>/<default_filename>\n"
-                "                output_path does not exist, but ends with '/':\n"
-                "                  1. scran creates directory structure\n"
-                "                  2. scran writes to <output_path>/<default_filename>\n"
-                "                output_path does not exist:\n"
-                "                  1. scran creates directory structure if necessary\n"
-                "                  2. scran writes to <output_path>\n"
-                "                  NOTE: the *exact* given file path is used for both image and video\n"
-                "\n"
-                "Options\n"
-                "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
-                "  -e   automatically capture and exit immediately after initial selection\n"
-                "  -B   do not keep background process alive\n"
-                "         Example: 'scran -B - | satty -f -'\n"
-                "          By default, scran stays alive after exit to manage the clipboard\n"
-                "         (until another process takes over, e.g. you copied some text in a web\n"
-                "         browser). Useful if you want to pipe scran's output to an application\n"
-                "         that is waiting for scran to fully exit.\n"
-                "  -h   show this help message and exit\n"
-                "\n"
-                "Signals\n"
-                "  Send SIGUSR1 to the running scran to start grabbing inputs again after releasing with <Tab>.\n"
-                "  - Example:            `pkill -SIGUSR1 scran`\n"
-                "  - As sway keybinding: `bindsym Shift+Alt+Tab exec 'pkill -SIGUSR1 scran'`\n"
-            );
+            eprintf(SCRAN_USAGE "\n" "Try scran -h for more information.\n");
             return false;
         }
     }
