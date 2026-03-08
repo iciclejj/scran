@@ -14,7 +14,7 @@
 
 // TODO: Maybe optimize this a bit (and/or make it a bit cleaner somehow).
 //       Also ensure string/array safety. Either asserts or live.
-void
+static inline void
 create_timestamped_filename(
     char filename_ret[NAME_MAX],
     const char file_extension[SCRAN_OUTPUT_FILE_EXTENSION_MAX]
