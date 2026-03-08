@@ -41,11 +41,6 @@ create_timestamped_filename(
     _filename += chars_added_after_usec;
     _name_max -= chars_added_after_usec;
 
-    // XXX: %z is a gnu extension. (Timezone offset.)
-    const int chars_added_after_timezone = strftime(_filename, _name_max, "%z", &time_now_tm);
-    _filename += chars_added_after_timezone;
-    _name_max -= chars_added_after_timezone;
-
     snprintf(_filename, _name_max, "%s", file_extension);
 }
 
