@@ -46,6 +46,21 @@ Image also sent to clipboard
          future.
   -h   show help message and exit
 ```
+### Positional arguments
+```
+  output_path   path to output file or directory.
+                output_path is -:
+                  -  scran writes to stdout (See also: -B)
+                output_path is an existing directory:
+                  -  scran writes to <output_path>/<default_filename>
+                output_path does not exist, but ends with '/':
+                  1. scran creates directory structure
+                  2. scran writes to <output_path>/<default_filename>
+                output_path does not exist:
+                  1. scran creates directory structure if necessary
+                  2. scran writes to <output_path>
+                  NOTE: the *exact* given file path is used for both image and video
+```
 ### Keymap (as of v0.2.0)
 For different versions, use `scran -h`.
 - **Left mouse button**

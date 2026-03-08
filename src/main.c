@@ -35,8 +35,14 @@
 #define SOCKPATH "/run/user/1000/" SOCKNAME
 
 
-// XXX TODO: Rename this to g_scran or g_scran_state, probably.
-struct scran g_state = { };
+struct scran g_state = {
+    .options = {
+        .output_path = SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH,
+        .output_path_filename_pointer = g_state.options.output_path
+                                        + sizeof(SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH)
+                                        - 1, // Null-terminator
+    },
+};
 
 
 static bool

@@ -31,8 +31,10 @@
 
 // TODO: Allow longer dir path if filename is short enough..?
 // XXX: -1 is to make room for trailing slash.
-#define SCRAN_OUTPUT_DIRPATH_STRLEN_MAX (PATH_MAX - NAME_MAX - 1) // Null terminator *not* counted
-#define SCRAN_OUTPUT_DIRPATH_SIZE_MAX (SCRAN_OUTPUT_DIRPATH_STRLEN_MAX + 1) // Null terminator *is* counted
+#define SCRAN_OUTPUT_DIRPATH_SIZE_MAX     (PATH_MAX - NAME_MAX)     // Null terminator *is* counted
+#define SCRAN_OUTPUT_DIRPATH_STRLEN_MAX   (PATH_MAX - NAME_MAX - 1) // Null terminator *not* counted
+#define SCRAN_OUTPUT_FILEPATH_SIZE_MAX    (PATH_MAX)                // Null terminator *is* counted
+#define SCRAN_OUTPUT_FILEPATH_STRLEN_MAX  (PATH_MAX - 1)            // Null terminator *not* counted
 // XXX: Semi-arbitrary value (highest built-in AVCodecDescriptor.name in
 // libavcodec atm. is 18, excl. null-terminator).
 #define SCRAN_OUTPUT_FILE_EXTENSION_MAX 20
@@ -261,10 +263,13 @@ struct scran_output {
     struct scran_output_capture capture;
 };
 
+// TODO: Isolate this from scran state?
 struct scran_options {
-    char *output_filepath_filename_pointer;
-    char output_filepath[PATH_MAX];
+    char *output_path_filename_pointer;
+    char output_path[PATH_MAX];
+    bool output_path_has_constant_filename;
     bool output_to_stdout;
+
     bool no_keepalive;
     bool capture_and_exit_after_selection_init;
 };

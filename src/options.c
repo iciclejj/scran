@@ -4,6 +4,7 @@
 #include <time.h>
 #include <assert.h>
 #include <errno.h>
+#include <libgen.h>
 #include <sys/stat.h>
 
 #include "options.h"
@@ -53,56 +54,173 @@ scran_update_output_filepath(
     const struct scran_options *st_options,
     const char file_extension[SCRAN_OUTPUT_FILE_EXTENSION_MAX]
 ) {
-    create_timestamped_filename(st_options->output_filepath_filename_pointer, file_extension);
+    create_timestamped_filename(st_options->output_path_filename_pointer, file_extension);
 }
 
-
 static inline bool
-_handle_dirpath(struct scran_options *restrict st_options, const char *restrict dirpath_arg)
-{
-    // TODO: Benchmark all the string storage/logic (including downstream
-    // path/filename handling) once we have more options and maybe optimize.
+_mkdir_recursive(
+    char dirpath[SCRAN_OUTPUT_DIRPATH_SIZE_MAX],
+    size_t dirpath_strlen
+) {
+    DEBUG("_mkdir_recursive()\n");
 
-    size_t dirpath_strlen = 0;
-    {
-        // output_filepath will only contain the dirpath part throughout this scope
-        char *const _dirpath = st_options->output_filepath;
+    if (dirpath_strlen == 0) {
+        return true;
+    }
 
-        if (dirpath_arg != NULL) {
-            dirpath_strlen = strlcpy(_dirpath, dirpath_arg, SCRAN_OUTPUT_DIRPATH_SIZE_MAX);
-            assert(dirpath_strlen != 0); // (Should have been ensured by being a getopt required arg)
+    // TODO: Make an NDEBUG_ASSERT macro? This shouldn't really ever happen, but
+    // worth being safe here.
+    if (dirpath_strlen > SCRAN_OUTPUT_DIRPATH_STRLEN_MAX || dirpath[dirpath_strlen] != '\0') {
+        eprintf("Error: _mkdir_recursive input length long. THIS IS A BUG, please open an issue.\n");
+        return false;
+    }
 
-            if (dirpath_strlen > SCRAN_OUTPUT_DIRPATH_STRLEN_MAX) {
-                eprintf("Supplied directory path is too long. Max length: %d\n", SCRAN_OUTPUT_DIRPATH_STRLEN_MAX);
+    char path_copy[SCRAN_OUTPUT_DIRPATH_SIZE_MAX];
+    memcpy(path_copy, dirpath, dirpath_strlen + 1);
+
+    assert(path_copy[dirpath_strlen] == '\0');
+
+    size_t i = 0;
+    while (i < dirpath_strlen) {
+        assert(i == 0 || path_copy[i - 1] == '/');
+
+        while (i < dirpath_strlen && path_copy[i] != '/') {
+            ++i;
+        }
+        while (path_copy[i] == '/') {
+            assert(i < dirpath_strlen);
+            ++i;
+        }
+
+        const char tmp = path_copy[i];
+        path_copy[i] = '\0';
+
+        struct stat _statbuf;
+        if (stat(path_copy, &_statbuf) == 0) {
+            DEBUG("stat('%s')\n", path_copy);
+            if (!S_ISDIR(_statbuf.st_mode)) {
+                // TODO: %s is not a directory.
+                eprintf("Error: output_path contains already existing non-directory file '%s'\n", path_copy);
+                return false;
+            }
+        } else if (errno == ENOENT) {
+            assert(path_copy[i] == '\0');
+            DEBUG("mkdir('%s')\n", path_copy);
+            if (mkdir(path_copy, 0755) != 0) {
+                // TODO: Handle EEXIST in case directory was created in-between
+                // stat() and mkdir()? Would need to ensure it's actually a dir.
+                eprintf("Failed to create directory '%s': %s\n", path_copy, strerror(errno));
                 return false;
             }
         } else {
-             memcpy( _dirpath,
-                     SCRAN_OUTPUT_DIRPATH_DEFAULT,
-                     sizeof(SCRAN_OUTPUT_DIRPATH_DEFAULT)
-             );
-             dirpath_strlen = sizeof(SCRAN_OUTPUT_DIRPATH_DEFAULT) - 1;
-        }
-
-        assert(_dirpath[dirpath_strlen] == '\0');
-        if (mkdir(_dirpath, 0755) != 0 && errno != EEXIST) {
-            eprintf("Failed to create directory '%s': %s\n", _dirpath, strerror(errno));
+            eprintf("output_path stat error for '%s': %s\n", path_copy, strerror(errno));
             return false;
         }
 
-        assert(st_options->output_filepath == _dirpath);
+        path_copy[i] = tmp;
     }
 
-    char *_filename_pointer = st_options->output_filepath + dirpath_strlen;
+#ifndef NDEBUG
+{
+    struct stat _statbuf = { };
+    assert(stat(path_copy, &_statbuf) == 0 && S_ISDIR(_statbuf.st_mode));
+}
+#endif
 
-    if (*(_filename_pointer - 1) != '/') {
-        *_filename_pointer = '/';
-        ++_filename_pointer;
+
+    return true;
+}
+
+static inline bool
+_cli_arg_output_path(
+    struct scran_options *restrict st_options,
+    const char *restrict arg
+) {
+    if (arg[0] == '-' && arg[1] == '\0') {
+        st_options->output_to_stdout = true;
+        return true;
     }
 
-    assert(*_filename_pointer == '\0'); // Not really necessary, but just to be safe
+    if (arg[0] == '\0') {
+        eprintf("Error: output_path cannot be empty.\n");
+        return false;
+    }
 
-    st_options->output_filepath_filename_pointer = _filename_pointer;
+    size_t arg_strlen = strlcpy(st_options->output_path, arg, SCRAN_OUTPUT_FILEPATH_SIZE_MAX);
+
+    if (arg_strlen > SCRAN_OUTPUT_FILEPATH_STRLEN_MAX) {
+        eprintf("output_path is too long. Max length: %d (%d for directories)\n",
+                SCRAN_OUTPUT_FILEPATH_SIZE_MAX, SCRAN_OUTPUT_DIRPATH_SIZE_MAX);
+        return false;
+    }
+
+    assert(arg_strlen > 0);
+    assert(arg[arg_strlen] == '\0');
+    assert(st_options->output_path[arg_strlen] == '\0');
+
+
+    bool is_existing_dirpath;
+    struct stat _statbuf;
+    const int _stat_ret = stat(st_options->output_path, &_statbuf);
+    if (_stat_ret == 0) {
+        is_existing_dirpath = S_ISDIR(_statbuf.st_mode);
+    } else if (errno == ENOENT) {
+        is_existing_dirpath = false;
+    } else {
+        eprintf("output_path stat error for '%s': %s\n", st_options->output_path, strerror(errno));
+        return false;
+    }
+
+    bool _has_trailing_slash = st_options->output_path[arg_strlen - 1] == '/';
+    bool is_dirpath_arg = is_existing_dirpath || _has_trailing_slash;
+    //  !is_dirpath_arg => is_filepath_arg
+
+    if (is_dirpath_arg) {
+        if (arg_strlen > SCRAN_OUTPUT_DIRPATH_STRLEN_MAX) {
+            eprintf("output_path is too long. Max length: %d (%d for directories)\n",
+                    SCRAN_OUTPUT_FILEPATH_SIZE_MAX, SCRAN_OUTPUT_DIRPATH_SIZE_MAX);
+            return false;
+        }
+
+        if (!is_existing_dirpath) {
+            if (!_mkdir_recursive(st_options->output_path, arg_strlen)) {
+                eprintf("Failed to create directory '%s'\n", st_options->output_path);
+                return false;
+            }
+        }
+
+        char *filename_pointer = st_options->output_path + arg_strlen;
+        if (*(filename_pointer - 1) != '/') {
+            *filename_pointer++ = '/';
+        }
+        *filename_pointer = '\0'; // Should not be necessary, but just to be safe
+
+        st_options->output_path_filename_pointer = filename_pointer;
+    } else { // is filepath
+        char *dirpath_end = st_options->output_path + arg_strlen;
+        while (dirpath_end > st_options->output_path && *dirpath_end != '/') {
+            --dirpath_end;
+        }
+
+        if (dirpath_end > st_options->output_path) {
+            assert(*dirpath_end == '/');
+
+            *dirpath_end = '\0';
+
+            size_t _dirpath_strlen = dirpath_end - st_options->output_path;
+            if (!_mkdir_recursive(st_options->output_path, _dirpath_strlen)) {
+                eprintf("Failed to create directory '%s'\n", st_options->output_path);
+                return false;
+            }
+
+            *dirpath_end = '/';
+        }
+
+        st_options->output_path_has_constant_filename = true;
+    }
+
+    assert(   st_options->output_path_has_constant_filename
+           ^ (st_options->output_path_filename_pointer != NULL));
 
     return true;
 }
@@ -112,14 +230,9 @@ bool
 scran_handle_args(int argc, char *const *argv)
 {
     extern struct scran g_state;
-    char *dirpath_arg = NULL;
-
     int opt;
-    while ((opt = getopt(argc, argv, "d:peBh")) != -1) {
+    while ((opt = getopt(argc, argv, "peBh")) != -1) {
         switch (opt) {
-        case 'd':
-            dirpath_arg = optarg;
-            break;
         case 'p':
             g_state.seat.pointer_ctx.use_presses_only = true;
             break;
@@ -133,7 +246,7 @@ scran_handle_args(int argc, char *const *argv)
             // TODO: exit with EXIT_SUCESS after printing the help string
         default:
             printf(
-                "Usage: scran [options] [-]\n"
+                "Usage: scran [options] [output_path]\n"
                 "Capture images and videos\n"
                 "\n"
                 "Keymap\n"
@@ -144,8 +257,25 @@ scran_handle_args(int argc, char *const *argv)
                 "  Space                Capture video (start/stop)\n"
                 "  Tab                  Release focus (see Signals section for how to retake focus)\n"
                 "\n"
+                "Positional arguments\n"
+                // TODO: Once we implement desktop notifications, we should probably remove
+                // the recursive directory structure creation by default, and just give an
+                // error message notification that directory doesn't exist. (Maybe still keep
+                // the functionality behind an --mkdir flag.)
+                "  output_path   path to output file or directory.\n"
+                "                output_path is -:\n"
+                "                  -  scran writes to stdout (See also: -B)\n"
+                "                output_path is an existing directory:\n"
+                "                  -  scran writes to <output_path>/<default_filename>\n"
+                "                output_path does not exist, but ends with '/':\n"
+                "                  1. scran creates directory structure\n"
+                "                  2. scran writes to <output_path>/<default_filename>\n"
+                "                output_path does not exist:\n"
+                "                  1. scran creates directory structure if necessary\n"
+                "                  2. scran writes to <output_path>\n"
+                "                  NOTE: the *exact* given file path is used for both image and video\n"
+                "\n"
                 "Options\n"
-                "  -d   directory path for output files\n"
                 "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
                 "  -e   automatically capture and exit immediately after initial selection\n"
                 "  -B   do not keep background process alive\n"
@@ -155,11 +285,6 @@ scran_handle_args(int argc, char *const *argv)
                 "         browser). Useful if you want to pipe scran's output to an application\n"
                 "         that is waiting for scran to fully exit.\n"
                 "  -h   show this help message and exit\n"
-                "\n"
-                // XXX: This is actually a positional arg.
-                //      TODO: allow this arg to be a custom output file path as well
-                "Positional arguments\n"
-                "  -    output to stdout instead of file\n"
                 "\n"
                 "Signals\n"
                 "  Send SIGUSR1 to the running scran to start grabbing inputs again after releasing with <Tab>.\n"
@@ -173,8 +298,9 @@ scran_handle_args(int argc, char *const *argv)
     // making optind point to them, unless POSIXLY_CORRECT or optstring[0] == '+'.
     const int i_posarg_0 = optind;
 
-    // XXX: See TODO in help string
-    if (argv[i_posarg_0] != NULL) {
+    if (argv[i_posarg_0] == NULL) {
+        assert(0 == strcmp(g_state.options.output_path, SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH));
+    } else {
         if (argv[i_posarg_0 + 1] != NULL) {
             eprintf("Error: Too many non-option arguments: ");
             for (int i = i_posarg_0; i < argc; ++i) {
@@ -184,17 +310,15 @@ scran_handle_args(int argc, char *const *argv)
             return false;
         }
 
-        char *arg_0 = argv[i_posarg_0];
-        if (arg_0[0] == '-' && arg_0[1] == '\0') {
-            g_state.options.output_to_stdout = true;
-        } else {
-            eprintf("Unrecognized argument: %s\n", arg_0);
+        // Just for some safety (compile-time initialized with default dir path):
+        g_state.options.output_path[0] = '\0';
+        g_state.options.output_path_filename_pointer = NULL;
+
+        char *output_path_arg = argv[i_posarg_0];
+        if (!_cli_arg_output_path(&g_state.options, output_path_arg)) {
+            eprintf("Error: Failed parsing output_path.\n");
             return false;
         }
-    }
-
-    if (!_handle_dirpath(&g_state.options, dirpath_arg)) {
-        return false;
     }
 
     return true;

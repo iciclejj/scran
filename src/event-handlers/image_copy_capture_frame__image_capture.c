@@ -196,19 +196,22 @@ handle_image_copy_capture_frame_ready__image_capture(
                      bytes_written, bytes_to_write);
         }
     } else {
+        if (!g_state.options.output_path_has_constant_filename) {
+            scran_update_output_filepath(st_options, CAPTURE_IMAGE_OUTPUT_FILE_EXTENSION_DEFAULT);
+        }
+
         size_t bytes_written = 0;
-        scran_update_output_filepath(st_options, CAPTURE_IMAGE_OUTPUT_FILE_EXTENSION_DEFAULT);
         res = bl_file_system_write_file(
-            st_options->output_filepath,
+            st_options->output_path,
             bl_array_img_encoded_data,
             bytes_to_write,
             &bytes_written
         );
 
         if (res == BL_SUCCESS && bytes_written == bytes_to_write) {
-            eprintf("Image saved: %s (%zuKiB)\n", st_options->output_filepath, bytes_written >> 10);
+            eprintf("Image saved: %s (%zuKiB)\n", st_options->output_path, bytes_written >> 10);
         } else {
-            eprintf("Error: Failed to save image (attempted: %s).\n", st_options->output_filepath);
+            eprintf("Error: Failed to save image (attempted: %s).\n", st_options->output_path);
         }
     }
 

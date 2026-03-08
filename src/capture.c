@@ -213,9 +213,11 @@ init_ffmpeg(struct scran_output *st_output)
     const char *output_filepath = NULL;
     if (g_state.options.output_to_stdout) {
         output_filepath = "pipe:1";
+    } else if (g_state.options.output_path_has_constant_filename) {
+        output_filepath = g_state.options.output_path;
     } else {
         scran_update_output_filepath(&g_state.options, _FORMAT_MP4_FILE_EXTENSION);
-        output_filepath = g_state.options.output_filepath;
+        output_filepath = g_state.options.output_path;
     }
 
     // AVFormat
