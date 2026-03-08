@@ -12,36 +12,37 @@
 #include "print.h"
 
 
-// TODO: Maybe optimize this a bit (and/or make it a bit cleaner somehow).
-//       Also ensure string/array safety. Either asserts or live.
+#define SCRAN_DEFAULT_FILENAME_SIZE_MAX ((sizeof("scran-YYYYmmdd-HHMMSS.uuuu") - 1) + SCRAN_OUTPUT_FILE_EXTENSION_MAX)
+static_assert(NAME_MAX >= SCRAN_DEFAULT_FILENAME_SIZE_MAX, "NAME_MAX must be >= SCRAN_DEFAULT_FILENAME_SIZE_MAX");
+
 static inline void
 create_timestamped_filename(
-    char filename_ret[NAME_MAX],
+    char filename_out[NAME_MAX],
     const char file_extension[SCRAN_OUTPUT_FILE_EXTENSION_MAX]
 ) {
-    struct timespec ts;
+    struct timespec ts = { };
     clock_gettime(CLOCK_REALTIME, &ts);
 
-    struct tm time_now_tm;
+    struct tm time_now_tm = { };
     localtime_r(&ts.tv_sec, &time_now_tm);
-
-    char *_filename = filename_ret;
-    // TODO: Remove this eventually and just use asserts. Resulting filename
-    // length is deterministic.
-    size_t _name_max = NAME_MAX;
-
-    const int chars_added_after_sec = strftime(_filename, _name_max, "scran-%Y%m%d-%H%M%S", &time_now_tm);
-    _filename += chars_added_after_sec;
-    _name_max -= chars_added_after_sec;
 
     // INFO: Assumes 4 decimal points (10khz) is the smallest safe divisor that
     // doesn't risk file-overwriting during rapid consecutive screenshots.
-    const long _tv_usec = ts.tv_nsec / 100000;
-    const int chars_added_after_usec = snprintf(_filename, _name_max, ".%04ld", _tv_usec);
-    _filename += chars_added_after_usec;
-    _name_max -= chars_added_after_usec;
+    const long tv_10khz = ts.tv_nsec / 100000;
 
-    snprintf(_filename, _name_max, "%s", file_extension);
+    char strftime_buf[22];
+
+    const size_t strftime_strlen = strftime(
+        strftime_buf, sizeof(strftime_buf),
+        "scran-%Y%m%d-%H%M%S", &time_now_tm
+    );
+    assert(strftime_strlen == sizeof(strftime_buf) - 1);
+
+    const size_t filename_strlen = snprintf(
+        filename_out, NAME_MAX,
+        "%s.%04ld%s", strftime_buf, tv_10khz, file_extension
+    );
+    assert(filename_strlen <  SCRAN_DEFAULT_FILENAME_SIZE_MAX);
 }
 
 void
