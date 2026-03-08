@@ -292,8 +292,7 @@ scran_handle_args(int argc, char *const *argv)
             break;
         case 'h':
             printf("%s", help_string);
-            // TODO: exit with EXIT_SUCESS after printing the help string
-            break;
+            exit(EXIT_SUCCESS);
         default:
             eprintf(SCRAN_USAGE "\n" "Try scran -h for more information.\n");
             return false;
