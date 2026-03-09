@@ -94,8 +94,6 @@ _write_video_frame(
     // TODO: Look into conditionally using av_write_frame for sequential
     //       encoding
     av_interleaved_write_frame(frame_ctx->av_format_ctx, av_packet);
-
-    // INFO: packet gets unreferenced at start of loop by avcodec_receive_packet
 }
 
 

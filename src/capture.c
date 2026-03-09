@@ -103,7 +103,6 @@ init_ffmpeg(struct scran_output *st_output)
     const int height_px_converted = get_transformed_height(width_px_captured, height_px_captured, st_output->transform);
     // NOTE: Some pixel formats (and some file formats), e.g. YUV420P, require
     //       even-numbered (or some other multiplier) height and/or width.
-    //       Others, e.g. YUV444P and RGBA32, do not.
     const enum AVPixelFormat av_pixel_format_converted = AV_PIX_FMT_YUV420P;
 
 
@@ -112,7 +111,7 @@ init_ffmpeg(struct scran_output *st_output)
     frame_ctx->av_frame_captured->width = width_px_captured;
     frame_ctx->av_frame_captured->height = height_px_captured;
     frame_ctx->av_frame_captured->format = av_pixel_format_captured;
-    // XXX: We won't ever get planar src frame buffers... right..?
+    // XXX: We won't ever get planar src frame buffers, right..?
     frame_ctx->av_frame_captured->linesize[0] = get_capture_stride(st_output);
 
 
@@ -135,7 +134,6 @@ init_ffmpeg(struct scran_output *st_output)
     av_opt_set_q(frame_ctx->av_filter_buffersrc_ctx,
             "pixel_aspect", (AVRational){1,4}, AV_OPT_SEARCH_CHILDREN);
     avfilter_init_dict(frame_ctx->av_filter_buffersrc_ctx, NULL);
-
 
     AVFilterContext *_sink_input_filter;
     if (av_transpose_direction == SCRAN_AV_TRANSPOSE_DIR_NORMAL
