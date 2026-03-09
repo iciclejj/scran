@@ -87,7 +87,7 @@ For different versions, use `scran -h`.
 - **Escape**
   - Stop video capture
   - Exit
-- **Tab (New!)**
+- **Tab**
   - Release focus
     - See [Sway config example](#sway-config-example) and [Signals](#signals)
 
