@@ -26,13 +26,12 @@ in
 
 
 ## Usage & Behavior
-Image/video is saved to directory specified with `-d`, or `/tmp/scran-capture/` by default.
+Images and videos are saved to the file or directory specified by `output_path`, or to `/tmp/scran-capture/scran-<timestamp>.<file-extension>` by default.
 
-Image also sent to clipboard
+Images are also sent to the clipboard.
 
 ### Options
 ```
-  -d   directory path for output files
   -p   press-only mouse buttons (presses toggle pressed/released state)
   -e   automatically capture and exit immediately after initial selection
   -B   do not keep background process alive
