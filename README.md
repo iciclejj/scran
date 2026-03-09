@@ -41,9 +41,6 @@ Image also sent to clipboard
          (until another process takes over, e.g. you copied some text in a web
          browser). Useful if you want to pipe scran's output to an application
          that is waiting for scran to fully exit.
-  -    output to stdout instead of file
-         This will be merged with a custom filename/filepath argument in the
-         future.
   -h   show help message and exit
 ```
 ### Positional arguments
