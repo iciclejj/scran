@@ -39,7 +39,7 @@ init_premem__selection(
         //          (Though both pointer and keyboard focus mechanics will be
         //           reworked soon anyways to support handing off/retaking
         //           focus)
-        ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND
+        SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED
     );
 
     zwlr_layer_surface_v1_add_listener(st_output->surface.layer_surface, &layer_surface_listener, st_output);

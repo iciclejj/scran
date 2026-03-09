@@ -53,6 +53,10 @@ start_grabbing_focus()
         struct scran_output *st_output = &g_state.outputs[i];
         // NULL sets an infinite region
         wl_surface_set_input_region(st_output->surface.wl_surface, NULL);
+        zwlr_layer_surface_v1_set_keyboard_interactivity(
+            st_output->surface.layer_surface,
+            SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED
+        );
         wl_surface_commit(st_output->surface.wl_surface);
     }
 }
@@ -66,6 +70,10 @@ stop_grabbing_focus()
         struct scran_output *st_output = &g_state.outputs[i];
         wl_surface_set_input_region(st_output->surface.wl_surface, g_state.empty_wl_region);
         wl_surface_commit(st_output->surface.wl_surface);
+        zwlr_layer_surface_v1_set_keyboard_interactivity(
+            st_output->surface.layer_surface,
+            SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_UNFOCUSED
+        );
     }
 }
 
