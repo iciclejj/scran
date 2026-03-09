@@ -30,6 +30,8 @@ Images and videos are saved to the file or directory specified by `output_path`,
 
 Images are also sent to the clipboard.
 
+NOTE: Video capture uses CPU encoding at the moment. GPU/hardware-acceleration coming soon.
+
 ### Sway config examples
 ```bash # works well enough...
 # Launch scran
@@ -93,13 +95,21 @@ For different versions, use `scran -h`.
 Send SIGUSR1 to the running scran to start grabbing inputs again after releasing with Tab.
 - Example: `pkill -SIGUSR1 scran`
 
-## Primary Feature-TODOs
-- VA-API
+## Primary Feature TODOs
+Feel free to open a feature request even if something is already listed here.
+- VA-API for video encoding
 - More configuration
   - Customizable keybindings
+  - Config file?
+  - User-specified filename format (e.g. 'myscreenshot-%Y%m%d.%H:%M')
   - ..?
 - slurp/grim compatibility mode
   - Outputting slurp-style geometry string
   - Consuming slurp-style geometry string
+- Desktop notifications
 - Cross-display capture
     - Already handles separate simultaneous video capture per individual display
+- Slightly less bare-bones UI
+  - Show current selection size
+  - Highlight currently selected resize corner
+  - ..?
