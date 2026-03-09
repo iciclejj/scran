@@ -251,6 +251,7 @@ surface_frame_callback_handler(
     //        leading to f.ex. capture frame border spilling into the actual
     //        capture frame
     //       See also comment in scran_capture.
+    //       TODO: Consider just using bl_box_currently_drawn
     st_output->capture.frame_ctx.capture_area_px = _get_reverse_transform(
         normalized_box_to_draw,
         st_output->mode.width_px,
