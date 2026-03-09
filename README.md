@@ -43,6 +43,22 @@ bindsym Shift+Alt+Tab  exec 'pkill -SIGUSR1 scran'
 bindsym Print          exec 'scran -Be - | satty -f -'
 ```
 
+### Keymap (as of v0.2.0)
+For different versions, use `scran -h`.
+```
+  Left mouse button    Initialize and move selection
+  Right mouse button   Resize selection
+  Enter                Capture image and exit
+                         Stays alive in the background to handle clipboard,
+                         unless the -B option is provided.
+  Shift+Enter          Capture image
+  Space                Capture video (start/stop)
+  Tab                  Release focus (stop capturing inputs)
+                         SIGUSR1 to retake focus - see Signals section and
+                         sway config examples.
+  Escape               Exit scran, or stop video capture if in progress
+```
+
 ### Options
 ```
   -p   press-only mouse buttons (presses toggle pressed/released state)
@@ -70,26 +86,6 @@ bindsym Print          exec 'scran -Be - | satty -f -'
                   2. scran writes to <output_path>
                   NOTE: the *exact* given file path is used for both image and video
 ```
-### Keymap (as of v0.2.0)
-For different versions, use `scran -h`.
-- **Left mouse button**
-  - Init selection
-  - After init: Toggle move selection
-- **Right mouse button**
-  - Toggle resize selection
-- **Enter**
-  - Capture image and exit
-      - Stays alive in the background to handle clipboard. (Optional integration with external clipboard managers is planned.)
-- **Shift + Enter**
-  - Capture image
-- **Space**
-  - Capture video (start/stop)
-- **Escape**
-  - Stop video capture
-  - Exit
-- **Tab**
-  - Release focus
-    - See [Sway config example](#sway-config-example) and [Signals](#signals)
 
 ### Signals
 Send SIGUSR1 to the running scran to start grabbing inputs again after releasing with Tab.
