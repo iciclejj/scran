@@ -290,7 +290,7 @@ scran_handle_args(int argc, char *const *argv)
             printf("%s", help_string);
             exit(EXIT_SUCCESS);
         default:
-            eprintf(SCRAN_USAGE "\n" "Try scran -h for more information.\n");
+            eprintf(SCRAN_USAGE "\n\n" "Try scran -h for more information.\n");
             return false;
         }
     }
