@@ -30,6 +30,17 @@ Images and videos are saved to the file or directory specified by `output_path`,
 
 Images are also sent to the clipboard.
 
+### Sway config examples
+```bash # works well enough...
+# Launch scran
+bindsym Print          exec  scran
+# Grab focus (after releasing with Tab):
+bindsym Shift+Alt+Tab  exec 'pkill -SIGUSR1 scran'
+
+# For similar behavior to   'grim -g "$(slurp -d)" - | satty -f -'
+bindsym Print          exec 'scran -Be - | satty -f -'
+```
+
 ### Options
 ```
   -p   press-only mouse buttons (presses toggle pressed/released state)
@@ -78,16 +89,8 @@ For different versions, use `scran -h`.
   - Release focus
     - See [Sway config example](#sway-config-example) and [Signals](#signals)
 
-### Sway config example:
-```
-# Launch scran
-bindsym Print         exec scran
-# Grab focus (after releasing with <Tab>):
-bindsym Shift+Alt+Tab exec 'pkill -SIGUSR1 scran'
-```
-
 ### Signals
-Send SIGUSR1 to the running scran to start grabbing inputs again after releasing with <Tab>.
+Send SIGUSR1 to the running scran to start grabbing inputs again after releasing with Tab.
 - Example: `pkill -SIGUSR1 scran`
 
 ## Primary Feature-TODOs
