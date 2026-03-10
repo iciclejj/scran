@@ -28,15 +28,26 @@ ALL_CFLAGS_REL = $(ALL_CFLAGS) $(CFLAGS_REL)
 CFLAGS_DBG ?= -gdwarf-5 -O0 -U_FORTIFY_SOURCE
 ALL_CFLAGS_DBG = $(ALL_CFLAGS) $(CFLAGS_DBG)
 
+# $(1): Package name
+# $(2): Version
+define shell_validate_dependency
+$(if $(strip $(2)),\
+	echo "Checking dependency: $(1) >=$(2)";$(PKG_CONFIG) --atleast-version=$(2) $(1),\
+	echo "Checking dependency: $(1)";$(PKG_CONFIG) --exists $(1)\
+ )
+endef
+
 .PHONY: validate_dependencies
 # TODO: Add flake as well
 # TODO: More comprehensive version validation
 validate_dependencies:
-	# wayland-scanner private-code subcommand introduced in 1.14.91 
-	$(PKG_CONFIG) --atleast-version=1.14.91 wayland-scanner
-	# TODO: Verify protocol versions, or just bundle the xmls with scran
-	$(PKG_CONFIG) --exists wayland-protocols
-	$(PKG_CONFIG) --exists $(PKGCONF_LIBS)
+	@# wayland-scanner private-code subcommand introduced in 1.14.91
+	@$(call shell_validate_dependency,wayland-scanner,1.14.91)
+	@# TODO: Verify protocol versions, or just bundle the xmls with scran
+	@$(call shell_validate_dependency,wayland-protocols)
+	@for pkg in $(PKGCONF_LIBS); do \
+		$(call shell_validate_dependency,$$pkg); \
+	done
 
 # TODO: Simply-expanded, but lazily initialized shell/$(PKG_CONFIG) output variables
 # 			I.e. don't require shell commands to run for targets that don't
