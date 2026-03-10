@@ -118,5 +118,15 @@ blboxi_to_blrecti(BLBoxI box) {
     };
 }
 
+static inline BLBoxI
+get_blboxi_inflated(struct BLBoxI box, int inflation) {
+    return (BLBoxI) {
+        box.x0 - inflation,
+        box.y0 - inflation,
+        box.x1 + inflation,
+        box.y1 + inflation,
+    };
+}
+
 
 #endif

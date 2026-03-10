@@ -117,12 +117,21 @@ _draw_and_damage_region(
     bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
     bl_context_clear_all(&st_buffer->bl_ctx);
     bl_context_fill_path_d(&st_buffer->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, &st_surface->bl_path);
+    bl_context_stroke_path_d(&st_buffer->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, &st_surface->bl_path);
     bl_context_restore_clipping(&st_buffer->bl_ctx);
     wl_surface_damage_buffer( st_surface->wl_surface,
         damage_region.x, damage_region.y, damage_region.w, damage_region.h
     );
 }
 
+
+// XXX: Just use ceil if we will need math.h for more reasons.
+static inline int
+_stroke_ceil(double x)
+{
+    int int_x = (int)x;
+    return (double)int_x < x ? int_x + 1: int_x;
+}
 
 static inline void
 draw_frame_and_damage_buffer(
@@ -139,10 +148,27 @@ draw_frame_and_damage_buffer(
     // Equal boxes should have been skipped.
     assert(!_boxes_are_equal(box_to_draw, box_already_drawn));
 
-    bl_path_add_box_i(&st_surface->bl_path, &box_bounds, BL_GEOMETRY_DIRECTION_NONE);
-    bl_path_add_box_i(&st_surface->bl_path, &box_to_draw, BL_GEOMETRY_DIRECTION_NONE);
 
-    const struct _box_diffs box_diffs = get_box_diffs(box_to_draw, box_already_drawn);
+    // Our boxes must be enlarged by stroke radius amount to ensure the outline
+    // is perfectly outside our capture area.
+    const int drawn_box_inflation_px  = _stroke_ceil(BLCONTEXT_STROKE_RADIUS);
+    // Our dirty rects must encompass the entire drawn stroke
+    const int diffed_box_inflation_px = _stroke_ceil(drawn_box_inflation_px + BLCONTEXT_STROKE_RADIUS);
+
+    // _box_bounds in particular is not supposed to have an outline in the
+    // first place, but moving it out of frame is simpler than manipulating our
+    // BLContext stroke rule. (It will never reach our dirty rects anyways.)
+    struct BLBoxI box_bounds__outline_inflation     = get_blboxi_inflated(box_bounds,        drawn_box_inflation_px);
+    struct BLBoxI box_to_draw__outline_inflation    = get_blboxi_inflated(box_to_draw,       drawn_box_inflation_px);
+
+    bl_path_add_box_i(&st_surface->bl_path, &box_bounds__outline_inflation,  BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&st_surface->bl_path, &box_to_draw__outline_inflation, BL_GEOMETRY_DIRECTION_NONE);
+
+    struct BLBoxI box_already_drawn__diff_inflation = get_blboxi_inflated(box_already_drawn, diffed_box_inflation_px);
+    struct BLBoxI box_to_draw__diff_inflation       = get_blboxi_inflated(box_to_draw,       diffed_box_inflation_px);
+
+    const struct _box_diffs box_diffs = get_box_diffs(box_to_draw__diff_inflation, box_already_drawn__diff_inflation);
+
 
     // TODO: Just make get_box_diffs return rects, probably...
     _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.left_full));

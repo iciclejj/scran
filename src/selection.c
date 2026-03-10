@@ -11,16 +11,19 @@ set_selection_surface_theme(
     struct scran_output *st_output,
     enum surface_theme action
 ) {
-    struct BLRgba32 fill_style;
-    enum BLFillRule fill_rule;
+    struct BLRgba32 stroke_style;
+    static const double stroke_width = BLCONTEXT_STROKE_WIDTH;
 
-    fill_rule = BL_FILL_RULE_EVEN_ODD;
+    struct BLRgba32 fill_style;
+    static const enum BLFillRule fill_rule = BL_FILL_RULE_EVEN_ODD;
 
     switch (action) {
     case SURFACE_THEME_DEFAULT:
+        stroke_style = BLCONTEXT_RGBA32_STROKE_STYLE_DEFAULT;
         fill_style = BLCONTEXT_RGBA32_FILL_STYLE_DEFAULT;
         break;
     case SURFACE_THEME_VIDEO_CAPTURE:
+        stroke_style = BLCONTEXT_RGBA32_STROKE_STYLE_VIDEO_CAPTURE;
         fill_style = BLCONTEXT_RGBA32_FILL_STYLE_VIDEO_CAPTURE;
         break;
     }
@@ -29,6 +32,9 @@ set_selection_surface_theme(
 
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
         struct scran_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
+
+        bl_context_set_stroke_style_rgba32(&st_buffer->bl_ctx, stroke_style.value);
+        bl_context_set_stroke_width(&st_buffer->bl_ctx, stroke_width);
 
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, fill_style.value);
         bl_context_set_fill_rule(&st_buffer->bl_ctx, fill_rule);

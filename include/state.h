@@ -26,8 +26,14 @@
 #define SURFACE_BUF_COUNT A_DOUBLE_BUFFER_HAS_TWO_BUFFERS
 
 // TODO: Move these definitions elsewhere?
-#define BLCONTEXT_RGBA32_FILL_STYLE_DEFAULT ((struct BLRgba32){ 0x88888888 })
-#define BLCONTEXT_RGBA32_FILL_STYLE_VIDEO_CAPTURE ((struct BLRgba32){ 0x88887A7A })
+#define BLCONTEXT_RGBA32_FILL_STYLE_DEFAULT          ((struct BLRgba32){ 0x88888888 })
+#define BLCONTEXT_RGBA32_FILL_STYLE_VIDEO_CAPTURE    ((struct BLRgba32){ 0x88887878 })
+
+#define BLCONTEXT_RGBA32_STROKE_STYLE_DEFAULT        ((struct BLRgba32){ 0xE0FFFFFF })
+#define BLCONTEXT_RGBA32_STROKE_STYLE_VIDEO_CAPTURE  ((struct BLRgba32){ 0xFFFF0000 })
+#define BLCONTEXT_STROKE_WIDTH (2.0)
+// Half of blend2d stroke "outline" goes inwards, half goes outwards
+#define BLCONTEXT_STROKE_RADIUS (BLCONTEXT_STROKE_WIDTH / 2)
 
 // TODO: Allow longer dir path if filename is short enough..?
 // XXX: -1 is to make room for trailing slash.
