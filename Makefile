@@ -34,10 +34,8 @@ ALL_CFLAGS_DBG = $(ALL_CFLAGS) $(CFLAGS_DBG)
 validate_dependencies:
 	# wayland-scanner private-code subcommand introduced in 1.14.91 
 	$(PKG_CONFIG) --atleast-version=1.14.91 wayland-scanner
-	# TODO: Should we verify protocol versions, or is the xml files existing
-	# enough, then verify rest at runtime?
+	# TODO: Verify protocol versions, or just bundle the xmls with scran
 	$(PKG_CONFIG) --exists wayland-protocols
-	$(PKG_CONFIG) --exists wlr-protocols
 	$(PKG_CONFIG) --exists $(PKGCONF_LIBS)
 
 # TODO: Simply-expanded, but lazily initialized shell/$(PKG_CONFIG) output variables
@@ -45,7 +43,7 @@ validate_dependencies:
 # 			need them, but also don't evaluate them more times than necessary.
 WAYLAND_SCANNER   := $(shell $(PKG_CONFIG) --variable=wayland_scanner wayland-scanner)
 WL_PROTOCOLS_DIR  := $(shell $(PKG_CONFIG) --variable=pkgdatadir wayland-protocols)
-WLR_PROTOCOLS_DIR := $(shell $(PKG_CONFIG) --variable=pkgdatadir wlr-protocols)
+WLR_PROTOCOLS_DIR := wayland-protocol-extensions/wlr-protocols
 wl_protocols_required_xml_paths := \
 	$(WLR_PROTOCOLS_DIR)/unstable/wlr-layer-shell-unstable-v1.xml \
 	$(WL_PROTOCOLS_DIR)/stable/xdg-shell/xdg-shell.xml \
