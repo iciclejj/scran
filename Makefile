@@ -30,11 +30,14 @@ ALL_CFLAGS_DBG = $(ALL_CFLAGS) $(CFLAGS_DBG)
 
 # $(1): Package name
 # $(2): Version
+# TODO: Don't fail instantly - let user see all failed first.
 define shell_validate_dependency
 $(if $(strip $(2)),\
-	echo "Checking dependency: $(1) >=$(2)";$(PKG_CONFIG) --atleast-version=$(2) $(1),\
-	echo "Checking dependency: $(1)";$(PKG_CONFIG) --exists $(1)\
- )
+	echo -n "Checking dependency: $(1) >=$(2): "; \
+		$(PKG_CONFIG) --atleast-version=$(2) $(1),\
+	echo -n "Checking dependency: $(1): "; \
+	    $(PKG_CONFIG) --exists $(1)\
+) && echo "OK." || { echo "Failed."; exit 1; }
 endef
 
 .PHONY: validate_dependencies
