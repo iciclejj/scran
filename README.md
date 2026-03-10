@@ -1,6 +1,6 @@
 # Scran
 #### ⚠️  Work In Progress  ⚠️
-Screen capture. Only tested on [sway](https://swaywm.org/).
+Capture images and videos. Only tested on [sway](https://swaywm.org/).
 
 ## Installing (Nix)
 
@@ -11,8 +11,7 @@ let
   scran_src = builtins.fetchGit {
     url = "https://github.com/iciclejj/scran";
     ref = "main";
-    # Desired commit (v0.1.0-beta)
-    rev = "58e4fad53de6c9c229d5e3c40ce32e5f744006e0";
+    rev = ""; # Desired commit
   };
 
   scran = pkgs.callPackage scran_src { };
