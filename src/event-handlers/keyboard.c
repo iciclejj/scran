@@ -160,7 +160,9 @@ handle_keyboard_key(
         } else {
             // TODO: Need to ensure capture is fully properly finished
             //       before we allow new dispatch_capture_event_loop()
-            start_video_capture(st_output);
+            if (!start_video_capture(st_output)) {
+                eprintf("Failed to start video capture.\n");
+            }
         }
         break;
     }

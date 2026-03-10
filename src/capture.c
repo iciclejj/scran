@@ -71,9 +71,6 @@ dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
 
 
 // TODO:
-//  - Make all the libav code prettier.
-//  - Use AVOutputFormat, AVCodecID, etc. directly, instead of strings?
-//      - I.e. strings like "libx264", "mpegts", etc.
 //  - Error checking
 //  - Destruction/cleanup
 //      - Don't forget avio_open
@@ -179,7 +176,34 @@ init_ffmpeg(struct scran_output *st_output)
 
 
     // AVCodec
-    const struct AVCodec *const codec = avcodec_find_encoder_by_name(_CODEC_X264_NAME);
+    static const char *codec_fallbacks[] = {
+        "libx264",      // requires GPL ffmpeg build
+        "libopenh264",
+        "mpeg4"
+    };
+    static const size_t len_codec_fallbacks = sizeof(codec_fallbacks) / sizeof(codec_fallbacks[0]);
+    const struct AVCodec *codec = NULL;
+    const char *codec_name = NULL;
+    for (size_t i = 0; i < len_codec_fallbacks; ++i) {
+        codec = avcodec_find_encoder_by_name(codec_fallbacks[i]);
+
+        if (codec != NULL) {
+            codec_name = codec_fallbacks[i];
+            break;
+        }
+    }
+    if (codec == NULL) {
+        eprintf("Error: No supported encoder found. Please ensure the linked"
+                " version of libavcodec was built with one of the supported"
+                " codecs:\n");
+        for (size_t i = 0; i < len_codec_fallbacks; ++i) {
+            eprintf("%s\n", codec_fallbacks[i]);
+        }
+        return false;
+    } else {
+        assert(codec_name != NULL);
+        eprintf("Using codec: %s\n", codec_name);
+    }
 
     // AVCodecContext (encoder)
     frame_ctx->av_codec_ctx = avcodec_alloc_context3(codec);
@@ -271,7 +295,10 @@ start_video_capture(struct scran_output *st_output)
          && st_output->selection_ctx.bl_box.y1
     );
 
-    init_ffmpeg(st_output);
+    if (!init_ffmpeg(st_output)) {
+        eprintf("Error: Failed to initialize ffmpeg libraries.\n");
+        return false;
+    }
 
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
 
