@@ -46,7 +46,8 @@ registry_handle_global(
         globals->shm         = wl_registry_bind(registry, name, &wl_shm_interface, 1);
     } else if (_INTERFACE_IS(zwlr_layer_shell_v1_interface)) {
         // v3 => ::destroy
-        globals->layer_shell = wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 3);
+        // v4 => keyboard interactivity ondemand
+        globals->layer_shell = wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 4);
     } else if (_INTERFACE_IS(wp_cursor_shape_manager_v1_interface)) {
         // sway only has version 1 at the time of writing.
         globals->cursor_shape_manager = wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, 1);
