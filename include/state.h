@@ -31,7 +31,7 @@
 
 #define BLCONTEXT_RGBA32_STROKE_STYLE_DEFAULT        ((struct BLRgba32){ 0xE0FFFFFF })
 #define BLCONTEXT_RGBA32_STROKE_STYLE_VIDEO_CAPTURE  ((struct BLRgba32){ 0xFFFF0000 })
-#define BLCONTEXT_STROKE_WIDTH (2.0)
+#define BLCONTEXT_STROKE_WIDTH (1.5)
 // Half of blend2d stroke "outline" goes inwards, half goes outwards
 #define BLCONTEXT_STROKE_RADIUS (BLCONTEXT_STROKE_WIDTH / 2)
 
