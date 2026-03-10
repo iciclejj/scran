@@ -2,8 +2,9 @@
 #### ⚠️  Work In Progress  ⚠️
 Capture images and videos. Only tested on [sway](https://swaywm.org/).
 
-## Installing (Nix)
+## Installing
 
+### Nix
 Example (flake coming soon):
 
 ```nix
@@ -24,6 +25,63 @@ in
 }
 ```
 
+### Fedora & others (without Nix)
+1. **Install Dependencies**
+   <!--
+   TODO: Add proper ubuntu and arch instructions. Also consider adding blend2d
+         as a git submodule.
+   -->
+   Fedora (equivalent packages should exist for most distributions):
+   ```bash
+   dnf install make gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel libavfilter-free-devel blend2d-devel
+   ```
+   Note: The libavcodec version installed by your package manager may or may not
+         be built with GPL-licensed video encoders such as libx264. scran will
+         pick from whatever is available.
+
+   [See instructions below](#blend2d) if Blend2D is not packaged for your distribution.
+2. **Build**
+   ```bash
+   git clone "https://github.com/iciclejj/scran"
+   cd scran
+   make -j release
+   ```
+
+3. **Install**
+   ```bash
+   # scran should now be at ./build/release/scran. Do with it as you please,
+   # or install it to a default location (may require sudo):
+   install -m 755 ./build/release/scran -D /usr/local/bin/scran
+   ```
+
+#### Blend2d
+If Blend2D was not packaged for your package manager (e.g. Ubuntu), you can
+compile and install it manually prior to building scran. It should not take
+very long to build:
+<details>
+<summary>Build Instructions</summary>
+
+```bash
+# First install cmake and g++ through your package manager.
+# For Ubuntu:
+apt install cmake g++
+
+# Clone blend2d and asmjit. You could do this for example within the scran git
+# repo (see step 2 above).
+git clone https://github.com/blend2d/blend2d
+git clone https://github.com/asmjit/asmjit blend2d/3rdparty/asmjit
+
+cd blend2d
+
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+
+# Install blend2d system-wide (may require sudo):
+cmake --install build
+
+# Now you can go back to the scran repo and build
+```
+</details>
 
 ## Usage & Behavior
 Images and videos are saved to the file or directory specified by `output_path`, or to `/tmp/scran-capture/scran-<timestamp>.<file-extension>` by default.
