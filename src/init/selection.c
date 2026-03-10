@@ -6,6 +6,7 @@
 #include "state-util.h"
 #include "event-handlers.h"
 #include "selection.h"
+#include "util/blend2d.h"
 
 
 bool
@@ -94,6 +95,15 @@ init_postmem__selection(struct scran_output *st_output)
         .y0 = 0,
         .x1 = get_output_width_logical(st_output),
         .y1 = get_output_height_logical(st_output),
+    };
+
+    // XXX: Get the outline out of view...
+    //      A more elegant solution can come when necessary
+    selection_ctx->bl_box = (struct BLBoxI) {
+        .x0 = 0 - blend2d_stroke_ceil(BLCONTEXT_STROKE_WIDTH),
+        .y0 = 0 - blend2d_stroke_ceil(BLCONTEXT_STROKE_WIDTH),
+        .x1 = 0 - blend2d_stroke_ceil(BLCONTEXT_STROKE_WIDTH),
+        .y1 = 0 - blend2d_stroke_ceil(BLCONTEXT_STROKE_WIDTH),
     };
 
     return true;

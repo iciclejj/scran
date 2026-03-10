@@ -128,5 +128,13 @@ get_blboxi_inflated(struct BLBoxI box, int inflation) {
     };
 }
 
+// XXX: Just use ceil if we will need math.h for more reasons.
+static inline int
+blend2d_stroke_ceil(double x)
+{
+    int int_x = (int)x;
+    return (double)int_x < x ? int_x + 1: int_x;
+}
+
 
 #endif

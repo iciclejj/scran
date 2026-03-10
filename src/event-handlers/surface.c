@@ -125,14 +125,6 @@ _draw_and_damage_region(
 }
 
 
-// XXX: Just use ceil if we will need math.h for more reasons.
-static inline int
-_stroke_ceil(double x)
-{
-    int int_x = (int)x;
-    return (double)int_x < x ? int_x + 1: int_x;
-}
-
 static inline void
 draw_frame_and_damage_buffer(
     struct scran_output_surface *st_surface,
@@ -151,9 +143,9 @@ draw_frame_and_damage_buffer(
 
     // Our boxes must be enlarged by stroke radius amount to ensure the outline
     // is perfectly outside our capture area.
-    const int drawn_box_inflation_px  = _stroke_ceil(BLCONTEXT_STROKE_RADIUS);
+    const int drawn_box_inflation_px  = blend2d_stroke_ceil(BLCONTEXT_STROKE_RADIUS);
     // Our dirty rects must encompass the entire drawn stroke
-    const int diffed_box_inflation_px = _stroke_ceil(drawn_box_inflation_px + BLCONTEXT_STROKE_RADIUS);
+    const int diffed_box_inflation_px = blend2d_stroke_ceil(drawn_box_inflation_px + BLCONTEXT_STROKE_RADIUS);
 
     // _box_bounds in particular is not supposed to have an outline in the
     // first place, but moving it out of frame is simpler than manipulating our
