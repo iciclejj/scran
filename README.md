@@ -1,5 +1,5 @@
 # Scran
-#### ⚠️  Work In Progress  ⚠️
+####  Work In Progress
 Capture images and videos. Only tested on [sway](https://swaywm.org/).
 
 ## Installing
@@ -30,13 +30,13 @@ in
    <!--
    TODO: Add proper ubuntu instructions. Also consider adding blend2d as a git submodule.
    -->
-   Arch:
+   #### Arch:
    ```bash
    pacman -S   base-devel wayland wayland-protocols libxkbcommon ffmpeg
    # Install Blend2D through the AUR (See below if you prefer to build Blend2D manually.)
    yay -S blend2d
    ```
-   Fedora:
+   #### Fedora:
    ```bash
    dnf install make gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel libavfilter-free-devel blend2d-devel
    ```
@@ -54,8 +54,10 @@ in
 
 3. **Install**
    ```bash
-   # scran should now be at ./build/release/scran. Do with it as you please,
-   # or install it to a default location (may require sudo):
+   # scran should now be at ./build/release/scran.
+
+   # To install it system-wide (may require sudo):
+   # Assuming your distro expects installs to /usr/local/bin/:
    install -m 755 ./build/release/scran -D /usr/local/bin/scran
    ```
 
@@ -88,21 +90,31 @@ cmake --install build
 ```
 </details>
 
-## Usage & Behavior
-Images and videos are saved to the file or directory specified by `output_path`, or to `/tmp/scran-capture/scran-<timestamp>.<file-extension>` by default.
-
-Images are also sent to the clipboard.
+## Usage
+Images and videos are saved to the file or directory specified by `output_path`, or to `/tmp/scran-capture/scran-<timestamp>.<file-extension>` by default. Images are also sent to the clipboard.
 
 NOTE: Video capture uses CPU encoding at the moment. GPU/hardware-acceleration coming soon.
 
-### Sway config examples
-```bash # works well enough...
-# Launch scran
-bindsym Print          exec  scran
-# Grab focus (after releasing with Tab):
-bindsym Shift+Alt+Tab  exec 'pkill -SIGUSR1 scran'
+See also `scran -h`.
 
-# For similar behavior to   'grim -g "$(slurp -d)" - | satty -f -'
+### Sway config examples
+Launch scran:
+```bash # works well enough...
+bindsym Print          exec  scran
+```
+Grab focus (after releasing with Tab):
+```bash
+bindsym Shift+Alt+Tab  exec 'pkill -SIGUSR1 scran'
+```
+
+If you want to pipe scran's output to another program, you might need to
+prevent scran from staying alive to manage the clipboard clipboard. You
+can do this by passing -B:
+```bash
+bindsym Print          exec 'scran -B - | satty -f -'
+```
+...or for similar behavior to `grim -g "$(slurp -d)" - | satty -f -`:
+```bash
 bindsym Print          exec 'scran -Be - | satty -f -'
 ```
 
@@ -127,11 +139,6 @@ For different versions, use `scran -h`.
   -p   press-only mouse buttons (presses toggle pressed/released state)
   -e   automatically capture and exit immediately after initial selection
   -B   do not keep background process alive
-         Example: 'scran -B - | satty -f -'
-          By default, scran stays alive after exit to manage the clipboard
-         (until another process takes over, e.g. you copied some text in a web
-         browser). Useful if you want to pipe scran's output to an application
-         that is waiting for scran to fully exit.
   -h   show help message and exit
 ```
 ### Positional arguments
