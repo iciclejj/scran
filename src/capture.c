@@ -272,6 +272,7 @@ init_ffmpeg(struct scran_output *st_output)
 
         return false;
     }
+    av_dict_free(&opts);
 
     return true;
 }
