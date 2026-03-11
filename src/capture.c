@@ -22,13 +22,11 @@
 #include "options.h"
 
 
-// TODO: Let user set this
 #define _FORMAT_MP4_FILE_EXTENSION ".mp4"
 // XXX: Seems like the underlying FFOutputFormat structs aren't exposed in the
 // public API (e.g. ff_mp4_muxer etc.), so we must let libavformat run its
 // "guessing"/scoring algorithm using a format-name string.
 #define _FORMAT_MP4_NAME "mp4"
-#define _CODEC_X264_NAME "libx264"
 
 
 extern struct scran g_state;
@@ -213,7 +211,7 @@ init_ffmpeg(struct scran_output *st_output)
     frame_ctx->av_codec_ctx->height = frame_ctx->av_frame_converted->height;
     // TODO: Is output::mode framerate_mhz same as the capture framerate?
     frame_ctx->av_codec_ctx->framerate = av_framerate_captured;
-    // INFO: Using NSEC_PER_SEC due to (wayland's) frame::presentation_time()
+    // INFO: Using 1/NSEC_PER_SEC due to (wayland's) frame::presentation_time()
     // giving time with nanosecond precision.
     frame_ctx->av_codec_ctx->time_base = (AVRational){1, NSEC_PER_SEC};
     // TODO: Assert format matches av_frame_converted
