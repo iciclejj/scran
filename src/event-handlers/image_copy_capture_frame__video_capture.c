@@ -157,11 +157,11 @@ handle_image_copy_capture_frame_ready__video_capture(
 
 
     // Encode
-
-    av_frame_make_writable(frame_ctx->av_frame_converted);
-
+    assert(av_frame_is_writable(frame_ctx->av_frame_converted));
     int _retval_enc = avcodec_send_frame(frame_ctx->av_codec_ctx, frame_ctx->av_frame_converted);
     assert(_retval_enc != AVERROR(EINVAL));
+    av_frame_unref(frame_ctx->av_frame_converted);
+
     // TODO: Initialize this once, and put in frame_ctx
     AVPacket *av_packet = av_packet_alloc();
     while (_retval_enc >= 0) {
