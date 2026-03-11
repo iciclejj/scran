@@ -216,14 +216,14 @@ init_ffmpeg(struct scran_output *st_output)
     frame_ctx->av_codec_ctx->framerate = av_framerate_captured;
     frame_ctx->av_codec_ctx->time_base = av_time_base_captured;
     // -- Values to be tweaked (may depend on encoder/format) --
-    frame_ctx->av_codec_ctx->bit_rate = 20 * BITS_PER_MEGABIT;
     frame_ctx->av_codec_ctx->max_b_frames = 2;
     frame_ctx->av_codec_ctx->gop_size     = 120;
     // TODO: Figure out a good default qmin/qmax.
     //      NOTE: This is the largest factor influencing init_ffmpeg's time
     //      to finish (wide q-range => longer codec init time).
-    frame_ctx->av_codec_ctx->qmin = 20;
-    frame_ctx->av_codec_ctx->qmax = 30;
+    // frame_ctx->av_codec_ctx->qmin = 20;
+    // frame_ctx->av_codec_ctx->qmax = 30;
+    frame_ctx->av_codec_ctx->bit_rate = 6 * BITS_PER_MEGABIT;
     avcodec_open2(frame_ctx->av_codec_ctx, codec, NULL);
 
     assert(frame_ctx->av_frame_to_encode->width  != 0);
