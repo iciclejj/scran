@@ -199,7 +199,7 @@ struct capture_frame_context {
     AVFormatContext *av_format_ctx;
     AVCodecContext *av_codec_ctx;
     AVFrame *av_frame_captured;
-    AVFrame *av_frame_converted;
+    AVFrame *av_frame_to_encode;
     AVPacket *av_packet; // encoded frame
     AVFilterGraph *av_filter_graph;
     AVFilterContext *av_filter_buffersrc_ctx;

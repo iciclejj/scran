@@ -94,11 +94,11 @@ init_ffmpeg(struct scran_output *st_output)
     enum ScranAVTransposeDir av_transpose_direction =
         wl_output_transform_to_ffmpeg_transpose_dir__inverse(st_output->transform);
 
-    const int width_px_converted = get_transformed_width(width_px_captured, height_px_captured, st_output->transform);
-    const int height_px_converted = get_transformed_height(width_px_captured, height_px_captured, st_output->transform);
+    const int width_px_to_encode = get_transformed_width(width_px_captured, height_px_captured, st_output->transform);
+    const int height_px_to_encode = get_transformed_height(width_px_captured, height_px_captured, st_output->transform);
     // NOTE: Some pixel formats (and some file formats), e.g. YUV420P, require
     //       even-numbered (or some other multiplier) height and/or width.
-    const enum AVPixelFormat av_pixel_format_converted = AV_PIX_FMT_YUV420P;
+    const enum AVPixelFormat av_pixel_format_to_encode = AV_PIX_FMT_YUV420P;
 
 
     // AVFrame (captured)
@@ -150,13 +150,13 @@ init_ffmpeg(struct scran_output *st_output)
         _sink_input_filter = frame_ctx->av_filter_transpose_ctx;
     }
 
-    // AVFilter: Sink (writes into av_frame_converted)
+    // AVFilter: Sink (writes into av_frame_to_encode)
     frame_ctx->av_filter_buffersink_ctx = avfilter_graph_alloc_filter(
             frame_ctx->av_filter_graph, avfilter_get_by_name("buffersink"), "out"
     );
     av_opt_set_array( frame_ctx->av_filter_buffersink_ctx,
             "pixel_formats", AV_OPT_SEARCH_CHILDREN,
-            0, 1, AV_OPT_TYPE_PIXEL_FMT, &av_pixel_format_converted
+            0, 1, AV_OPT_TYPE_PIXEL_FMT, &av_pixel_format_to_encode
     );
     avfilter_init_dict(frame_ctx->av_filter_buffersink_ctx, NULL);
 
@@ -167,10 +167,10 @@ init_ffmpeg(struct scran_output *st_output)
 
 
     // AVFrame (converted, ready to be fed to encoder)
-    frame_ctx->av_frame_converted = av_frame_alloc();
-    frame_ctx->av_frame_converted->width = width_px_converted;
-    frame_ctx->av_frame_converted->height = height_px_converted;
-    frame_ctx->av_frame_converted->format = av_pixel_format_converted;
+    frame_ctx->av_frame_to_encode = av_frame_alloc();
+    frame_ctx->av_frame_to_encode->width = width_px_to_encode;
+    frame_ctx->av_frame_to_encode->height = height_px_to_encode;
+    frame_ctx->av_frame_to_encode->format = av_pixel_format_to_encode;
 
 
     // AVCodec
@@ -205,19 +205,18 @@ init_ffmpeg(struct scran_output *st_output)
 
     // AVCodecContext (encoder)
     frame_ctx->av_codec_ctx = avcodec_alloc_context3(codec);
-    assert(frame_ctx->av_frame_converted->width != 0);
-    assert(frame_ctx->av_frame_converted->height != 0);
-    frame_ctx->av_codec_ctx->width = frame_ctx->av_frame_converted->width;
-    frame_ctx->av_codec_ctx->height = frame_ctx->av_frame_converted->height;
+    assert(frame_ctx->av_frame_to_encode->width != 0);
+    assert(frame_ctx->av_frame_to_encode->height != 0);
+    frame_ctx->av_codec_ctx->width = frame_ctx->av_frame_to_encode->width;
+    frame_ctx->av_codec_ctx->height = frame_ctx->av_frame_to_encode->height;
     // TODO: Is output::mode framerate_mhz same as the capture framerate?
     frame_ctx->av_codec_ctx->framerate = av_framerate_captured;
     // INFO: Using 1/NSEC_PER_SEC due to (wayland's) frame::presentation_time()
     // giving time with nanosecond precision.
     frame_ctx->av_codec_ctx->time_base = (AVRational){1, NSEC_PER_SEC};
-    // TODO: Assert format matches av_frame_converted
-    //       XXX: Also probably consistently use either the top-defined vars
-    //       *or* the av_frame_converted properties.
-    frame_ctx->av_codec_ctx->pix_fmt = frame_ctx->av_frame_converted->format;
+    // TODO: Consistently use either the top-defined vars *or* the
+    // av_frame_converted properties.
+    frame_ctx->av_codec_ctx->pix_fmt = frame_ctx->av_frame_to_encode->format;
     frame_ctx->av_codec_ctx->bit_rate = 20 * BITS_PER_MEGABIT;
     // XXX TODO: Figure out good default options for predicted frames
     frame_ctx->av_codec_ctx->max_b_frames = 0;

@@ -151,16 +151,16 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     _retval_filter = av_buffersink_get_frame(
             frame_ctx->av_filter_buffersink_ctx,
-            frame_ctx->av_frame_converted
+            frame_ctx->av_frame_to_encode
     );
     assert(0 <= _retval_filter);
 
 
     // Encode
-    assert(av_frame_is_writable(frame_ctx->av_frame_converted));
-    int _retval_enc = avcodec_send_frame(frame_ctx->av_codec_ctx, frame_ctx->av_frame_converted);
+    assert(av_frame_is_writable(frame_ctx->av_frame_to_encode));
+    int _retval_enc = avcodec_send_frame(frame_ctx->av_codec_ctx, frame_ctx->av_frame_to_encode);
     assert(_retval_enc != AVERROR(EINVAL));
-    av_frame_unref(frame_ctx->av_frame_converted);
+    av_frame_unref(frame_ctx->av_frame_to_encode);
 
     while (_retval_enc >= 0) {
         _retval_enc = avcodec_receive_packet(frame_ctx->av_codec_ctx, frame_ctx->av_packet);
@@ -230,8 +230,8 @@ end_capture_err:
     avformat_free_context(frame_ctx->av_format_ctx);
     assert(frame_ctx->av_codec_ctx);
     avcodec_free_context(&frame_ctx->av_codec_ctx);
-    assert(frame_ctx->av_frame_converted);
-    av_frame_free(&frame_ctx->av_frame_converted);
+    assert(frame_ctx->av_frame_to_encode);
+    av_frame_free(&frame_ctx->av_frame_to_encode);
     assert(frame_ctx->av_frame_captured);
     av_frame_free(&frame_ctx->av_frame_captured);
 
