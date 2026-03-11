@@ -218,7 +218,7 @@ init_ffmpeg(struct scran_output *st_output)
     // -- Values to be tweaked (may depend on encoder/format) --
     frame_ctx->av_codec_ctx->bit_rate = 20 * BITS_PER_MEGABIT;
     // XXX TODO: Figure out good default options for predicted frames
-    frame_ctx->av_codec_ctx->max_b_frames = 0;
+    frame_ctx->av_codec_ctx->max_b_frames = 2;
     frame_ctx->av_codec_ctx->gop_size     = 0;
     // TODO: Figure out a good default qmin/qmax.
     //      NOTE: This is the largest factor influencing init_ffmpeg's time
@@ -260,8 +260,6 @@ init_ffmpeg(struct scran_output *st_output)
 
 
     AVDictionary *opts = NULL;
-    // TODO: If/when we implement strict non-variable framerate:
-    //          Ensure max_b_frames is low enough to take short videos.
     av_dict_set(&opts, "movflags", "frag_keyframe", 0);
     assert(!((frame_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
     avio_open(&(frame_ctx->av_format_ctx)->pb, output_filepath, AVIO_FLAG_WRITE);
