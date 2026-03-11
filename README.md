@@ -37,9 +37,16 @@ in
    yay -S blend2d
    ```
    #### Fedora:
+   Warning: Personally tested Fedora builds are failing to video correctly, at the moment. The bug
+            can likely be worked around by using a different ffmpeg build than the
+            one I was linking against (installed through the below command).
+            Your mileage may vary.
+            
    ```bash
    dnf install make gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel libavfilter-free-devel blend2d-devel
    ```
+
+   <br>
    Note: The libavcodec version installed by your package manager may or may not
          be built with GPL-licensed video encoders such as libx264. scran will
          pick from whatever is available.
