@@ -73,13 +73,13 @@ very long to build:
 # For Ubuntu:
 apt install cmake g++
 
-# Clone blend2d and asmjit. You could do this for example within the scran git
-# repo (see step 2 above).
+# Clone blend2d and asmjit. You could do this within scran git directory (from step 2 above).
 git clone https://github.com/blend2d/blend2d
 git clone https://github.com/asmjit/asmjit blend2d/3rdparty/asmjit
 
 cd blend2d
 
+# Build
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 
