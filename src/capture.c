@@ -178,7 +178,14 @@ init_ffmpeg(struct scran_output *st_output)
 
     // AVCodec
     static const char *codec_fallbacks[] = {
-        "libx264",      // requires GPL ffmpeg build
+        "libx264",  // requires GPL ffmpeg build
+        // TODO(libopenh264):
+        // - Why does it have such bad performance (high cpu usage,
+        //   stutters) compared to libx264?
+        // - Why is it just giving green frames on Fedora? (works on NixOS.)
+        //   - Packet sizes are all very small. First is much smaller than
+        //     normal, and subsequent ones are almost all at minimum size (14),
+        //     despite a lot of movement in the capture frame.
         "libopenh264",
         "mpeg4"
     };
@@ -232,6 +239,7 @@ init_ffmpeg(struct scran_output *st_output)
     frame_ctx->av_codec_ctx->framerate = av_framerate_captured;
     frame_ctx->av_codec_ctx->time_base = av_time_base_captured;
     // -- Values to be tweaked (may depend on encoder/format) --
+    // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
     frame_ctx->av_codec_ctx->max_b_frames = 2;
     frame_ctx->av_codec_ctx->gop_size     = 120;
     // TODO: Figure out a good default qmin/qmax.
