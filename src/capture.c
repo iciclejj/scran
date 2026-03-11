@@ -230,6 +230,11 @@ init_ffmpeg(struct scran_output *st_output)
     avcodec_open2(frame_ctx->av_codec_ctx, codec, NULL);
 
 
+    // AVPacket (encoded)
+    frame_ctx->av_packet = av_packet_alloc();
+
+
+    // AVFormat
     const char *output_filepath = NULL;
     if (g_state.options.output_to_stdout) {
         output_filepath = "pipe:1";
@@ -239,8 +244,6 @@ init_ffmpeg(struct scran_output *st_output)
         scran_update_output_filepath(&g_state.options, _FORMAT_MP4_FILE_EXTENSION);
         output_filepath = g_state.options.output_path;
     }
-
-    // AVFormat
     avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MP4_NAME, output_filepath);
 
     // AVStream

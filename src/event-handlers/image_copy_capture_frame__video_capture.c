@@ -162,10 +162,8 @@ handle_image_copy_capture_frame_ready__video_capture(
     assert(_retval_enc != AVERROR(EINVAL));
     av_frame_unref(frame_ctx->av_frame_converted);
 
-    // TODO: Initialize this once, and put in frame_ctx
-    AVPacket *av_packet = av_packet_alloc();
     while (_retval_enc >= 0) {
-        _retval_enc = avcodec_receive_packet(frame_ctx->av_codec_ctx, av_packet);
+        _retval_enc = avcodec_receive_packet(frame_ctx->av_codec_ctx, frame_ctx->av_packet);
         assert(_retval_enc != AVERROR(EINVAL));
 
         // TODO: Are there other > 0 error codes it could return?
@@ -178,10 +176,12 @@ handle_image_copy_capture_frame_ready__video_capture(
             return;
         }
 
-        _write_video_frame(frame_ctx, av_packet);
+        _write_video_frame(frame_ctx, frame_ctx->av_packet);
 
         // INFO: packet gets unreferenced at start of loop by avcodec_receive_packet
     }
+
+   av_packet_unref(frame_ctx->av_packet);
 
     // NOTE: We do this check *after* writing the incoming frame. This ensures
     // that the video will not be cut short at the end if we're only capturing
@@ -199,10 +199,6 @@ handle_image_copy_capture_frame_ready__video_capture(
         goto end_capture;
     }
 
-    // TODO: Double-check that freeing is safe wrt. encoder interleaving etc.,
-    //       or whether we should unref instead
-    av_packet_free(&av_packet);
-
     // TODO: avio_flush ?
 
     init_wl_capture_frame__video(frame_ctx);
@@ -215,11 +211,10 @@ handle_image_copy_capture_frame_ready__video_capture(
 end_capture:
     // Drain codec
     avcodec_send_frame(frame_ctx->av_codec_ctx, NULL);
-    assert(av_packet != NULL);
-    while (avcodec_receive_packet(frame_ctx->av_codec_ctx, av_packet) != AVERROR_EOF) {
-        _write_video_frame(frame_ctx, av_packet);
+    assert(frame_ctx->av_packet != NULL);
+    while (avcodec_receive_packet(frame_ctx->av_codec_ctx, frame_ctx->av_packet) != AVERROR_EOF) {
+        _write_video_frame(frame_ctx, frame_ctx->av_packet);
     }
-    av_packet_free(&av_packet);
 
     // Finalize file
     av_write_trailer(frame_ctx->av_format_ctx);
@@ -227,6 +222,8 @@ end_capture:
 end_capture_err:
     // Note: Most (all?) of these are fine to call with null pointers, despite
     // the asserts
+    assert(frame_ctx->av_packet);
+    av_packet_free(&frame_ctx->av_packet);
     assert(frame_ctx->av_format_ctx->pb);
     avio_close(frame_ctx->av_format_ctx->pb);
     assert(frame_ctx->av_format_ctx);

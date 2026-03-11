@@ -200,6 +200,7 @@ struct capture_frame_context {
     AVCodecContext *av_codec_ctx;
     AVFrame *av_frame_captured;
     AVFrame *av_frame_converted;
+    AVPacket *av_packet; // encoded frame
     AVFilterGraph *av_filter_graph;
     AVFilterContext *av_filter_buffersrc_ctx;
     // TODO: Do we need to keep non-endpoint filters (like transpose) around
