@@ -88,7 +88,10 @@ init_ffmpeg(struct scran_output *st_output)
     const int width_px_captured = blboxi_width_abs_unsafe(frame_ctx->capture_area_px) & ~0b1;
     const int height_px_captured = blboxi_height_abs_unsafe(frame_ctx->capture_area_px) & ~0b1;
     const enum AVPixelFormat av_pixel_format_captured = wl_shm_format_to_ffmpeg(st_output->capture.shm_format);
+    // TODO: Is output::mode framerate_mhz same as the capture framerate?
     const AVRational av_framerate_captured = { st_output->mode.refresh_rate_mHz, MILLIHZ_PER_HZ };
+    // INFO: Using 1/NSEC_PER_SEC due to (wayland's) frame::presentation_time()
+    // giving time with nanosecond precision.
     const AVRational av_time_base_captured = { 1, NSEC_PER_SEC };
 
     enum ScranAVTransposeDir av_transpose_direction =
@@ -203,30 +206,29 @@ init_ffmpeg(struct scran_output *st_output)
         eprintf("Using codec: %s\n", codec_name);
     }
 
+
     // AVCodecContext (encoder)
     frame_ctx->av_codec_ctx = avcodec_alloc_context3(codec);
-    assert(frame_ctx->av_frame_to_encode->width != 0);
-    assert(frame_ctx->av_frame_to_encode->height != 0);
-    frame_ctx->av_codec_ctx->width = frame_ctx->av_frame_to_encode->width;
-    frame_ctx->av_codec_ctx->height = frame_ctx->av_frame_to_encode->height;
-    // TODO: Is output::mode framerate_mhz same as the capture framerate?
+    // -- Values tied to encoder input/environment --
+    frame_ctx->av_codec_ctx->width     = frame_ctx->av_frame_to_encode->width;
+    frame_ctx->av_codec_ctx->height    = frame_ctx->av_frame_to_encode->height;
+    frame_ctx->av_codec_ctx->pix_fmt   = frame_ctx->av_frame_to_encode->format;
     frame_ctx->av_codec_ctx->framerate = av_framerate_captured;
-    // INFO: Using 1/NSEC_PER_SEC due to (wayland's) frame::presentation_time()
-    // giving time with nanosecond precision.
-    frame_ctx->av_codec_ctx->time_base = (AVRational){1, NSEC_PER_SEC};
-    // TODO: Consistently use either the top-defined vars *or* the
-    // av_frame_converted properties.
-    frame_ctx->av_codec_ctx->pix_fmt = frame_ctx->av_frame_to_encode->format;
+    frame_ctx->av_codec_ctx->time_base = av_time_base_captured;
+    // -- Values to be tweaked (may depend on encoder/format) --
     frame_ctx->av_codec_ctx->bit_rate = 20 * BITS_PER_MEGABIT;
     // XXX TODO: Figure out good default options for predicted frames
     frame_ctx->av_codec_ctx->max_b_frames = 0;
-    frame_ctx->av_codec_ctx->gop_size = 0;
+    frame_ctx->av_codec_ctx->gop_size     = 0;
     // TODO: Figure out a good default qmin/qmax.
     //      NOTE: This is the largest factor influencing init_ffmpeg's time
     //      to finish (wide q-range => longer codec init time).
     frame_ctx->av_codec_ctx->qmin = 20;
     frame_ctx->av_codec_ctx->qmax = 30;
     avcodec_open2(frame_ctx->av_codec_ctx, codec, NULL);
+
+    assert(frame_ctx->av_frame_to_encode->width  != 0);
+    assert(frame_ctx->av_frame_to_encode->height != 0);
 
 
     // AVPacket (encoded)
@@ -259,7 +261,7 @@ init_ffmpeg(struct scran_output *st_output)
 
     AVDictionary *opts = NULL;
     // TODO: If/when we implement strict non-variable framerate:
-    //          Ensure keyframes/i-frames are frequent enough to take short videos.
+    //          Ensure max_b_frames is low enough to take short videos.
     av_dict_set(&opts, "movflags", "frag_keyframe", 0);
     assert(!((frame_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
     avio_open(&(frame_ctx->av_format_ctx)->pb, output_filepath, AVIO_FLAG_WRITE);
