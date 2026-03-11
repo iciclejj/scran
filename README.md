@@ -25,13 +25,18 @@ in
 }
 ```
 
-### Fedora & others (without Nix)
+### Other distributions (without Nix)
 1. **Install Dependencies**
    <!--
-   TODO: Add proper ubuntu and arch instructions. Also consider adding blend2d
-         as a git submodule.
+   TODO: Add proper ubuntu instructions. Also consider adding blend2d as a git submodule.
    -->
-   Fedora (equivalent packages should exist for most distributions):
+   Arch:
+   ```bash
+   pacman -S   base-devel wayland wayland-protocols libxkbcommon ffmpeg
+   # Install Blend2D through the AUR (See below if you prefer to build Blend2D manually.)
+   yay -S blend2d
+   ```
+   Fedora:
    ```bash
    dnf install make gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel libavfilter-free-devel blend2d-devel
    ```
