@@ -252,10 +252,9 @@ init_ffmpeg(struct scran_output *st_output)
     // NOTE: Requested time_base. Final time_base will have been selected by
     // libav after write_header. av_packet_rescale_ts() exists to convert from
     // Encoder timestamps to Format timestamps prior to handing off the packet.
-    // TODO: Should we set this to framerate? To encoder time_base?
     assert(frame_ctx->av_codec_ctx->framerate.num != 0);
     assert(frame_ctx->av_codec_ctx->framerate.den != 0);
-    _av_stream->time_base = frame_ctx->av_codec_ctx->framerate;
+    _av_stream->time_base = av_inv_q(frame_ctx->av_codec_ctx->framerate);
     avcodec_parameters_from_context(_av_stream->codecpar, frame_ctx->av_codec_ctx);
 
 
