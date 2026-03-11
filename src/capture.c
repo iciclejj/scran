@@ -207,8 +207,24 @@ init_ffmpeg(struct scran_output *st_output)
     }
 
 
+    // AVFormat
+    const char *output_filepath = NULL;
+    if (g_state.options.output_to_stdout) {
+        output_filepath = "pipe:1";
+    } else if (g_state.options.output_path_has_constant_filename) {
+        output_filepath = g_state.options.output_path;
+    } else {
+        scran_update_output_filepath(&g_state.options, _FORMAT_MP4_FILE_EXTENSION);
+        output_filepath = g_state.options.output_path;
+    }
+    avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MP4_NAME, output_filepath);
+
+
     // AVCodecContext (encoder)
     frame_ctx->av_codec_ctx = avcodec_alloc_context3(codec);
+    if (frame_ctx->av_format_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
+        frame_ctx->av_codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+    }
     // -- Values tied to encoder input/environment --
     frame_ctx->av_codec_ctx->width     = frame_ctx->av_frame_to_encode->width;
     frame_ctx->av_codec_ctx->height    = frame_ctx->av_frame_to_encode->height;
@@ -233,18 +249,6 @@ init_ffmpeg(struct scran_output *st_output)
     // AVPacket (encoded)
     frame_ctx->av_packet = av_packet_alloc();
 
-
-    // AVFormat
-    const char *output_filepath = NULL;
-    if (g_state.options.output_to_stdout) {
-        output_filepath = "pipe:1";
-    } else if (g_state.options.output_path_has_constant_filename) {
-        output_filepath = g_state.options.output_path;
-    } else {
-        scran_update_output_filepath(&g_state.options, _FORMAT_MP4_FILE_EXTENSION);
-        output_filepath = g_state.options.output_path;
-    }
-    avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MP4_NAME, output_filepath);
 
     // AVStream
     AVStream *_av_stream = avformat_new_stream(frame_ctx->av_format_ctx, codec);
