@@ -232,6 +232,8 @@ end_capture_err:
     avcodec_free_context(&frame_ctx->av_codec_ctx);
     assert(frame_ctx->av_frame_converted);
     av_frame_free(&frame_ctx->av_frame_converted);
+    assert(frame_ctx->av_frame_captured);
+    av_frame_free(&frame_ctx->av_frame_captured);
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
