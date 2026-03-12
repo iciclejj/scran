@@ -91,7 +91,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 
 # Install blend2d system-wide (may require sudo):
-cmake --install build
+cmake --install build && ldconfig
 
 # Now you can go back to the scran repo and build
 ```

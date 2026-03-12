@@ -8,6 +8,7 @@
 #include <libavutil/pixfmt.h>
 #include <libavutil/opt.h>
 #include <libavutil/display.h>
+#include <libavutil/version.h>
 
 #include "ext-image-copy-capture-v1.h"
 
@@ -179,6 +180,7 @@ init_ffmpeg(struct scran_output *st_output)
             "pixel_formats", AV_OPT_SEARCH_CHILDREN,
             0, 1, AV_OPT_TYPE_PIXEL_FMT, &av_pixel_format_to_encode
     );
+#endif /* LIBAVUTIL_VERSION_INT */
     avfilter_init_dict(frame_ctx->av_filter_buffersink_ctx, NULL);
 
     avfilter_link(_sink_input_filter, 0,
