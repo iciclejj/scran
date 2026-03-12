@@ -28,8 +28,12 @@ in
 ### Other distributions (without Nix)
 1. **Install Dependencies**
    <!--
-   TODO: Add proper ubuntu instructions. Also consider adding blend2d as a git submodule.
+   TODO: Consider adding blend2d as a git submodule.
    -->
+   #### Ubuntu:
+   ```bash
+   apt install make gcc pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libavcodec-dev libavutil-dev libavformat-dev libavfilter-dev
+   ```
    #### Arch:
    ```bash
    pacman -S   base-devel wayland wayland-protocols libxkbcommon ffmpeg
