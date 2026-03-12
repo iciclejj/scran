@@ -7,6 +7,7 @@
 #include <libavformat/avformat.h>
 #include <libavutil/pixfmt.h>
 #include <libavutil/opt.h>
+#include <libavutil/display.h>
 
 #include "ext-image-copy-capture-v1.h"
 
@@ -136,6 +137,16 @@ init_ffmpeg(struct scran_output *st_output)
     AVFilterContext *_sink_input_filter;
     if (av_transpose_direction == SCRAN_AV_TRANSPOSE_DIR_NORMAL
         || av_transpose_direction == SCRAN_AV_TRANSPOSE_DIR_UNSUPPORTED
+           // XXX: libavfilter can't transpose by 180, unless with two
+           // sequential transposes, or with a "rotate" filter.
+           // SCRAN_AV_TRANSPOSE_DIR_180 is not actually a 180 transform.
+           // We set file metadata instead.
+           // TODO: Implement yuv conversion in our simd code so that we can
+           // transpose there for video as well. Should end up significantly
+           // more efficient than libavfilter, even for 90-degree transforms
+           // TODO: Also reconsider simply doing metadata-based rotation by
+           // default for video.
+        || av_transpose_direction == SCRAN_AV_TRANSPOSE_DIR_180
     ) {
         _sink_input_filter = frame_ctx->av_filter_buffersrc_ctx;
     } else {
@@ -269,7 +280,21 @@ init_ffmpeg(struct scran_output *st_output)
     _av_stream->time_base = av_inv_q(frame_ctx->av_codec_ctx->framerate);
     avcodec_parameters_from_context(_av_stream->codecpar, frame_ctx->av_codec_ctx);
 
+    // XXX: Hotfix for ffmpeg's lack of 180 rotation. See comment above in the
+    // avfilter init section.
+    if (av_transpose_direction == SCRAN_AV_TRANSPOSE_DIR_180) {
+        AVPacketSideData *_side_data = av_packet_side_data_new(
+            &_av_stream->codecpar->coded_side_data,
+            &_av_stream->codecpar->nb_coded_side_data,
+            AV_PKT_DATA_DISPLAYMATRIX,
+            sizeof(int32_t) * 9,
+            0
+        );
+        av_display_rotation_set((int32_t *)_side_data->data, 180.0);
+    }
 
+
+    // AVFormat (cont.)
     AVDictionary *opts = NULL;
     av_dict_set(&opts, "movflags", "frag_keyframe", 0);
     assert(!((frame_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
