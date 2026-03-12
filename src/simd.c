@@ -394,17 +394,18 @@ _sse41_rotate_90(
 
 // SSE41 TODOs:
 // - Prefetch? More specific tiling?
+// - assert() our boundaries within the loops.
 //
 
 _TARGET_SSE41
 static void
 transform_framebuffer__sse41_unaligned__rotate_270(
     const void *const restrict src,
-    const int src_width_px,
+    const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
     void *const restrict dst,
-    const int dst_stride_bytes,
+    const int dst_stride_bytes, // Stride of the final output image
     __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     __m128i src_block_rows[SSE_ROW_STRIDE] = { };
@@ -415,9 +416,10 @@ transform_framebuffer__sse41_unaligned__rotate_270(
 
 
     for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += SSE_ROW_STRIDE) {
+
         const int dst_col_px = src_row_px; // NOTE: Rotation-speicific
-        assert(RGBA32_PIXEL_STRIDE * (dst_col_px + PIXELS_PER_M128I) <= dst_stride_bytes); // Stay within padded bounds
         const int dst_col_offset_bytes = dst_col_px * RGBA32_PIXEL_STRIDE;
+
         // NOTE: Rotation-specific:
         // TODO: We can factor this even farther out
         char *dst_block_row_addr_0 = (char *)dst
@@ -430,7 +432,6 @@ transform_framebuffer__sse41_unaligned__rotate_270(
         const char *const src_block_row_addrs_base = (char *)src + src_row_px * src_stride_bytes;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += PIXELS_PER_M128I) {
-            // TODO: assert(dst_row_px + SSE_ROW_STRIDE <= dst_height_px); // Stay within padded bounds
 
             const char *const _src_block_row_addr_0 = src_block_row_addrs_base + src_col_px * RGBA32_PIXEL_STRIDE;
 
@@ -496,11 +497,11 @@ _TARGET_SSE41
 static void
 transform_framebuffer__sse41_unaligned__rotate_90(
     const void *const restrict src,
-    const int src_width_px,
+    const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
     void *const restrict dst,
-    const int dst_stride_bytes,
+    const int dst_stride_bytes, // Stride of the final output image
     __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     __m128i src_block_rows[SSE_ROW_STRIDE] = { };
@@ -521,7 +522,6 @@ transform_framebuffer__sse41_unaligned__rotate_90(
         const char *const src_block_row_addrs_base = (char *)src + src_row_px * src_stride_bytes;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += PIXELS_PER_M128I) {
-            // TODO: assert(dst_row_px + SSE_ROW_STRIDE <= dst_height_px); // Stay within padded bounds
 
             const char *const _src_block_row_addr_0 = src_block_row_addrs_base + src_col_px * RGBA32_PIXEL_STRIDE;
 
@@ -560,7 +560,6 @@ transform_framebuffer__sse41_unaligned__rotate_0(
         const __m128i *src_row_base = src_curr;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += PIXELS_PER_M128I) {
-            // TODO: assert(RGBA32_PIXEL_STRIDE * (dst_col_px + PIXELS_PER_M128I) <= dst_stride_bytes); // Stay within padded bounds
 
             __m128i src_curr_value = _mm_loadu_si128(src_curr);
             src_curr_value = _mm_shuffle_epi8(src_curr_value, rgba32_shuffle_mask_128);
