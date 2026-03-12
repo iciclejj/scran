@@ -393,7 +393,7 @@ _sse41_rotate_90(
 }
 
 // SSE41 TODOs:
-// - Prefetch? Tiling? Seems to end up neutral or worse compared to naive implementation.
+// - Prefetch? More specific tiling?
 //
 
 _TARGET_SSE41
