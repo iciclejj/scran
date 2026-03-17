@@ -4,9 +4,8 @@ Capture images and videos. Only tested on [sway](https://swaywm.org/).
 
 ## Installing
 
-### Nix
+### Nix flake
 
-#### Flake example:
 Add the flake to your your NixOS or home-manager flake inputs
 ```nix
 inputs = {
@@ -27,7 +26,7 @@ Other architectures have not been tested, and so are not in the flake.
 
 <details> <summary>
 
-#### Non-flake example:
+### Non-flake Nix example
 </summary>
 
 ```nix
@@ -49,21 +48,28 @@ in
 ```
 </details>
 
-### Other distributions (without Nix)
+<details> <summary>
+
+### Arch, Ubuntu etc., without Nix
+</summary>
+
 1. **Install Dependencies**
-   <!--
-   TODO: Consider adding blend2d as a git submodule.
-   -->
-   #### Ubuntu:
-   ```bash
-   apt install make gcc pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libavcodec-dev libavutil-dev libavformat-dev libavfilter-dev
-   ```
-   #### Arch:
+   <details open> <summary>Arch</summary>
+
    ```bash
    pacman -S   base-devel wayland wayland-protocols libxkbcommon ffmpeg
    # Install Blend2D through the AUR (See below if you prefer to build Blend2D manually.)
    yay -S blend2d
    ```
+   </details>
+   <details> <summary>Ubuntu</summary>
+
+   ```bash
+   apt install make gcc pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libavcodec-dev libavutil-dev libavformat-dev libavfilter-dev
+   ```
+   </details>
+   <details> <summary>Fedora</summary>
+
    #### Fedora:
    Warning: Personally tested Fedora builds are failing to video correctly, at the moment. The bug
             can likely be worked around by using a different ffmpeg build than the
@@ -73,12 +79,15 @@ in
    ```bash
    dnf install make gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel libavfilter-free-devel blend2d-devel
    ```
+   </details>
 
-   <br>
    Note: The libavcodec version installed by your package manager may or may not
          be built with GPL-licensed video encoders such as libx264. scran will
          pick from whatever is available.
 
+   <!--
+   TODO: Consider adding blend2d as a git submodule.
+   -->
    [See instructions below](#blend2d) if Blend2D is not packaged for your distribution.
 2. **Build**
    ```bash
@@ -122,6 +131,7 @@ cmake --install build && ldconfig
 
 # Now you can go back to the scran repo and build
 ```
+</details>
 </details>
 
 ## Usage
