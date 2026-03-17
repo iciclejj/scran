@@ -11,8 +11,8 @@
     in
     {
       packages."${system}" = rec {
-        default = client-1;
-        client-1 = pkgs.callPackage ./default.nix { };
+        default = scran;
+        scran = pkgs.callPackage ./default.nix { _target = "release"; };
       };
     };
 }
