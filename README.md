@@ -5,7 +5,30 @@ Capture images and videos. Only tested on [sway](https://swaywm.org/).
 ## Installing
 
 ### Nix
-Example (flake coming soon):
+
+#### Flake example:
+Add the flake to your your NixOS or home-manager flake inputs
+```nix
+inputs = {
+  scran.url = "github:iciclejj/scran";
+  # ...
+};
+```
+
+Then you can install it like so:
+```nix
+# For home-manager, use home.packages = [ ... ];
+systemPackages = [
+  inputs.scran.packages.x86_64-linux.scran
+];
+```
+
+Other architectures have not been tested, and so are not in the flake.
+
+<details> <summary>
+
+#### Non-flake example:
+</summary>
 
 ```nix
 let
@@ -24,6 +47,7 @@ in
   ];
 }
 ```
+</details>
 
 ### Other distributions (without Nix)
 1. **Install Dependencies**
@@ -76,8 +100,7 @@ in
 If Blend2D was not packaged for your package manager (e.g. Ubuntu), you can
 compile and install it manually prior to building scran. It should not take
 very long to build:
-<details>
-<summary>Build Instructions</summary>
+<details> <summary>Build Instructions</summary>
 
 ```bash
 # First install cmake and g++ through your package manager.
