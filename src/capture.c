@@ -170,7 +170,6 @@ init_ffmpeg(struct scran_output *st_output)
             frame_ctx->av_filter_graph, avfilter_get_by_name("buffersink"), "out"
     );
 #if !defined LIBAVUTIL_VERSION_INT || (LIBAVUTIL_VERSION_INT < AV_VERSION_INT(59,36,100))
-    DEBUG("TEST\n");
     enum AVPixelFormat _pix_fmts[] = { av_pixel_format_to_encode, AV_PIX_FMT_NONE };
     av_opt_set_int_list( frame_ctx->av_filter_buffersink_ctx,
             "pix_fmts", _pix_fmts, AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN

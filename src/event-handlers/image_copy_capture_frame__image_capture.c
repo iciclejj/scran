@@ -12,7 +12,7 @@
 #include "util/lib-interop.h"
 #include "capture.h"
 #include "print.h"
-#include "simd.h"
+#include "scranrot.h"
 #include "event-handlers.h"
 #include "options.h"
 
@@ -126,9 +126,8 @@ handle_image_copy_capture_frame_ready__image_capture(
         rgba32_shuffle = RGBA32_SHUFFLE_NO_CHANGE;
     }
 
-    // TODO: More asserts before & after this + double-checking the padding and
-    // alignment logic both within transform_framebuffer after returning
-    transform_framebuffer(
+    // TODO: More asserts before & after this
+    scranrot_transform_framebuffer(
         area_start_addr,
         bl_buf_cropped_converted,
         area_width_no_transform,

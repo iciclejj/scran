@@ -15,9 +15,6 @@ enum ScranAVTransposeDir {
     SCRAN_AV_TRANSPOSE_DIR_NORMAL = -1,
 
     // Using wayland's naming scheme
-    // TODO: Ensure naming (cw vs ccw) is consistent both here and in our simd code
-    //         + Probably create a get_reverse_transform(enum wl_shm_transform),
-    //           to further reduce potential confusion.
     SCRAN_AV_TRANSPOSE_DIR_FLIPPED_90 = 0,
     SCRAN_AV_TRANSPOSE_DIR_270,
     SCRAN_AV_TRANSPOSE_DIR_90,

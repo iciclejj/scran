@@ -15,7 +15,8 @@ _LDLIBS := -lblend2d
 _LDLIBS += $(shell $(PKG_CONFIG) --libs $(PKGCONF_LIBS))
 ALL_LDLIBS = $(_LDLIBS) $(LDLIBS)
 
-INCDIRS := include/
+# TODO: Separate Makefile for scranrot
+INCDIRS := include/ scranrot/include
 INCDIRS += $(WL_PROTOCOLS_DIR_LOCAL)
 
 # TODO: CPPFLAGS?
@@ -104,8 +105,9 @@ $(build_dir_debug)/%.o: %.c    protocols_srcs
 	@mkdir -p $(dir $@)
 	$(CC) $(ALL_CFLAGS_DBG) -c $< -o $@
 
+# TODO: Separate Makefile for scranrot
 # TODO: Handle changed header files
-_srcdirs := src src/event-handlers src/init src/util
+_srcdirs := src src/event-handlers src/init src/util scranrot/src
 srcs := $(foreach dir,$(_srcdirs),$(wildcard $(dir)/*.c))
 
 prog_release := $(build_dir_release)/$(PROG)

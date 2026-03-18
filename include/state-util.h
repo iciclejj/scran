@@ -10,6 +10,7 @@
 extern struct scran g_state;
 
 
+// XXX: These functions are duplicated in scranrot. Maybe just use scranrot's.
 static inline int
 get_transformed_height(int src_width, int src_height, enum wl_output_transform transform)
 {
@@ -20,7 +21,6 @@ get_transformed_height(int src_width, int src_height, enum wl_output_transform t
          ? src_width
          : src_height;
 }
-
 static inline int
 get_transformed_width(int src_width, int src_height, enum wl_output_transform transform)
 {

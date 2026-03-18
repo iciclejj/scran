@@ -4,7 +4,7 @@
 #include <wayland-client.h>
 
 #include "state.h"
-#include "simd.h"
+#include "scranrot.h"
 
 
 // ARGB8888 and XRGB8888 are always supported (wayland spec)
@@ -16,7 +16,7 @@
 #define SSE_ALIGNMENT_BYTES 16
 #define FRAMEBUFFER_ALIGNMENT_BYTES 64 // 64 should cover most bases (cache, simd)
 #define FRAMEBUFFER_RIGHT_ALIGNMENT_BYTES  SSE_ALIGNMENT_BYTES
-#define FRAMEBUFFER_BOTTOM_ALIGNMENT_PX    SSE_ROW_STRIDE
+#define FRAMEBUFFER_BOTTOM_ALIGNMENT_PX    SCRANROT_SSE_ROW_STRIDE
 
 
 static inline size_t
