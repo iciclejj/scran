@@ -5,6 +5,12 @@
 #include "scranrot.h"
 
 
+#ifndef SCRANROT_ASSERT
+#include <assert.h>
+#define SCRANROT_ASSERT assert
+#endif
+
+
 static inline int
 scranrot_get_transformed_height(int src_width, int src_height, enum scranrot_transform transform)
 {

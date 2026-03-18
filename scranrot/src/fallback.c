@@ -1,5 +1,3 @@
-#include <assert.h>
-
 #include "../include/scranrot.h"
 #include "../include/scranrot-util.h"
 
@@ -38,7 +36,7 @@ scranrot_transform_framebuffer_fallback(
 ) {
     // TODO: Assert rgba_shuffle is valid (and let (0 => 0,1,2,3) ?)
 
-    assert(src_width_px * RGBA32_PIXEL_STRIDE <= src_stride_bytes);
+    SCRANROT_ASSERT(src_width_px * RGBA32_PIXEL_STRIDE <= src_stride_bytes);
     const int _dst_stride_px = scranrot_get_transformed_width(src_width_px, src_height_px, transform);
     const int dst_stride_bytes = RGBA32_PIXEL_STRIDE * _dst_stride_px;
     *dst_stride = dst_stride_bytes;

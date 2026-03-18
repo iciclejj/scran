@@ -3,7 +3,6 @@
 
 #include <emmintrin.h> // SSE2
 #include <tmmintrin.h> // SSE3
-#include <assert.h>
 #include <stddef.h>
 
 #include "../include/scranrot.h"
@@ -18,7 +17,7 @@
 
 
 // TODO: Check stride performance on other systems (tested on 5600h)
-static_assert(sizeof(__m128i) % RGBA32_PIXEL_STRIDE == 0, "sizeof(__m128i) is not divisible by RGBA32_PIXEL_STRIDE");
+_Static_assert(sizeof(__m128i) % RGBA32_PIXEL_STRIDE == 0, "sizeof(__m128i) is not divisible by RGBA32_PIXEL_STRIDE");
 #define PIXELS_PER_M128I (sizeof(__m128i) / RGBA32_PIXEL_STRIDE)
 
 typedef void (*_scranrot_transform_framebuffer_fn__ssse3)(
@@ -258,7 +257,7 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
     for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += SCRANROT_SSE_ROW_STRIDE) {
         // NOTE: Rotation-specific code:
         const int dst_col_px = (src_height_px - 4) - src_row_px; // -4 => len -> index
-        assert(RGBA32_PIXEL_STRIDE * (dst_col_px + PIXELS_PER_M128I) <= src_stride_bytes); // Stay within padded bounds
+        SCRANROT_ASSERT(RGBA32_PIXEL_STRIDE * (dst_col_px + PIXELS_PER_M128I) <= src_stride_bytes); // Stay within padded bounds
         const int dst_col_offset_bytes = dst_col_px * RGBA32_PIXEL_STRIDE;
         char *dst_block_row_addr_0 = (char *)dst
                                      + dst_col_offset_bytes;
@@ -339,7 +338,7 @@ scranrot_transform_framebuffer_ssse3__unaligned(
     const __m128i _rgba_shuffle_mask_128 = _mm_set1_epi32(rgba_shuffle_mask);
     const __m128i rgba_shuffle_mask_128 = _mm_add_epi8(_rgba_shuffle_mask_128_offsets, _rgba_shuffle_mask_128);
 
-    assert(src_width_px * RGBA32_PIXEL_STRIDE <= src_stride_bytes);
+    SCRANROT_ASSERT(src_width_px * RGBA32_PIXEL_STRIDE <= src_stride_bytes);
     const int _dst_stride_px = scranrot_get_transformed_width(src_width_px, src_height_px, transform);
     // XXX: This is not needed for unaligned
     const int dst_stride_bytes = RGBA32_PIXEL_STRIDE * _dst_stride_px;
@@ -368,7 +367,7 @@ scranrot_transform_framebuffer_ssse3__unaligned(
         return;
     }
 
-    assert(transform_fn != NULL);
+    SCRANROT_ASSERT(transform_fn != NULL);
     transform_fn(
         src,
         src_width_px,
