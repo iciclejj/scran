@@ -162,8 +162,7 @@ bindsym Print          exec 'scran -B - | satty -f -'
 bindsym Print          exec 'scran -Be - | satty -f -'
 ```
 
-### Keymap (as of v0.2.0)
-For different versions, use `scran -h`.
+### Keymap
 ```
   Left mouse button    Initialize and move selection
   Right mouse button   Resize selection
@@ -179,6 +178,7 @@ For different versions, use `scran -h`.
 ```
 
 ### Command-line Arguments
+See `scran -h` for more details
 ```
   Usage: scran [options...] [output_directory]
 
@@ -192,6 +192,9 @@ For different versions, use `scran -h`.
   -p   press-only mouse buttons (presses toggle pressed/released state)
   -e   automatically capture and exit immediately after initial selection
   -B   do not keep background process alive
+  -s   slurp: send selection as geometry string to standard output
+         Equivalent to slurp's default output.
+         See https://wayland.emersion.fr/slurp/.
   -h   show help message and exit
 ```
 
