@@ -135,7 +135,7 @@ cmake --install build && ldconfig
 </details>
 
 ## Usage
-Images and videos are saved to the file or directory specified by `output_path`, or to `/tmp/scran-capture/scran-<timestamp>.<file-extension>` by default. Images are also sent to the clipboard.
+Images and videos are saved to the file or directory specified by `output_directory`, or to `/tmp/scran-capture/scran-<timestamp>.<file-extension>` by default. Images are also sent to the clipboard.
 
 NOTE: Video capture uses CPU encoding at the moment. GPU/hardware-acceleration coming soon.
 
@@ -180,6 +180,9 @@ For different versions, use `scran -h`.
 
 ### Options
 ```
+  -f   output filename
+         Name of the file that will be placed inside of `output_directory`
+         Ignored if output_directory is - (stdout)
   -p   press-only mouse buttons (presses toggle pressed/released state)
   -e   automatically capture and exit immediately after initial selection
   -B   do not keep background process alive
@@ -187,18 +190,9 @@ For different versions, use `scran -h`.
 ```
 ### Positional arguments
 ```
-  output_path   path to output file or directory.
-                output_path is -:
-                  -  scran writes to stdout (See also: -B)
-                output_path is an existing directory:
-                  -  scran writes to <output_path>/<default_filename>
-                output_path does not exist, but ends with '/':
-                  1. scran creates directory structure
-                  2. scran writes to <output_path>/<default_filename>
-                output_path does not exist:
-                  1. scran creates directory structure if necessary
-                  2. scran writes to <output_path>
-                  NOTE: the *exact* given file path is used for both image and video
+  output_directory   path to output directory
+                       Directory will be created if it does not exist.
+                       If set to -, scran writes to stdout (see also -B)
 ```
 
 ### Signals
