@@ -290,6 +290,7 @@ struct scran_options {
 
     bool no_keepalive;
     bool capture_and_exit_after_selection_init;
+    bool slurp; // output slurp-style geometry string
 };
 
 // TODO: Struct alignments

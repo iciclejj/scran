@@ -377,11 +377,32 @@ dispatch_image_capture_event(struct scran_output_capture *st_capture)
 }
 
 
+static inline void
+_print_slurp_string(struct scran_output *st_output)
+{
+    const struct scran_output_xdg_geometry geometry = st_output->xdg_geometry;
+    const struct BLBoxI box = st_output->selection_ctx.bl_box;
+
+    // TODO: Assert nothing else was sent to stdout?
+    fprintf(stdout, "%d,%d %dx%d\n",
+            geometry.x_px      + box.x0,
+            geometry.y_px      + box.y0,
+            blboxi_width_abs_unsafe(box),
+            blboxi_height_abs_unsafe(box)
+    );
+    fflush(stdout);
+}
+
 bool
 start_image_capture(struct scran_output *st_output)
 {
     // See TODO at call site
     assert(!st_output->capture.frame_ctx.capturing_video);
+
+    if (g_state.options.slurp) {
+        _print_slurp_string(st_output);
+        return true;
+    }
 
     dispatch_image_capture_event(&st_output->capture);
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);

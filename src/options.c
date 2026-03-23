@@ -274,6 +274,13 @@ static const char help_string[] =
     "         (until another process takes over, e.g. you copied some text in a web\n"
     "         browser). Useful if you want to pipe scran's output to an application\n"
     "         that is waiting for scran to fully exit.\n"
+    "  -s   slurp: send selection as geometry string to standard output\n"
+    "         Replaces/disables image capture.\n"
+    "         Format: '<x>,<y> <width>x<height>'\n"
+    "           x and y are coordinates in the global compositor space.\n"
+    "         Equivalent to slurp's default output format\n"
+    "           See https://wayland.emersion.fr/slurp/.\n"
+    "           'scran -se' effectively emulates slurp's ui behavior\n"
     "  -h   show this help message and exit\n"
     "\n"
     "Signals\n"
@@ -289,9 +296,10 @@ scran_handle_args(int argc, char *const *argv)
     char *opt_filename = NULL;
 
     int opt;
-    while ((opt = getopt(argc, argv, "f:peBh")) != -1) {
+    while ((opt = getopt(argc, argv, "f:speBh")) != -1) {
         switch (opt) {
         case 'f': opt_filename                                          = optarg; break;
+        case 's': g_state.options.slurp                                 = true;   break;
         case 'p': g_state.seat.pointer_ctx.use_presses_only             = true;   break;
         case 'e': g_state.options.capture_and_exit_after_selection_init = true;   break;
         case 'B': g_state.options.no_keepalive                          = true;   break;
