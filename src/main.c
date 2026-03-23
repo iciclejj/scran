@@ -23,6 +23,7 @@
 #include "print.h"
 #include "options.h"
 #include "signal-handlers.h"
+#include "xdg-output-unstable-v1.h"
 
 //  General TODO:
 //  - Don't use libwayland..? Handle its allocations etc. ourselves?
@@ -84,7 +85,16 @@ init_premem()
         if (!init_premem__capture(_st_output, &g_state.seat.datacontrol, &g_state.globals)) {
             return false;
         }
+
+        _st_output->xdg_output = zxdg_output_manager_v1_get_xdg_output(
+            g_state.globals.xdg_output_manager, _st_output->wl_output
+        );
+
+        zxdg_output_v1_add_listener(_st_output->xdg_output, &xdg_output_listener, _st_output);
     }
+
+    // We don't need this anymore unless we want to support live geometry updates
+    zxdg_output_manager_v1_destroy(g_state.globals.xdg_output_manager);
 
     g_state.empty_wl_region = wl_compositor_create_region(g_state.globals.compositor);
 
@@ -122,6 +132,12 @@ init_premem__destroy()
 
         init_premem__selection__destroy(_st_output);
         init_premem__capture__destroy(_st_output);
+
+        // XXX: This could be probably be destroyed within output::done if we
+        //      we won't support live updating. Keeping it here for now.
+        //      NOTE: Use output::done for xdg_output <v3, and xdg_output::done
+        //            for v3 (see xml)
+        zxdg_output_v1_destroy(_st_output->xdg_output);
     }
 
     wl_region_destroy(g_state.empty_wl_region);

@@ -256,19 +256,29 @@ struct scran_output_mode {
     int32_t refresh_rate_mHz;
 };
 
+// Global logical geometry
+struct scran_output_xdg_geometry {
+    // NOTE: These DO have transforms and scale already applied.
+    int32_t x_px;
+    int32_t y_px;
+    int32_t width_px;
+    int32_t height_px;
+};
+
 struct scran_output {
     struct wl_output *wl_output;
-    // TODO: xdg_output
-    //         will at least be needed if/when implementing f.ex.
-    //         cross-output capture, or other features requiring awareness of
-    //         global geometry
 
     struct scran_output_mode mode;
+    // Logical geometry, as given by the xdg_output protocol
+    struct scran_output_xdg_geometry xdg_geometry;
     enum wl_output_transform transform;
 
     struct scran_output_surface surface;
     struct scran_output_selectionContext selection_ctx;
     struct scran_output_capture capture;
+
+    // Only really needed during init and destruction:
+    struct zxdg_output_v1 *xdg_output;
 };
 
 // TODO: Isolate this from scran state?

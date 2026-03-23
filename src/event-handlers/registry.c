@@ -67,7 +67,6 @@ registry_handle_global(
 
         ++state->n_outputs;
     } else if (_INTERFACE_IS(zxdg_output_manager_v1_interface)) {
-        // XXX TODO: Actually implement this..?
         globals->xdg_output_manager = wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface, 1);
     } else if (_INTERFACE_IS(ext_output_image_capture_source_manager_v1_interface)) {
         globals->output_image_capture_source_manager = wl_registry_bind(registry, name, &ext_output_image_capture_source_manager_v1_interface, 1);

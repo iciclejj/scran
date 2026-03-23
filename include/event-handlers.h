@@ -21,6 +21,7 @@ extern struct ext_image_copy_capture_session_v1_listener image_copy_capture_sess
 extern struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener__video_capture;
 extern struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener__image_capture;
 extern struct ext_data_control_source_v1_listener data_control_source_listener;
+extern struct zxdg_output_v1_listener xdg_output_listener;
 
 extern struct wl_registry_listener registry_listener;
  void registry_listener__destroy(struct scran *state);
