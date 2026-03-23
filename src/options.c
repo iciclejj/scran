@@ -339,7 +339,9 @@ scran_handle_args(int argc, char *const *argv)
     }
 
     if (opt_filename != NULL && !g_state.options.output_to_stdout) {
-        _handle_cli_arg_filename(&g_state.options, opt_filename);
+        if (!_handle_cli_arg_filename(&g_state.options, opt_filename)) {
+            return false;
+        }
     }
 
     return true;
