@@ -69,7 +69,7 @@ init_premem()
 
     if (g_state.n_outputs < 1) {
         eprintf("No outputs detected.\n");
-        return 0;
+        return false;
     }
 
     //   Collect dynamic memory requirements
