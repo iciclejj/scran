@@ -265,6 +265,7 @@ static const char help_string[] =
     "         Ignored if output_directory is - (stdout)\n"
     "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
     "  -e   automatically capture and exit immediately after initial selection\n"
+    "         Note: does not make -B redundant.\n"
     // TODO:
     // "  -ee  like -e, but ensure the scran process exits fully\n"
     // "         Equivalent to -Be"
