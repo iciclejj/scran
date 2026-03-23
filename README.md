@@ -178,8 +178,14 @@ For different versions, use `scran -h`.
   Escape               Exit scran, or stop video capture if in progress
 ```
 
-### Options
+### Command-line Arguments
 ```
+  Usage: scran [options...] [output_directory]
+
+  output_directory   path to output directory
+                       Directory will be created if it does not exist.
+                       If set to -, scran writes to stdout (see also -B)
+
   -f   output filename
          Name of the file that will be placed inside of `output_directory`
          Ignored if output_directory is - (stdout)
@@ -187,12 +193,6 @@ For different versions, use `scran -h`.
   -e   automatically capture and exit immediately after initial selection
   -B   do not keep background process alive
   -h   show help message and exit
-```
-### Positional arguments
-```
-  output_directory   path to output directory
-                       Directory will be created if it does not exist.
-                       If set to -, scran writes to stdout (see also -B)
 ```
 
 ### Signals
