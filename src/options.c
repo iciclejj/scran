@@ -297,13 +297,13 @@ scran_handle_args(int argc, char *const *argv)
     char *opt_filename = NULL;
 
     int opt;
-    while ((opt = getopt(argc, argv, "f:speBh")) != -1) {
+    while ((opt = getopt(argc, argv, "f:peBsh")) != -1) {
         switch (opt) {
         case 'f': opt_filename                                          = optarg; break;
-        case 's': g_state.options.slurp                                 = true;   break;
         case 'p': g_state.seat.pointer_ctx.use_presses_only             = true;   break;
         case 'e': g_state.options.capture_and_exit_after_selection_init = true;   break;
         case 'B': g_state.options.no_keepalive                          = true;   break;
+        case 's': g_state.options.slurp                                 = true;   break;
         case 'h':
             printf("%s", help_string);
             exit(EXIT_SUCCESS);
