@@ -37,6 +37,7 @@
 
 struct scran g_state = {
     .options = {
+        .filename = "", // Just to be safe
         .output_path = SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH,
         .output_path_filename_pointer = g_state.options.output_path
                                         + sizeof(SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH)

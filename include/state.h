@@ -35,12 +35,13 @@
 // Half of blend2d stroke "outline" goes inwards, half goes outwards
 #define BLCONTEXT_STROKE_RADIUS (BLCONTEXT_STROKE_WIDTH / 2)
 
+#define SCRAN_OUTPUT_FILENAME_SIZE_MAX    (NAME_MAX)                                       // Null terminator is  counted
+#define SCRAN_OUTPUT_FILENAME_STRLEN_MAX  (NAME_MAX - 1)                                   // Null terminator not counted
 // TODO: Allow longer dir path if filename is short enough..?
-// XXX: -1 is to make room for trailing slash.
-#define SCRAN_OUTPUT_DIRPATH_SIZE_MAX     (PATH_MAX - NAME_MAX)     // Null terminator *is* counted
-#define SCRAN_OUTPUT_DIRPATH_STRLEN_MAX   (PATH_MAX - NAME_MAX - 1) // Null terminator *not* counted
-#define SCRAN_OUTPUT_FILEPATH_SIZE_MAX    (PATH_MAX)                // Null terminator *is* counted
-#define SCRAN_OUTPUT_FILEPATH_STRLEN_MAX  (PATH_MAX - 1)            // Null terminator *not* counted
+#define SCRAN_OUTPUT_DIRPATH_SIZE_MAX     (PATH_MAX - SCRAN_OUTPUT_FILENAME_SIZE_MAX)      // Null terminator is  counted
+#define SCRAN_OUTPUT_DIRPATH_STRLEN_MAX   (PATH_MAX - SCRAN_OUTPUT_FILENAME_SIZE_MAX - 1)  // Null terminator not counted
+#define SCRAN_OUTPUT_FILEPATH_SIZE_MAX    (PATH_MAX)                                       // Null terminator is  counted
+#define SCRAN_OUTPUT_FILEPATH_STRLEN_MAX  (PATH_MAX - 1)                                   // Null terminator not counted
 // XXX: Semi-arbitrary value (highest built-in AVCodecDescriptor.name in
 // libavcodec atm. is 18, excl. null-terminator).
 #define SCRAN_OUTPUT_FILE_EXTENSION_MAX 20
@@ -273,8 +274,8 @@ struct scran_output {
 // TODO: Isolate this from scran state?
 struct scran_options {
     char *output_path_filename_pointer;
-    char output_path[PATH_MAX];
-    bool output_path_has_constant_filename;
+    char output_path[SCRAN_OUTPUT_FILEPATH_SIZE_MAX]; // NOTE: Also used as output_directory during cli arg init
+    char filename[SCRAN_OUTPUT_FILENAME_SIZE_MAX];
     bool output_to_stdout;
 
     bool no_keepalive;

@@ -45,12 +45,37 @@ create_timestamped_filename(
     assert(filename_strlen <  SCRAN_DEFAULT_FILENAME_SIZE_MAX);
 }
 
-void
+const char *
 scran_update_output_filepath(
-    const struct scran_options *st_options,
+    struct scran_options *st_options,
     const char file_extension[SCRAN_OUTPUT_FILE_EXTENSION_MAX]
 ) {
-    create_timestamped_filename(st_options->output_path_filename_pointer, file_extension);
+    // TODO: NDEDBUG_ASSERT
+    const size_t available_chars_for_filename = st_options->output_path
+                                              + sizeof(st_options->output_path)
+                                              - st_options->output_path_filename_pointer;
+
+    assert(sizeof(st_options->filename) == SCRAN_OUTPUT_FILENAME_SIZE_MAX);
+    if (available_chars_for_filename < SCRAN_OUTPUT_FILENAME_SIZE_MAX) {
+        eprintf("Error: scran_update-output_filepath: filename pointer too deep. THIS IS A BUG, please open an issue.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    const bool have_custom_filename = st_options->filename[0] != '\0';
+    if (have_custom_filename) {
+        // XXX: Custom filename is primarily intended for user-supplied format
+        //      strings, so we don't bother optimizing away repeated copies.
+        //      TODO: Implement said format strings (and remove this XXX)
+        size_t filename_strlen = strlcpy(
+            st_options->output_path_filename_pointer,
+            st_options->filename,
+            available_chars_for_filename
+        );
+    } else {
+        create_timestamped_filename(st_options->output_path_filename_pointer, file_extension);
+    }
+
+    return st_options->output_path;
 }
 
 static inline bool
@@ -128,7 +153,25 @@ _mkdir_recursive(
 }
 
 static inline bool
-_cli_arg_output_path(
+_handle_cli_arg_filename(
+    struct scran_options *restrict st_options,
+    const char *restrict arg
+) {
+    size_t filename_strlen = strlcpy(st_options->filename, arg, SCRAN_OUTPUT_FILENAME_SIZE_MAX);
+
+    if (filename_strlen < 1) {
+        eprintf("Error: filename cannot be empty.\n");
+        return false;
+    } else if (filename_strlen > SCRAN_OUTPUT_FILENAME_STRLEN_MAX) {
+        eprintf("filename is too long. Max length: %d\n", SCRAN_OUTPUT_FILENAME_STRLEN_MAX);
+        return false;
+    }
+
+    return true;
+}
+
+static inline bool
+_handle_cli_arg_output_directory(
     struct scran_options *restrict st_options,
     const char *restrict arg
 ) {
@@ -137,91 +180,57 @@ _cli_arg_output_path(
         return true;
     }
 
-    if (arg[0] == '\0') {
-        eprintf("Error: output_path cannot be empty.\n");
+    assert(sizeof(st_options->output_path) >= SCRAN_OUTPUT_DIRPATH_SIZE_MAX);
+    size_t output_directory_strlen = strlcpy(st_options->output_path, arg, SCRAN_OUTPUT_DIRPATH_SIZE_MAX);
+
+    if (output_directory_strlen < 1) {
+        eprintf("Error: output_directory cannot be empty.\n");
+        return false;
+    } else if (output_directory_strlen > SCRAN_OUTPUT_DIRPATH_STRLEN_MAX) {
+        eprintf("output_directory is too long. Max length: %d\n", SCRAN_OUTPUT_DIRPATH_STRLEN_MAX);
         return false;
     }
 
-    size_t arg_strlen = strlcpy(st_options->output_path, arg, SCRAN_OUTPUT_FILEPATH_SIZE_MAX);
+    assert(output_directory_strlen > 0);
+    assert(arg[output_directory_strlen] == '\0');
+    assert(st_options->output_path[output_directory_strlen] == '\0');
 
-    if (arg_strlen > SCRAN_OUTPUT_FILEPATH_STRLEN_MAX) {
-        eprintf("output_path is too long. Max length: %d (%d for directories)\n",
-                SCRAN_OUTPUT_FILEPATH_SIZE_MAX, SCRAN_OUTPUT_DIRPATH_SIZE_MAX);
-        return false;
-    }
-
-    assert(arg_strlen > 0);
-    assert(arg[arg_strlen] == '\0');
-    assert(st_options->output_path[arg_strlen] == '\0');
-
-
-    bool is_existing_dirpath;
-    struct stat _statbuf;
-    const int _stat_ret = stat(st_options->output_path, &_statbuf);
-    if (_stat_ret == 0) {
-        is_existing_dirpath = S_ISDIR(_statbuf.st_mode);
-    } else if (errno == ENOENT) {
-        is_existing_dirpath = false;
-    } else {
-        eprintf("output_path stat error for '%s': %s\n", st_options->output_path, strerror(errno));
-        return false;
-    }
-
-    bool _has_trailing_slash = st_options->output_path[arg_strlen - 1] == '/';
-    bool is_dirpath_arg = is_existing_dirpath || _has_trailing_slash;
-    //  !is_dirpath_arg => is_filepath_arg
-
-    if (is_dirpath_arg) {
-        if (arg_strlen > SCRAN_OUTPUT_DIRPATH_STRLEN_MAX) {
-            eprintf("output_path is too long. Max length: %d (%d for directories)\n",
-                    SCRAN_OUTPUT_FILEPATH_SIZE_MAX, SCRAN_OUTPUT_DIRPATH_SIZE_MAX);
+    bool output_directory_exists;
+    {
+        struct stat _statbuf;
+        const int _stat_ret = stat(st_options->output_path, &_statbuf);
+        if (_stat_ret == 0) {
+            output_directory_exists = S_ISDIR(_statbuf.st_mode);
+        } else if (errno == ENOENT) {
+            output_directory_exists = false;
+        } else {
+            eprintf("output_directory stat error for '%s': %s\n", st_options->output_path, strerror(errno));
             return false;
         }
-
-        if (!is_existing_dirpath) {
-            if (!_mkdir_recursive(st_options->output_path, arg_strlen)) {
-                eprintf("Failed to create directory '%s'\n", st_options->output_path);
-                return false;
-            }
-        }
-
-        char *filename_pointer = st_options->output_path + arg_strlen;
-        if (*(filename_pointer - 1) != '/') {
-            *filename_pointer++ = '/';
-        }
-        *filename_pointer = '\0'; // Should not be necessary, but just to be safe
-
-        st_options->output_path_filename_pointer = filename_pointer;
-    } else { // is filepath
-        char *dirpath_end = st_options->output_path + arg_strlen;
-        while (dirpath_end > st_options->output_path && *dirpath_end != '/') {
-            --dirpath_end;
-        }
-
-        if (dirpath_end > st_options->output_path) {
-            assert(*dirpath_end == '/');
-
-            *dirpath_end = '\0';
-
-            size_t _dirpath_strlen = dirpath_end - st_options->output_path;
-            if (!_mkdir_recursive(st_options->output_path, _dirpath_strlen)) {
-                eprintf("Failed to create directory '%s'\n", st_options->output_path);
-                return false;
-            }
-
-            *dirpath_end = '/';
-        }
-
-        st_options->output_path_has_constant_filename = true;
     }
 
-    assert(   st_options->output_path_has_constant_filename
-           ^ (st_options->output_path_filename_pointer != NULL));
+    if (!output_directory_exists) {
+        if (!_mkdir_recursive(st_options->output_path, output_directory_strlen)) {
+            eprintf("Failed to create directory '%s'\n", st_options->output_path);
+            return false;
+        }
+    }
+
+    char *filename_pointer = st_options->output_path + output_directory_strlen;
+    if (*(filename_pointer - 1) != '/') {
+        *filename_pointer++ = '/';
+    }
+    // We don't need this to be null-terminated yet, but just to be safe:
+    *filename_pointer = '\0';
+    st_options->output_path_filename_pointer = filename_pointer;
+
+
+    assert(st_options->output_path_filename_pointer != NULL);
 
     return true;
 }
 
-#define SCRAN_USAGE "Usage: scran [options] [output_path]"
+#define SCRAN_USAGE "Usage: scran [options...] [output_directory]"
 
 static const char help_string[] =
     SCRAN_USAGE "\n"
@@ -244,22 +253,19 @@ static const char help_string[] =
     // the recursive directory structure creation by default, and just give an
     // error message notification that directory doesn't exist. (Maybe still keep
     // the functionality behind an --mkdir flag.)
-    "  output_path   path to output file or directory.\n"
-    "                output_path is -:\n"
-    "                  -  scran writes to stdout (See also: -B)\n"
-    "                output_path is an existing directory:\n"
-    "                  -  scran writes to <output_path>/<default_filename>\n"
-    "                output_path does not exist, but ends with '/':\n"
-    "                  1. scran creates directory structure\n"
-    "                  2. scran writes to <output_path>/<default_filename>\n"
-    "                output_path does not exist:\n"
-    "                  1. scran creates directory structure if necessary\n"
-    "                  2. scran writes to <output_path>\n"
-    "                  NOTE: the *exact* given file path is used for both image and video\n"
+    "  output_directory   path to output directory\n"
+    "                       Directory will be created if it does not exist.\n"
+    "                       If set to -, scran writes to stdout (see also -B)\n"
     "\n"
     "Options\n"
+    "  -f   output filename\n"
+    "         Name of the file that will be placed inside of `output_directory`\n"
+    "         Ignored if output_directory is - (stdout)\n"
     "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
     "  -e   automatically capture and exit immediately after initial selection\n"
+    // TODO:
+    // "  -ee  like -e, but ensure the scran process exits fully\n"
+    // "         Equivalent to -Be"
     "  -B   do not keep background process alive\n"
     "         Example: 'scran -B - | satty -f -'\n"
     "          By default, scran stays alive after exit to manage the clipboard\n"
@@ -278,18 +284,15 @@ bool
 scran_handle_args(int argc, char *const *argv)
 {
     extern struct scran g_state;
+    char *opt_filename = NULL;
+
     int opt;
-    while ((opt = getopt(argc, argv, "peBh")) != -1) {
+    while ((opt = getopt(argc, argv, "f:peBh")) != -1) {
         switch (opt) {
-        case 'p':
-            g_state.seat.pointer_ctx.use_presses_only = true;
-            break;
-        case 'e':
-            g_state.options.capture_and_exit_after_selection_init = true;
-            break;
-        case 'B':
-            g_state.options.no_keepalive = true;
-            break;
+        case 'f': opt_filename                                          = optarg; break;
+        case 'p': g_state.seat.pointer_ctx.use_presses_only             = true;   break;
+        case 'e': g_state.options.capture_and_exit_after_selection_init = true;   break;
+        case 'B': g_state.options.no_keepalive                          = true;   break;
         case 'h':
             printf("%s", help_string);
             exit(EXIT_SUCCESS);
@@ -300,29 +303,35 @@ scran_handle_args(int argc, char *const *argv)
     }
     // NOTE: getopt reorders argv and puts positional/non-option args at the end,
     // making optind point to them, unless POSIXLY_CORRECT or optstring[0] == '+'.
-    const int i_posarg_0 = optind;
+    int i_posarg = optind;
 
-    if (argv[i_posarg_0] == NULL) {
-        assert(0 == strcmp(g_state.options.output_path, SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH));
-    } else {
-        if (argv[i_posarg_0 + 1] != NULL) {
-            eprintf("Error: Too many non-option arguments: ");
-            for (int i = i_posarg_0; i < argc; ++i) {
-                eprintf(" '%s'", argv[i]);
-            }
-            eprintf(".\n");
-            return false;
+    const char *output_directory_arg = argv[i_posarg++];
+
+    if (i_posarg < argc) {
+        eprintf("Error: Too many non-option arguments: ");
+        for (int i = i_posarg; i < argc; ++i) {
+            eprintf(" '%s'", argv[i]);
         }
+        eprintf(".\n");
+        return false;
+    }
 
-        // Just for some safety (compile-time initialized with default dir path):
+    // Compile-time initialized
+    assert(0 == strcmp(g_state.options.output_path, SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH));
+    assert(g_state.options.output_path_filename_pointer == g_state.options.output_path + sizeof(SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH) - 1);
+    if (output_directory_arg != NULL) {
+        // Just for some safety, since these are not zero-initialized
         g_state.options.output_path[0] = '\0';
         g_state.options.output_path_filename_pointer = NULL;
 
-        char *output_path_arg = argv[i_posarg_0];
-        if (!_cli_arg_output_path(&g_state.options, output_path_arg)) {
+        if (!_handle_cli_arg_output_directory(&g_state.options, output_directory_arg)) {
             eprintf("Error: Failed parsing output_path.\n");
             return false;
         }
+    }
+
+    if (opt_filename != NULL && !g_state.options.output_to_stdout) {
+        _handle_cli_arg_filename(&g_state.options, opt_filename);
     }
 
     return true;
