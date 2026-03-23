@@ -80,7 +80,7 @@ scran_update_output_filepath(
 
 static inline bool
 _mkdir_recursive(
-    char dirpath[SCRAN_OUTPUT_DIRPATH_SIZE_MAX],
+    const char dirpath[SCRAN_OUTPUT_DIRPATH_SIZE_MAX],
     size_t dirpath_strlen
 ) {
     DEBUG("_mkdir_recursive()\n");
@@ -153,6 +153,37 @@ _mkdir_recursive(
 }
 
 static inline bool
+_init_output_dir(
+    const struct scran_options *st_options
+) {
+    bool output_directory_exists;
+    {
+        struct stat _statbuf;
+        const int _stat_ret = stat(st_options->output_path, &_statbuf);
+        if (_stat_ret == 0) {
+            output_directory_exists = S_ISDIR(_statbuf.st_mode);
+        } else if (errno == ENOENT) {
+            output_directory_exists = false;
+        } else {
+            eprintf("output_directory stat error for '%s': %s\n", st_options->output_path, strerror(errno));
+            return false;
+        }
+    }
+    if (!output_directory_exists) {
+        const size_t output_directory_strlen = st_options->output_path_filename_pointer
+                                             - st_options->output_path;
+        assert(st_options->output_path[output_directory_strlen] == '\0');
+
+        if (!_mkdir_recursive(st_options->output_path, output_directory_strlen)) {
+            eprintf("Failed to create directory '%s'\n", st_options->output_path);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static inline bool
 _handle_cli_arg_filename(
     struct scran_options *restrict st_options,
     const char *restrict arg
@@ -191,41 +222,12 @@ _handle_cli_arg_output_directory(
         return false;
     }
 
-    assert(output_directory_strlen > 0);
-    assert(arg[output_directory_strlen] == '\0');
-    assert(st_options->output_path[output_directory_strlen] == '\0');
-
-    bool output_directory_exists;
-    {
-        struct stat _statbuf;
-        const int _stat_ret = stat(st_options->output_path, &_statbuf);
-        if (_stat_ret == 0) {
-            output_directory_exists = S_ISDIR(_statbuf.st_mode);
-        } else if (errno == ENOENT) {
-            output_directory_exists = false;
-        } else {
-            eprintf("output_directory stat error for '%s': %s\n", st_options->output_path, strerror(errno));
-            return false;
-        }
-    }
-
-    if (!output_directory_exists) {
-        if (!_mkdir_recursive(st_options->output_path, output_directory_strlen)) {
-            eprintf("Failed to create directory '%s'\n", st_options->output_path);
-            return false;
-        }
-    }
-
     char *filename_pointer = st_options->output_path + output_directory_strlen;
     if (*(filename_pointer - 1) != '/') {
         *filename_pointer++ = '/';
     }
-    // We don't need this to be null-terminated yet, but just to be safe:
     *filename_pointer = '\0';
     st_options->output_path_filename_pointer = filename_pointer;
-
-
-    assert(st_options->output_path_filename_pointer != NULL);
 
     return true;
 }
@@ -326,6 +328,12 @@ scran_handle_args(int argc, char *const *argv)
 
         if (!_handle_cli_arg_output_directory(&g_state.options, output_directory_arg)) {
             eprintf("Error: Failed parsing output_path.\n");
+            return false;
+        }
+    }
+
+    if (!g_state.options.output_to_stdout) {
+        if (!_init_output_dir(&g_state.options)) {
             return false;
         }
     }
