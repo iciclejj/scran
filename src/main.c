@@ -532,6 +532,7 @@ run_main_loop(int *const restrict epoll_fd_out, struct _scran_signal_masks *sign
 
 // TODO: Allow selection before capture protocols are ready?
 //           Probably negligible benefit for the added complexity
+//       goto cleanup, rather than EXIT_FAILURE?
 int main(int argc, char *argv[])
 {
     if (!scran_handle_args(argc, argv)) {
