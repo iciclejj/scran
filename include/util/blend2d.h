@@ -14,6 +14,66 @@
 )
 
 
+#if __has_include(<wayland-client.h>)
+    #include <wayland-client.h>
+
+    __attribute__((always_inline))
+    static inline void
+    _flip_horizontally(struct BLBoxI *box, uint32_t width) {
+        box->x0 = width - box->x1;
+        box->x1 = width - box->x0;
+    }
+
+    // TODO: Look at this again to see whether it handles inverted box. If not,
+    // then assert not inverted
+    static inline struct BLBoxI
+    get_reverse_transform(
+        struct BLBoxI box,
+        uint32_t source_width,
+        uint32_t source_height,
+        enum wl_output_transform transform
+    ) {
+        uint32_t tmp, tmp2;
+
+        switch (transform) {
+        case WL_OUTPUT_TRANSFORM_FLIPPED:
+            _flip_horizontally(&box, source_width);
+        case WL_OUTPUT_TRANSFORM_NORMAL:
+            return box;
+        case WL_OUTPUT_TRANSFORM_FLIPPED_90:
+            _flip_horizontally(&box, source_width);
+        case WL_OUTPUT_TRANSFORM_90:
+            tmp = box.x0;
+            box.x0 = box.y0;
+            box.y0 = source_height - box.x1;
+            box.x1 = box.y1;
+            box.y1 = source_height - tmp/*x0*/;
+            return box;
+        case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+            _flip_horizontally(&box, source_width);
+        case WL_OUTPUT_TRANSFORM_180:
+            tmp = box.y0;
+            box.y0 = source_height - box.y1;
+            box.y1 = source_height - tmp;
+            tmp = box.x0;
+            box.x0 = source_width - box.x1;
+            box.x1 = source_width - tmp;
+            return box;
+        case WL_OUTPUT_TRANSFORM_FLIPPED_270:
+            _flip_horizontally(&box, source_width);
+        case WL_OUTPUT_TRANSFORM_270:
+            tmp = box.x0;
+            tmp2 = box.x1;
+            box.x0 = source_width - box.y1;
+            box.x1 = source_width - box.y0;
+            box.y0 = tmp;
+            box.y1 = tmp2;
+            return box;
+        }
+    }
+#endif /* __has_include(<wayland-client.h>) */
+
+
 static inline int
 blboxi_width(BLBoxI box) {
     return box.x1 - box.x0;

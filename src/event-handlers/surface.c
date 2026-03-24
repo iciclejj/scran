@@ -177,62 +177,6 @@ draw_frame_and_damage_buffer(
 }
 
 
-// TODO: Look at this again to see whether it handles inverted box. If not,
-// then assert not inverted
-static inline struct BLBoxI
-_get_reverse_transform(
-    struct BLBoxI box,
-    uint32_t source_width,
-    uint32_t source_height,
-    enum wl_output_transform transform
-) {
-    uint32_t tmp, tmp2;
-
-// TODO: -1 to turn length into index?
-#define _flip_horizontally() \
-        box.x0 = source_width - box.x1; \
-        box.x1 = source_width - box.x0;
-
-    switch (transform) {
-    case WL_OUTPUT_TRANSFORM_FLIPPED:
-        _flip_horizontally();
-    case WL_OUTPUT_TRANSFORM_NORMAL:
-        return box;
-    case WL_OUTPUT_TRANSFORM_FLIPPED_90:
-        _flip_horizontally();
-    case WL_OUTPUT_TRANSFORM_90:
-        tmp = box.x0;
-        box.x0 = box.y0;
-        box.y0 = source_height - box.x1;
-        box.x1 = box.y1;
-        box.y1 = source_height - tmp/*x0*/;
-        return box;
-    case WL_OUTPUT_TRANSFORM_FLIPPED_180:
-        _flip_horizontally();
-    case WL_OUTPUT_TRANSFORM_180:
-        tmp = box.y0;
-        box.y0 = source_height - box.y1;
-        box.y1 = source_height - tmp;
-        tmp = box.x0;
-        box.x0 = source_width - box.x1;
-        box.x1 = source_width - tmp;
-        return box;
-    case WL_OUTPUT_TRANSFORM_FLIPPED_270:
-        _flip_horizontally();
-    case WL_OUTPUT_TRANSFORM_270:
-        tmp = box.x0;
-        tmp2 = box.x1;
-        box.x0 = source_width - box.y1;
-        box.x1 = source_width - box.y0;
-        box.y0 = tmp;
-        box.y1 = tmp2;
-        return box;
-    }
-
-#undef _flip_horizontally
-}
-
-
 static void
 surface_frame_callback_handler(
     void *data,
@@ -270,7 +214,7 @@ surface_frame_callback_handler(
     //        capture frame
     //       See also comment in scran_capture.
     //       TODO: Consider just using bl_box_currently_drawn
-    st_output->capture.frame_ctx.capture_area_px = _get_reverse_transform(
+    st_output->capture.frame_ctx.capture_area_px = get_reverse_transform(
         normalized_box_to_draw,
         st_output->mode.width_px,
         st_output->mode.height_px,
