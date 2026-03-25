@@ -273,7 +273,7 @@ static const char help_string[] =
     "                         SIGUSR1 to retake focus - see Signals section.\n"
     "  Escape               Exit scran, or stop video capture if in progress\n"
     "\n"
-    "Positional arguments\n"
+    "Arguments\n"
     // TODO: Once we implement desktop notifications, we should probably remove
     // the recursive directory structure creation by default, and just give an
     // error message notification that directory doesn't exist. (Maybe still keep
@@ -282,7 +282,6 @@ static const char help_string[] =
     "                       Directory will be created if it does not exist.\n"
     "                       If set to -, scran writes to stdout (see also -B)\n"
     "\n"
-    "Options\n"
     "  -f   <output_filename>\n"
     "         Name of the file that will be placed inside of `output_directory`\n"
     "         Ignored if output_directory is - (stdout)\n"
