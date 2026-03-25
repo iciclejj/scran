@@ -13,28 +13,6 @@
 #define SCRAN_BTN_NONE 0 // linux/input-event-codes.h: #define KEY_RESERVED 0
 
 
-static inline void
-_clamp_to_output_width(int *val, struct scran_output *st_output)
-{
-    if (*val < 0) {
-        *val = 0;
-    } else if (*val > get_output_width_logical(st_output)) {
-        *val = get_output_width_logical(st_output);
-    }
-}
-
-
-static inline void
-_clamp_to_output_height(int *val, struct scran_output *st_output)
-{
-    if (*val < 0) {
-        *val = 0;
-    } else if (*val > get_output_height_logical(st_output)) {
-        *val = get_output_height_logical(st_output);
-    }
-}
-
-
 static void
 handle_pointer_enter(
     void *data,
@@ -163,26 +141,26 @@ handle_pointer_motion(
             case SELECTION_RESIZE_TOP_LEFT:
                 selection_ctx->bl_box.x0 = box_before_resize.x0 + x_diff_px;
                 selection_ctx->bl_box.y0 = box_before_resize.y0 + y_diff_px;
-                _clamp_to_output_width(&selection_ctx->bl_box.x0, st_output);
-                _clamp_to_output_height(&selection_ctx->bl_box.y0, st_output);
+                clamp_to_output_width_logical(&selection_ctx->bl_box.x0, st_output);
+                clamp_to_output_height_logical(&selection_ctx->bl_box.y0, st_output);
                 break;
             case SELECTION_RESIZE_TOP_RIGHT:
                 selection_ctx->bl_box.x1 = box_before_resize.x1 + x_diff_px;
                 selection_ctx->bl_box.y0 = box_before_resize.y0 + y_diff_px;
-                _clamp_to_output_width(&selection_ctx->bl_box.x1, st_output);
-                _clamp_to_output_height(&selection_ctx->bl_box.y0, st_output);
+                clamp_to_output_width_logical(&selection_ctx->bl_box.x1, st_output);
+                clamp_to_output_height_logical(&selection_ctx->bl_box.y0, st_output);
                 break;
             case SELECTION_RESIZE_BOTTOM_LEFT:
                 selection_ctx->bl_box.x0 = box_before_resize.x0 + x_diff_px;
                 selection_ctx->bl_box.y1 = box_before_resize.y1 + y_diff_px;
-                _clamp_to_output_width(&selection_ctx->bl_box.x0, st_output);
-                _clamp_to_output_height(&selection_ctx->bl_box.y1, st_output);
+                clamp_to_output_width_logical(&selection_ctx->bl_box.x0, st_output);
+                clamp_to_output_height_logical(&selection_ctx->bl_box.y1, st_output);
                 break;
             case SELECTION_RESIZE_BOTTOM_RIGHT:
                 selection_ctx->bl_box.x1 = box_before_resize.x1 + x_diff_px;
                 selection_ctx->bl_box.y1 = box_before_resize.y1 + y_diff_px;
-                _clamp_to_output_width(&selection_ctx->bl_box.x1, st_output);
-                _clamp_to_output_height(&selection_ctx->bl_box.y1, st_output);
+                clamp_to_output_width_logical(&selection_ctx->bl_box.x1, st_output);
+                clamp_to_output_height_logical(&selection_ctx->bl_box.y1, st_output);
                 break;
             }
         }

@@ -42,6 +42,27 @@ get_output_height_logical(struct scran_output *st_output) {
     return get_transformed_height(st_output->mode.width_px, st_output->mode.height_px, st_output->transform);
 }
 
+static inline void
+clamp_to_output_width_logical(int *val, struct scran_output *st_output)
+{
+    if (*val < 0) {
+        *val = 0;
+    } else if (*val > get_output_width_logical(st_output)) {
+        *val = get_output_width_logical(st_output);
+    }
+}
+
+static inline void
+clamp_to_output_height_logical(int *val, struct scran_output *st_output)
+{
+    if (*val < 0) {
+        *val = 0;
+    } else if (*val > get_output_height_logical(st_output)) {
+        *val = get_output_height_logical(st_output);
+    }
+}
+
+
 static inline uint8_t
 get_output_array_index(const struct scran_output *st_output) {
     // Assert we're within g_state.output[]
