@@ -1,6 +1,9 @@
 #include "state.h"
 #include "selection.h"
 #include "print.h"
+#include "capture.h"
+#include "util/blend2d.h"
+#include <wayland-client-core.h>
 
 
 extern struct scran g_state;
@@ -47,6 +50,32 @@ set_selection_surface_theme(
     //               might change the dirty-rect dynamics that we take
     //               advantage of here.)
     st_surface->bl_box_currently_drawn = st_output->selection_ctx.bl_box_bounds;
+}
+
+
+void
+signal_selection_initialized(struct scran_output *st_output)
+{
+    // TODO: Not sure if we should deinvert in here or let the caller decide
+
+    st_output->selection_ctx.selection_state = SELECTION_COMPLETE;
+
+    // Make sure this is initialized immediately, to not be dependent on
+    // surface::frame being done, for example when using 'scran -eg'.
+    //     TODO: Would be better to de-couple this somehow, or just stop
+    //     using capture_area_px, in favor of bl_box_already_drawn.
+    st_output->capture.frame_ctx.capture_area_px = get_reverse_transform(
+        st_output->selection_ctx.bl_box,
+        st_output->mode.width_px,
+        st_output->mode.height_px,
+        st_output->transform
+    );
+
+    if (g_state.options.capture_and_exit_after_selection_init) {
+        DEBUG("STARTING AUTOMATIC IMAGE CAPTURE\n");
+        start_image_capture(st_output);
+        g_state.exit_requested = true;
+    }
 }
 
 

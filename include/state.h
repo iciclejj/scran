@@ -290,7 +290,10 @@ struct scran_options {
 
     bool no_keepalive;
     bool capture_and_exit_after_selection_init;
-    bool slurp; // output slurp-style geometry string
+    bool produce_slurp;                 // output slurp-style geometry string
+    bool have_custom_initial_selection; // output slurp-style geometry string
+    struct BLRectI custom_initial_selection_global_coordinates;
+    // bool dont_draw_selection;
 };
 
 // TODO: Struct alignments

@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <sys/stat.h>
+#include <blend2d/blend2d.h>
 
 #include "options.h"
 #include "state.h"
@@ -76,6 +77,28 @@ scran_update_output_filepath(
     }
 
     return st_options->output_path;
+}
+
+bool
+scran_parse_slurp_string(
+    char slurp_string[static SLURP_STRING_SIZE],
+    struct BLRectI *result
+) {
+    char *endptr = NULL;
+
+    result->x = strtol(slurp_string, &endptr, 10);
+    if (*endptr != ',')  return false;
+
+    result->y = strtol(++endptr, &endptr, 10);
+    if (*endptr != ' ')  return false;
+
+    result->w = strtol(++endptr, &endptr, 10);
+    if (*endptr != 'x')  return false;
+
+    result->h = strtol(++endptr, &endptr, 10);
+    if (*endptr != '\0') return false;
+
+    return true;
 }
 
 static inline bool
@@ -260,7 +283,7 @@ static const char help_string[] =
     "                       If set to -, scran writes to stdout (see also -B)\n"
     "\n"
     "Options\n"
-    "  -f   output filename\n"
+    "  -f   <output_filename>\n"
     "         Name of the file that will be placed inside of `output_directory`\n"
     "         Ignored if output_directory is - (stdout)\n"
     "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
@@ -282,6 +305,10 @@ static const char help_string[] =
     "         Equivalent to slurp's default output format\n"
     "           See https://wayland.emersion.fr/slurp/.\n"
     "           'scran -se' effectively emulates slurp's ui behavior\n"
+    "  -g   \"<x>,<y> <width>x<height>\"\n"
+    "         Pre-initialize selection using slurp-style geometry string\n"
+    "         The area is clamped to the output containing the top-left corner.\n"
+    "           Subject to change if/when scran will support cross-output capture.\n"
     "  -h   show this help message and exit\n"
     "\n"
     "Signals\n"
@@ -297,13 +324,37 @@ scran_handle_args(int argc, char *const *argv)
     char *opt_filename = NULL;
 
     int opt;
-    while ((opt = getopt(argc, argv, "f:peBsh")) != -1) {
+    while ((opt = getopt(argc, argv, "f:peBsg:h")) != -1) {
         switch (opt) {
         case 'f': opt_filename                                          = optarg; break;
         case 'p': g_state.seat.pointer_ctx.use_presses_only             = true;   break;
         case 'e': g_state.options.capture_and_exit_after_selection_init = true;   break;
         case 'B': g_state.options.no_keepalive                          = true;   break;
-        case 's': g_state.options.slurp                                 = true;   break;
+        case 's': g_state.options.produce_slurp                                 = true;   break;
+        case 'g':
+            {
+                char consumable_slurp[SLURP_STRING_SIZE];
+
+                if (strlcpy(consumable_slurp, optarg, sizeof(consumable_slurp))
+                    >= sizeof(consumable_slurp)
+                ) {
+                    eprintf("Error: -g argument too long; max length: %lu."
+                            " Please open an issue if you think the limit should be raised.\n",
+                            SLURP_STRING_SIZE);
+                    return false;
+                }
+
+                if (!scran_parse_slurp_string(
+                        consumable_slurp,
+                        &g_state.options.custom_initial_selection_global_coordinates
+                    )
+                ) {
+                    eprintf("Error: Failed to parse geometry string.\n");
+                    return false;
+                }
+                g_state.options.have_custom_initial_selection = true;
+            }
+            break;
         case 'h':
             printf("%s", help_string);
             exit(EXIT_SUCCESS);

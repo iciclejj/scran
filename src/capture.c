@@ -399,7 +399,7 @@ start_image_capture(struct scran_output *st_output)
     // See TODO at call site
     assert(!st_output->capture.frame_ctx.capturing_video);
 
-    if (g_state.options.slurp) {
+    if (g_state.options.produce_slurp) {
         _print_slurp_string(st_output);
         return true;
     }

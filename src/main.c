@@ -369,6 +369,30 @@ init_postmem()
         if (!init_postmem__selection(_st_output)) {
             return false;
         }
+    }
+
+    if (g_state.options.have_custom_initial_selection) {
+        struct BLBoxI        custom_selection;
+        struct scran_output *custom_selection_output = NULL;
+
+        global_rect_to_output_box_clamped(
+            g_state.options.custom_initial_selection_global_coordinates,
+            &custom_selection,
+            &custom_selection_output
+        );
+
+        if (custom_selection_output == NULL) {
+            eprintf("Error: Top left corner of geometry string is not within any detected output.\n");
+            return false;
+        }
+
+        custom_selection_output->selection_ctx.bl_box = custom_selection;
+
+        signal_selection_initialized(custom_selection_output);
+    }
+
+    for (int i = 0; i < g_state.n_outputs; ++i) {
+        struct scran_output *_st_output = &g_state.outputs[i];
 
         // Initial frame callback request.
         // All subsequent requests are done "recursively" from within ::done

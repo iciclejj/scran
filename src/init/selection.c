@@ -132,15 +132,18 @@ dispatch_selection_surface_event_loop(struct scran_output *st_output)
     // TODO: Assert bl_ctx has already begun, or maybe just move its (entire?)
     //       init into here. Or, inversely, move blend2d setup out of here...
     struct BLPathCore *bl_path = &st_output->surface.bl_path;
+    struct scran_output_surface_buffer *const initial_buffer = &st_output->surface.double_buffer[0];
 
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
 
-    struct scran_output_surface_buffer *const initial_buffer = &st_output->surface.double_buffer[0];
-    struct BLBoxI *selection_box_bounds = &st_output->selection_ctx.bl_box_bounds;
+    // TODO: Make shared function for this and event-handler/surface.c:draw_and_damage_buffer
+    // to ensure we draw the same thing, now that we allow custom initial selection.
+    // Probably also move capture_area assignment into that function, so that it as
+    // well does not need to be manually ensured everywhere. Or just replace
+    // capture_area with bl_box_currently_drawn entirely.
+    bl_path_add_box_i(bl_path, &st_output->selection_ctx.bl_box_bounds, BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(bl_path, &st_output->selection_ctx.bl_box,        BL_GEOMETRY_DIRECTION_NONE);
 
-    // TODO: Verify whether we actually need to draw the "dispatch"-commit to
-    // not get a frame of startup delay.
-    bl_path_add_box_i(bl_path, selection_box_bounds, BL_GEOMETRY_DIRECTION_NONE);
     // XXX: At the moment, this function is only used at the start of the
     // program. Handle busy buffers later if/when it will be necessary.
     assert(initial_buffer->busy == false);

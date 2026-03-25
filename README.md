@@ -195,6 +195,8 @@ See `scran -h` for more details
   -s   slurp: send selection as geometry string to standard output
          Equivalent to slurp's default output.
          See https://wayland.emersion.fr/slurp/.
+  -g   "<x>,<y> <width>x<height>"
+         Pre-initialize selection using slurp-style geometry string
   -h   show help message and exit
 ```
 
@@ -210,9 +212,6 @@ Feel free to open a feature request even if something is already listed here.
   - Config file?
   - User-specified filename format (e.g. 'myscreenshot-%Y%m%d.%H:%M')
   - ..?
-- slurp/grim compatibility mode
-  - Outputting slurp-style geometry string
-  - Consuming slurp-style geometry string
 - Desktop notifications
 - Cross-display capture
     - Already handles separate simultaneous video capture per individual display

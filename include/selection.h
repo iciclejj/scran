@@ -18,6 +18,8 @@ enum surface_theme {
 
 void set_selection_surface_theme(struct scran_output *st_output, enum surface_theme action);
 
+void signal_selection_initialized(struct scran_output *st_output);
+
 void start_grabbing_focus();
 void stop_grabbing_focus();
 
