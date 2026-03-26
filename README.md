@@ -1,6 +1,7 @@
 # Scran
-####  Work In Progress
 Capture images and videos. Only tested on [sway](https://swaywm.org/).
+
+Scran is still under heavy development. Please open an issue if you find any bugs!
 
 ## Installing
 
