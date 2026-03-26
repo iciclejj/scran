@@ -1,7 +1,42 @@
 # Scran
-Capture images and videos. Only tested on [sway](https://swaywm.org/).
+Capture images and videos.
 
 Scran is still under heavy development. Please open an issue if you find any bugs!
+
+### Compositor support:
+
+
+- Tested:
+  - [Sway](https://swaywm.org/)
+- Should work:
+  - [COSMIC](https://system76.com/cosmic)
+- Not currently supported:
+  - KWin (KDE Plasma)
+  - Mutter (Gnome)
+
+<details> <summary>
+
+#### Notes on compositor support
+</summary>
+
+Whether a compositor is supported mainly depends on whether it implements the
+requried Wayland protocols. Most currently-unsupported compositors are only
+missing the `ext_image_copy_capture`/`ext_image_capture_source` protocol pair.
+
+A current list of compositors implementing this protocol can be found at
+https://wayland.app/protocols/ext-image-copy-capture-v1#compositor-support.
+
+As of today, the only reasonable way of supporting most of the remaining
+compositors, to my knowledge, would be to implement screen capture through
+D-Bus, through XDG Desktop Portals (Screenshot and ScreenCast portals).
+For video (ScreenCast portal), this would also mean going through PipeWire.
+
+I do not have any immediate plans to support capturing through
+XDG Desktop Portals. If your compositor adds support for the above-mentioned
+`ext_image_*` protocols, then Scran will likely start working immediately.
+Any potentially remaining incompatibilities should at least be much, much
+simpler to fix.
+</details>
 
 ## Installing
 
