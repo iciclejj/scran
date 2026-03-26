@@ -218,6 +218,7 @@ end_capture:
 
     // Finalize file
     av_write_trailer(frame_ctx->av_format_ctx);
+    eprintf("Video saved: %s\n", g_state.options.output_path);
 
 end_capture_err:
     // Note: Most (all?) of these are fine to call with null pointers, despite
