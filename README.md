@@ -217,14 +217,14 @@ Send SIGUSR1 to the running scran to start grabbing inputs again after releasing
 
 ## Primary Feature TODOs
 Feel free to open a feature request even if something is already listed here.
-- VA-API for video encoding
+- GPU-accelerated video capture
 - More configuration
+  - **Specify output file formats, encoding, etc.**
   - Customizable keybindings
   - Config file?
-- Desktop notifications
+  - UI customization, for example:
+    - Custom colors
+    - Option to display current selection size
 - Cross-display capture
     - Already handles separate simultaneous video capture per individual display
-- Slightly less bare-bones UI
-  - Show current selection size
-  - Highlight currently selected resize corner
-  - ..?
+- Desktop notifications
