@@ -135,7 +135,9 @@ cmake --install build && ldconfig
 </details>
 
 ## Usage
-Images and videos are saved to the file or directory specified by `output_directory`, or to `/tmp/scran-capture/scran-<timestamp>.<file-extension>` by default. Images are also sent to the clipboard.
+Images and videos are saved to the file or directory specified by `output_directory`,
+or to `/tmp/scran-capture/scran-<timestamp>.<file-extension>` by default.
+Saved images and videos are also sent to the clipboard.
 
 NOTE: Video capture uses CPU encoding at the moment. GPU/hardware-acceleration coming soon.
 

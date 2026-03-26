@@ -221,6 +221,9 @@ end_capture:
     av_write_trailer(frame_ctx->av_format_ctx);
     eprintf("Video saved: %s\n", g_state.options.output_path);
 
+    const char *output_path = g_state.options.output_to_stdout ? NULL : frame_ctx->av_format_ctx->url;
+    update_clipboard(&g_state.seat.datacontrol, NULL, NULL, output_path);
+
 end_capture_err:
     // Note: Most (all?) of these are fine to call with null pointers, despite
     // the asserts
