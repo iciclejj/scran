@@ -7,6 +7,7 @@
 #include "ext-image-copy-capture-v1.h"
 #include "ext-data-control-v1.h"
 #include "xdg-output-unstable-v1.h"
+#include "presentation-time.h"
 
 #include "state.h"
 #include "event-handlers.h"
@@ -74,6 +75,8 @@ registry_handle_global(
         globals->image_copy_capture_manager = wl_registry_bind(registry, name, &ext_image_copy_capture_manager_v1_interface, 1);
     } else if (_INTERFACE_IS(ext_data_control_manager_v1_interface)) {
         globals->data_control_manager = wl_registry_bind(registry, name, &ext_data_control_manager_v1_interface, 1);
+    } else if (_INTERFACE_IS(wp_presentation_interface)) {
+        globals->presentation = wl_registry_bind(registry, name, &wp_presentation_interface, 1);
     }
 
     #undef _INTERFACE_IS

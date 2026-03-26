@@ -19,6 +19,7 @@
 #include "cursor-shape-v1.h"
 #include "xdg-output-unstable-v1.h"
 #include "ext-data-control-v1.h"
+#include "presentation-time.h"
 
 #define MAX_OUTPUTS 64
 
@@ -63,6 +64,7 @@ struct scran_globals {
     struct ext_output_image_capture_source_manager_v1 *output_image_capture_source_manager;
     struct ext_image_copy_capture_manager_v1 *image_copy_capture_manager;
     struct ext_data_control_manager_v1 *data_control_manager;
+    struct wp_presentation *presentation;
 };
 
 struct scran_output_surface_buffer {
@@ -71,6 +73,7 @@ struct scran_output_surface_buffer {
 
     BLContextCore bl_ctx;
     BLImageCore bl_img;
+    BLBoxI box_currently_drawn;
 
     bool busy;
 };
@@ -83,8 +86,10 @@ struct scran_output_surface {
     // TODO: Either drop this as a member or actually retain the path state
     // between redraws.
     BLPathCore bl_path;
-    BLBoxI bl_box_currently_drawn;
 
+    // XXX TODO: Turn this into a pointer once we remove the ugly redraw hack
+    // in set_selection_surface_theme()
+    BLBoxI box_last_drawn;
     struct scran_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
 
     struct zwlr_layer_surface_v1 *layer_surface;
@@ -233,7 +238,6 @@ struct capture_frame_context {
     //        its graphics can spill into the capture frame.
     //        F.ex., the mouse can have moved in-between overlay's frame draw
     //        and capture's frame "draw".
-    //        TODO: Double-check whether anything else should be synced like this.
     struct BLBoxI capture_area_px; // NOTE: Transform should be reversed.
     // TODO: Get this through output.mode if we both end up pointing to it here,
     //       AND it is still asserted to be equal to session::buffer_size's

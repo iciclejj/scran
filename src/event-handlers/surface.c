@@ -3,6 +3,8 @@
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 
+#include "presentation-time.h"
+
 #include "init.h"
 #include "state.h"
 #include "event-handlers.h"
@@ -132,13 +134,13 @@ draw_frame_and_damage_buffer(
     struct BLBoxI box_to_draw,
     struct BLBoxI box_bounds
 ) {
-    const struct BLBoxI box_already_drawn = st_surface->bl_box_currently_drawn;
+    const struct BLBoxI box_last_committed_buffer = st_surface->box_last_drawn;
 
     // TODO: Assert box_bounds fully surrounds box_to_draw
     assert(!SCRAN_BL_BOX_IS_INVERTED(box_to_draw));
-    assert(!SCRAN_BL_BOX_IS_INVERTED(box_already_drawn));
+    assert(!SCRAN_BL_BOX_IS_INVERTED(box_last_committed_buffer));
     // Equal boxes should have been skipped.
-    assert(!_boxes_are_equal(box_to_draw, box_already_drawn));
+    assert(!_boxes_are_equal(box_to_draw, box_last_committed_buffer));
 
 
     // Our boxes must be enlarged by stroke radius amount to ensure the outline
@@ -156,7 +158,7 @@ draw_frame_and_damage_buffer(
     bl_path_add_box_i(&st_surface->bl_path, &box_bounds__outline_inflation,  BL_GEOMETRY_DIRECTION_NONE);
     bl_path_add_box_i(&st_surface->bl_path, &box_to_draw__outline_inflation, BL_GEOMETRY_DIRECTION_NONE);
 
-    struct BLBoxI box_already_drawn__diff_inflation = get_blboxi_inflated(box_already_drawn, diffed_box_inflation_px);
+    struct BLBoxI box_already_drawn__diff_inflation = get_blboxi_inflated(box_last_committed_buffer, diffed_box_inflation_px);
     struct BLBoxI box_to_draw__diff_inflation       = get_blboxi_inflated(box_to_draw,       diffed_box_inflation_px);
 
     const struct _box_diffs box_diffs = get_box_diffs(box_to_draw__diff_inflation, box_already_drawn__diff_inflation);
@@ -167,7 +169,7 @@ draw_frame_and_damage_buffer(
     _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.right_full));
     _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.top_remaining));
     _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.bottom_remaining));
-    st_surface->bl_box_currently_drawn = box_to_draw;
+    st_buffer->box_currently_drawn = box_to_draw;
 
     // NOTE: Don't reset the BLContext here, unless intending to fully
     // re-initialize it. Its state is initialized outside of this ::frame
@@ -202,33 +204,30 @@ surface_frame_callback_handler(
 
     // TODO: Also assert it's clamped?
     const struct BLBoxI normalized_box_to_draw = get_blboxi_deinverted(st_output->selection_ctx.bl_box);
-    const struct BLBoxI box_currently_drawn = st_output->surface.bl_box_currently_drawn;
+    const struct BLBoxI box_previously_committed = st_output->surface.box_last_drawn;
 
-    if (_boxes_are_equal(normalized_box_to_draw, box_currently_drawn)) {
+    if (_boxes_are_equal(normalized_box_to_draw, box_previously_committed)) {
         goto go_next;
     }
 
-    // NOTE: Must be set here to sync with selection box rendering.
-    //       Otherwise, rendered selection can lag behind the capture area,
-    //        leading to f.ex. capture frame border spilling into the actual
-    //        capture frame
-    //       See also comment in scran_capture.
-    //       TODO: Consider just using bl_box_currently_drawn
-    st_output->capture.frame_ctx.capture_area_px = get_reverse_transform(
-        normalized_box_to_draw,
-        st_output->mode.width_px,
-        st_output->mode.height_px,
-        st_output->transform
-    );
 
     st_buffer->busy = true;
+
+
     draw_frame_and_damage_buffer(
         &st_output->surface,
         st_buffer,
         normalized_box_to_draw,
         st_output->selection_ctx.bl_box_bounds
     );
+    st_output->surface.box_last_drawn = normalized_box_to_draw;
+
     wl_surface_attach(st_output->surface.wl_surface, st_buffer->wl_buffer, 0, 0);
+    wp_presentation_feedback_add_listener(
+        wp_presentation_feedback(g_state.globals.presentation, st_output->surface.wl_surface),
+        &presentation_feedback_listener,
+        st_buffer
+    );
 go_next:
     wl_callback_add_listener(
         wl_surface_frame(st_output->surface.wl_surface),

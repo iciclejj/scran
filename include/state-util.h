@@ -63,6 +63,20 @@ clamp_to_output_height_logical(int *val, struct scran_output *st_output)
 }
 
 
+static inline int8_t
+get_containing_output_array_index(void *ptr) {
+    char *ptr_ = ptr;
+
+    for (int i = 0; i < g_state.n_outputs; ++i) {
+        if ((char *)(g_state.outputs + i) <= ptr_ && ptr_ < (char *)(g_state.outputs + i + 1)) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+
 static inline uint8_t
 get_output_array_index(const struct scran_output *st_output) {
     // Assert we're within g_state.output[]

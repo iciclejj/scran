@@ -52,7 +52,7 @@ set_selection_surface_theme(
     //
     // NOTE: IF REMOVING: Make sure this (or similar) is also in the init code,
     // as the initial selection's dirty rec calculations may depend on this.
-    st_surface->bl_box_currently_drawn = st_output->selection_ctx.bl_box_bounds;
+    st_surface->box_last_drawn = st_output->selection_ctx.bl_box_bounds;
 }
 
 
