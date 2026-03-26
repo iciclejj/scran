@@ -3,6 +3,8 @@ Capture images and videos.
 
 Scran is still under heavy development. Please open an issue if you find any bugs!
 
+Inspired by [grim](https://wayland.emersion.fr/grim/) and [slurp](https://wayland.emersion.fr/slurp/).
+
 ### Compositor support:
 
 
