@@ -66,10 +66,6 @@ handle_data_control_source_cancelled(
 ) {
     struct scran_seat_datacontrol *st_datacontrol = data;
 
-    // TODO: Consider destroying the source here. At the moment it should not
-    // be necessary (destroyed inside both image_capture::frame() and during
-    // exit cleanup)
-
     ext_data_control_source_v1_destroy(source);
     DEBUG("clipboard selection destroyed\n");
 
