@@ -221,8 +221,6 @@ Feel free to open a feature request even if something is already listed here.
 - More configuration
   - Customizable keybindings
   - Config file?
-  - User-specified filename format (e.g. 'myscreenshot-%Y%m%d.%H:%M')
-  - ..?
 - Desktop notifications
 - Cross-display capture
     - Already handles separate simultaneous video capture per individual display
