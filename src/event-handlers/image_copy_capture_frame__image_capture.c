@@ -184,7 +184,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     const void *const bl_array_img_encoded_data = bl_array_get_data(&bl_array_img_encoded);
     const size_t bytes_to_write = bl_array_get_size(&bl_array_img_encoded);
 
-    const struct scran_options *const st_options = &g_state.options;
+    struct scran_options *const st_options = &g_state.options;
 
     if (st_options->output_to_stdout) {
         // TODO: Assert nothing else was written to stdout?
@@ -195,9 +195,10 @@ handle_image_copy_capture_frame_ready__image_capture(
                      bytes_written, bytes_to_write);
         }
     } else {
-        const char *output_filepath = scran_update_output_filepath(
-                                          st_options, CAPTURE_IMAGE_OUTPUT_FILE_EXTENSION_DEFAULT
-                                      );
+        static const char default_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] =
+            CAPTURE_IMAGE_OUTPUT_FILE_EXTENSION_DEFAULT;
+        const char *output_filepath =
+            scran_update_output_filepath(st_options, default_extension);
 
         size_t bytes_written = 0;
         res = bl_file_system_write_file(

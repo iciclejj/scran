@@ -44,7 +44,10 @@
 #define SCRAN_OUTPUT_FILEPATH_STRLEN_MAX  (PATH_MAX - 1)                                   // Null terminator not counted
 // XXX: Semi-arbitrary value (highest built-in AVCodecDescriptor.name in
 // libavcodec atm. is 18, excl. null-terminator).
-#define SCRAN_OUTPUT_FILE_EXTENSION_MAX 20
+#define SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX   20
+#define SCRAN_OUTPUT_FILE_EXTENSION_STRLEN_MAX 20 - 1
+#define SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX   (SCRAN_OUTPUT_FILENAME_SIZE_MAX - SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX)
+#define SCRAN_OUTPUT_FILENAME_FORMATSTRING_STRLEN_MAX (SCRAN_OUTPUT_FILENAME_SIZE_MAX - SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX - 1)
 
 
 struct scran_globals {
@@ -285,7 +288,7 @@ struct scran_output {
 struct scran_options {
     char *output_path_filename_pointer;
     char output_path[SCRAN_OUTPUT_FILEPATH_SIZE_MAX]; // NOTE: Also used as output_directory during cli arg init
-    char filename[SCRAN_OUTPUT_FILENAME_SIZE_MAX];
+    char filename_format[SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX];
     bool output_to_stdout;
 
     bool no_keepalive;

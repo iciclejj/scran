@@ -9,72 +9,234 @@
 #include <blend2d/blend2d.h>
 
 #include "options.h"
+#include "capture.h"
 #include "state.h"
 #include "print.h"
 
 
-#define SCRAN_DEFAULT_FILENAME_SIZE_MAX ((sizeof("scran-YYYYmmdd-HHMMSS.uuuu") - 1) + SCRAN_OUTPUT_FILE_EXTENSION_MAX)
-static_assert(NAME_MAX >= SCRAN_DEFAULT_FILENAME_SIZE_MAX, "NAME_MAX must be >= SCRAN_DEFAULT_FILENAME_SIZE_MAX");
+static inline void
+_filename_advance_itoa_6(
+    int integer,
+    char *restrict fn,
+    ssize_t *restrict i_fn
+) {
+    assert(integer <= 999999);
+
+    int lo2 = integer % 100;
+    int hi4 = integer / 100;
+
+    int hi4_lo = hi4 % 100;
+    int hi4_hi = hi4 / 100;
+
+    fn[(*i_fn)++] = '0' + hi4_hi / 10;
+    fn[(*i_fn)++] = '0' + hi4_hi % 10;
+    fn[(*i_fn)++] = '0' + hi4_lo / 10;
+    fn[(*i_fn)++] = '0' + hi4_lo % 10;
+    fn[(*i_fn)++] = '0' + lo2 / 10;
+    fn[(*i_fn)++] = '0' + lo2 % 10;
+}
 
 static inline void
-create_timestamped_filename(
-    char filename_out[NAME_MAX],
-    const char file_extension[SCRAN_OUTPUT_FILE_EXTENSION_MAX]
+_filename_advance_itoa_4(
+    int integer,
+    char *restrict fn,
+    ssize_t *restrict i_fn
 ) {
-    struct timespec ts = { };
-    clock_gettime(CLOCK_REALTIME, &ts);
+    assert(integer <= 9999);
 
-    struct tm time_now_tm = { };
-    localtime_r(&ts.tv_sec, &time_now_tm);
+    int lo = integer % 100;
+    int hi = integer / 100;
 
-    // INFO: Assumes 4 decimal points (10khz) is the smallest safe divisor that
-    // doesn't risk file-overwriting during rapid consecutive screenshots.
-    const long tv_10khz = ts.tv_nsec / 100000;
-
-    char strftime_buf[22];
-
-    const size_t strftime_strlen = strftime(
-        strftime_buf, sizeof(strftime_buf),
-        "scran-%Y%m%d-%H%M%S", &time_now_tm
-    );
-    assert(strftime_strlen == sizeof(strftime_buf) - 1);
-
-    const size_t filename_strlen = snprintf(
-        filename_out, NAME_MAX,
-        "%s.%04ld%s", strftime_buf, tv_10khz, file_extension
-    );
-    assert(filename_strlen <  SCRAN_DEFAULT_FILENAME_SIZE_MAX);
+    fn[(*i_fn)++] = '0' + hi / 10;
+    fn[(*i_fn)++] = '0' + hi % 10;
+    fn[(*i_fn)++] = '0' + lo / 10;
+    fn[(*i_fn)++] = '0' + lo % 10;
 }
+
+static inline void
+_filename_advance_itoa_2(
+    int integer,
+    char *restrict fn,
+    ssize_t *restrict i_fn
+) {
+    assert(integer <= 99);
+
+    int lo = integer % 10;
+    int hi = integer / 10;
+
+    fn[(*i_fn)++] = '0' + hi;
+    fn[(*i_fn)++] = '0' + lo;
+}
+
+static inline void
+_filename_advance_ext(
+    const char ext[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX],
+    char *restrict fn,
+    ssize_t *i_fn
+) {
+    assert(*i_fn < SCRAN_OUTPUT_FILENAME_SIZE_MAX - SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX);
+
+    ssize_t i_ext = 0;
+    while (i_ext < SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX && ext[i_ext] != '\0') {
+        fn[(*i_fn)++] = ext[i_ext++];
+    }
+}
+
+static inline bool
+_create_filename(
+    const char format[static restrict SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX],
+    const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX],
+    const struct timespec *ts,
+    const struct tm *tm,
+    char filename_out[static restrict SCRAN_OUTPUT_FILENAME_SIZE_MAX]
+) {
+    static const ssize_t format_max         = SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX;
+    static const ssize_t file_extension_max = SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX;
+    static const ssize_t filename_strlen_max   = SCRAN_OUTPUT_FILENAME_STRLEN_MAX;
+
+    ssize_t i_out = 0;
+    ssize_t i_fmt = 0;
+
+    while (i_fmt < format_max) {
+        if (format[i_fmt] == '\0') {
+            filename_out[i_out++] = format[i_fmt++];
+            break;
+        } else if (format[i_fmt] != '%') {
+            if (i_out >= filename_strlen_max) {
+                goto filename_out_overflow;
+            }
+
+            filename_out[i_out++] = format[i_fmt++];
+            continue;
+        }
+
+        assert(format[i_fmt] == '%');
+        ++i_fmt;
+
+        const char format_specifier = format[i_fmt];
+        ++i_fmt;
+
+        switch(format_specifier) {
+        case 'Y':
+            if (i_out > filename_strlen_max - 4) goto filename_out_overflow;
+            _filename_advance_itoa_4(tm->tm_year + 1900, filename_out, &i_out);
+            break;
+        case 'm':
+            if (i_out > filename_strlen_max - 2) goto filename_out_overflow;
+            _filename_advance_itoa_2(tm->tm_mon , filename_out, &i_out);
+            break;
+        case 'd':
+            if (i_out > filename_strlen_max - 2) goto filename_out_overflow;
+            _filename_advance_itoa_2(tm->tm_mday, filename_out, &i_out);
+            break;
+        case 'H':
+            if (i_out > filename_strlen_max - 2) goto filename_out_overflow;
+            _filename_advance_itoa_2(tm->tm_hour, filename_out, &i_out);
+            break;
+        case 'M':
+            if (i_out > filename_strlen_max - 2) goto filename_out_overflow;
+            _filename_advance_itoa_2(tm->tm_min , filename_out, &i_out);
+            break;
+        case 'S':
+            if (i_out > filename_strlen_max - 2) goto filename_out_overflow;
+            _filename_advance_itoa_2(tm->tm_sec , filename_out, &i_out);
+            break;
+        case 'U':
+            if (i_out > filename_strlen_max - 6) goto filename_out_overflow;
+            _filename_advance_itoa_6(ts->tv_nsec / 1000, filename_out, &i_out);
+            break;
+        case 'E':
+            if (i_out > filename_strlen_max - file_extension_max) goto filename_out_overflow;
+            _filename_advance_ext(file_extension, filename_out, &i_out);
+            break;
+        // Escape-character:
+        case '%':
+            if (i_out > filename_strlen_max - 1) goto filename_out_overflow;
+            filename_out[i_out++] = '%';
+            break;
+        default:
+            eprintf("Error: Invalid format specifier: %c.\n", format_specifier);
+            return false;
+        }
+    }
+
+    if (i_fmt == format_max && format[i_fmt - 1] != '\0') {
+        eprintf("Error: Format string overflow. THIS IS A BUG, please open an issue.\n");
+        return false;
+    }
+
+    return true;
+
+filename_out_overflow:
+    eprintf("Error: Filename produced by format string is >%zd\n", filename_strlen_max);
+    return false;
+}
+
+// For cheaply testing format string validity
+// NOTE: Relies on create_filename's return value for error checking.
+//       This function is mainly to bypass expensive syscalls and to make sure
+//       max values for timespec etc. gets tested.
+static inline bool
+_create_filename_mock_time(
+    const char format[static restrict SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX]
+) {
+    char _tmp[SCRAN_OUTPUT_FILENAME_SIZE_MAX];
+    static const char _file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] = ".test";
+    static const struct timespec _ts = {
+        .tv_sec = 52582958239532, .tv_nsec = NSEC_PER_SEC - 1
+    };
+    static const struct tm _tm = {
+        .tm_sec   = 60, .tm_min   = 59, .tm_hour  = 23,
+        .tm_mday  = 31, .tm_mon   = 11, .tm_year  = 9999 - 1900,
+        .tm_wday  = 6,  .tm_yday  = 365,
+        .tm_isdst = 1,
+    };
+
+    if (!_create_filename(format, _file_extension, &_ts, &_tm, _tmp)) {
+        return false;
+    }
+
+    return true;
+}
+
+static inline bool
+_create_filename_current_time(
+    const char format[static restrict SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX],
+    const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX],
+    char filename_out[static restrict SCRAN_OUTPUT_FILENAME_SIZE_MAX]
+) {
+    struct timespec ts_now = { };
+    clock_gettime(CLOCK_REALTIME, &ts_now);
+
+    struct tm tm_now = { };
+    localtime_r(&ts_now.tv_sec, &tm_now);
+
+    return _create_filename(format, file_extension, &ts_now, &tm_now, filename_out);
+}
+
 
 const char *
 scran_update_output_filepath(
     struct scran_options *st_options,
-    const char file_extension[SCRAN_OUTPUT_FILE_EXTENSION_MAX]
+    // XXX: Requiring callers to have pass >= this size array here is not
+    // optimal, but provides us some easy safety guarantees from the compiler.
+    const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX]
 ) {
     // TODO: NDEDBUG_ASSERT
     const size_t available_chars_for_filename = st_options->output_path
                                               + sizeof(st_options->output_path)
                                               - st_options->output_path_filename_pointer;
-
-    assert(sizeof(st_options->filename) == SCRAN_OUTPUT_FILENAME_SIZE_MAX);
     if (available_chars_for_filename < SCRAN_OUTPUT_FILENAME_SIZE_MAX) {
         eprintf("Error: scran_update-output_filepath: filename pointer too deep. THIS IS A BUG, please open an issue.\n");
         exit(EXIT_FAILURE);
     }
 
-    const bool have_custom_filename = st_options->filename[0] != '\0';
-    if (have_custom_filename) {
-        // XXX: Custom filename is primarily intended for user-supplied format
-        //      strings, so we don't bother optimizing away repeated copies.
-        //      TODO: Implement said format strings (and remove this XXX)
-        size_t filename_strlen = strlcpy(
-            st_options->output_path_filename_pointer,
-            st_options->filename,
-            available_chars_for_filename
-        );
-    } else {
-        create_timestamped_filename(st_options->output_path_filename_pointer, file_extension);
-    }
+    bool success = _create_filename_current_time(
+        st_options->filename_format, file_extension, st_options->output_path_filename_pointer
+    );
+
+    // We verified the format string during init
+    assert(success);
 
     return st_options->output_path;
 }
@@ -206,22 +368,24 @@ _init_output_dir(
     return true;
 }
 
+
 static inline bool
 _handle_cli_arg_filename(
     struct scran_options *restrict st_options,
     const char *restrict arg
 ) {
-    size_t filename_strlen = strlcpy(st_options->filename, arg, SCRAN_OUTPUT_FILENAME_SIZE_MAX);
+    size_t format_strlen = strlcpy(st_options->filename_format, arg, SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX);
 
-    if (filename_strlen < 1) {
+    if (format_strlen < 1) {
         eprintf("Error: filename cannot be empty.\n");
         return false;
-    } else if (filename_strlen > SCRAN_OUTPUT_FILENAME_STRLEN_MAX) {
-        eprintf("filename is too long. Max length: %d\n", SCRAN_OUTPUT_FILENAME_STRLEN_MAX);
+    } else if (format_strlen > SCRAN_OUTPUT_FILENAME_FORMATSTRING_STRLEN_MAX) {
+        eprintf("filename is too long. Max length: %d\n", SCRAN_OUTPUT_FILENAME_FORMATSTRING_STRLEN_MAX);
         return false;
     }
 
-    return true;
+    // The create_filename function prints a descriptive error message.
+    return _create_filename_mock_time(st_options->filename_format);
 }
 
 static inline bool
@@ -282,9 +446,17 @@ static const char help_string[] =
     "                       Directory will be created if it does not exist.\n"
     "                       If set to -, scran writes to stdout (see also -B)\n"
     "\n"
-    "  -f   <output_filename>\n"
+    "  -f   <filename_pattern>\n"
     "         Name of the file that will be placed inside of `output_directory`\n"
     "         Ignored if output_directory is - (stdout)\n"
+    "         Expanded patterns:\n"
+    "           %Y  Year  (4 digits)        %H  Hour         (00-23)\n"
+    "           %m  Month (01-12)           %M  Minute       (00-59)\n"
+    "           %d  Day   (01-31)           %S  Second       (00-59)\n"
+    "                                       %U  Microsecond  (000000-999999)\n"
+    "           %E  File extension (e.g. .png or .mp4)\n"
+    "           %%  A literal '%' character\n"
+    "         Default: "SCRAN_OUTPUT_FILENAME_FORMATSTRING_DEFAULT"\n"
     "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
     "  -e   automatically capture and exit immediately after initial selection\n"
     "         Note: does not make -B redundant.\n"
@@ -397,6 +569,7 @@ scran_handle_args(int argc, char *const *argv)
         }
     }
 
+    assert(0 == strcmp(g_state.options.filename_format, SCRAN_OUTPUT_FILENAME_FORMATSTRING_DEFAULT));
     if (opt_filename != NULL && !g_state.options.output_to_stdout) {
         if (!_handle_cli_arg_filename(&g_state.options, opt_filename)) {
             return false;

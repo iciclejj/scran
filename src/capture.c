@@ -238,7 +238,10 @@ init_ffmpeg(struct scran_output *st_output)
     if (g_state.options.output_to_stdout) {
         output_filepath = "pipe:1";
     } else {
-        output_filepath = scran_update_output_filepath(&g_state.options, _FORMAT_MP4_FILE_EXTENSION);
+        static const char _ext_mp4[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] =
+            _FORMAT_MP4_FILE_EXTENSION;
+        output_filepath =
+            scran_update_output_filepath(&g_state.options, _ext_mp4);
     }
     avformat_alloc_output_context2(&frame_ctx->av_format_ctx, NULL, _FORMAT_MP4_NAME, output_filepath);
 

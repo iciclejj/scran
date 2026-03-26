@@ -186,9 +186,16 @@ See `scran -h` for more details
                        Directory will be created if it does not exist.
                        If set to -, scran writes to stdout (see also -B)
 
-  -f   output filename
+  -f   <filename_pattern>
          Name of the file that will be placed inside of `output_directory`
          Ignored if output_directory is - (stdout)
+         Expanded patterns:
+           %Y  Year  (4 digits)        %H  Hour         (00-23)
+           %m  Month (01-12)           %M  Minute       (00-59)
+           %d  Day   (01-31)           %S  Second       (00-59)
+                                       %U  Microsecond  (000000-999999)
+           %E  File extension (e.g. .png or .mp4)
+           %%  A literal '%' character
   -p   press-only mouse buttons (presses toggle pressed/released state)
   -e   automatically capture and exit immediately after initial selection
   -B   do not keep background process alive
