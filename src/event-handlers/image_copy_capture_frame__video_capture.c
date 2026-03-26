@@ -19,6 +19,7 @@
 #include "capture.h"
 #include "print.h"
 #include "selection.h"
+#include "clipboard.h"
 
 
 extern struct scran g_state;

@@ -7,6 +7,7 @@
 
 #include "event-handlers.h"
 #include "print.h"
+#include "clipboard.h"
 
 // void 
 // handle_data_control_device_selection(
@@ -26,34 +27,61 @@
 
 void
 handle_data_control_source_send(
-    void *data,
+    void *data_,
     struct ext_data_control_source_v1 *source,
     const char *mime_type,
     int32_t fd
 ) {
-    struct scran_seat_datacontrol *st_datacontrol = data;
-    const BLArrayCore *const bl_array = &st_datacontrol->data_to_send;
+    struct scran_seat_datacontrol *st_datacontrol = data_;
 
+    DEBUG("datacontrol_source::send(): Received mimetype: %s\n", mime_type);
 
-    const char *const our_mime_type = st_datacontrol->data_to_send_mime_type;
-    DEBUG("datacontrol_source::send(): Received mimetype: %s\n", our_mime_type);
+    const char *const data_mime_type = st_datacontrol->data_to_send_mime_type;
 
-    // TODO: Maybe custom strcmp ?
-    const bool is_mime_type_supported = !strcmp(mime_type, our_mime_type);
-    if (!is_mime_type_supported) {
-        eprintf("Unsupported mime-type for pasting selection\n");
-        return;
-    }
+    if (
+        st_datacontrol->should_offer_data
+        && 0 == strcmp(mime_type, data_mime_type)
+    ) {
+        const BLArrayCore *const bl_array = &st_datacontrol->data_to_send;
 
-    const void *const buf = bl_array_get_data(bl_array);
-    const size_t buf_size = bl_array_get_size(bl_array);
+        const void *const data = bl_array_get_data(bl_array);
+        const size_t data_size = bl_array_get_size(bl_array);
+        if (data_size != write(fd, data, data_size)) {
+            goto failed;
+        }
+    } else if (
+        st_datacontrol->should_offer_filepath
+        && 0 == strcmp(mime_type, SCRAN_MIME_TYPE_FILEPATH)
+    ) {
+        const char prefix[] = "file://";
+        const size_t prefix_strlen = sizeof(prefix) - 1;
+        if (prefix_strlen != write(fd, prefix, prefix_strlen)) {
+            goto failed;
+        }
 
-    if (buf_size <= write(fd, buf, buf_size)) {
-        eprintf("Wrote clipboard selection\n");
+        // TODO: Make sure this is an absolute path. Either here or
+        // normalize passed path to absolute during option init.
+        const char *const uri = st_datacontrol->data_to_send_saved_file_path;
+        const size_t uri_strlen = st_datacontrol->data_to_send_saved_file_path_strlen;
+        if (uri_strlen != write(fd, uri, uri_strlen)) {
+            goto failed;
+        }
+
+        const char suffix[] = "\r\n";
+        const size_t suffix_strlen = sizeof(suffix) - 1;
+        if (suffix_strlen != write(fd, suffix, suffix_strlen)) {
+            goto failed;
+        }
     } else {
-        eprintf("Failed to write clipboard selection.\n");
+        goto failed;
     }
 
+    eprintf("Wrote clipboard selection\n");
+    close(fd);
+    return;
+
+failed:
+    eprintf("Failed to write clipboard selection.\n");
     close(fd);
     return;
 }

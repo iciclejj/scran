@@ -5,7 +5,6 @@
 
 #include <ext-image-copy-capture-v1.h>
 
-#include "ext-data-control-v1.h"
 #include "state.h"
 #include "state-util.h" // TODO: Move this into util/ ?
 #include "util/blend2d.h"
@@ -15,6 +14,7 @@
 #include "scranrot.h"
 #include "event-handlers.h"
 #include "options.h"
+#include "clipboard.h"
 
 extern struct scran g_state;
 
@@ -185,6 +185,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     const size_t bytes_to_write = bl_array_get_size(&bl_array_img_encoded);
 
     struct scran_options *const st_options = &g_state.options;
+    const char *output_filepath = NULL;
 
     if (st_options->output_to_stdout) {
         // TODO: Assert nothing else was written to stdout?
@@ -197,7 +198,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     } else {
         static const char default_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] =
             CAPTURE_IMAGE_OUTPUT_FILE_EXTENSION_DEFAULT;
-        const char *output_filepath =
+        output_filepath =
             scran_update_output_filepath(st_options, default_extension);
 
         size_t bytes_written = 0;
@@ -215,14 +216,6 @@ handle_image_copy_capture_frame_ready__image_capture(
         }
     }
 
-
-    // TODO: Consider loading image back from storage, instead of storing it
-    // in memory? At least for videos, which we probably won't keep in memory.
-
-    // TODO: Verify that init_move doesn't leak memory without explicit reset
-    //           And also that the moved-*from* instance doesn't need explicit
-    //           destroy
-    bl_array_init_move(&frame_ctx->st_datacontrol->data_to_send, &bl_array_img_encoded);
     // TODO: Is this the inteded way for a user to access members not exposed to
     // the C-API by bl_*_get_* functions ?
     //     See: https://blend2d.com/doc/group__bl__impl.html
@@ -230,26 +223,10 @@ handle_image_copy_capture_frame_ready__image_capture(
     // TODO: Double-check (lack of) refcounting behavior of _get_data functions
     //           XXX TODO: Also, if not refcounted, then ensure it is nulled
     //           when invalidated or that it will not matter that it isn't.
-    frame_ctx->st_datacontrol->data_to_send_mime_type = bl_string_get_data(&bl_img_codec_impl->mime_type);
-
-    struct ext_data_control_source_v1 *data_control_source =
-        ext_data_control_manager_v1_create_data_source(
-            g_state.globals.data_control_manager
-        );
-    ext_data_control_source_v1_add_listener(
-        data_control_source,
-        &data_control_source_listener,
-        frame_ctx->st_datacontrol
-    );
-    ext_data_control_source_v1_offer(
-        data_control_source,
-        frame_ctx->st_datacontrol->data_to_send_mime_type
-    );
-    DEBUG("image_capture::frame: set_selection (clipboard)\n");
-    ext_data_control_device_v1_set_selection(frame_ctx->st_datacontrol->device, data_control_source);
-    // TODO: Relaxed might not end up being enough. Revisit this if we ever do
-    // go multithreaded (atomics are not doing anything useful at the moment).
-    atomic_fetch_add_explicit(&frame_ctx->st_datacontrol->selection_refcount, 1, memory_order_relaxed);
+    const char *mime_type = bl_string_get_data(&bl_img_codec_impl->mime_type);
+    if (!update_clipboard(&g_state.seat.datacontrol, &bl_array_img_encoded, mime_type, output_filepath)) {
+        eprintf("Error updating clipboard.\n");
+    }
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 }

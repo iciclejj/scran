@@ -49,6 +49,7 @@
 #define SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX   (SCRAN_OUTPUT_FILENAME_SIZE_MAX - SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX)
 #define SCRAN_OUTPUT_FILENAME_FORMATSTRING_STRLEN_MAX (SCRAN_OUTPUT_FILENAME_SIZE_MAX - SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX - 1)
 
+#define SCRAN_MIME_TYPE_SIZE_MAX 256
 
 struct scran_globals {
     struct wl_display *display;
@@ -116,8 +117,11 @@ struct scran_seat_keyboard {
 };
 
 // XXX: Rename this?
+// TODO Isolate from rest of state.
 struct scran_seat_datacontrol {
     struct ext_data_control_device_v1 *device;
+
+    // We use blend2d types here for simpler interop with our image pipeline
 
     // NOTE: Handed over from ::frame event. Remember to destroy/unref on
     // data_control::cancelled (or if overwriting pointer), if required based
@@ -127,13 +131,18 @@ struct scran_seat_datacontrol {
     // the entire BLImage instead. Maybe doesn't make sense to do even then,
     // though.
     BLArrayCore data_to_send;
-    // TODO: Allow multiple mimetypes?
-    const char *data_to_send_mime_type;
 
     // XXX: We can only have one actual active selection at a time (per seat),
     // but we use a refcount, rather than a bool, to not need to care about
     // the order of creating new_source vs triggering old_source::cancelled.
     atomic_int selection_refcount;
+
+    char data_to_send_mime_type[SCRAN_MIME_TYPE_SIZE_MAX];
+    char data_to_send_saved_file_path[SCRAN_OUTPUT_FILEPATH_SIZE_MAX];
+    size_t data_to_send_saved_file_path_strlen;
+
+    bool should_offer_filepath;
+    bool should_offer_data;
 };
 
 struct scran_seat {
