@@ -108,9 +108,11 @@ struct scran_seat_pointerContext {
     //     (actions like rebasing, resizing, etc.).
     bool use_presses_only;
 
-    // TODO: Should this be for the entire seat, and not just pointer?
-    //           NOTE: Both keyboard and pointer have ::enter events.
-    struct scran_output *focused_output;
+    // Focused surface, which must cover the entire output's area, i.e. our
+    // selection layer surface.
+    //   TODO: Should this be for the entire seat, and not just pointer?
+    //             Both keyboard and pointer have ::enter events.
+    struct scran_output_surface *focused_whole_output_layer_surface;
 
     struct wp_cursor_shape_device_v1 *cursor_shape_device;
 };

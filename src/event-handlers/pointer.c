@@ -33,14 +33,23 @@ handle_pointer_enter(
     );
 
     for (int i = 0; i < state->n_outputs; ++i) {
-        if (surface_entered == state->outputs[i].surface.wl_surface) {
-            pointer_ctx->focused_output = &state->outputs[i];
-            break;
+        struct scran_output_surface *st_surface = &state->outputs[i].surface;
+
+        if (surface_entered == st_surface->wl_surface) {
+            pointer_ctx->focused_whole_output_layer_surface = st_surface;
+            return;
         }
     }
 
-    // TODO: Set focused output to NULL? In theory we should always be covering
-    // every output fully. Have not tested resulting interactions when not.
+    // XXX: We do not have any other surfaces at the moment, so this should
+    // never happen. This was changed to tracking the surface rather than
+    // the output to make the scaling code more sane, despite only having one
+    // surface per output at the moment. Change this as appropariate if adding
+    // more surfaces.
+    // We should still handle focused_surface == NULL appropriately in the rest
+    // of the code, so it should stay as simply a debug-assert.
+    pointer_ctx->focused_whole_output_layer_surface = NULL;
+    assert(0 && "wl_pointer::enter triggered with unknown surface (not an error; see comment in source.)");
 }
 
 
@@ -65,8 +74,13 @@ handle_pointer_motion(
     wl_fixed_t y
 ) {
     struct scran *state = data;
-    struct scran_output *st_output = state->seat.pointer_ctx.focused_output;
 
+    if (state->seat.pointer_ctx.focused_whole_output_layer_surface == NULL) {
+        return;
+    }
+    struct scran_output_surface *st_surface = state->seat.pointer_ctx.focused_whole_output_layer_surface;
+
+    struct scran_output *st_output = wl_container_of(st_surface, st_output, surface);
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
@@ -188,22 +202,26 @@ handle_pointer_button(
     enum wl_pointer_button_state button_state
 ) {
     struct scran *state = data;
+
+    if (state->seat.pointer_ctx.focused_whole_output_layer_surface == NULL) {
+        return;
+    }
+    struct scran_output_surface *st_surface = state->seat.pointer_ctx.focused_whole_output_layer_surface;
+
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
 
     bool is_press   = button_state == WL_POINTER_BUTTON_STATE_PRESSED;
     bool is_release = button_state == WL_POINTER_BUTTON_STATE_RELEASED;
-    bool allowed =
+    bool allowed_key_state =
            (is_press   && pointer_ctx->active_button == SCRAN_BTN_NONE )
         || (is_release && pointer_ctx->active_button == button && !pointer_ctx->use_presses_only)
     ;
-
-    if (!allowed) {
+    if (!allowed_key_state) {
         return;
     }
 
 
-    struct scran_output *st_output = state->seat.pointer_ctx.focused_output;
-    assert(st_output != NULL);
+    struct scran_output *st_output = wl_container_of(st_surface, st_output, surface);
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
     int x_px = pointer_ctx->x_px;
