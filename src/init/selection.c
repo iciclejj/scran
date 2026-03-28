@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <assert.h>
+#include <math.h>
 
 #include "init.h"
 #include "state.h"
@@ -100,10 +101,10 @@ init_postmem__selection(struct scran_output *st_output)
     // XXX: Get the outline out of view...
     //      A more elegant solution can come when necessary
     selection_ctx->bl_box = (struct BLBoxI) {
-        .x0 = 0 - blend2d_stroke_ceil(BLCONTEXT_STROKE_WIDTH),
-        .y0 = 0 - blend2d_stroke_ceil(BLCONTEXT_STROKE_WIDTH),
-        .x1 = 0 - blend2d_stroke_ceil(BLCONTEXT_STROKE_WIDTH),
-        .y1 = 0 - blend2d_stroke_ceil(BLCONTEXT_STROKE_WIDTH),
+        .x0 = 0 - ceil(BLCONTEXT_STROKE_WIDTH),
+        .y0 = 0 - ceil(BLCONTEXT_STROKE_WIDTH),
+        .x1 = 0 - ceil(BLCONTEXT_STROKE_WIDTH),
+        .y1 = 0 - ceil(BLCONTEXT_STROKE_WIDTH),
     };
 
     return true;

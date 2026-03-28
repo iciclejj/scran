@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <math.h>
 
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
@@ -157,9 +158,9 @@ draw_frame_and_damage_buffer(
 
     // Our boxes must be enlarged by stroke radius amount to ensure the outline
     // is perfectly outside our capture area.
-    const int drawn_box_inflation_px  = blend2d_stroke_ceil(BLCONTEXT_STROKE_RADIUS);
+    const int drawn_box_inflation_px  = ceil(BLCONTEXT_STROKE_RADIUS);
     // Our dirty rects must encompass the entire drawn stroke
-    const int diffed_box_inflation_px = blend2d_stroke_ceil(drawn_box_inflation_px + BLCONTEXT_STROKE_RADIUS);
+    const int diffed_box_inflation_px = ceil(drawn_box_inflation_px + BLCONTEXT_STROKE_RADIUS);
 
     // _box_bounds in particular is not supposed to have an outline in the
     // first place, but moving it out of frame is simpler than manipulating our

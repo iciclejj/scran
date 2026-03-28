@@ -11,7 +11,7 @@ PKG_CONFIG ?= pkg-config
 ffmpeg_libs := libavcodec libavutil libavformat libavfilter libswscale
 PKGCONF_LIBS := xkbcommon wayland-client $(ffmpeg_libs)
 
-_LDLIBS := -lblend2d
+_LDLIBS := -lblend2d -lm
 _LDLIBS += $(shell $(PKG_CONFIG) --libs $(PKGCONF_LIBS))
 ALL_LDLIBS = $(_LDLIBS) $(LDLIBS)
 
