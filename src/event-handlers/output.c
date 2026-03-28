@@ -2,6 +2,7 @@
 
 #include "state.h"
 #include "event-handlers.h"
+#include "print.h"
 
 
 static void
@@ -62,6 +63,9 @@ handle_output_mode(
     st_output->mode.width_px = width;
     st_output->mode.height_px = height;
     st_output->mode.refresh_rate_mHz = refresh_rate_mHz;
+
+    DEBUG("st_output->mode.width_px: %d\n", width);
+    DEBUG("st_output->mode.height_px: %d\n", height);
 }
 
 

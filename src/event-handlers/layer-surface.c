@@ -8,6 +8,7 @@
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
+#include "print.h"
 
 
 static void
@@ -24,6 +25,9 @@ handle_layer_surface_configure(
     // TODO: Fix this for scale != 1
     assert(width_px_logical == get_output_width_logical(st_output));
     assert(height_px_logical == get_output_height_logical(st_output));
+
+    DEBUG("width_px_logical: %d\n", width_px_logical);
+    DEBUG("height_px_logical: %d\n", height_px_logical);
 
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 }
