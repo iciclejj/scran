@@ -77,8 +77,9 @@ let
   scran_src = builtins.fetchGit {
     url = "https://github.com/iciclejj/scran";
     ref = "main";
-    # Desired commit (v0.2.2 here)
-    rev = "83d70c404c1df1a61e1717b427f2cec597df5016";
+    # Desired commit (v0.4.1 here)
+    rev = "a077e9ef519c14b87db2c85a9af40ec78f8cd0cc";
+    sha256 = "0m3mj8xhlpqxcjvlli5laaj8k39arbnlbrc98rlx2nljcdmmssmr";
   };
 
   scran = pkgs.callPackage scran_src { };
