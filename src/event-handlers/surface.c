@@ -20,19 +20,18 @@
 extern struct scran g_state;
 
 
-struct _box_diffs {
-    struct BLBoxI left_full;
-    struct BLBoxI right_full;
+struct _rect_diffs {
+    struct BLRectI left_full;
+    struct BLRectI right_full;
     // "_remaining", i.e. not including intersection with leftmost/topmost:
-    struct BLBoxI top_remaining;
-    struct BLBoxI bottom_remaining;
+    struct BLRectI top_remaining;
+    struct BLRectI bottom_remaining;
 };
-
 
 // Call wl_surface_damage_buffer on the difference between the areas of two
 // BLBoxI boxes (i.e. union minus intersection).
-static inline struct _box_diffs
-get_box_diffs(struct BLBoxI a, struct BLBoxI b)
+static inline struct _rect_diffs
+get_box_diffs_as_rects(struct BLBoxI a, struct BLBoxI b)
 {
     assert(!SCRAN_BL_BOX_IS_INVERTED(a));
     assert(!SCRAN_BL_BOX_IS_INVERTED(b));
@@ -44,36 +43,36 @@ get_box_diffs(struct BLBoxI a, struct BLBoxI b)
         .y1 = MIN(a.y1, b.y1),
     };
 
-    struct _box_diffs diff;
+    struct _rect_diffs diff;
 
     const struct BLBoxI leftmost = a.x0 < b.x0 ? a : b;
-    diff.left_full = (struct BLBoxI) {
-        .x0 = leftmost.x0,
-        .x1 = intersection.x0,
-        .y0 = leftmost.y0,
-        .y1 = leftmost.y1,
+    diff.left_full = (struct BLRectI) {
+        .x = leftmost.x0,
+        .w = intersection.x0 - leftmost.x0,
+        .y = leftmost.y0,
+        .h = leftmost.y1 - leftmost.y0,
     };
 
     const struct BLBoxI rightmost = a.x1 > b.x1 ? a : b;
-    diff.right_full = (struct BLBoxI) {
-        .x0 = intersection.x1,
-        .x1 = rightmost.x1,
-        .y0 = rightmost.y0,
-        .y1 = rightmost.y1,
+    diff.right_full = (struct BLRectI) {
+        .x = intersection.x1,
+        .w = rightmost.x1 - intersection.x1,
+        .y = rightmost.y0,
+        .h = rightmost.y1 - rightmost.y0,
     };
 
-    diff.top_remaining = (struct BLBoxI) {
-        .x0 = intersection.x0,
-        .x1 = intersection.x1,
-        .y0 = MIN(a.y0, b.y0),
-        .y1 = intersection.y1,
+    diff.top_remaining = (struct BLRectI) {
+        .x = intersection.x0,
+        .w = intersection.x1 - intersection.x0,
+        .y = MIN(a.y0, b.y0),
+        .h = intersection.y1 - MIN(a.y0, b.y0),
     };
 
-    diff.bottom_remaining = (struct BLBoxI) {
-        .x0 = intersection.x0,
-        .x1 = intersection.x1,
-        .y0 = intersection.y1,
-        .y1 = MAX(a.y1, b.y1),
+    diff.bottom_remaining = (struct BLRectI) {
+        .x = intersection.x0,
+        .w = intersection.x1 - intersection.x0,
+        .y = intersection.y1,
+        .h = MAX(a.y1, b.y1) - intersection.y1,
     };
 
     return diff;
@@ -161,14 +160,13 @@ draw_frame_and_damage_buffer(
     struct BLBoxI box_already_drawn__diff_inflation = get_blboxi_inflated(box_last_committed_buffer, diffed_box_inflation_px);
     struct BLBoxI box_to_draw__diff_inflation       = get_blboxi_inflated(box_to_draw,       diffed_box_inflation_px);
 
-    const struct _box_diffs box_diffs = get_box_diffs(box_to_draw__diff_inflation, box_already_drawn__diff_inflation);
+    const struct _rect_diffs rect_diffs = get_box_diffs_as_rects(box_to_draw__diff_inflation, box_already_drawn__diff_inflation);
 
 
-    // TODO: Just make get_box_diffs return rects, probably...
-    _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.left_full));
-    _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.right_full));
-    _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.top_remaining));
-    _draw_and_damage_region(st_surface, st_buffer, blboxi_to_blrecti(box_diffs.bottom_remaining));
+    _draw_and_damage_region(st_surface, st_buffer, rect_diffs.left_full);
+    _draw_and_damage_region(st_surface, st_buffer, rect_diffs.right_full);
+    _draw_and_damage_region(st_surface, st_buffer, rect_diffs.top_remaining);
+    _draw_and_damage_region(st_surface, st_buffer, rect_diffs.bottom_remaining);
     st_buffer->box_currently_drawn = box_to_draw;
 
     // NOTE: Don't reset the BLContext here, unless intending to fully
