@@ -32,13 +32,15 @@ handle_pointer_enter(
         WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR
     );
 
-    // TODO: Macro for_each_output ?
     for (int i = 0; i < state->n_outputs; ++i) {
         if (surface_entered == state->outputs[i].surface.wl_surface) {
             pointer_ctx->focused_output = &state->outputs[i];
             break;
         }
     }
+
+    // TODO: Set focused output to NULL? In theory we should always be covering
+    // every output fully. Have not tested resulting interactions when not.
 }
 
 
