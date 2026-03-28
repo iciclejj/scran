@@ -14,11 +14,10 @@ https://github.com/user-attachments/assets/66b221d4-c070-4f03-a44f-142a6e5216b2
 ### Compositor support:
 
 
-- Tested:
+- Supported:
   - [Sway](https://swaywm.org/)
-- Should work:
   - [COSMIC](https://system76.com/cosmic)
-- Not currently supported:
+- Not supported:
   - KWin (KDE Plasma)
   - Mutter (Gnome)
 
