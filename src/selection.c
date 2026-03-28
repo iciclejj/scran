@@ -33,17 +33,8 @@ set_selection_surface_theme(
 
     struct scran_output_surface *st_surface = &st_output->surface;
 
-    for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
-        struct scran_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
-
-        bl_context_set_stroke_style_rgba32(&st_buffer->bl_ctx, stroke_style.value);
-        bl_context_set_stroke_width(&st_buffer->bl_ctx, stroke_width);
-
-        bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, fill_style.value);
-        bl_context_set_fill_rule(&st_buffer->bl_ctx, fill_rule);
-    }
-
-    // XXX HACK: This forces a full redraw inside of capture::frame
+    // XXX HACK: This forces a no-overlap diff inside of capture::frame when
+    //           using diffs to determine damage regions.
     //               TODO: Probably implement a force_redraw flag or similar,
     //               somewhere that capture::frame can easily read it.
     //               (At least once we implement more complicated scenes that
@@ -52,7 +43,23 @@ set_selection_surface_theme(
     //
     // NOTE: IF REMOVING: Make sure this (or similar) is also in the init code,
     // as the initial selection's dirty rec calculations may depend on this.
-    st_surface->box_last_drawn = st_output->selection_ctx.bl_box_bounds;
+    struct BLBoxI box_for_forcing_redraw_on_diff_damage = st_output->selection_ctx.bl_box_bounds;
+
+    for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
+        struct scran_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
+
+        bl_context_set_stroke_style_rgba32(&st_buffer->bl_ctx, stroke_style.value);
+        bl_context_set_stroke_width(&st_buffer->bl_ctx, stroke_width);
+
+        bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, fill_style.value);
+        bl_context_set_fill_rule(&st_buffer->bl_ctx, fill_rule);
+
+        // HACK: Read above
+        st_buffer->box_currently_drawn = box_for_forcing_redraw_on_diff_damage;
+    }
+
+    // HACK: Read above
+    st_surface->box_last_drawn = box_for_forcing_redraw_on_diff_damage;
 }
 
 

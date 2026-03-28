@@ -112,16 +112,28 @@ static inline void
 _draw_and_damage_region(
     struct scran_output_surface *st_surface,
     struct scran_output_surface_buffer *st_buffer,
-    BLRectI damage_region
+    // Wayland needs to be damaged with difference with the previously drawn box,
+    // regardless of which buffer produced it. The buffer itself, on the other
+    // hand, must be damaged relative to itself. Marking Wayland damage does
+    // not guarantee that no other part of the buffer gets blitted, which is
+    // why we must make this distinction.
+    //
+    // The relevant wl_surface::damage_buffer requirements stated by the xml
+    // spec, and with no further guarantees being made, is:
+    //   "This request is used to describe the regions **where the pending
+    //    buffer is different from the current surface contents** [...]".
+    BLRectI damage_region_wayland,
+    BLRectI damage_region_buffer
 ) {
     // TODO: Is bl_context_clear_all the same as bl_context_clear_rect_i, if we do it after clipping?
-    bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region);
+    bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region_buffer);
     bl_context_clear_all(&st_buffer->bl_ctx);
     bl_context_fill_path_d(&st_buffer->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, &st_surface->bl_path);
     bl_context_stroke_path_d(&st_buffer->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, &st_surface->bl_path);
     bl_context_restore_clipping(&st_buffer->bl_ctx);
+
     wl_surface_damage_buffer( st_surface->wl_surface,
-        damage_region.x, damage_region.y, damage_region.w, damage_region.h
+        damage_region_wayland.x, damage_region_wayland.y, damage_region_wayland.w, damage_region_wayland.h
     );
 }
 
@@ -134,6 +146,7 @@ draw_frame_and_damage_buffer(
     struct BLBoxI box_bounds
 ) {
     const struct BLBoxI box_last_committed_buffer = st_surface->box_last_drawn;
+    const struct BLBoxI box_already_drawn_in_current_buffer = st_buffer->box_currently_drawn;
 
     // TODO: Assert box_bounds fully surrounds box_to_draw
     assert(!SCRAN_BL_BOX_IS_INVERTED(box_to_draw));
@@ -157,16 +170,24 @@ draw_frame_and_damage_buffer(
     bl_path_add_box_i(&st_surface->bl_path, &box_bounds__outline_inflation,  BL_GEOMETRY_DIRECTION_NONE);
     bl_path_add_box_i(&st_surface->bl_path, &box_to_draw__outline_inflation, BL_GEOMETRY_DIRECTION_NONE);
 
-    struct BLBoxI box_already_drawn__diff_inflation = get_blboxi_inflated(box_last_committed_buffer, diffed_box_inflation_px);
-    struct BLBoxI box_to_draw__diff_inflation       = get_blboxi_inflated(box_to_draw,       diffed_box_inflation_px);
+    // XXX: Should really make some better names or abstratction functions for these...
+    struct BLBoxI box_last_committed_buffer__diff_inflation =
+        get_blboxi_inflated(box_last_committed_buffer, diffed_box_inflation_px);
+    struct BLBoxI box_already_drawn_in_current_buffer__diff_inflation =
+        get_blboxi_inflated(box_already_drawn_in_current_buffer, diffed_box_inflation_px);
+    struct BLBoxI box_to_draw__diff_inflation =
+        get_blboxi_inflated(box_to_draw, diffed_box_inflation_px);
 
-    const struct _rect_diffs rect_diffs = get_box_diffs_as_rects(box_to_draw__diff_inflation, box_already_drawn__diff_inflation);
+    // last committed buffer could be either the buffer we're currently drawing,
+    // or the other double-buffer buffer.
+    const struct _rect_diffs diffs_with_last_committed_buffer = get_box_diffs_as_rects(box_to_draw__diff_inflation, box_last_committed_buffer__diff_inflation);
+    const struct _rect_diffs diffs_with_self_buffer = get_box_diffs_as_rects(box_to_draw__diff_inflation, box_already_drawn_in_current_buffer__diff_inflation);
 
 
-    _draw_and_damage_region(st_surface, st_buffer, rect_diffs.left_full);
-    _draw_and_damage_region(st_surface, st_buffer, rect_diffs.right_full);
-    _draw_and_damage_region(st_surface, st_buffer, rect_diffs.top_remaining);
-    _draw_and_damage_region(st_surface, st_buffer, rect_diffs.bottom_remaining);
+    _draw_and_damage_region(st_surface, st_buffer, diffs_with_last_committed_buffer.left_full,        diffs_with_self_buffer.left_full);
+    _draw_and_damage_region(st_surface, st_buffer, diffs_with_last_committed_buffer.right_full,       diffs_with_self_buffer.right_full);
+    _draw_and_damage_region(st_surface, st_buffer, diffs_with_last_committed_buffer.top_remaining,    diffs_with_self_buffer.top_remaining);
+    _draw_and_damage_region(st_surface, st_buffer, diffs_with_last_committed_buffer.bottom_remaining, diffs_with_self_buffer.bottom_remaining);
     st_buffer->box_currently_drawn = box_to_draw;
 
     // NOTE: Don't reset the BLContext here, unless intending to fully
