@@ -75,8 +75,8 @@ init_postmem__selection(struct scran_output *st_output)
         assert(st_buffer->data != NULL);
         bl_image_init_as_from_data(
             &st_buffer->bl_img,
-            get_output_width_logical(st_output),
-            get_output_height_logical(st_output),
+            get_transformed_output_width(st_output),
+            get_transformed_output_height(st_output),
             SURFACE_SHM_FORMAT_BL,
             st_buffer->data,
             SURFACE_PIXEL_STRIDE * st_output->mode.width_px,
@@ -93,8 +93,8 @@ init_postmem__selection(struct scran_output *st_output)
     selection_ctx->bl_box_bounds = (struct BLBoxI) {
         .x0 = 0,
         .y0 = 0,
-        .x1 = get_output_width_logical(st_output),
-        .y1 = get_output_height_logical(st_output),
+        .x1 = get_transformed_output_width(st_output),
+        .y1 = get_transformed_output_height(st_output),
     };
 
     // XXX: Get the outline out of view...

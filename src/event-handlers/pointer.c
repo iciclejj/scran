@@ -122,24 +122,24 @@ handle_pointer_motion(
 
             // The rebase should have been initiated with a valid box.
             assert(!SCRAN_BL_BOX_IS_INVERTED(box_before_rebase));
-            assert(box_before_rebase.x0 >= 0 && box_before_rebase.x1 <= get_output_width_logical(st_output));
-            assert(box_before_rebase.y0 >= 0 && box_before_rebase.y1 <= get_output_height_logical(st_output));
+            assert(box_before_rebase.x0 >= 0 && box_before_rebase.x1 <= get_transformed_output_width(st_output));
+            assert(box_before_rebase.y0 >= 0 && box_before_rebase.y1 <= get_transformed_output_height(st_output));
 
             // Restrict the area to be within the output's borders.
             // TODO: Maybe make this cleaner ?
             if (new_box.x0 < 0) {
                 new_box.x1 -= new_box.x0;
                 new_box.x0 = 0;
-            } else if (new_box.x1 > get_output_width_logical(st_output)) {
-                new_box.x0 -= new_box.x1 - get_output_width_logical(st_output);
-                new_box.x1 = get_output_width_logical(st_output);
+            } else if (new_box.x1 > get_transformed_output_width(st_output)) {
+                new_box.x0 -= new_box.x1 - get_transformed_output_width(st_output);
+                new_box.x1 = get_transformed_output_width(st_output);
             }
             if (new_box.y0 < 0) {
                 new_box.y1 -= new_box.y0;
                 new_box.y0 = 0;
-            } else if (new_box.y1 > get_output_height_logical(st_output)) {
-                new_box.y0 -= new_box.y1 - get_output_height_logical(st_output);
-                new_box.y1 = get_output_height_logical(st_output);
+            } else if (new_box.y1 > get_transformed_output_height(st_output)) {
+                new_box.y0 -= new_box.y1 - get_transformed_output_height(st_output);
+                new_box.y1 = get_transformed_output_height(st_output);
             }
 
             selection_ctx->bl_box = new_box;

@@ -33,12 +33,12 @@ get_transformed_width(int src_width, int src_height, enum wl_output_transform tr
 }
 
 static inline int32_t
-get_output_width_logical(struct scran_output *st_output) {
+get_transformed_output_width(struct scran_output *st_output) {
     return get_transformed_width(st_output->mode.width_px, st_output->mode.height_px, st_output->transform);
 }
 
 static inline int32_t
-get_output_height_logical(struct scran_output *st_output) {
+get_transformed_output_height(struct scran_output *st_output) {
     return get_transformed_height(st_output->mode.width_px, st_output->mode.height_px, st_output->transform);
 }
 
@@ -47,8 +47,8 @@ clamp_to_output_width_logical(int *val, struct scran_output *st_output)
 {
     if (*val < 0) {
         *val = 0;
-    } else if (*val > get_output_width_logical(st_output)) {
-        *val = get_output_width_logical(st_output);
+    } else if (*val > get_transformed_output_width(st_output)) {
+        *val = get_transformed_output_width(st_output);
     }
 }
 
@@ -57,8 +57,8 @@ clamp_to_output_height_logical(int *val, struct scran_output *st_output)
 {
     if (*val < 0) {
         *val = 0;
-    } else if (*val > get_output_height_logical(st_output)) {
-        *val = get_output_height_logical(st_output);
+    } else if (*val > get_transformed_output_height(st_output)) {
+        *val = get_transformed_output_height(st_output);
     }
 }
 

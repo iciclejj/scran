@@ -320,8 +320,8 @@ init_meminit(
             _st_buffer->wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
                 _surface_buffer_offset,
-                get_output_width_logical(_st_output),
-                get_output_height_logical(_st_output),
+                get_transformed_output_width(_st_output),
+                get_transformed_output_height(_st_output),
                 get_surface_stride(&_st_output->mode),
                 SURFACE_SHM_FORMAT
             );
