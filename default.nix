@@ -5,7 +5,6 @@
   wayland,
   wayland-scanner,
   wayland-protocols,
-  wlr-protocols,
   blend2d,
   libxkbcommon,
   ffmpeg,
@@ -27,7 +26,6 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [
     wayland-scanner
-    wlr-protocols
     wayland-protocols
     pkg-config
     copyDesktopItems
