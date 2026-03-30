@@ -14,5 +14,8 @@
         default = scran;
         scran = pkgs.callPackage ./default.nix { _target = "release"; };
       };
+      devShells."${system}" = {
+        default = pkgs.callPackage ./shell.nix { };
+      };
     };
 }
