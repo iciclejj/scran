@@ -22,10 +22,6 @@ handle_layer_surface_configure(
 ) {
     struct scran_output *st_output = data;
 
-    // TODO: Fix this for scale != 1
-    assert(width_px_logical == get_transformed_output_width(st_output));
-    assert(height_px_logical == get_transformed_output_height(st_output));
-
     DEBUG("width_px_logical: %d\n", width_px_logical);
     DEBUG("height_px_logical: %d\n", height_px_logical);
 
