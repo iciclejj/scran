@@ -7,7 +7,6 @@
 #include "state-util.h"
 #include "event-handlers.h"
 #include "selection.h"
-#include "util/blend2d.h"
 
 
 bool
