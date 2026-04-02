@@ -20,7 +20,7 @@
 
 
 static inline size_t
-get_required_padding(
+get_units_until_alignment(
     size_t size_or_offset,
     size_t alignment
 ) {
@@ -36,30 +36,27 @@ get_surface_stride(struct scran_output_mode *mode) {
 }
 
 static inline size_t
-_get_framebuffer_size_padded(struct scran_output_mode *mode, uint8_t pixel_stride) {
-    size_t width_bytes = pixel_stride * mode->width_px;
-    size_t right_padding_bytes = get_required_padding(width_bytes, FRAMEBUFFER_RIGHT_ALIGNMENT_BYTES);
-    size_t bottom_padding_pixels = get_required_padding(mode->height_px, FRAMEBUFFER_BOTTOM_ALIGNMENT_PX);
+_get_framebuffer_size_padded(int32_t width_px, int32_t height_px, uint8_t pixel_stride) {
+    size_t width_bytes = pixel_stride * width_px;
+    size_t right_padding_bytes = get_units_until_alignment(width_bytes, FRAMEBUFFER_RIGHT_ALIGNMENT_BYTES);
+    size_t bottom_padding_pixels = get_units_until_alignment(height_px, FRAMEBUFFER_BOTTOM_ALIGNMENT_PX);
 
     return   (width_bytes + right_padding_bytes)
-           * (mode->height_px + bottom_padding_pixels);
+           * (height_px + bottom_padding_pixels);
 }
 
 static inline size_t
-get_surface_buf_size_padded(struct scran_output_mode *mode) {
-    return _get_framebuffer_size_padded(mode, SURFACE_PIXEL_STRIDE);
+get_selection_surface_buf_size_padded(struct scran_output *st_output) {
+    int32_t width_px = st_output->mode.width_px;
+    int32_t height_px = st_output->mode.height_px;
+    return _get_framebuffer_size_padded(width_px, height_px, SURFACE_PIXEL_STRIDE);
 }
 
 static inline size_t
 get_capture_buf_size_padded(struct scran_output *st_output) {
-    return _get_framebuffer_size_padded(&st_output->mode, st_output->capture.frame_ctx.pixel_stride);
-}
-
-// These will probably always stay equivalent, but dedicated function avoids
-// any second-guessing.
-static inline size_t
-get_capture_buf_2_size_padded(struct scran_output *st_output) {
-    return get_capture_buf_size_padded(st_output);
+    int32_t width_px = st_output->mode.width_px;
+    int32_t height_px = st_output->mode.height_px;
+    return _get_framebuffer_size_padded(width_px, height_px, st_output->capture.frame_ctx.pixel_stride);
 }
 
 static inline size_t

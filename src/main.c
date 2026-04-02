@@ -177,7 +177,7 @@ _arena_add_block(
 
     assert(i_block < _ARENA_BLOCKS_MAX);
 
-    const size_t block_pre_padding = get_required_padding(arena_size_old, block_alignment);
+    const size_t block_pre_padding = get_units_until_alignment(arena_size_old, block_alignment);
 
     arena_ctx->block_offsets[i_block]
         = arena_size_old + block_pre_padding;
@@ -248,7 +248,7 @@ init_meminit(
         //            padding/stride/etc.
 
         for (int i_buffer = 0; i_buffer < SURFACE_BUF_COUNT; i_buffer++) {
-            const size_t _surface_buf_size = get_surface_buf_size_padded(&_st_output->mode);
+            const size_t _surface_buf_size = get_selection_surface_buf_size_padded(_st_output);
             _arena_add_block(
                 shm_arena,
                 _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->surface.double_buffer[i_buffer].data
@@ -261,7 +261,7 @@ init_meminit(
             _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->capture.frame_ctx.st_buffer.data
         );
 
-        const size_t _capture_buf_2_size = get_capture_buf_2_size_padded(_st_output);
+        const size_t _capture_buf_2_size = get_capture_buf_size_padded(_st_output);
         _arena_add_block(
             private_arena,
             _capture_buf_2_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->capture.frame_ctx.img_data_2
