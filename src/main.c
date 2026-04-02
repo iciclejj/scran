@@ -355,6 +355,8 @@ init_meminit(
     wl_shm_pool_destroy(global_pool_wl);
     close(global_pool_shm_fd);
 
+    DEBUG("Finished meminit\n");
+
     return true;
 }
 
