@@ -49,6 +49,7 @@ handle_output_mode(
     void *data,
     struct wl_output *output,
     uint32_t flags,
+    // No transform or scale is pre-applied to these
     int32_t width,
     int32_t height,
     int32_t refresh_rate_mHz // millihertz

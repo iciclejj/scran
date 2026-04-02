@@ -63,6 +63,10 @@ init_premem__selection__destroy(struct scran_output *st_output)
 // will render, other than ensuring buffers etc. are properly set up for the
 // given output. More specialized init happens in dispatch_surface_event_loop.
 // Maybe this should be refactored to be more immediately obvious...
+//
+// TODO: We should either get a surface init file, or rename this one to
+// make it obvious that it is for both surface-specific and general
+// selection-related things.
 bool
 init_postmem__selection(struct scran_output *st_output)
 {
