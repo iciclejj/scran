@@ -22,8 +22,8 @@ handle_layer_surface_configure(
 ) {
     struct scran_output *st_output = data;
 
-    DEBUG("width_px_logical: %d\n", width_px_logical);
-    DEBUG("height_px_logical: %d\n", height_px_logical);
+    DEBUG("handle_layer_surface_configure():  width_px_logical: %d, height_px_logical: %d\n", width_px_logical, height_px_logical);
+
 
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 }
