@@ -12,7 +12,10 @@
     {
       packages."${system}" = rec {
         default = scran;
-        scran = pkgs.callPackage ./default.nix { _target = "release"; };
+        scran = release;
+
+        release = pkgs.callPackage ./default.nix { _target = "release"; };
+        debug = pkgs.callPackage ./default.nix { _target = "debug"; };
       };
       devShells."${system}" = {
         default = pkgs.callPackage ./shell.nix { };
