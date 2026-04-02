@@ -435,6 +435,7 @@ static const char help_string[] =
     "  Space                Capture video (start/stop)\n"
     "  Tab                  Release focus (stop capturing inputs)\n"
     "                         SIGUSR1 to retake focus - see Signals section.\n"
+    "  Arrow keys           Move selection by one pixel\n"
     "  Escape               Exit scran, or stop video capture if in progress\n"
     "\n"
     "Arguments\n"

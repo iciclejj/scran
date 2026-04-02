@@ -199,5 +199,13 @@ get_blboxi_inflated(struct BLBoxI box, int inflation) {
     };
 }
 
+static inline void
+shift_blboxi(BLBoxI *box, int x_shift, int y_shift) {
+    box->x0 += x_shift;
+    box->y0 += y_shift;
+    box->x1 += x_shift;
+    box->y1 += y_shift;
+}
+
 
 #endif

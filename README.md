@@ -222,6 +222,7 @@ bindsym Print          exec 'scran -Be - | satty -f -'
   Tab                  Release focus (stop capturing inputs)
                          SIGUSR1 to retake focus - see Signals section and
                          sway config examples.
+  Arrow keys           Move selection by one pixel
   Escape               Exit scran, or stop video capture if in progress
 ```
 
