@@ -104,6 +104,11 @@ handle_pointer_motion(
     case SELECTION_INITIALIZING:
         selection_ctx->bl_box.x1 = x_px;
         selection_ctx->bl_box.y1 = y_px;
+
+        // XXX: Kinda redundant since we must also clamp on finishing selection
+        clamp_to_output_width_logical(&selection_ctx->bl_box.x1, st_output);
+        clamp_to_output_height_logical(&selection_ctx->bl_box.y1, st_output);
+
         break;
     case SELECTION_COMPLETE:
         break;
@@ -246,9 +251,17 @@ handle_pointer_button(
         case SELECTION_INITIALIZING:
             selection_ctx->bl_box.x1 = x_px;
             selection_ctx->bl_box.y1 = y_px;
+
             blboxi_deinvert(&selection_ctx->bl_box);
+
+            clamp_to_output_width_logical(&selection_ctx->bl_box.x0, st_output);
+            clamp_to_output_height_logical(&selection_ctx->bl_box.y0, st_output);
+            clamp_to_output_width_logical(&selection_ctx->bl_box.x1, st_output);
+            clamp_to_output_height_logical(&selection_ctx->bl_box.y1, st_output);
+
             signal_selection_initialized(st_output);
             assert(selection_ctx->selection_state == SELECTION_COMPLETE);
+
             break;
         case SELECTION_COMPLETE:
             selection_ctx->selection_state = SELECTION_REBASING;
