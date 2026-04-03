@@ -97,7 +97,10 @@ init_premem()
     // We don't need this anymore unless we want to support live geometry updates
     zxdg_output_manager_v1_destroy(g_state.globals.xdg_output_manager);
 
-    if (g_state.globals.wlr_output_manager != NULL) {
+    // NOTE: We only use this protocol for COSMIC-specific scaling fixes, at
+    // the moment. Change to it through (and also update accordingly within
+    // wlr_output.c), if necessary.
+    if (g_state.globals.cosmic_output_manager && g_state.globals.wlr_output_manager) {
         DEBUG("Adding wlr_output_manager listener\n");
         zwlr_output_manager_v1_add_listener(g_state.globals.wlr_output_manager, &wlr_output_manager_listener, &g_state);
     }
