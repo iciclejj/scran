@@ -106,8 +106,8 @@ handle_pointer_motion(
         selection_ctx->bl_box.y1 = y_px;
 
         // XXX: Kinda redundant since we must also clamp on finishing selection
-        clamp_to_output_width_logical(&selection_ctx->bl_box.x1, st_output);
-        clamp_to_output_height_logical(&selection_ctx->bl_box.y1, st_output);
+        clam_to_transformed_output_width(&selection_ctx->bl_box.x1, st_output);
+        clamp_to_transformed_output_height(&selection_ctx->bl_box.y1, st_output);
 
         break;
     case SELECTION_COMPLETE:
@@ -162,26 +162,26 @@ handle_pointer_motion(
             case SELECTION_RESIZE_TOP_LEFT:
                 selection_ctx->bl_box.x0 = box_before_resize.x0 + x_diff_px;
                 selection_ctx->bl_box.y0 = box_before_resize.y0 + y_diff_px;
-                clamp_to_output_width_logical(&selection_ctx->bl_box.x0, st_output);
-                clamp_to_output_height_logical(&selection_ctx->bl_box.y0, st_output);
+                clam_to_transformed_output_width(&selection_ctx->bl_box.x0, st_output);
+                clamp_to_transformed_output_height(&selection_ctx->bl_box.y0, st_output);
                 break;
             case SELECTION_RESIZE_TOP_RIGHT:
                 selection_ctx->bl_box.x1 = box_before_resize.x1 + x_diff_px;
                 selection_ctx->bl_box.y0 = box_before_resize.y0 + y_diff_px;
-                clamp_to_output_width_logical(&selection_ctx->bl_box.x1, st_output);
-                clamp_to_output_height_logical(&selection_ctx->bl_box.y0, st_output);
+                clam_to_transformed_output_width(&selection_ctx->bl_box.x1, st_output);
+                clamp_to_transformed_output_height(&selection_ctx->bl_box.y0, st_output);
                 break;
             case SELECTION_RESIZE_BOTTOM_LEFT:
                 selection_ctx->bl_box.x0 = box_before_resize.x0 + x_diff_px;
                 selection_ctx->bl_box.y1 = box_before_resize.y1 + y_diff_px;
-                clamp_to_output_width_logical(&selection_ctx->bl_box.x0, st_output);
-                clamp_to_output_height_logical(&selection_ctx->bl_box.y1, st_output);
+                clam_to_transformed_output_width(&selection_ctx->bl_box.x0, st_output);
+                clamp_to_transformed_output_height(&selection_ctx->bl_box.y1, st_output);
                 break;
             case SELECTION_RESIZE_BOTTOM_RIGHT:
                 selection_ctx->bl_box.x1 = box_before_resize.x1 + x_diff_px;
                 selection_ctx->bl_box.y1 = box_before_resize.y1 + y_diff_px;
-                clamp_to_output_width_logical(&selection_ctx->bl_box.x1, st_output);
-                clamp_to_output_height_logical(&selection_ctx->bl_box.y1, st_output);
+                clam_to_transformed_output_width(&selection_ctx->bl_box.x1, st_output);
+                clamp_to_transformed_output_height(&selection_ctx->bl_box.y1, st_output);
                 break;
             }
         }
@@ -254,10 +254,10 @@ handle_pointer_button(
 
             blboxi_deinvert(&selection_ctx->bl_box);
 
-            clamp_to_output_width_logical(&selection_ctx->bl_box.x0, st_output);
-            clamp_to_output_height_logical(&selection_ctx->bl_box.y0, st_output);
-            clamp_to_output_width_logical(&selection_ctx->bl_box.x1, st_output);
-            clamp_to_output_height_logical(&selection_ctx->bl_box.y1, st_output);
+            clam_to_transformed_output_width(&selection_ctx->bl_box.x0, st_output);
+            clamp_to_transformed_output_height(&selection_ctx->bl_box.y0, st_output);
+            clam_to_transformed_output_width(&selection_ctx->bl_box.x1, st_output);
+            clamp_to_transformed_output_height(&selection_ctx->bl_box.y1, st_output);
 
             signal_selection_initialized(st_output);
             assert(selection_ctx->selection_state == SELECTION_COMPLETE);

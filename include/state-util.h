@@ -43,7 +43,7 @@ get_transformed_output_height(struct scran_output *st_output) {
 }
 
 static inline void
-clamp_to_output_width_logical(int *val, struct scran_output *st_output)
+clam_to_transformed_output_width(int *val, struct scran_output *st_output)
 {
     if (*val < 0) {
         *val = 0;
@@ -53,7 +53,7 @@ clamp_to_output_width_logical(int *val, struct scran_output *st_output)
 }
 
 static inline void
-clamp_to_output_height_logical(int *val, struct scran_output *st_output)
+clamp_to_transformed_output_height(int *val, struct scran_output *st_output)
 {
     if (*val < 0) {
         *val = 0;
@@ -142,8 +142,8 @@ global_rect_to_output_box_clamped(
     output_box->x1 = output_box->x0 + global_rect.w;
     output_box->y1 = output_box->y0 + global_rect.h;
 
-    clamp_to_output_width_logical(&output_box->x1, *containing_output);
-    clamp_to_output_height_logical(&output_box->y1, *containing_output);
+    clam_to_transformed_output_width(&output_box->x1, *containing_output);
+    clamp_to_transformed_output_height(&output_box->y1, *containing_output);
 }
 
 
