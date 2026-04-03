@@ -66,7 +66,7 @@ get_box_diffs_as_rects(struct BLBoxI a, struct BLBoxI b)
         .x = intersection.x0,
         .w = intersection.x1 - intersection.x0,
         .y = MIN(a.y0, b.y0),
-        .h = intersection.y1 - MIN(a.y0, b.y0),
+        .h = intersection.y0 - MIN(a.y0, b.y0),
     };
 
     diff.bottom_remaining = (struct BLRectI) {
