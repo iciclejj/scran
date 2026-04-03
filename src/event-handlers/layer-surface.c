@@ -24,6 +24,11 @@ handle_layer_surface_configure(
 
     DEBUG("handle_layer_surface_configure():  width_px_logical: %d, height_px_logical: %d\n", width_px_logical, height_px_logical);
 
+    st_output->surface.width_logical = width_px_logical;
+    st_output->surface.height_logical = height_px_logical;
+
+    update_selection_surface_scale_and_size(st_output);
+    update_selection_surface_viewport(st_output);
 
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 }

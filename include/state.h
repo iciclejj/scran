@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdatomic.h>
 #include <sys/uio.h>
+#include <drm/drm_mode.h>
 
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
@@ -20,6 +21,9 @@
 #include "xdg-output-unstable-v1.h"
 #include "ext-data-control-v1.h"
 #include "presentation-time.h"
+#include "fractional-scale-v1.h"
+#include "wlr-output-management-unstable-v1.h"
+#include "cosmic-output-management-unstable-v1.h"
 
 #define MAX_OUTPUTS 64
 
@@ -27,14 +31,10 @@
 #define SURFACE_BUF_COUNT A_DOUBLE_BUFFER_HAS_TWO_BUFFERS
 
 // TODO: Move these definitions elsewhere?
-#define BLCONTEXT_RGBA32_FILL_STYLE_DEFAULT          ((struct BLRgba32){ 0x880E0E0E })
-#define BLCONTEXT_RGBA32_FILL_STYLE_VIDEO_CAPTURE    ((struct BLRgba32){ 0x880E0E0E })
-
-#define BLCONTEXT_RGBA32_STROKE_STYLE_DEFAULT        ((struct BLRgba32){ 0xE0FFFFFF })
-#define BLCONTEXT_RGBA32_STROKE_STYLE_VIDEO_CAPTURE  ((struct BLRgba32){ 0xFFFF0000 })
-#define BLCONTEXT_STROKE_WIDTH (1.5)
-// Half of blend2d stroke "outline" goes inwards, half goes outwards
-#define BLCONTEXT_STROKE_RADIUS (BLCONTEXT_STROKE_WIDTH / 2)
+#define BLCONTEXT_RGBA32_BACKGROUND_DIM       ((struct BLRgba32){ 0x880E0E0E })
+#define BLCONTEXT_RGBA32_FRAME_DEFAULT        ((struct BLRgba32){ 0xE0FFFFFF })
+#define BLCONTEXT_RGBA32_FRAME_VIDEO_CAPTURE  ((struct BLRgba32){ 0xFFFF0000 })
+#define SCRAN_SELECTION_BORDER_THICKNESS_PX 1
 
 #define SCRAN_OUTPUT_FILENAME_SIZE_MAX    (NAME_MAX)                                       // Null terminator is  counted
 #define SCRAN_OUTPUT_FILENAME_STRLEN_MAX  (NAME_MAX - 1)                                   // Null terminator not counted
@@ -52,6 +52,10 @@
 
 #define SCRAN_MIME_TYPE_SIZE_MAX 256
 
+// NOTE: Output names are not actually guaranteed per spec to have this max
+// length (nor for actual name to be equal to the underlying DRM name).
+#define SCRAN_STATE_OUTPUT_NAME_SIZE DRM_CONNECTOR_NAME_LEN
+
 struct scran_globals {
     struct wl_display *display;
     struct wl_registry *registry;
@@ -65,6 +69,10 @@ struct scran_globals {
     struct ext_image_copy_capture_manager_v1 *image_copy_capture_manager;
     struct ext_data_control_manager_v1 *data_control_manager;
     struct wp_presentation *presentation;
+    struct wp_fractional_scale_manager_v1 *fractional_scale_manager;
+    struct zwlr_output_manager_v1 *wlr_output_manager;
+    struct zcosmic_output_manager_v1 *cosmic_output_manager;
+    struct wp_viewporter *viewporter;
 };
 
 struct scran_output_surface_buffer {
@@ -76,6 +84,7 @@ struct scran_output_surface_buffer {
     BLBoxI box_currently_drawn;
 
     bool busy;
+    bool force_redraw;
 };
 
 // TODO: Optimize surface/selection event-loop struct sizes
@@ -83,16 +92,38 @@ struct scran_output_surface_buffer {
 struct scran_output_surface {
     struct wl_surface *wl_surface;
 
+    // "normalized" implies:
+    //   scale == 1 => fractional_scale_factor_normalized = 1
+    //   fractional_scale_wp_10 == 120 => fractional_scale_factor_normalized = 1
+    //   fractional_scale_wp_10 == 180 => fractional_scale_factor_normalized = 1.5
+    double final_scale_factor_normalized;
+
     // TODO: Either drop this as a member or actually retain the path state
     // between redraws.
     BLPathCore bl_path;
 
     // XXX TODO: Turn this into a pointer once we remove the ugly redraw hack
-    // in set_selection_surface_theme()
+    // in set_selection_surface_theme(). TODO: Redraw hack is gone now.
     BLBoxI box_last_drawn;
     struct scran_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
 
+    // Surface-local coordinates
+    int32_t width_logical;
+    int32_t height_logical;
+    // Should usually be equivalent to output_mode +/- 1, if fractional scaling
+    // is used. Otherwise, simply equivalent to output_mode.
+    //
+    // The surface's buffer should round these dimensions halfway away from zero
+    // (e.g. math.h round()) to get the correct buffer size.
+    //   See wp_viewport and wp_fractional_scale xmls for more information
+    int32_t width_px_buffer;
+    int32_t height_px_buffer;
+
+    int32_t fractional_scale_wp_120; // wp_fractional_scale
+
     struct zwlr_layer_surface_v1 *layer_surface;
+    struct wp_fractional_scale_v1 *fractional_scale;
+    struct wp_viewport *viewport;
 };
 
 struct scran_seat_pointerContext {
@@ -186,6 +217,12 @@ struct scran_output_selectionContext {
     //      now that all of state should have been standardized to pixel
     //      integer values (same for other boxes, resize_origin_pointer, etc.)
     // NOTE: This is allowed to be inverted during resizing.
+    //
+    // This is in capture_area coordinate-space (i.e. physical pixels).
+    //   TODO: Rename to make this clear
+    //   TODO: Also maybe double-check that this is enforced everywhere
+    //           I.e. properly clamped to physical pixels, not extending into
+    //           the viewport source buffer's potential +1 extra pixel
     struct BLBoxI bl_box;
     // TODO: This doesn't really need to be a state variable. Make a macro or
     // something to calculate it inline to match output width/height and x=y=0.
@@ -291,12 +328,20 @@ struct scran_output {
     struct scran_output_xdg_geometry xdg_geometry;
     enum wl_output_transform transform;
 
+    // NOTE: Must be initialized to 1, since this is our fallback if no
+    // fractional scale is present
+    uint32_t scale;
+    int32_t fractional_scale_cosmic_1000;   // zcosmic_output_head
+    wl_fixed_t fractional_scale_wlr;        // zwlr_output_head
+
     struct scran_output_surface surface;
     struct scran_output_selectionContext selection_ctx;
     struct scran_output_capture capture;
 
     // Only really needed during init and destruction:
     struct zxdg_output_v1 *xdg_output;
+
+    char name[SCRAN_STATE_OUTPUT_NAME_SIZE]; // output::name
 };
 
 // TODO: Isolate this from scran state?

@@ -8,6 +8,10 @@
 #include "ext-data-control-v1.h"
 #include "xdg-output-unstable-v1.h"
 #include "presentation-time.h"
+#include "fractional-scale-v1.h"
+#include "wlr-output-management-unstable-v1.h"
+#include "cosmic-output-management-unstable-v1.h"
+#include "viewporter.h"
 
 #include "state.h"
 #include "event-handlers.h"
@@ -61,9 +65,8 @@ registry_handle_global(
 
         struct scran_output *curr_output = &state->outputs[state->n_outputs];
 
-        // For future reference: v2 => ::done, v4 => ::name & ::description.
-        //     (Not exhaustive)
-        curr_output->wl_output = wl_registry_bind(registry, name, &wl_output_interface, 1);
+        // v4 => ::name, ::description.
+        curr_output->wl_output = wl_registry_bind(registry, name, &wl_output_interface, 4);
         wl_output_add_listener(curr_output->wl_output, &output_listener, curr_output);
 
         ++state->n_outputs;
@@ -77,6 +80,14 @@ registry_handle_global(
         globals->data_control_manager = wl_registry_bind(registry, name, &ext_data_control_manager_v1_interface, 1);
     } else if (_INTERFACE_IS(wp_presentation_interface)) {
         globals->presentation = wl_registry_bind(registry, name, &wp_presentation_interface, 1);
+    } else if (_INTERFACE_IS(wp_fractional_scale_manager_v1_interface)) {
+        globals->fractional_scale_manager = wl_registry_bind(registry, name, &wp_fractional_scale_manager_v1_interface, 1);
+    } else if (_INTERFACE_IS(zwlr_output_manager_v1_interface)) {
+        globals->wlr_output_manager = wl_registry_bind(registry, name, &zwlr_output_manager_v1_interface, 1);
+    } else if (_INTERFACE_IS(zcosmic_output_manager_v1_interface)) {
+        globals->cosmic_output_manager = wl_registry_bind(registry, name, &zcosmic_output_manager_v1_interface, 1);
+    } else if (_INTERFACE_IS(wp_viewporter_interface)) {
+        globals->viewporter = wl_registry_bind(registry, name, &wp_viewporter_interface, 1);
     }
 
     #undef _INTERFACE_IS

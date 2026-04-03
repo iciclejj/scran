@@ -64,14 +64,36 @@ handle_pointer_leave(
 }
 
 
+// We use this mainly to set our capture-area-deciding selection box, and not
+// our border-render-deciding box (which lives in our viewport "source buffer",
+// and we define based on the capture area), but this function is named like
+// this because getting translating to the source buffer coordinates is what
+// we are in effect doing (since the source buffer should be +/- 1 pixel
+// difference to capture area dimensions, which is the range we're mapping
+// when scaling/rounding like we have to do here.
+static inline int
+_selection_surface_pixel_to_source_buffer_pixel(
+    struct scran_output_surface *st_surface,
+    wl_fixed_t surface_pixel_fixed
+) {
+    double surface_pixel_double = wl_fixed_to_double(surface_pixel_fixed);
+    double scale = st_surface->final_scale_factor_normalized;
+    int output_pixel = round(surface_pixel_double * scale);
+
+    return output_pixel;
+}
+
+
 // TODO: Benchmark with/without early exit on unchanged cursor position.
 static void
 handle_pointer_motion(
     void *data,
     struct wl_pointer *pointer,
     uint32_t time,
-    wl_fixed_t x,
-    wl_fixed_t y
+    // surface-local coordinates, i.e. must be multiplied by scale factor to
+    // convert to viewport source coordinates
+    wl_fixed_t x_surface,
+    wl_fixed_t y_surface
 ) {
     struct scran *state = data;
 
@@ -84,9 +106,9 @@ handle_pointer_motion(
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
-    // TODO: Document this conversion and/or make appropriately named wrapper
-    const int x_px = wl_fixed_to_int(x);
-    const int y_px = wl_fixed_to_int(y);
+
+    const int x_px = _selection_surface_pixel_to_source_buffer_pixel(st_surface, x_surface);
+    const int y_px = _selection_surface_pixel_to_source_buffer_pixel(st_surface, y_surface);
 
     pointer_ctx->x_px = x_px;
     pointer_ctx->y_px = y_px;

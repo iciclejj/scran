@@ -1,6 +1,8 @@
 #ifndef INIT_H
 #define INIT_H
 
+#include <assert.h>
+
 #include <wayland-client.h>
 
 #include "state.h"
@@ -47,8 +49,22 @@ _get_framebuffer_size_padded(int32_t width_px, int32_t height_px, uint8_t pixel_
 
 static inline size_t
 get_selection_surface_buf_size_padded(struct scran_output *st_output) {
-    int32_t width_px = st_output->mode.width_px;
-    int32_t height_px = st_output->mode.height_px;
+    int32_t width_px = st_output->surface.width_px_buffer;
+    int32_t height_px = st_output->surface.height_px_buffer;
+
+    // XXX HACK(kinda): These asserts should theoretically hold if our scaling
+    // fetching/guesesing is woring as intended. If so, ensuring that we will
+    // always allocate a buffer of at least the largest possibly-required size,
+    // we will ensure that live scale updates will always be handled smoothly,
+    // and never require us to allocate a new, larger buffer.
+    //     TODO: Possibly remove this if we will ever support live output-mode
+    //     updates, although this would still maybe be worth keeping as a
+    //     prophylactic measure.
+    assert(st_output->mode.width_px - 1  <= width_px  && width_px  <= st_output->mode.width_px + 1);
+    assert(st_output->mode.height_px - 1 <= height_px && height_px <= st_output->mode.height_px + 1);
+    width_px += 2;
+    height_px += 2;
+
     return _get_framebuffer_size_padded(width_px, height_px, SURFACE_PIXEL_STRIDE);
 }
 

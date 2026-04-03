@@ -23,6 +23,7 @@
 #include "print.h"
 #include "options.h"
 #include "signal-handlers.h"
+#include "wlr-output-management-unstable-v1.h"
 #include "xdg-output-unstable-v1.h"
 
 //  General TODO:
@@ -96,9 +97,18 @@ init_premem()
     // We don't need this anymore unless we want to support live geometry updates
     zxdg_output_manager_v1_destroy(g_state.globals.xdg_output_manager);
 
+    if (g_state.globals.wlr_output_manager != NULL) {
+        DEBUG("Adding wlr_output_manager listener\n");
+        zwlr_output_manager_v1_add_listener(g_state.globals.wlr_output_manager, &wlr_output_manager_listener, &g_state);
+    }
+
     g_state.empty_wl_region = wl_compositor_create_region(g_state.globals.compositor);
 
     // Then roundtrip to collect listener-provided memory requirements into our state struct.
+    wl_display_roundtrip(g_state.globals.display);
+
+    // Then roundtrip again for our collected wlr_output_head instances
+    // (from wlr_output_manager::head)...
     // This should be our last required roundtrip until the main event loop dispatch.
     wl_display_roundtrip(g_state.globals.display);
 
@@ -320,9 +330,9 @@ init_meminit(
             _st_buffer->wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
                 _surface_buffer_offset,
-                get_transformed_output_width(_st_output),
-                get_transformed_output_height(_st_output),
-                get_surface_stride(&_st_output->mode),
+                _st_output->surface.width_px_buffer,
+                _st_output->surface.height_px_buffer,
+                _st_output->surface.width_px_buffer * SURFACE_PIXEL_STRIDE,
                 SURFACE_SHM_FORMAT
             );
 

@@ -1,6 +1,7 @@
 #include <wayland-client.h>
 
 #include "state.h"
+#include "state-util.h"
 #include "event-handlers.h"
 #include "print.h"
 
@@ -32,18 +33,17 @@ handle_output_scale(
     struct wl_output *wl_output,
     int32_t factor
 ) {
-    // TODO
+    struct scran_output *st_output = data;
+
+    st_output->scale = factor;
+
+    DEBUG("handle_output_scale(): %u\n", st_output->scale);
+
+    update_selection_surface_scale_and_size(st_output);
+    update_selection_surface_viewport(st_output);
 }
 
 
-// TODO:
-//     Figure out some simple but robust set of asserts or conditions that
-//     ensures [ output_mode(/xdg), capture_source, layer_shell/surface,
-//     anything_else? ] all have properly synced height/width(/other?)
-//      OR some system that treats f.ex. xdg_output as the ground truth somehow.
-//     NOTE: f.ex. output::mode and capture_session::buffer_size args seem to
-//           ignore applied transforms. Certain others are pre-transformed.
-//
 static void
 handle_output_mode(
     void *data,
@@ -84,7 +84,18 @@ handle_output_name(
     struct wl_output *wl_output,
     const char *name
 ) {
-    // TODO
+    struct scran_output *st_output = data;
+
+    DEBUG("handle_output_name()\n");
+
+    // Store the name so we can match it later with a zwlr_output_head
+    //     See 'event-handlers/wlr_output.c'.
+    size_t name_strlen = strlcpy(st_output->name, name, sizeof(st_output->name));
+
+    if (name_strlen >= sizeof(st_output->name)) {
+        eprintf("Error: wl_output name too long (max %zu): %s\n", sizeof(st_output->name), name);
+        exit(EXIT_FAILURE); // XXX TODO: Fail more graciously here?
+    }
 }
 
 static void

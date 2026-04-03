@@ -59,17 +59,22 @@ validate_dependencies:
 WAYLAND_SCANNER   := $(shell $(PKG_CONFIG) --variable=wayland_scanner wayland-scanner)
 WL_PROTOCOLS_DIR  := $(shell $(PKG_CONFIG) --variable=pkgdatadir wayland-protocols)
 WLR_PROTOCOLS_DIR := wayland-protocol-extensions/wlr-protocols
+COSMIC_PROTOCOLS_DIR := wayland-protocol-extensions/cosmic-protocols
 wl_protocols_required_xml_paths := \
 	$(WLR_PROTOCOLS_DIR)/unstable/wlr-layer-shell-unstable-v1.xml \
+	$(WLR_PROTOCOLS_DIR)/unstable/wlr-output-management-unstable-v1.xml \
+	$(COSMIC_PROTOCOLS_DIR)/unstable/cosmic-output-management-unstable-v1.xml \
 	$(WL_PROTOCOLS_DIR)/stable/xdg-shell/xdg-shell.xml \
 	$(WL_PROTOCOLS_DIR)/stable/tablet/tablet-v2.xml \
 	$(WL_PROTOCOLS_DIR)/stable/presentation-time/presentation-time.xml \
+	$(WL_PROTOCOLS_DIR)/stable/viewporter/viewporter.xml \
 	$(WL_PROTOCOLS_DIR)/unstable/xdg-output/xdg-output-unstable-v1.xml \
 	$(WL_PROTOCOLS_DIR)/staging/cursor-shape/cursor-shape-v1.xml \
 	$(WL_PROTOCOLS_DIR)/staging/ext-image-capture-source/ext-image-capture-source-v1.xml \
 	$(WL_PROTOCOLS_DIR)/staging/ext-image-copy-capture/ext-image-copy-capture-v1.xml \
 	$(WL_PROTOCOLS_DIR)/staging/ext-foreign-toplevel-list/ext-foreign-toplevel-list-v1.xml \
-	$(WL_PROTOCOLS_DIR)/staging/ext-data-control/ext-data-control-v1.xml
+	$(WL_PROTOCOLS_DIR)/staging/ext-data-control/ext-data-control-v1.xml \
+	$(WL_PROTOCOLS_DIR)/staging/fractional-scale/fractional-scale-v1.xml
 
 # $(1): Wayland protocol .xml path
 # $(2): Output file extension

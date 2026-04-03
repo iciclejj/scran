@@ -14,52 +14,26 @@ set_selection_surface_theme(
     struct scran_output *st_output,
     enum surface_theme action
 ) {
-    struct BLRgba32 stroke_style;
-    static const double stroke_width = BLCONTEXT_STROKE_WIDTH;
-
     struct BLRgba32 fill_style;
     static const enum BLFillRule fill_rule = BL_FILL_RULE_EVEN_ODD;
 
     switch (action) {
     case SURFACE_THEME_DEFAULT:
-        stroke_style = BLCONTEXT_RGBA32_STROKE_STYLE_DEFAULT;
-        fill_style = BLCONTEXT_RGBA32_FILL_STYLE_DEFAULT;
+        fill_style = BLCONTEXT_RGBA32_FRAME_DEFAULT;
         break;
     case SURFACE_THEME_VIDEO_CAPTURE:
-        stroke_style = BLCONTEXT_RGBA32_STROKE_STYLE_VIDEO_CAPTURE;
-        fill_style = BLCONTEXT_RGBA32_FILL_STYLE_VIDEO_CAPTURE;
+        fill_style = BLCONTEXT_RGBA32_FRAME_VIDEO_CAPTURE;
         break;
     }
 
-    struct scran_output_surface *st_surface = &st_output->surface;
-
-    // XXX HACK: This forces a no-overlap diff inside of capture::frame when
-    //           using diffs to determine damage regions.
-    //               TODO: Probably implement a force_redraw flag or similar,
-    //               somewhere that capture::frame can easily read it.
-    //               (At least once we implement more complicated scenes that
-    //               might change the dirty-rect dynamics that we take
-    //               advantage of here.)
-    //
-    // NOTE: IF REMOVING: Make sure this (or similar) is also in the init code,
-    // as the initial selection's dirty rec calculations may depend on this.
-    struct BLBoxI box_for_forcing_redraw_on_diff_damage = st_output->selection_ctx.bl_box_bounds;
-
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
-        struct scran_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
-
-        bl_context_set_stroke_style_rgba32(&st_buffer->bl_ctx, stroke_style.value);
-        bl_context_set_stroke_width(&st_buffer->bl_ctx, stroke_width);
+        struct scran_output_surface_buffer *st_buffer = &st_output->surface.double_buffer[i];
 
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, fill_style.value);
         bl_context_set_fill_rule(&st_buffer->bl_ctx, fill_rule);
 
-        // HACK: Read above
-        st_buffer->box_currently_drawn = box_for_forcing_redraw_on_diff_damage;
+        st_buffer->force_redraw = true;
     }
-
-    // HACK: Read above
-    st_surface->box_last_drawn = box_for_forcing_redraw_on_diff_damage;
 }
 
 
