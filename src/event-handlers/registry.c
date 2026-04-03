@@ -83,7 +83,8 @@ registry_handle_global(
     } else if (_INTERFACE_IS(wp_fractional_scale_manager_v1_interface)) {
         globals->fractional_scale_manager = wl_registry_bind(registry, name, &wp_fractional_scale_manager_v1_interface, 1);
     } else if (_INTERFACE_IS(zwlr_output_manager_v1_interface)) {
-        globals->wlr_output_manager = wl_registry_bind(registry, name, &zwlr_output_manager_v1_interface, 1);
+        // v3 => head::release
+        globals->wlr_output_manager = wl_registry_bind(registry, name, &zwlr_output_manager_v1_interface, 3);
     } else if (_INTERFACE_IS(zcosmic_output_manager_v1_interface)) {
         globals->cosmic_output_manager = wl_registry_bind(registry, name, &zcosmic_output_manager_v1_interface, 1);
     } else if (_INTERFACE_IS(wp_viewporter_interface)) {
