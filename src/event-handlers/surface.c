@@ -83,6 +83,22 @@ surface_frame_callback_handler(
     st_buffer->busy = true;
 
 
+    // XXX HACK: Temporary (hopefully) workaround for regression introduced when
+    // trying to fix cosmic sync by assigning on presentation_feedback::presented.
+    // Should be removed once the syncing logic is more robust, but will not be
+    // easy.
+    if (g_state.globals.cosmic_output_manager == NULL) {
+        // XXX TODO: Check whether we're actually sway more robustly, and assign
+        // it as part of our state. (So we don't need to assume the user is
+        // running either cosmic or sway.)
+        st_output->capture.frame_ctx.capture_area_px = get_reverse_transform(
+            st_output->selection_ctx.bl_box,
+            st_output->mode.width_px,
+            st_output->mode.height_px,
+            st_output->transform
+        );
+    }
+
     draw_frame_and_damage_buffer(
         &st_output->surface,
         st_buffer,
