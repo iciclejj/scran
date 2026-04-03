@@ -5,6 +5,7 @@
 
 #include <wayland-client.h>
 
+#include "state-util.h"
 #include "state.h"
 #include "scranrot.h"
 
@@ -60,8 +61,8 @@ get_selection_surface_buf_size_padded(struct scran_output *st_output) {
     //     TODO: Possibly remove this if we will ever support live output-mode
     //     updates, although this would still maybe be worth keeping as a
     //     prophylactic measure.
-    assert(st_output->mode.width_px - 1  <= width_px  && width_px  <= st_output->mode.width_px + 1);
-    assert(st_output->mode.height_px - 1 <= height_px && height_px <= st_output->mode.height_px + 1);
+    assert(get_transformed_output_width(st_output) - 1 <= width_px && width_px  <= get_transformed_output_width(st_output) + 1);
+    assert(get_transformed_output_height(st_output) - 1 <= height_px && height_px  <= get_transformed_output_height(st_output) + 1);
     width_px += 2;
     height_px += 2;
 
