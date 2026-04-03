@@ -146,7 +146,6 @@ void handle_wlr_output_manager_head(
     if (state->globals.cosmic_output_manager == NULL) {
         DEBUG("cosmic_output_manager protocol not found; won't use"
               " wlr_output_manager or zcosmic_output_manager for scaling.\n");
-        zwlr_output_head_v1_release(head);
         return;
     }
 
@@ -158,7 +157,6 @@ void handle_wlr_output_manager_head(
     if (_n_pending_heads >= MAX_OUTPUTS) {
         eprintf("WARNING: Ran out of space for 'wlr_output_head's. Will use"
                 " fallback values for scaling the remaining outputs.\n");
-        zwlr_output_head_v1_release(head);
         return;
     }
 
