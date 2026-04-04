@@ -137,8 +137,10 @@ handle_pointer_motion(
 
         break;
     case SELECTION_COMPLETE:
+    case SELECTION_COMPLETE_FREEZE_SIZE:
         break;
     case SELECTION_REBASING:
+    case SELECTION_REBASING_FREEZE_SIZE:
         {
             int x_diff = x_px - selection_ctx->pointer_before_changes_x_px;
             int y_diff = y_px - selection_ctx->pointer_before_changes_y_px;
@@ -294,13 +296,18 @@ handle_pointer_button(
 
             break;
         case SELECTION_COMPLETE:
-            selection_ctx->selection_state = SELECTION_REBASING;
+        case SELECTION_COMPLETE_FREEZE_SIZE:
+            selection_ctx->selection_state = selection_ctx->selection_state == SELECTION_COMPLETE
+                                             ? SELECTION_REBASING : SELECTION_REBASING_FREEZE_SIZE;
             selection_ctx->pointer_before_changes_x_px = x_px;
             selection_ctx->pointer_before_changes_y_px = y_px;
             selection_ctx->box_before_changes_px = selection_ctx->box_px;
             break;
         case SELECTION_REBASING:
             selection_ctx->selection_state = SELECTION_COMPLETE;
+            break;
+        case SELECTION_REBASING_FREEZE_SIZE:
+            selection_ctx->selection_state = SELECTION_COMPLETE_FREEZE_SIZE;
             break;
         case SELECTION_RESIZING:
             break;

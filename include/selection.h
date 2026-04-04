@@ -19,6 +19,8 @@ enum surface_theme {
 void set_selection_surface_theme(struct scran_output *st_output, enum surface_theme action);
 
 void set_selection_initialized(struct scran_output *st_output);
+bool set_selection_freeze_size(struct scran_output *st_output);
+ void unset_selection_freeze_size(struct scran_output *st_output);
 
 void start_grabbing_focus();
 void stop_grabbing_focus();

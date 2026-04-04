@@ -176,8 +176,10 @@ handle_keyboard_key(
             st_output->capture.frame_ctx.capturing_video = false;
             ext_image_copy_capture_frame_v1_capture(st_output->capture.frame_ctx.frame);
         } else {
-            // TODO: Need to ensure capture is fully properly finished
-            //       before we allow new dispatch_capture_event_loop()
+            if (st_output->selection_ctx.selection_state == SELECTION_INITIALIZING) {
+                set_selection_initialized(st_output);
+            }
+
             if (!start_video_capture(st_output)) {
                 eprintf("Failed to start video capture.\n");
             }

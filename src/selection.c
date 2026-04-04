@@ -40,9 +40,12 @@ set_selection_surface_theme(
 }
 
 
+// TODO: Rename to set_selection_state_complete
 void
 set_selection_initialized(struct scran_output *st_output)
 {
+    assert(st_output->selection_ctx.selection_state == SELECTION_INITIALIZING);
+
     // TODO: Not sure if we should deinvert in here or let the caller decide
 
     st_output->selection_ctx.selection_state = SELECTION_COMPLETE;
@@ -68,6 +71,34 @@ set_selection_initialized(struct scran_output *st_output)
     }
 }
 
+void
+unset_selection_freeze_size(struct scran_output *st_output)
+{
+    enum selection_state *selection_state = &st_output->selection_ctx.selection_state;
+
+    switch(*selection_state) {
+        case SELECTION_COMPLETE_FREEZE_SIZE: *selection_state = SELECTION_COMPLETE; break;
+        case SELECTION_REBASING_FREEZE_SIZE: *selection_state = SELECTION_REBASING; break;
+        default:
+            assert("UNEXPECTED: unset_selection_freeze() called without frozen selection state");
+            break;
+    }
+}
+
+bool
+set_selection_freeze_size(struct scran_output *st_output)
+{
+    enum selection_state *selection_state = &st_output->selection_ctx.selection_state;
+    switch(*selection_state) {
+        case SELECTION_REBASING: *selection_state = SELECTION_REBASING_FREEZE_SIZE; break;
+        case SELECTION_COMPLETE: *selection_state = SELECTION_COMPLETE_FREEZE_SIZE; break;
+        default:
+            eprintf("Can't freeze selection size in current selection state. (SELECTION_STATE=%d)\n", *selection_state);
+            return false;
+    }
+
+    return true;
+}
 
 void
 start_grabbing_focus()

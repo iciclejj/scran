@@ -332,13 +332,17 @@ start_video_capture(struct scran_output *st_output)
         return false;
     }
 
-    // XXX: - Needs better asssert? Intent: make sure selection is complete and valid
-    assert( st_output->selection_ctx.selection_state == SELECTION_COMPLETE
-         || st_output->selection_ctx.selection_state == SELECTION_REBASING
-         && st_output->selection_ctx.box_px.x1
-         && st_output->selection_ctx.box_px.y1
-         // TODO: Assert box is within output dimensions
-         // TODO: Assert box is not inverted
+    if (!set_selection_freeze_size(st_output)) {
+        eprintf("Can't start video capture without frozen selection size.\n");
+        return false;
+    }
+
+    assert(( st_output->selection_ctx.selection_state == SELECTION_COMPLETE_FREEZE_SIZE
+             || st_output->selection_ctx.selection_state == SELECTION_REBASING_FREEZE_SIZE)
+           && st_output->selection_ctx.box_px.x1
+           && st_output->selection_ctx.box_px.y1
+           // TODO: Assert box is within output dimensions
+           // TODO: Assert box is not inverted
     );
 
     if (!init_ffmpeg(st_output)) {

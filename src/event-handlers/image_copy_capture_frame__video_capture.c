@@ -245,6 +245,7 @@ end_capture_err:
     struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
     struct scran_output *const st_output = wl_container_of(st_capture, st_output, capture);
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+    unset_selection_freeze_size(st_output);
 
     DEBUG("FINISHED RECORDING.\n");
     return;
