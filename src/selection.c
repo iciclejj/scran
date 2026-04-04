@@ -41,7 +41,7 @@ set_selection_surface_theme(
 
 
 void
-signal_selection_initialized(struct scran_output *st_output)
+set_selection_initialized(struct scran_output *st_output)
 {
     // TODO: Not sure if we should deinvert in here or let the caller decide
 

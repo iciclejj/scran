@@ -405,7 +405,7 @@ init_postmem()
 
         custom_selection_output->selection_ctx.box_px = blrecti_to_blboxi(custom_selection);
 
-        signal_selection_initialized(custom_selection_output);
+        set_selection_initialized(custom_selection_output);
     }
 
     for (int i = 0; i < g_state.n_outputs; ++i) {

@@ -289,7 +289,7 @@ handle_pointer_button(
             clamp_to_transformed_output_width(&selection_ctx->box_px.x1, st_output);
             clamp_to_transformed_output_height(&selection_ctx->box_px.y1, st_output);
 
-            signal_selection_initialized(st_output);
+            set_selection_initialized(st_output);
             assert(selection_ctx->selection_state == SELECTION_COMPLETE);
 
             break;
