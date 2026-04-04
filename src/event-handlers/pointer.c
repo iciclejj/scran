@@ -249,7 +249,9 @@ handle_pointer_button(
     if (!allowed_key_state) {
         return;
     }
-
+    // Toggle button
+    bool should_reset_button = pointer_ctx->use_presses_only || pointer_ctx->active_button != SCRAN_BTN_NONE;
+    pointer_ctx->active_button =  should_reset_button ? SCRAN_BTN_NONE : button;
 
     struct scran_output *st_output = wl_container_of(st_surface, st_output, surface);
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
@@ -348,10 +350,6 @@ handle_pointer_button(
         }
         break;
     }
-
-    // Toggle button
-    bool should_reset_button = pointer_ctx->use_presses_only || pointer_ctx->active_button != SCRAN_BTN_NONE;
-    pointer_ctx->active_button =  should_reset_button ? SCRAN_BTN_NONE : button;
 }
 
 
