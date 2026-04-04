@@ -353,7 +353,8 @@ handle_pointer_button(
     }
 
     // Toggle button
-    pointer_ctx->active_button = pointer_ctx->active_button ? SCRAN_BTN_NONE : button;
+    bool should_reset_button = pointer_ctx->use_presses_only || pointer_ctx->active_button != SCRAN_BTN_NONE;
+    pointer_ctx->active_button =  should_reset_button ? SCRAN_BTN_NONE : button;
 }
 
 
