@@ -15,6 +15,9 @@
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 
+#include "wlr-output-management-unstable-v1.h"
+#include "xdg-output-unstable-v1.h"
+
 #include "selection.h"
 #include "state.h"
 #include "state-util.h"
@@ -23,8 +26,7 @@
 #include "print.h"
 #include "options.h"
 #include "signal-handlers.h"
-#include "wlr-output-management-unstable-v1.h"
-#include "xdg-output-unstable-v1.h"
+#include "util/blend2d.h"
 
 //  General TODO:
 //  - Don't use libwayland..? Handle its allocations etc. ourselves?
@@ -387,10 +389,10 @@ init_postmem()
     }
 
     if (g_state.options.have_custom_initial_selection) {
-        struct BLBoxI        custom_selection;
+        struct BLRectI      custom_selection;
         struct scran_output *custom_selection_output = NULL;
 
-        global_rect_to_output_box_clamped(
+        global_logical_coordinates_to_output_pixel_coordinates(
             g_state.options.custom_initial_selection_global_coordinates,
             &custom_selection,
             &custom_selection_output
@@ -401,7 +403,7 @@ init_postmem()
             return false;
         }
 
-        custom_selection_output->selection_ctx.box_px = custom_selection;
+        custom_selection_output->selection_ctx.box_px = blrecti_to_blboxi(custom_selection);
 
         signal_selection_initialized(custom_selection_output);
     }

@@ -100,13 +100,10 @@ get_output_array_index(const struct scran_output *st_output) {
 }
 
 
-// containing_output is set to NULL if no outputs contain the coordinates.
 static inline void
-_global_coordinates_to_output_coordinates(
-    int x_in,
-    int y_in,
-    int *x_out,
-    int *y_out,
+global_logical_coordinates_to_output_pixel_coordinates(
+    struct BLRectI rect_in,
+    struct BLRectI *rect_out,
     struct scran_output **containing_output
 ) {
     *containing_output = NULL;
@@ -114,41 +111,35 @@ _global_coordinates_to_output_coordinates(
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output_xdg_geometry *geometry = &g_state.outputs[i].xdg_geometry;
 
-        bool y_within_bounds = y_in >= geometry->y_px
-                            && y_in  < geometry->y_px + geometry->height_px;
+        bool y_within_bounds = rect_in.y >= geometry->y_px
+                            && rect_in.y  < geometry->y_px + geometry->height_px;
 
-        bool x_within_bounds = x_in >= geometry->x_px
-                            && x_in  < geometry->x_px + geometry->width_px;
+        bool x_within_bounds = rect_in.x >= geometry->x_px
+                            && rect_in.x < geometry->x_px + geometry->width_px;
 
         if (y_within_bounds && x_within_bounds) {
             *containing_output = &g_state.outputs[i];
-            *x_out = x_in - geometry->x_px;
-            *y_out = y_in - geometry->y_px;
+
+            double scale = (*containing_output)->surface.final_scale_factor_normalized;
+
+            rect_out->x = round(scale * (rect_in.x - geometry->x_px));
+            rect_out->y = round(scale * (rect_in.y - geometry->y_px));
+            rect_out->w = round(scale * (rect_in.w));
+            rect_out->h = round(scale * (rect_in.h));
+
+            clamp_to_transformed_output_width(&rect_out->w, *containing_output);
+            clamp_to_transformed_output_height(&rect_out->h, *containing_output);
+
+            // TODO: Snap onto max width/height if 1 off, to ensure all edges
+            // are reachable?
+
             return;
         }
     }
-}
-
-static inline void
-global_rect_to_output_box_clamped(
-    struct BLRectI global_rect,
-    struct BLBoxI *output_box,
-    struct scran_output **containing_output
-) {
-    _global_coordinates_to_output_coordinates(
-        global_rect.x,   global_rect.y,
-        &output_box->x0, &output_box->y0, containing_output
-    );
 
     if (*containing_output == NULL) {
         return;
     }
-
-    output_box->x1 = output_box->x0 + global_rect.w;
-    output_box->y1 = output_box->y0 + global_rect.h;
-
-    clamp_to_transformed_output_width(&output_box->x1, *containing_output);
-    clamp_to_transformed_output_height(&output_box->y1, *containing_output);
 }
 
 
