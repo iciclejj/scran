@@ -70,9 +70,9 @@ surface_frame_callback_handler(
 
     // TODO: Also assert it's clamped?
     //
-    // TODO: Turn selection_ctx.bl_box into the definitive capture area, and rename it
+    // TODO: Turn selection_ctx.box into the definitive capture area, and rename it
     // accordingly, even in the state structs.
-    const struct BLBoxI capture_area = get_blboxi_deinverted(st_output->selection_ctx.bl_box);
+    const struct BLBoxI capture_area = get_blboxi_deinverted(st_output->selection_ctx.box);
     const struct BLBoxI capture_area_previous_surface_commit = st_output->surface.box_last_drawn;
 
     if (!st_buffer->force_redraw && _boxes_are_equal(capture_area, capture_area_previous_surface_commit)) {
@@ -92,7 +92,7 @@ surface_frame_callback_handler(
         // it as part of our state. (So we don't need to assume the user is
         // running either cosmic or sway.)
         st_output->capture.frame_ctx.capture_area_px = get_reverse_transform(
-            st_output->selection_ctx.bl_box,
+            st_output->selection_ctx.box,
             st_output->mode.width_px,
             st_output->mode.height_px,
             st_output->transform
@@ -103,7 +103,7 @@ surface_frame_callback_handler(
         &st_output->surface,
         st_buffer,
         capture_area,
-        st_output->selection_ctx.bl_box_bounds
+        st_output->selection_ctx.box_bounds
     );
     st_output->surface.box_last_drawn = capture_area;
     st_buffer->box_currently_drawn = capture_area;

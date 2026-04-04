@@ -216,15 +216,15 @@ struct scran_output_selectionContext {
     //   TODO: Also maybe double-check that this is enforced everywhere
     //           I.e. properly clamped to physical pixels, not extending into
     //           the viewport source buffer's potential +1 extra pixel
-    struct BLBoxI bl_box;
+    struct BLBoxI box;
     // TODO: This doesn't really need to be a state variable. Make a macro or
     // something to calculate it inline to match output width/height and x=y=0.
-    struct BLBoxI bl_box_bounds;
+    struct BLBoxI box_bounds;
 
     enum selection_state selection_state;
 
     // TODO: Clearer name? This should be used to store the pre-resize/rebase box
-    struct BLBoxI bl_box_before_changes;
+    struct BLBoxI box_before_changes;
     enum selection_resize_direction selection_resize_direction;
     int pointer_before_changes_x_px;
     int pointer_before_changes_y_px;

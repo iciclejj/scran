@@ -123,7 +123,7 @@ init_postmem__selection(struct scran_output *st_output)
 
     bl_path_init(&st_surface->bl_path);
 
-    selection_ctx->bl_box_bounds = (struct BLBoxI) {
+    selection_ctx->box_bounds = (struct BLBoxI) {
         .x0 = 0,
         .y0 = 0,
         // Capture area bounds.
@@ -133,7 +133,7 @@ init_postmem__selection(struct scran_output *st_output)
 
     // XXX: Get the outline out of view...
     //      A more elegant solution can come when necessary
-    selection_ctx->bl_box = (struct BLBoxI) {
+    selection_ctx->box = (struct BLBoxI) {
         .x0 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
         .y0 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
         .x1 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
@@ -168,8 +168,8 @@ dispatch_selection_surface_event_loop(struct scran_output *st_output)
     // We need to already draw the frames here if we want the UI to be displayed
     // already on the first frame
     //     TODO: Verify the dynamics of this again
-    draw_frame_and_damage_buffer(&st_output->surface, &st_output->surface.double_buffer[0], st_output->selection_ctx.bl_box, st_output->selection_ctx.bl_box_bounds);
-    draw_frame_and_damage_buffer(&st_output->surface, &st_output->surface.double_buffer[1], st_output->selection_ctx.bl_box, st_output->selection_ctx.bl_box_bounds);
+    draw_frame_and_damage_buffer(&st_output->surface, &st_output->surface.double_buffer[0], st_output->selection_ctx.box, st_output->selection_ctx.box_bounds);
+    draw_frame_and_damage_buffer(&st_output->surface, &st_output->surface.double_buffer[1], st_output->selection_ctx.box, st_output->selection_ctx.box_bounds);
 
     // XXX: At the moment, this function is only used at the start of the
     // program. Handle busy buffers later if/when it will be necessary.

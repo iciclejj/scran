@@ -335,8 +335,8 @@ start_video_capture(struct scran_output *st_output)
     // XXX: - Needs better asssert? Intent: make sure selection is complete and valid
     assert( st_output->selection_ctx.selection_state == SELECTION_COMPLETE
          || st_output->selection_ctx.selection_state == SELECTION_REBASING
-         && st_output->selection_ctx.bl_box.x1
-         && st_output->selection_ctx.bl_box.y1
+         && st_output->selection_ctx.box.x1
+         && st_output->selection_ctx.box.y1
     );
 
     if (!init_ffmpeg(st_output)) {
@@ -384,7 +384,7 @@ static inline void
 _print_slurp_string(struct scran_output *st_output)
 {
     const struct scran_output_xdg_geometry geometry = st_output->xdg_geometry;
-    const struct BLBoxI box = st_output->selection_ctx.bl_box;
+    const struct BLBoxI box = st_output->selection_ctx.box;
 
     // TODO: Assert nothing else was sent to stdout?
     fprintf(stdout, "%d,%d %dx%d\n",

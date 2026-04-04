@@ -51,7 +51,7 @@ signal_selection_initialized(struct scran_output *st_output)
     //     TODO: Would be better to de-couple this somehow, or just stop
     //     using capture_area_px, in favor of bl_box_already_drawn.
     st_output->capture.frame_ctx.capture_area_px = get_reverse_transform(
-        st_output->selection_ctx.bl_box,
+        st_output->selection_ctx.box,
         st_output->mode.width_px,
         st_output->mode.height_px,
         st_output->transform

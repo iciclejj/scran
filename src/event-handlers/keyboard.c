@@ -117,16 +117,16 @@ handle_keyboard_key(
     switch (xkb_key) {
     // TODO: Probably reorganize all of this later
     case XKB_KEY_Left:
-        shift_blboxi(&st_output->selection_ctx.bl_box, -1,  0);
+        shift_blboxi(&st_output->selection_ctx.box, -1,  0);
         break;
     case XKB_KEY_Right:
-        shift_blboxi(&st_output->selection_ctx.bl_box, +1,  0);
+        shift_blboxi(&st_output->selection_ctx.box, +1,  0);
         break;
     case XKB_KEY_Up:
-        shift_blboxi(&st_output->selection_ctx.bl_box,  0, -1);
+        shift_blboxi(&st_output->selection_ctx.box,  0, -1);
         break;
     case XKB_KEY_Down:
-        shift_blboxi(&st_output->selection_ctx.bl_box,  0, +1);
+        shift_blboxi(&st_output->selection_ctx.box,  0, +1);
         break;
     case XKB_KEY_Tab:
         stop_grabbing_focus();
