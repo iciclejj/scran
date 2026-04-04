@@ -38,7 +38,7 @@
 
 #define SCRAN_OUTPUT_FILENAME_SIZE_MAX    (NAME_MAX)                                       // Null terminator is  counted
 #define SCRAN_OUTPUT_FILENAME_STRLEN_MAX  (NAME_MAX - 1)                                   // Null terminator not counted
-// TODO: Allow longer dir path if filename is short enough..?
+// TODO: Allow longer dirpath if filename is short enough..?
 #define SCRAN_OUTPUT_DIRPATH_SIZE_MAX     (PATH_MAX - SCRAN_OUTPUT_FILENAME_SIZE_MAX)      // Null terminator is  counted
 #define SCRAN_OUTPUT_DIRPATH_STRLEN_MAX   (PATH_MAX - SCRAN_OUTPUT_FILENAME_SIZE_MAX - 1)  // Null terminator not counted
 #define SCRAN_OUTPUT_FILEPATH_SIZE_MAX    (PATH_MAX)                                       // Null terminator is  counted
@@ -98,8 +98,9 @@ struct scran_output_surface {
     //   fractional_scale_wp_10 == 180 => fractional_scale_factor_normalized = 1.5
     double final_scale_factor_normalized;
 
-    // TODO: Either drop this as a member or actually retain the path state
-    // between redraws.
+    // TODO: Is this worth keeping as a member, when we don't actually retain
+    // its state between render runs? (All it gives us atm is letting us
+    // _reset() it rather than _destroy() it.)
     BLPathCore bl_path;
 
     // XXX TODO: Turn this into a pointer once we remove the ugly redraw hack
@@ -110,8 +111,8 @@ struct scran_output_surface {
     // Surface-local coordinates
     int32_t width_logical;
     int32_t height_logical;
-    // Should usually be equivalent to output_mode +/- 1, if fractional scaling
-    // is used. Otherwise, simply equivalent to output_mode.
+    // Should (usually?) be equivalent to output_mode +/- 1, if fractional
+    // scaling is used. If no scaling, then simply equivalent to output_mode.
     //
     // The surface's buffer should round these dimensions halfway away from zero
     // (e.g. math.h round()) to get the correct buffer size.
@@ -137,6 +138,9 @@ struct scran_seat_pointerContext {
     // Only use press events; ignore release events.
     //     I.e. no button holding, and presses toggle the actions on/off
     //     (actions like rebasing, resizing, etc.).
+    // XXX: This conceptually belongs in the scran_options struct, but keeping
+    // it here for cache locality. If we start supporting multiple seats, then
+    // probably just move it into scran_options.
     bool use_presses_only;
 
     // Focused surface, which must cover the entire output's area, i.e. our
@@ -154,7 +158,6 @@ struct scran_seat_keyboard {
     struct xkb_state *xkb_state;
 };
 
-// XXX: Rename this?
 // TODO Isolate from rest of state.
 struct scran_seat_datacontrol {
     struct ext_data_control_device_v1 *device;
@@ -213,12 +216,8 @@ enum selection_resize_direction {
 // need to interact with the selection (capture area) state. Keep frequently
 // accessed members near the start.
 struct scran_output_selectionContext {
-    // TODO Rename to box_px OR remove _px suffix from everything in state,
-    //      now that all of state should have been standardized to pixel
-    //      integer values (same for other boxes, resize_origin_pointer, etc.)
-    // NOTE: This is allowed to be inverted during resizing.
-    //
     // This is in capture_area coordinate-space (i.e. physical pixels).
+    //   NOTE: This is allowed to be inverted during resizing.
     //   TODO: Rename to make this clear
     //   TODO: Also maybe double-check that this is enforced everywhere
     //           I.e. properly clamped to physical pixels, not extending into
@@ -248,7 +247,9 @@ struct capture_frame_context {
     struct ext_image_copy_capture_frame_v1 *frame;
 
     struct scran_capture_buffer st_buffer;
-    void *img_data_2; // Extra buffer for copying/intermediate operations
+    // Extra buffer for copying/intermediate operations
+    // TODO: Rename this
+    void *img_data_2;
 
     struct ext_image_copy_capture_session_v1 *wl_capture_session;
     struct scran_seat_datacontrol *st_datacontrol;
@@ -277,6 +278,11 @@ struct capture_frame_context {
     //        its graphics can spill into the capture frame.
     //        F.ex., the mouse can have moved in-between overlay's frame draw
     //        and capture's frame "draw".
+    //        NOTE also that the most-recently drawn by us frame is *not*
+    //        necessarily the correct frame to sync with. For some compositors,
+    //        like Sway, this does result in proper sync, but some other
+    //        compositors, like COSMIC, are not neatly ordered like this
+    //        internally (at time of writing).
     struct BLBoxI capture_area_px; // NOTE: Transform should be reversed.
     // TODO: Get this through output.mode if we both end up pointing to it here,
     //       AND it is still asserted to be equal to session::buffer_size's
@@ -295,16 +301,11 @@ struct scran_output_capture {
 
     struct ext_image_capture_source_v1 *source;
 
-    // TODO: Probably put this into a separate struct. Mode?
-    //       Something to separate it from both capture/output and from xdg output
-    // NOTE: These do not have any transforms applied.
-    //       Capture frame buffer must match this size and handle transforms
-    //       manually.
     uint32_t shm_format;
 };
 
 struct scran_output_mode {
-    // NOTE: These do not have any transforms applied
+    // NOTE: These DO NOT have any transforms applied
     //       (but they are affected by resolution settings)
     int32_t width_px;
     int32_t height_px;
@@ -324,7 +325,7 @@ struct scran_output {
     struct wl_output *wl_output;
 
     struct scran_output_mode mode;
-    // Logical geometry, as given by the xdg_output protocol
+    // Logical geometry, as given by the xdg_output protocol:
     struct scran_output_xdg_geometry xdg_geometry;
     enum wl_output_transform transform;
 
@@ -346,17 +347,16 @@ struct scran_output {
 
 // TODO: Isolate this from scran state?
 struct scran_options {
-    char *output_path_filename_pointer;
+    char *output_path_filename_pointer; // TODO: Use offset instead
     char output_path[SCRAN_OUTPUT_FILEPATH_SIZE_MAX]; // NOTE: Also used as output_directory during cli arg init
     char filename_format[SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX];
-    bool output_to_stdout;
 
+    bool output_to_stdout;
     bool no_keepalive;
     bool capture_and_exit_after_selection_init;
     bool produce_slurp;                 // output slurp-style geometry string
     bool have_custom_initial_selection; // output slurp-style geometry string
     struct BLRectI custom_initial_selection_global_coordinates;
-    // bool dont_draw_selection;
 };
 
 // TODO: Struct alignments
@@ -370,7 +370,6 @@ struct scran {
     //           capture-related ones.
     // TODO: Consider separate for video vs image, for better asserts, if
     // nothing else.
-    // TODO: Atomic
     atomic_int n_captures_in_progress;
 
     struct scran_options options;
