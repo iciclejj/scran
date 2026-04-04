@@ -385,15 +385,24 @@ dispatch_image_capture_event(struct scran_output_capture *st_capture)
 static inline void
 _print_slurp_string(struct scran_output *st_output)
 {
+    const double scale = st_output->surface.final_scale_factor_normalized;
     const struct scran_output_xdg_geometry geometry = st_output->xdg_geometry;
-    const struct BLBoxI box = st_output->selection_ctx.box_px;
+    const struct BLBoxI box_px = st_output->selection_ctx.box_px;
+
+    assert(!SCRAN_BL_BOX_IS_INVERTED(box_px));
+    const struct BLRectI rect_logical = {
+        .x = round(  box_px.x0              / scale),
+        .y = round(  box_px.y0              / scale),
+        .w = round( (box_px.x1 - box_px.x0) / scale),
+        .h = round( (box_px.y1 - box_px.y0) / scale),
+    };
 
     // TODO: Assert nothing else was sent to stdout?
     fprintf(stdout, "%d,%d %dx%d\n",
-            geometry.x_px      + box.x0,
-            geometry.y_px      + box.y0,
-            blboxi_width_abs_unsafe(box),
-            blboxi_height_abs_unsafe(box)
+            geometry.x_px + rect_logical.x,
+            geometry.y_px + rect_logical.y,
+            rect_logical.w,
+            rect_logical.h
     );
     fflush(stdout);
 }
