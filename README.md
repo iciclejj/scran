@@ -78,8 +78,8 @@ let
     url = "https://github.com/iciclejj/scran";
     ref = "main";
     # Desired commit (v0.5.0 here)
-    rev = "cc9277f6c8a52e1fcd5d12b55271ce587f8ac85e";
-    sha256 = "031ms6cmli7k28qcasnhhyj38z4w7ryc90ggmqjrgidkbakjhqyh";
+    rev = "ae9ee9a0dbfc189583afcb8b052e3c2c09762836";
+    sha256 = "1wlg35502px7b64pdr2vacy7ff6f8pmnimij1di39a1vgz0qjnf8";
   };
 
   scran = pkgs.callPackage scran_src { };
