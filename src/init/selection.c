@@ -92,8 +92,8 @@ init_postmem__selection(struct scran_output *st_output)
     DEBUG("init_postmem__selection()\n");
 
     // Sanity check...
-    assert(st_output->xdg_geometry.width_px == st_output->surface.width_logical);
-    assert(st_output->xdg_geometry.height_px == st_output->surface.height_logical);
+    assert(st_output->xdg_geometry.w_logical == st_output->surface.width_logical);
+    assert(st_output->xdg_geometry.h_logical == st_output->surface.height_logical);
 
     // Update here in addition to within the ::scale handlers, since they may
     // have fired before the viewport was initialized.

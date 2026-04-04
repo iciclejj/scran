@@ -14,8 +14,8 @@ handle_xdg_output_logical_position(
 ) {
     struct scran_output *st_output = data;
 
-    st_output->xdg_geometry.x_px = x_px;
-    st_output->xdg_geometry.y_px = y_px;
+    st_output->xdg_geometry.x_logical = x_px;
+    st_output->xdg_geometry.y_logical = y_px;
 }
 
 
@@ -28,8 +28,8 @@ handle_xdg_output_logical_size(
 ) {
     struct scran_output *st_output = data;
 
-    st_output->xdg_geometry.width_px = width_px;
-    st_output->xdg_geometry.height_px = height_px;
+    st_output->xdg_geometry.w_logical = width_px;
+    st_output->xdg_geometry.h_logical = height_px;
 }
 
 

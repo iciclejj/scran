@@ -305,10 +305,10 @@ struct scran_output_mode {
 // Global logical geometry
 struct scran_output_xdg_geometry {
     // NOTE: These DO have transforms and scale already applied.
-    int32_t x_px;
-    int32_t y_px;
-    int32_t width_px;
-    int32_t height_px;
+    int32_t x_logical;
+    int32_t y_logical;
+    int32_t w_logical;
+    int32_t h_logical;
 };
 
 struct scran_output {

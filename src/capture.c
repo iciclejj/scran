@@ -399,8 +399,8 @@ _print_slurp_string(struct scran_output *st_output)
 
     // TODO: Assert nothing else was sent to stdout?
     fprintf(stdout, "%d,%d %dx%d\n",
-            geometry.x_px + rect_logical.x,
-            geometry.y_px + rect_logical.y,
+            geometry.x_logical + rect_logical.x,
+            geometry.y_logical + rect_logical.y,
             rect_logical.w,
             rect_logical.h
     );

@@ -111,19 +111,19 @@ global_logical_coordinates_to_output_pixel_coordinates(
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output_xdg_geometry *geometry = &g_state.outputs[i].xdg_geometry;
 
-        bool y_within_bounds = rect_in.y >= geometry->y_px
-                            && rect_in.y  < geometry->y_px + geometry->height_px;
+        bool y_within_bounds = rect_in.y >= geometry->y_logical
+                            && rect_in.y  < geometry->y_logical + geometry->h_logical;
 
-        bool x_within_bounds = rect_in.x >= geometry->x_px
-                            && rect_in.x < geometry->x_px + geometry->width_px;
+        bool x_within_bounds = rect_in.x >= geometry->x_logical
+                            && rect_in.x < geometry->x_logical + geometry->w_logical;
 
         if (y_within_bounds && x_within_bounds) {
             *containing_output = &g_state.outputs[i];
 
             double scale = (*containing_output)->surface.final_scale_factor_normalized;
 
-            rect_out->x = round(scale * (rect_in.x - geometry->x_px));
-            rect_out->y = round(scale * (rect_in.y - geometry->y_px));
+            rect_out->x = round(scale * (rect_in.x - geometry->x_logical));
+            rect_out->y = round(scale * (rect_in.y - geometry->y_logical));
             rect_out->w = round(scale * (rect_in.w));
             rect_out->h = round(scale * (rect_in.h));
 
