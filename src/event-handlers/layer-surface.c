@@ -17,15 +17,15 @@ handle_layer_surface_configure(
     struct zwlr_layer_surface_v1 *layer_surface,
     uint32_t serial,
     // Equal to post-transform output resolution if layer surface is anchored to every edge.
-    uint32_t width_px_logical,
-    uint32_t height_px_logical
+    uint32_t width_logical,
+    uint32_t height_logical
 ) {
     struct scran_output *st_output = data;
 
-    DEBUG("handle_layer_surface_configure():  width_px_logical: %d, height_px_logical: %d\n", width_px_logical, height_px_logical);
+    DEBUG("handle_layer_surface_configure():  width_logical: %d, height_logical: %d\n", width_logical, height_logical);
 
-    st_output->surface.width_logical = width_px_logical;
-    st_output->surface.height_logical = height_px_logical;
+    st_output->surface.width_logical = width_logical;
+    st_output->surface.height_logical = height_logical;
 
     update_selection_surface_scale_and_size(st_output);
     update_selection_surface_viewport(st_output);
