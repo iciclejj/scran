@@ -401,7 +401,7 @@ init_postmem()
             return false;
         }
 
-        custom_selection_output->selection_ctx.box = custom_selection;
+        custom_selection_output->selection_ctx.box_px = custom_selection;
 
         signal_selection_initialized(custom_selection_output);
     }
