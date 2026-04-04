@@ -30,12 +30,6 @@
 #define A_DOUBLE_BUFFER_HAS_TWO_BUFFERS 2
 #define SURFACE_BUF_COUNT A_DOUBLE_BUFFER_HAS_TWO_BUFFERS
 
-// TODO: Move these definitions elsewhere?
-#define BLCONTEXT_RGBA32_BACKGROUND_DIM       ((struct BLRgba32){ 0x880E0E0E })
-#define BLCONTEXT_RGBA32_FRAME_DEFAULT        ((struct BLRgba32){ 0xE0FFFFFF })
-#define BLCONTEXT_RGBA32_FRAME_VIDEO_CAPTURE  ((struct BLRgba32){ 0xFFFF0000 })
-#define SCRAN_SELECTION_BORDER_THICKNESS_PX 1
-
 #define SCRAN_OUTPUT_FILENAME_SIZE_MAX    (NAME_MAX)                                       // Null terminator is  counted
 #define SCRAN_OUTPUT_FILENAME_STRLEN_MAX  (NAME_MAX - 1)                                   // Null terminator not counted
 // TODO: Allow longer dirpath if filename is short enough..?

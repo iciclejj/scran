@@ -4,6 +4,7 @@
 #include "selection.h"
 #include "print.h"
 #include "capture.h"
+#include "surface.h"
 #include "util/blend2d.h"
 
 
@@ -20,10 +21,10 @@ set_selection_surface_theme(
 
     switch (action) {
     case SURFACE_THEME_DEFAULT:
-        fill_style = BLCONTEXT_RGBA32_FRAME_DEFAULT;
+        fill_style = SCRAN_SELECTION_BORDER_COLOR_DEFAULT;
         break;
     case SURFACE_THEME_VIDEO_CAPTURE:
-        fill_style = BLCONTEXT_RGBA32_FRAME_VIDEO_CAPTURE;
+        fill_style = SCRAN_SELECTION_BORDER_COLOR_VIDEO_CAPTURE;
         break;
     }
 

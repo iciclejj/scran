@@ -7,6 +7,12 @@
 #include "state.h"
 
 
+#define SCRAN_SELECTION_BACKGROUND_COLOR            ((struct BLRgba32){ 0x880E0E0E })
+#define SCRAN_SELECTION_BORDER_COLOR_DEFAULT        ((struct BLRgba32){ 0xE0FFFFFF })
+#define SCRAN_SELECTION_BORDER_COLOR_VIDEO_CAPTURE  ((struct BLRgba32){ 0xFFFF0000 })
+#define SCRAN_SELECTION_BORDER_THICKNESS_PX 1
+
+
 void draw_frame_and_damage_buffer( struct scran_output_surface *st_surface, struct scran_output_surface_buffer *st_buffer, struct BLBoxI capture_area, struct BLBoxI capture_area_bounds);
 
 

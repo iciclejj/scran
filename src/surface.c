@@ -3,6 +3,7 @@
 #include <blend2d/blend2d.h>
 
 #include "state.h"
+#include "surface.h"
 #include "init.h"
 #include "util/blend2d.h"
 
@@ -133,7 +134,7 @@ _draw_and_damage_background(
     BLVarCore prev_fill_style;
     bl_context_get_fill_style(&st_buffer->bl_ctx, &prev_fill_style);
 
-    bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, BLCONTEXT_RGBA32_BACKGROUND_DIM.value);
+    bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, SCRAN_SELECTION_BACKGROUND_COLOR.value);
 
     bl_path_add_box_i(&st_surface->bl_path, &capture_area_max_bounds,     BL_GEOMETRY_DIRECTION_NONE);
     bl_path_add_box_i(&st_surface->bl_path, &capture_area_border_outline, BL_GEOMETRY_DIRECTION_NONE);
