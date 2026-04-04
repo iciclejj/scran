@@ -1,9 +1,10 @@
+#include <wayland-client.h>
+
 #include "state.h"
 #include "selection.h"
 #include "print.h"
 #include "capture.h"
 #include "util/blend2d.h"
-#include <wayland-client-core.h>
 
 
 extern struct scran g_state;
