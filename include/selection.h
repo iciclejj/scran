@@ -16,6 +16,9 @@ enum surface_theme {
 #define SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED   ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND
 #define SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_UNFOCUSED ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE
 
+#define SCRAN_BTN_NONE 0 // linux/input-event-codes.h: #define KEY_RESERVED 0
+
+
 void set_selection_surface_theme(struct scran_output *st_output, enum surface_theme action);
 
 void set_selection_initialized(struct scran_output *st_output);

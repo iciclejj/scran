@@ -10,9 +10,6 @@
 #include "selection.h"
 
 
-#define SCRAN_BTN_NONE 0 // linux/input-event-codes.h: #define KEY_RESERVED 0
-
-
 static void
 handle_pointer_enter(
     void *data,

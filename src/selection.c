@@ -50,6 +50,10 @@ set_selection_initialized(struct scran_output *st_output)
 
     st_output->selection_ctx.selection_state = SELECTION_COMPLETE;
 
+    // Reset button, since this function could have interrupted an ongoing
+    // state-dependent action.
+    g_state.seat.pointer_ctx.active_button = SCRAN_BTN_NONE;
+
     // Make sure this is initialized immediately, to not be dependent on
     // surface::frame being done, for example when using 'scran -eg'.
     //     TODO: Would be better to de-couple this somehow, or just stop
