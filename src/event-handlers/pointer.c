@@ -346,6 +346,9 @@ handle_pointer_button(
             blboxi_deinvert(&selection_ctx->box_px);
             break;
         default:
+            // Shunt back to a safe state to prevent state inversions or other
+            // unexpected side-effects.
+            pointer_ctx->active_button = SCRAN_BTN_NONE;
             break;
         }
         break;
