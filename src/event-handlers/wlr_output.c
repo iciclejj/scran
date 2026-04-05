@@ -32,8 +32,8 @@ struct _pending_head{
     struct zcosmic_output_head_v1 *cosmic_head;
 };
 
-static int _n_pending_heads = 0;
-static struct _pending_head _pending_heads[MAX_OUTPUTS] = { };
+static int m_n_pending_heads = 0;
+static struct _pending_head m_pending_heads[MAX_OUTPUTS] = { };
 
 
 // See comment in our `handle_fractional_scale_preferred_scale` for more info,
@@ -154,13 +154,13 @@ void handle_wlr_output_manager_head(
     // as wl_outputs are only enabled/turned-on monitors. MAX_OUTPUTS as the
     // size of the struct list should also be changed accordingly. Need to make
     // some simple allocator for the heads.
-    if (_n_pending_heads >= MAX_OUTPUTS) {
+    if (m_n_pending_heads >= MAX_OUTPUTS) {
         eprintf("WARNING: Ran out of space for 'wlr_output_head's. Will use"
                 " fallback values for scaling the remaining outputs.\n");
         return;
     }
 
-    struct _pending_head *pending_head = &_pending_heads[_n_pending_heads];
+    struct _pending_head *pending_head = &m_pending_heads[m_n_pending_heads];
 
     struct zcosmic_output_head_v1 *cosmic_head = zcosmic_output_manager_v1_get_head(
         state->globals.cosmic_output_manager, head
@@ -181,7 +181,7 @@ void handle_wlr_output_manager_head(
         pending_head
     );
 
-    ++_n_pending_heads;
+    ++m_n_pending_heads;
 }
 
 void handle_wlr_output_manager_done(
@@ -191,8 +191,8 @@ void handle_wlr_output_manager_done(
 ) {
     struct scran *state = data;
 
-    for (int i = 0; i < _n_pending_heads; ++i) {
-        struct _pending_head *pending_head = &_pending_heads[i];
+    for (int i = 0; i < m_n_pending_heads; ++i) {
+        struct _pending_head *pending_head = &m_pending_heads[i];
         struct scran_output *st_output = pending_head->st_output;
 
         if (st_output == NULL) {
