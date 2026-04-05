@@ -9,7 +9,7 @@ WL_PROTOCOLS_DIR_LOCAL := $(wayland_protocols_generated_source_dir)
 PKG_CONFIG ?= pkg-config
 
 ffmpeg_libs := libavcodec libavutil libavformat libavfilter libswscale
-PKGCONF_LIBS := xkbcommon wayland-client $(ffmpeg_libs)
+PKGCONF_LIBS := xkbcommon wayland-client $(ffmpeg_libs) basu
 
 _LDLIBS := -lblend2d -lm
 _LDLIBS += $(shell $(PKG_CONFIG) --libs $(PKGCONF_LIBS))

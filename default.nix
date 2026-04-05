@@ -8,6 +8,7 @@
   blend2d,
   libxkbcommon,
   ffmpeg,
+  basu, # libsystemd's sd-bus library
   copyDesktopItems,
   makeDesktopItem,
 
@@ -36,6 +37,7 @@ stdenv.mkDerivation {
     blend2d
     libxkbcommon
     ffmpeg
+    basu
   ];
 
   inherit hardeningDisable;

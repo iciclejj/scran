@@ -27,6 +27,7 @@
 #include "options.h"
 #include "signal-handlers.h"
 #include "util/blend2d.h"
+#include "portals.h"
 
 //  General TODO:
 //  - Don't use libwayland..? Handle its allocations etc. ourselves?
@@ -117,6 +118,10 @@ init_premem()
     // This should be our last required roundtrip until the main event loop dispatch.
     wl_display_roundtrip(g_state.globals.display);
 
+    if (!scran_portal_init()) {
+        eprintf("Warning: Failed to initialize XDG Desktop Portals\n");
+    }
+
     return true;
 }
 
@@ -156,6 +161,8 @@ init_premem__destroy()
     }
 
     wl_region_destroy(g_state.empty_wl_region);
+
+    scran_portal_destroy();
 
     // TODO: Make sure this happens at an appropriate point in time (memory
     // footprint should be minimized), once the init/cleanup is more

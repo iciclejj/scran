@@ -5,6 +5,7 @@
 
 #include <ext-image-copy-capture-v1.h>
 
+#include "portals.h"
 #include "state.h"
 #include "state-util.h" // TODO: Move this into util/ ?
 #include "util/blend2d.h"
@@ -210,7 +211,8 @@ handle_image_copy_capture_frame_ready__image_capture(
         );
 
         if (res == BL_SUCCESS && bytes_written == bytes_to_write) {
-            eprintf("Image saved: %s (%zuKiB)\n", st_options->output_path, bytes_written >> 10);
+            eprintf("Image saved: %s (%zuKiB)\n", output_filepath, bytes_written >> 10);
+            scran_portal_notify_file_saved(output_filepath);
         } else {
             eprintf("Error: Failed to save image (attempted: %s).\n", output_filepath);
         }
