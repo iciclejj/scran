@@ -128,6 +128,9 @@ struct scran_seat_pointerContext {
     // We only handle one button at a time
     // KEY_MAX is 2ff, but pointer::button sends uint32_t, so let's use that for now
     //     See: linux/input_event_codes.h.
+    // NOTE: Should be set to SCRAN_BTN_NONE if force-switching selection state
+    // or other state that depends on this, to prevent inversion of interpreted
+    // button press/depress state.
     uint32_t active_button;
     // Only use press events; ignore release events.
     //     I.e. no button holding, and presses toggle the actions on/off

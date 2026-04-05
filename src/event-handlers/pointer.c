@@ -240,18 +240,33 @@ handle_pointer_button(
 
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
 
+    DEBUG("handle_pointer_button()\n");
+
     bool is_press   = button_state == WL_POINTER_BUTTON_STATE_PRESSED;
     bool is_release = button_state == WL_POINTER_BUTTON_STATE_RELEASED;
-    bool allowed_key_state =
-           (is_press   && pointer_ctx->active_button == SCRAN_BTN_NONE )
-        || (is_release && pointer_ctx->active_button == button && !pointer_ctx->use_presses_only)
-    ;
-    if (!allowed_key_state) {
-        return;
+    bool is_active_button = button == pointer_ctx->active_button;
+    bool have_some_active_button = pointer_ctx->active_button != SCRAN_BTN_NONE;
+
+    if (pointer_ctx->use_presses_only) {
+        assert(pointer_ctx->active_button == SCRAN_BTN_NONE);
+        if (!is_press) {
+            DEBUG("  Ignored (received non-press with use_presses_only)\n");
+            return;
+        }
+    } else {
+        if (is_release && !is_active_button) {
+            DEBUG("  Ignored (received release of non-active button_\n");
+            return;
+        }
+        if (is_press && have_some_active_button) {
+            DEBUG("  Ignored (received press when already have active button)\n");
+            return;
+        }
     }
-    // Toggle button
-    bool should_reset_button = pointer_ctx->use_presses_only || pointer_ctx->active_button != SCRAN_BTN_NONE;
-    pointer_ctx->active_button =  should_reset_button ? SCRAN_BTN_NONE : button;
+
+    DEBUG("  Went through (button=%d, state=%b)\n", button, button_state);
+
+    pointer_ctx->active_button = pointer_ctx->active_button ? SCRAN_BTN_NONE : button;
 
     struct scran_output *st_output = wl_container_of(st_surface, st_output, surface);
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
