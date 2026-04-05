@@ -96,6 +96,10 @@ set_selection_freeze_size(struct scran_output *st_output)
     switch(*selection_state) {
         case SELECTION_REBASING: *selection_state = SELECTION_REBASING_FREEZE_SIZE; break;
         case SELECTION_COMPLETE: *selection_state = SELECTION_COMPLETE_FREEZE_SIZE; break;
+        case SELECTION_RESIZING:
+            // Incompatible state; neutralize button.
+            g_state.seat.pointer_ctx.active_button = SCRAN_BTN_NONE;
+            *selection_state = SELECTION_COMPLETE_FREEZE_SIZE; break;
         default:
             eprintf("Can't freeze selection size in current selection state. (SELECTION_STATE=%d)\n", *selection_state);
             return false;
