@@ -118,10 +118,6 @@ init_premem()
     // This should be our last required roundtrip until the main event loop dispatch.
     wl_display_roundtrip(g_state.globals.display);
 
-    if (!scran_portal_init()) {
-        eprintf("Warning: Failed to initialize XDG Desktop Portals\n");
-    }
-
     return true;
 }
 
@@ -161,8 +157,6 @@ init_premem__destroy()
     }
 
     wl_region_destroy(g_state.empty_wl_region);
-
-    scran_portal_destroy();
 
     // TODO: Make sure this happens at an appropriate point in time (memory
     // footprint should be minimized), once the init/cleanup is more
@@ -520,14 +514,25 @@ run_main_loop(int *const restrict epoll_fd_out, struct _scran_signal_masks *sign
     }
     *epoll_fd_out = epoll_fd;
 
-    struct epoll_event wl_display_epoll_event = { .events = EPOLLIN };
+    struct epoll_event wl_display_epoll_event = {
+        .events = EPOLLIN,
+        .data.fd = wl_display_fd
+    };
     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wl_display_fd, &wl_display_epoll_event);
+
+    // Only our portal fd actually cares about max timeout atm
+    int scran_portal_timeout_ms = -1;
+    if (!scran_portal_init(epoll_fd, &scran_portal_timeout_ms)) {
+        eprintf("Warning: Failed to initialize XDG Desktop Portals\n");
+        assert(scran_portal_timeout_ms == -1);
+    }
 
     // Block/defer our signal handlers until explicit unblock during epoll
     if (sigprocmask(SIG_BLOCK, &signal_masks->with_scran_handlers_masked, NULL) == -1) {
         eprintf("sigprocmask failed: %s\n", strerror(errno));
         return false;
     }
+
 
     // Main event loop.
     //
@@ -538,6 +543,8 @@ run_main_loop(int *const restrict epoll_fd_out, struct _scran_signal_masks *sign
     //     startup latency for reaching layer_surface::configure. Or potentially
     //     fix it, if it is a bug.
     //     The initializing ::commit shouldn't need to be vsynced..?
+    static const int n_epoll_events = 2; // XXX: hardcoded: dbus/portal + wayland
+    struct epoll_event epoll_events[n_epoll_events];
     while (
         !g_state.exit_requested
         ||
@@ -554,26 +561,43 @@ run_main_loop(int *const restrict epoll_fd_out, struct _scran_signal_masks *sign
         wl_display_flush(g_state.globals.display);
 
         // Let blocked unsafe signals fire synchronously here
-        if (-1 == epoll_pwait(epoll_fd, &wl_display_epoll_event, 1, -1, &signal_masks->with_scran_handlers_unmasked)) {
+        int ret = epoll_pwait(epoll_fd, epoll_events, n_epoll_events, scran_portal_timeout_ms, &signal_masks->with_scran_handlers_unmasked);
+
+        if (ret < 0) {
             wl_display_cancel_read(g_state.globals.display);
+
             if (errno != EINTR) {
                 // TODO: Read errno
                 eprintf("Error during epoll_pwait().\n");
                 return false;
             }
         } else {
-            // TODO: Handle error (-1) ?
-            wl_display_read_events(g_state.globals.display);
+            bool wayland_ready = false;
+            for (int i = 0; i < ret; ++i) {
+                if (epoll_events[i].data.fd == wl_display_fd) {
+                    wayland_ready = true;
+                }
+            }
+            if (wayland_ready) {
+                // TODO: Handle error (-1) ?
+                wl_display_read_events(g_state.globals.display);
+                wl_display_dispatch_pending(g_state.globals.display);
+            } else {
+                wl_display_cancel_read(g_state.globals.display);
+            }
         }
+
+        // Fire this unconditionally after every poll (details in function description)
+        scran_portal_update(epoll_fd, &scran_portal_timeout_ms);
 
         if (g_state.sig_focus_requested == true) {
             start_grabbing_focus();
             // TODO: Make this a tiered enum to prevent handling it twice?
             g_state.sig_focus_requested = false;
         }
-
-        wl_display_dispatch_pending(g_state.globals.display);
     };
+
+    scran_portal_destroy(epoll_fd);
 
     return true;
 }

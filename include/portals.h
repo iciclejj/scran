@@ -5,10 +5,12 @@
 #include <stdbool.h>
 
 
-bool scran_portal_init();
-  void scran_portal_destroy();
-
 void scran_portal_notify_file_saved(const char *path);
+
+void scran_portal_update(int epoll_fd, int *timeout_ms);
+
+bool scran_portal_init(int epoll_fd, int *timeout_ms);
+  void scran_portal_destroy(int epoll_fd);
 
 
 #endif
