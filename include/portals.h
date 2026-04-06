@@ -6,6 +6,7 @@
 
 
 void scran_portal_notify_file_saved(const char *path);
+void scran_portal_open_file(const char *saved_file_path);
 
 void scran_portal_update(int epoll_fd, int *timeout_ms);
 

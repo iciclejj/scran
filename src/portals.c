@@ -1,6 +1,9 @@
 #include <assert.h>
 #include <stdint.h>
 #include <time.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
 #include <sys/epoll.h>
 
 #include <basu/sd-bus.h>
@@ -61,6 +64,64 @@ _scran_portal_notify_file_saved_callback(
     return 0;
 }
 
+static int
+_scran_portal_callback_OpenURI_OpenFile(
+    sd_bus_message *message, // Should not be freed.
+    void *data,
+    sd_bus_error *ret_error // This is for us to return, not to read
+) {
+    // This returns a Request object, but we have no use for it, other than
+    // maybe error reporting, so we ignore it to save on complexity.
+
+    const char *error_name = NULL;
+    if (sd_bus_message_is_method_error(message, error_name)) {
+        const sd_bus_error *error = sd_bus_message_get_error(message);
+        _log_sd_bus_error(error, "OpenFile Error\n");
+        return 0;
+    }
+
+    DEBUG("OpenFile reply without error.\n");
+    return 0;
+}
+
+void
+scran_portal_open_file(const char *file_path)
+{
+    if (m_dbus.bus == NULL) {
+        DEBUG("File not opened (D-Bus not initialized).\n");
+        return;
+    }
+
+    int ret;
+
+    static const char parent_window[] = "";
+    int file_fd = open(file_path, O_RDONLY | O_CLOEXEC);
+
+    if (file_fd < 0) {
+        eprintf("Failed to open file descriptor. (%d: %s)\n", file_fd, strerror(errno));
+        return;
+    }
+
+    ret = sd_bus_call_method_async(
+        m_dbus.bus, NULL,
+        "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+        "org.freedesktop.portal.OpenURI", "OpenFile",
+        &_scran_portal_callback_OpenURI_OpenFile, NULL,
+        "sha{sv}",
+          parent_window, file_fd, 0
+    );
+
+    if (ret < 0) {
+        _log_sd_bus_ret_error(
+            ret, "Failed to call OpenURI::OpenFile"
+        );
+    }
+
+    close(file_fd); // sd_bus duplicates this for us on method call
+    return;
+}
+
+
 void
 scran_portal_notify_file_saved(const char *saved_file_path)
 {
@@ -85,10 +146,12 @@ scran_portal_notify_file_saved(const char *saved_file_path)
         &_scran_portal_notify_file_saved_callback, NULL,
         "sa{sv}",
           notification_id,
-          3,
+          5,
             "title", "s", "Scran: saved file.",
             "body",  "s", saved_file_path,
-            "display-hint", "as", 1, "show-as-new"
+            "display-hint", "as", 1, "show-as-new",
+            "default-action", "s", "OpenFile",
+            "default-action-target", "s", saved_file_path
     );
 
     if (ret < 0) {
@@ -99,6 +162,7 @@ scran_portal_notify_file_saved(const char *saved_file_path)
 
     return;
 }
+
 
 static inline int
 scran_portal_get_timeout_ms()
@@ -182,6 +246,65 @@ fail:
     return;
 }
 
+
+static int
+_scran_portal_callback_Notification_ActionInvoked(
+    sd_bus_message *message, // Should not be freed.
+    void *data,
+    sd_bus_error *ret_error // This is for us to return, not to read
+) {
+    const char *error_name = NULL;
+    if (sd_bus_message_is_method_error(message, error_name)) {
+        const sd_bus_error *error = sd_bus_message_get_error(message);
+        _log_sd_bus_error(error, "Notification::ActionInvoked");
+        return 0;
+    }
+
+    int ret;
+    static const char parse_error_string[] = "Failed to parse message from Notification::ActionInvoked";
+
+    const char *id;
+    const char *action;
+    if (0 > (ret = sd_bus_message_read(message, "ss", &id, &action))) {
+        _log_sd_bus_ret_error(ret, parse_error_string);
+        return 0;
+    }
+
+    const char *parameter;
+    if (0 > (ret = sd_bus_message_enter_container(message, 'a', "v"))) {
+        _log_sd_bus_ret_error(ret, parse_error_string);
+        return 0;
+    }
+    if (0 > (ret = sd_bus_message_read(message, "v", "s", &parameter))) {
+        _log_sd_bus_ret_error(ret, parse_error_string);
+        return 0;
+    }
+    // Don't care about the rest of this container...
+
+    const char *filepath = parameter;
+    scran_portal_open_file(filepath);
+
+    DEBUG("ActionInvoked reply without error.\n");
+    return 0;
+}
+
+static int
+_scran_portal_callback_Dbus_AddMatch(
+    sd_bus_message *message, // Should not be freed.
+    void *data,
+    sd_bus_error *ret_error // This is for us to return, not to read
+) {
+    const char *error_name = NULL;
+    if (sd_bus_message_is_method_error(message, error_name)) {
+        const sd_bus_error *error = sd_bus_message_get_error(message);
+        _log_sd_bus_error(error, "AddMatch Error\n");
+        return 0;
+    }
+
+    DEBUG("AddMatch reply without error.\n");
+    return 0;
+}
+
 bool
 scran_portal_init(int epoll_fd, int *timeout_ms)
 {
@@ -191,6 +314,18 @@ scran_portal_init(int epoll_fd, int *timeout_ms)
     }
     eprintf("D-Bus connection opened.\n");
     assert(m_dbus.bus != NULL);
+
+    int ret = sd_bus_match_signal_async(
+        m_dbus.bus, NULL,
+        "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+        "org.freedesktop.portal.Notification", "ActionInvoked",
+        _scran_portal_callback_Notification_ActionInvoked,
+        _scran_portal_callback_Dbus_AddMatch,
+        NULL
+    );
+    if (ret < 0) {
+        _log_sd_bus_ret_error(ret, "Failed to register listener for Notification::ActionInvoked");
+    }
 
     int portal_fd = sd_bus_get_fd(m_dbus.bus);
     int _portal_events = sd_bus_get_events(m_dbus.bus);
