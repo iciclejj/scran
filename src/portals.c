@@ -24,7 +24,7 @@ _log_sd_bus_ret_error(
     int ret_,
     const char *custom_message
 ) {
-    eprintf("SD-Bus Error: %s\n"
+    eprintf("sd_bus error: %s\n"
             "  %d: %s\n",
             custom_message,
             ret_, strerror(-ret_));
@@ -76,8 +76,8 @@ scran_portal_notify_file_saved(const char *saved_file_path)
     // TODO: Assert saved_file_path length?
 
     int ret;
-    const char *notification_id = saved_file_path;
 
+    const char *notification_id = saved_file_path;
     ret = sd_bus_call_method_async(
         m_dbus.bus, NULL,
         "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
@@ -93,7 +93,7 @@ scran_portal_notify_file_saved(const char *saved_file_path)
 
     if (ret < 0) {
         _log_sd_bus_ret_error(
-            ret, "FAILED: org.freedesktop.portal.Notification.AddNotification"
+            ret, "Failed to call Notification::AddNotification"
         );
     }
 
@@ -145,15 +145,15 @@ scran_portal_update(int epoll_fd, int *timeout_ms)
         return;
     }
 
+    int ret;
+
     // NOTE: Until sd_bus_process() returns 0, there might still be more work
     // left to do. Since we're single-threaded (outside of libav* internals),
     // we only call this once, on the off-chance that a loop would block e.g.
     // a video capture frame.
     //     Might need change if we start using D-Bus more heavily, e.g. ScreenCast.
     //     TODO: Verify that sd_bus_get_timeout() handles this appropriately.
-    int ret;
-    ret = sd_bus_process(m_dbus.bus, NULL);
-    if (0 > ret) {
+    if (0 > (ret = sd_bus_process(m_dbus.bus, NULL))) {
         _log_sd_bus_ret_error(ret, "sd_bus_process() failed. Stopping SD-Bus connection.");
         goto fail;
     }
