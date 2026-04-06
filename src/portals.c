@@ -68,7 +68,7 @@ scran_portal_notify_file_saved(const char *saved_file_path)
     // TODO: Assert saved_file_path length?
 
     int ret;
-    static const char default_notification_id[] = "scran-default-id";
+    const char *notification_id = saved_file_path;
 
     ret = sd_bus_call_method_async(
         m_dbus.bus, NULL,
@@ -76,7 +76,7 @@ scran_portal_notify_file_saved(const char *saved_file_path)
         "org.freedesktop.portal.Notification", "AddNotification",
         &_scran_portal_notify_file_saved_callback, NULL,
         "sa{sv}",
-          default_notification_id,
+          notification_id,
           3,
             "title", "s", "Scran: saved file.",
             "body",  "s", saved_file_path,
