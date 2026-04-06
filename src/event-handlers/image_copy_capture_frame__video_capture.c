@@ -20,6 +20,7 @@
 #include "print.h"
 #include "selection.h"
 #include "clipboard.h"
+#include "portals.h"
 
 
 extern struct scran g_state;
@@ -223,6 +224,9 @@ end_capture:
 
     const char *output_path = g_state.options.output_to_stdout ? NULL : frame_ctx->av_format_ctx->url;
     update_clipboard(&g_state.seat.datacontrol, NULL, NULL, output_path);
+    if (output_path != NULL) {
+        scran_portal_notify_file_saved(output_path);
+    }
 
 end_capture_err:
     // Note: Most (all?) of these are fine to call with null pointers, despite
