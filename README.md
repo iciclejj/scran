@@ -253,6 +253,7 @@ See `scran -h` for more details
          See https://wayland.emersion.fr/slurp/.
   -g   "<x>,<y> <width>x<height>"
          Pre-initialize selection using slurp-style geometry string
+  -N   disable notifications
   -h   show help message and exit
 ```
 

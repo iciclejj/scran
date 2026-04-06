@@ -5,8 +5,12 @@
 
 #include <basu/sd-bus.h>
 
+#include "state.h"
 #include "portals.h"
 #include "print.h"
+
+
+extern struct scran g_state;
 
 
 static struct {
@@ -62,6 +66,10 @@ scran_portal_notify_file_saved(const char *saved_file_path)
 {
     if (m_dbus.bus == NULL) {
         DEBUG("Notification not sent (D-Bus not initialized).\n");
+        return;
+    }
+    if (g_state.options.no_notifications) {
+        DEBUG("Notification not sent (options.no_notifications).\n");
         return;
     }
 

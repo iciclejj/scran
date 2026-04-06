@@ -481,6 +481,7 @@ static const char help_string[] =
     "         Pre-initialize selection using slurp-style geometry string\n"
     "         The area is clamped to the output containing the top-left corner.\n"
     "           Subject to change if/when scran will support cross-output capture.\n"
+    "  -N   disable notifications\n"
     "  -h   show this help message and exit\n"
     "\n"
     "Signals\n"
@@ -496,13 +497,13 @@ scran_handle_args(int argc, char *const *argv)
     char *opt_filename = NULL;
 
     int opt;
-    while ((opt = getopt(argc, argv, "f:peBsg:h")) != -1) {
+    while ((opt = getopt(argc, argv, "f:peBsg:Nh")) != -1) {
         switch (opt) {
         case 'f': opt_filename                                          = optarg; break;
         case 'p': g_state.seat.pointer_ctx.use_presses_only             = true;   break;
         case 'e': g_state.options.capture_and_exit_after_selection_init = true;   break;
         case 'B': g_state.options.no_keepalive                          = true;   break;
-        case 's': g_state.options.produce_slurp                                 = true;   break;
+        case 's': g_state.options.produce_slurp                         = true;   break;
         case 'g':
             {
                 char consumable_slurp[SLURP_STRING_SIZE];
@@ -527,6 +528,7 @@ scran_handle_args(int argc, char *const *argv)
                 g_state.options.have_custom_initial_selection = true;
             }
             break;
+        case 'N': g_state.options.no_notifications                      = true;   break;
         case 'h':
             printf("%s", help_string);
             exit(EXIT_SUCCESS);
