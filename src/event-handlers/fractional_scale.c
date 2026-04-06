@@ -21,11 +21,13 @@ handle_fractional_scale_preferred_scale(
 ) {
     struct scran_output *st_output = data;
 
-    st_output->surface.fractional_scale_wp_120 = scale;
     DEBUG("handle_fractional_scale_preferred_scale(): %f\n", _get_normalized_scaler(scale, 120));
 
-    update_selection_surface_scale_and_size(st_output);
-    update_selection_surface_viewport(st_output);
+    if (st_output->surface.fractional_scale_wp_120 != scale) {
+        st_output->surface.fractional_scale_wp_120 = scale;
+        update_selection_surface_scale_and_size(st_output);
+        update_selection_surface_viewport(st_output);
+    }
 }
 
 

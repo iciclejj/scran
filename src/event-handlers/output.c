@@ -35,12 +35,13 @@ handle_output_scale(
 ) {
     struct scran_output *st_output = data;
 
-    st_output->scale = factor;
-
     DEBUG("handle_output_scale(): %u\n", st_output->scale);
 
-    update_selection_surface_scale_and_size(st_output);
-    update_selection_surface_viewport(st_output);
+    if (st_output->scale != factor) {
+        st_output->scale = factor;
+        update_selection_surface_scale_and_size(st_output);
+        update_selection_surface_viewport(st_output);
+    }
 }
 
 
