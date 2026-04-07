@@ -470,6 +470,7 @@ static const char help_string[] =
     "         (until another process takes over, e.g. you copied some text in a web\n"
     "         browser). Useful if you want to pipe scran's output to an application\n"
     "         that is waiting for scran to fully exit.\n"
+    "         NOTE: This also disables notification interaction\n"
     "  -s   slurp: send selection as geometry string to standard output\n"
     "         Replaces/disables image capture.\n"
     "         Format: '<x>,<y> <width>x<height>'\n"
