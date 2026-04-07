@@ -199,8 +199,8 @@ bindsym Shift+Alt+Tab  exec 'pkill -SIGUSR1 scran'
 ```
 
 If you want to pipe scran's output to another program, you might need to
-prevent scran from staying alive to manage the clipboard clipboard. You
-can do this by passing -B:
+prevent scran from staying alive to manage the clipboard. You can do this
+by passing -B:
 ```bash
 bindsym Print          exec 'scran -B - | satty -f -'
 ```
