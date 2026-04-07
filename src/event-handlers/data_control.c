@@ -51,7 +51,7 @@ handle_data_control_source_send(
         }
     } else if (
         st_datacontrol->should_offer_filepath
-        && 0 == strcmp(mime_type, SCRAN_MIME_TYPE_FILEPATH)
+        && 0 == strcmp(mime_type, SCRAN_MIME_TYPE_FILEPATH_URI_LIST)
     ) {
         const char prefix[] = "file://";
         const size_t prefix_strlen = sizeof(prefix) - 1;
@@ -61,15 +61,24 @@ handle_data_control_source_send(
 
         // TODO: Make sure this is an absolute path. Either here or
         // normalize passed path to absolute during option init.
-        const char *const uri = st_datacontrol->data_to_send_saved_file_path;
-        const size_t uri_strlen = st_datacontrol->data_to_send_saved_file_path_strlen;
-        if (uri_strlen != write(fd, uri, uri_strlen)) {
+        const char *const path = st_datacontrol->data_to_send_saved_file_path;
+        const size_t path_strlen = st_datacontrol->data_to_send_saved_file_path_strlen;
+        if (path_strlen != write(fd, path, path_strlen)) {
             goto failed;
         }
 
         const char suffix[] = "\r\n";
         const size_t suffix_strlen = sizeof(suffix) - 1;
         if (suffix_strlen != write(fd, suffix, suffix_strlen)) {
+            goto failed;
+        }
+    } else if (
+        st_datacontrol->should_offer_filepath
+        && 0 == strcmp(mime_type, SCRAN_MIME_TYPE_FILEPATH_PLAIN)
+    ) {
+        const char *const path = st_datacontrol->data_to_send_saved_file_path;
+        const size_t path_strlen = st_datacontrol->data_to_send_saved_file_path_strlen;
+        if (path_strlen != write(fd, path, path_strlen)) {
             goto failed;
         }
     } else {

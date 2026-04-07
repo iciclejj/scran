@@ -103,7 +103,12 @@ update_clipboard(
         datacontrol->should_offer_filepath = true;
         ext_data_control_source_v1_offer(
             data_control_source,
-            SCRAN_MIME_TYPE_FILEPATH
+            SCRAN_MIME_TYPE_FILEPATH_URI_LIST
+        );
+
+        ext_data_control_source_v1_offer(
+            data_control_source,
+            SCRAN_MIME_TYPE_FILEPATH_PLAIN
         );
     }
 

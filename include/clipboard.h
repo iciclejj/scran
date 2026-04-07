@@ -7,7 +7,8 @@
 #include "state.h"
 
 
-#define SCRAN_MIME_TYPE_FILEPATH "text/uri-list"
+#define SCRAN_MIME_TYPE_FILEPATH_URI_LIST "text/uri-list"
+#define SCRAN_MIME_TYPE_FILEPATH_PLAIN "text/plain"
 
 
 bool update_clipboard(struct scran_seat_datacontrol *datacontrol, BLArrayCore *data, const char *data_mime_type, const char *filepath);
