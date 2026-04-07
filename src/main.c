@@ -50,6 +50,10 @@ struct scran g_state = {
     },
 };
 
+#define SCRAN_EPOLL_SIZE 2 // XXX: hardcoded: dbus/portal + wayland
+static struct epoll_event m_epoll_events[SCRAN_EPOLL_SIZE];
+static int m_epoll_fd = -1;
+
 
 static bool
 init_premem()
@@ -127,15 +131,61 @@ _stay_alive_while_clipboard_active()
     atomic_int *clipboard_refcount = &g_state.seat.datacontrol.selection_refcount;
     assert(*clipboard_refcount >= 0);
 
-    if (*clipboard_refcount > 0) {
-        eprintf("Keeping clipboard selection alive until stolen...\n");
+    if (*clipboard_refcount < 1) {
+        return;
+    }
 
-        while (*clipboard_refcount > 0) {
-            wl_display_dispatch(g_state.globals.display);
+    eprintf("Keeping clipboard selection alive until stolen...\n");
+
+    int wl_display_fd = wl_display_get_fd(g_state.globals.display);
+    int scran_portal_timeout_ms;
+    scran_portal_update(m_epoll_fd, &scran_portal_timeout_ms);
+
+    while (*clipboard_refcount > 0) {
+        while (wl_display_prepare_read(g_state.globals.display) != 0) {
+            if (wl_display_dispatch_pending(g_state.globals.display) == -1) {
+                // TODO: Check errno and print/handle error better
+                eprintf("Error during wl_display_dispatch().\n");
+                wl_display_cancel_read(g_state.globals.display);
+                return;
+            }
+        }
+        wl_display_flush(g_state.globals.display);
+
+        int ret = epoll_wait(m_epoll_fd, m_epoll_events, SCRAN_EPOLL_SIZE, scran_portal_timeout_ms);
+
+        if (ret < 0) {
+            wl_display_cancel_read(g_state.globals.display);
+
+            if (errno != EINTR) {
+                // TODO: Read errno
+                eprintf("Error during epoll_wait().\n");
+                return;
+            }
+        } else {
+            bool wayland_ready = false;
+            for (int i = 0; i < ret; ++i) {
+                if (m_epoll_events[i].data.fd == wl_display_fd) {
+                    wayland_ready = true;
+                }
+            }
+            if (wayland_ready) {
+                // TODO: Handle error (-1) ?
+                wl_display_read_events(g_state.globals.display);
+                wl_display_dispatch_pending(g_state.globals.display);
+            } else {
+                wl_display_cancel_read(g_state.globals.display);
+            }
         }
 
-        eprintf("Clipboard selection stolen! Continuing exit.\n");
+        // Fire this unconditionally after every poll (details in function description)
+        // TODO: Can we somehow find out whether a notification has been
+        // dismissed by the user, so we can stop polling this, now that no new
+        // notifications can be launched anymore (during clipboard keepalive)?
+        scran_portal_update(m_epoll_fd, &scran_portal_timeout_ms);
     }
+
+    eprintf("Clipboard selection stolen! Continuing exit.\n");
 }
 
 static void
@@ -499,30 +549,24 @@ init_signals(struct _scran_signal_masks *masks)
 
 
 // TODO: More asserts
-// epoll_fd_out: closed by caller to make error handling simpler
 static bool
-run_main_loop(int *const restrict epoll_fd_out, struct _scran_signal_masks *signal_masks)
+run_main_loop(struct _scran_signal_masks *signal_masks)
 {
+    assert(m_epoll_fd != -1);
+
     // TODO: Verify whether that this isn't redundant
     wl_display_flush(g_state.globals.display);
 
     int wl_display_fd = wl_display_get_fd(g_state.globals.display);
-    const int epoll_fd = epoll_create(1); // TODO: O_CLOEXEC if threading
-    if (epoll_fd == -1) {
-        eprintf("epoll_create() failed: %s\n", strerror(errno));
-        return false;
-    }
-    *epoll_fd_out = epoll_fd;
-
     struct epoll_event wl_display_epoll_event = {
         .events = EPOLLIN,
         .data.fd = wl_display_fd
     };
-    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wl_display_fd, &wl_display_epoll_event);
+    epoll_ctl(m_epoll_fd, EPOLL_CTL_ADD, wl_display_fd, &wl_display_epoll_event);
 
     // Only our portal fd actually cares about max timeout atm
     int scran_portal_timeout_ms = -1;
-    if (!scran_portal_init(epoll_fd, &scran_portal_timeout_ms)) {
+    if (!scran_portal_init(m_epoll_fd, &scran_portal_timeout_ms)) {
         eprintf("Warning: Failed to initialize XDG Desktop Portals\n");
         assert(scran_portal_timeout_ms == -1);
     }
@@ -543,8 +587,6 @@ run_main_loop(int *const restrict epoll_fd_out, struct _scran_signal_masks *sign
     //     startup latency for reaching layer_surface::configure. Or potentially
     //     fix it, if it is a bug.
     //     The initializing ::commit shouldn't need to be vsynced..?
-    static const int n_epoll_events = 2; // XXX: hardcoded: dbus/portal + wayland
-    struct epoll_event epoll_events[n_epoll_events];
     while (
         !g_state.exit_requested
         ||
@@ -561,7 +603,7 @@ run_main_loop(int *const restrict epoll_fd_out, struct _scran_signal_masks *sign
         wl_display_flush(g_state.globals.display);
 
         // Let blocked unsafe signals fire synchronously here
-        int ret = epoll_pwait(epoll_fd, epoll_events, n_epoll_events, scran_portal_timeout_ms, &signal_masks->with_scran_handlers_unmasked);
+        int ret = epoll_pwait(m_epoll_fd, m_epoll_events, SCRAN_EPOLL_SIZE, scran_portal_timeout_ms, &signal_masks->with_scran_handlers_unmasked);
 
         if (ret < 0) {
             wl_display_cancel_read(g_state.globals.display);
@@ -574,7 +616,7 @@ run_main_loop(int *const restrict epoll_fd_out, struct _scran_signal_masks *sign
         } else {
             bool wayland_ready = false;
             for (int i = 0; i < ret; ++i) {
-                if (epoll_events[i].data.fd == wl_display_fd) {
+                if (m_epoll_events[i].data.fd == wl_display_fd) {
                     wayland_ready = true;
                 }
             }
@@ -588,7 +630,7 @@ run_main_loop(int *const restrict epoll_fd_out, struct _scran_signal_masks *sign
         }
 
         // Fire this unconditionally after every poll (details in function description)
-        scran_portal_update(epoll_fd, &scran_portal_timeout_ms);
+        scran_portal_update(m_epoll_fd, &scran_portal_timeout_ms);
 
         if (g_state.sig_focus_requested == true) {
             start_grabbing_focus();
@@ -596,8 +638,6 @@ run_main_loop(int *const restrict epoll_fd_out, struct _scran_signal_masks *sign
             g_state.sig_focus_requested = false;
         }
     };
-
-    scran_portal_destroy(epoll_fd);
 
     return true;
 }
@@ -637,13 +677,16 @@ int main(int argc, char *argv[])
     }
 
 
-    int epoll_fd = -1; // Closed by caller
 
-    if (!run_main_loop(&epoll_fd, &signal_masks)) {
-        eprintf("Main loop returned with error. Attempting normal cleanup.\n");
+    m_epoll_fd = epoll_create(1); // TODO: O_CLOEXEC if threading
+    if (m_epoll_fd == -1) {
+        eprintf("epoll_create() failed: %s\n", strerror(errno));
+        return EXIT_FAILURE;
     }
 
-    close(epoll_fd);
+    if (!run_main_loop(&signal_masks)) {
+        eprintf("Main loop returned with error. Attempting normal cleanup.\n");
+    }
 
 
 
@@ -656,6 +699,11 @@ int main(int argc, char *argv[])
     munmap(shm_arena.addr, shm_arena.size); // TODO: Put into init_meminit__destroy?
     munmap(private_arena.addr, private_arena.size); // TODO: Put into init_meminit__destroy?
     init_premem__destroy();
+
+    // TODO: Implement scran_portal_drain() to call here? Shouldn't really be
+    // necessary in practice, at the moment.
+    scran_portal_destroy(m_epoll_fd);
+    close(m_epoll_fd);
 
     wl_display_disconnect(g_state.globals.display);
     eprintf("Disconnected from wayland server (%s)\n", SOCKNAME);
