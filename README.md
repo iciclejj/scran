@@ -46,6 +46,8 @@ simpler to fix.
 
 ### Nix flake
 
+> **`nix run "github:iciclejj/scran"` to try it out without installing.**
+
 Add the flake to your your NixOS or home-manager flake inputs
 ```nix
 inputs = {
