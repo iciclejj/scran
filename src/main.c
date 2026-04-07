@@ -645,9 +645,7 @@ run_main_loop(struct _scran_signal_masks *signal_masks)
     return true;
 }
 
-// TODO: Allow selection before capture protocols are ready?
-//           Probably negligible benefit for the added complexity
-//       goto cleanup, rather than EXIT_FAILURE?
+// TODO: goto cleanup, rather than EXIT_FAILURE?
 int main(int argc, char *argv[])
 {
     if (!scran_handle_args(argc, argv)) {
