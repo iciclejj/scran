@@ -44,9 +44,11 @@ handle_pointer_enter(
     // surface per output at the moment. Change this as appropariate if adding
     // more surfaces.
     // We should still handle focused_surface == NULL appropriately in the rest
-    // of the code, so it should stay as simply a debug-assert.
+    // of the code, so this should still not be an error.
+    //     XXX: This can currently trigger when dragging out of output bounds
+    //     into a second, *left-hand-side* monitor.
     pointer_ctx->focused_whole_output_layer_surface = NULL;
-    assert(0 && "wl_pointer::enter triggered with unknown surface (not an error; see comment in source.)");
+    DEBUG("WARNING: wl_pointer::enter triggered with unknown surface (see comment in source.)\n");
 }
 
 
