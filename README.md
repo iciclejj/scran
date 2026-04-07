@@ -272,4 +272,3 @@ Feel free to open a feature request even if something is already listed here.
     - Option to display current selection size
 - Cross-display capture
     - Already handles separate simultaneous video capture per individual display
-- Desktop notifications
