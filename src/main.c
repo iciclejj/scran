@@ -178,6 +178,9 @@ _stay_alive_while_clipboard_active()
             }
         }
 
+        // Sanity check (should only loop in response to actions)
+        DEBUG("Looped in keepalive\n");
+
         // Fire this unconditionally after every poll (details in function description)
         // TODO: Can we somehow find out whether a notification has been
         // dismissed by the user, so we can stop polling this, now that no new
