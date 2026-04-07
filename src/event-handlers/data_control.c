@@ -73,6 +73,7 @@ handle_data_control_source_send(
             goto failed;
         }
     } else {
+        eprintf("Received clipboard request for unknown MIME type.\n");
         goto failed;
     }
 
@@ -81,7 +82,7 @@ handle_data_control_source_send(
     return;
 
 failed:
-    eprintf("Failed to write clipboard selection.\n");
+    eprintf("Error while writing clipboard selection; aborting.\n");
     close(fd);
     return;
 }
