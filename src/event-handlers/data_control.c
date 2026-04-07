@@ -29,18 +29,20 @@ void
 handle_data_control_source_send(
     void *data_,
     struct ext_data_control_source_v1 *source,
-    const char *mime_type,
+    const char *requested_mime,
     int32_t fd
 ) {
     struct scran_seat_datacontrol *st_datacontrol = data_;
 
-    DEBUG("datacontrol_source::send(): Received mimetype: %s\n", mime_type);
+    DEBUG("datacontrol_source::send(): Received mimetype: %s\n", requested_mime);
 
-    const char *const data_mime_type = st_datacontrol->data_to_send_mime_type;
+    const char *const data_mime = st_datacontrol->data_to_send_mime_type;
+    const char *const filepath = st_datacontrol->data_to_send_saved_file_path;
+    const size_t filepath_strlen = st_datacontrol->data_to_send_saved_file_path_strlen;
 
     if (
         st_datacontrol->should_offer_data
-        && 0 == strcmp(mime_type, data_mime_type)
+        && 0 == strcmp(requested_mime, data_mime)
     ) {
         const BLArrayCore *const bl_array = &st_datacontrol->data_to_send;
 
@@ -51,34 +53,30 @@ handle_data_control_source_send(
         }
     } else if (
         st_datacontrol->should_offer_filepath
-        && 0 == strcmp(mime_type, SCRAN_MIME_TYPE_FILEPATH_URI_LIST)
+        && 0 == strcmp(requested_mime, SCRAN_MIME_TYPE_FILEPATH_URI_LIST)
     ) {
-        const char prefix[] = "file://";
-        const size_t prefix_strlen = sizeof(prefix) - 1;
+        static const char prefix[] = "file://";
+        static const size_t prefix_strlen = sizeof(prefix) - 1;
         if (prefix_strlen != write(fd, prefix, prefix_strlen)) {
             goto failed;
         }
 
         // TODO: Make sure this is an absolute path. Either here or
         // normalize passed path to absolute during option init.
-        const char *const path = st_datacontrol->data_to_send_saved_file_path;
-        const size_t path_strlen = st_datacontrol->data_to_send_saved_file_path_strlen;
-        if (path_strlen != write(fd, path, path_strlen)) {
+        if (filepath_strlen != write(fd, filepath, filepath_strlen)) {
             goto failed;
         }
 
-        const char suffix[] = "\r\n";
-        const size_t suffix_strlen = sizeof(suffix) - 1;
+        static const char suffix[] = "\r\n";
+        static const size_t suffix_strlen = sizeof(suffix) - 1;
         if (suffix_strlen != write(fd, suffix, suffix_strlen)) {
             goto failed;
         }
     } else if (
         st_datacontrol->should_offer_filepath
-        && 0 == strcmp(mime_type, SCRAN_MIME_TYPE_FILEPATH_PLAIN)
+        && 0 == strcmp(requested_mime, SCRAN_MIME_TYPE_FILEPATH_PLAIN)
     ) {
-        const char *const path = st_datacontrol->data_to_send_saved_file_path;
-        const size_t path_strlen = st_datacontrol->data_to_send_saved_file_path_strlen;
-        if (path_strlen != write(fd, path, path_strlen)) {
+        if (filepath_strlen != write(fd, filepath, filepath_strlen)) {
             goto failed;
         }
     } else {
