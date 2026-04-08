@@ -22,6 +22,8 @@
 #include "init.h"
 #include "selection.h"
 #include "options.h"
+#include "clipboard.h"
+#include "portals.h"
 
 
 #define _FORMAT_MP4_FILE_EXTENSION ".mp4"
@@ -380,6 +382,39 @@ start_video_capture(struct scran_output *st_output)
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     return true;
+}
+
+void
+end_video_capture(struct scran_output *st_output)
+{
+    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+
+#ifndef NDEBUG
+    // All actual capture/encoding-related logic, including draining the codec
+    // before end of capture, is done in the capture_frame::ready event loop.
+    {
+        AVPacket *pkt = av_packet_alloc();
+        int ret = avcodec_receive_packet(frame_ctx->av_codec_ctx, pkt);
+        av_packet_free(&pkt);
+        assert(ret == AVERROR_EOF && "Encoder was not fully drained before end_video_capture()");
+    }
+#endif/*NDEBUG*/
+
+    av_write_trailer(frame_ctx->av_format_ctx);
+    eprintf("Video saved: %s\n", g_state.options.output_path);
+
+    const char *output_path = g_state.options.output_to_stdout ? NULL : frame_ctx->av_format_ctx->url;
+    update_clipboard(&g_state.seat.datacontrol, NULL, NULL, output_path);
+    if (output_path != NULL) {
+        scran_portal_notify_file_saved(output_path);
+    }
+
+    destroy_ffmpeg(st_output);
+
+    set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+    unset_selection_freeze_size(st_output);
+
+    atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 }
 
 

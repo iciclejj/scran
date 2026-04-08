@@ -18,9 +18,6 @@
 #include "event-handlers.h"
 #include "capture.h"
 #include "print.h"
-#include "selection.h"
-#include "clipboard.h"
-#include "portals.h"
 
 
 extern struct scran g_state;
@@ -208,8 +205,6 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     return;
 
-    // TODO: Probably define end_capture as an end_video_capture function, in the
-    // same file as start_video_capture, to make setup/teardown less disjointed.
 end_capture:
     // Drain codec
     avcodec_send_frame(frame_ctx->av_codec_ctx, NULL);
@@ -218,27 +213,10 @@ end_capture:
         _write_video_frame(frame_ctx, frame_ctx->av_packet);
     }
 
-    // Finalize file
-    av_write_trailer(frame_ctx->av_format_ctx);
-    eprintf("Video saved: %s\n", g_state.options.output_path);
-
-    const char *output_path = g_state.options.output_to_stdout ? NULL : frame_ctx->av_format_ctx->url;
-    update_clipboard(&g_state.seat.datacontrol, NULL, NULL, output_path);
-    if (output_path != NULL) {
-        scran_portal_notify_file_saved(output_path);
-    }
-
-end_capture_err:
     {
         struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
         struct scran_output *const st_output = wl_container_of(st_capture, st_output, capture);
-
-        destroy_ffmpeg(st_output);
-
-        atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
-
-        set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
-        unset_selection_freeze_size(st_output);
+        end_video_capture(st_output);
     }
 
     DEBUG("FINISHED RECORDING.\n");
