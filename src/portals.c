@@ -6,7 +6,11 @@
 #include <string.h>
 #include <sys/epoll.h>
 
-#include <basu/sd-bus.h>
+#ifdef SCRAN_LIBSYSTEMD_SD_BUS
+  #include <systemd/sd-bus.h>
+#else
+  #include <basu/sd-bus.h>
+#endif
 
 #include "state.h"
 #include "portals.h"

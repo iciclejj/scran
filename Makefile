@@ -8,8 +8,11 @@ WL_PROTOCOLS_DIR_LOCAL := $(wayland_protocols_generated_source_dir)
 
 PKG_CONFIG ?= pkg-config
 
+SD_BUS_LIB := $(shell if   $(PKG_CONFIG) --exists basu       2>/dev/null; then echo "basu"; \
+			          elif $(PKG_CONFIG) --exists libsystemd 2>/dev/null; then echo "libsystemd"; \
+					  fi)
 ffmpeg_libs := libavcodec libavutil libavformat libavfilter libswscale
-PKGCONF_LIBS := xkbcommon wayland-client $(ffmpeg_libs) basu
+PKGCONF_LIBS := xkbcommon wayland-client $(ffmpeg_libs) $(SD_BUS_LIB)
 
 _LDLIBS := -lblend2d -lm
 _LDLIBS += $(shell $(PKG_CONFIG) --libs $(PKGCONF_LIBS))
@@ -22,6 +25,9 @@ INCDIRS += $(WL_PROTOCOLS_DIR_LOCAL)
 # TODO: CPPFLAGS?
 _CFLAGS := $(addprefix -I, $(INCDIRS))
 _CFLAGS += $(shell $(PKG_CONFIG) --cflags $(PKGCONF_LIBS))
+ifeq ($(SD_BUS_LIB),libsystemd)
+	_CFLAGS += -DSCRAN_LIBSYSTEMD_SD_BUS
+endif
 ALL_CFLAGS = $(_CFLAGS) $(CFLAGS)
 
 CFLAGS_REL ?= -DNDEBUG
@@ -49,6 +55,10 @@ validate_dependencies:
 	@$(call shell_validate_dependency,wayland-scanner,1.14.91)
 	@# TODO: Verify protocol versions, or just bundle the xmls with scran
 	@$(call shell_validate_dependency,wayland-protocols)
+	@if [ -z "$(SD_BUS_LIB)" ]; then \
+	    echo "No sd-bus library found. Please install 'basu' or 'libsystemd'."; \
+		exit 1; \
+	fi
 	@for pkg in $(PKGCONF_LIBS); do \
 		$(call shell_validate_dependency,$$pkg); \
 	done
