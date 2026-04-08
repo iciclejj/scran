@@ -229,31 +229,17 @@ end_capture:
     }
 
 end_capture_err:
-    // Note: Most (all?) of these are fine to call with null pointers, despite
-    // the asserts
-    assert(frame_ctx->av_format_ctx->pb);
-    avio_close(frame_ctx->av_format_ctx->pb);
-    assert(frame_ctx->av_packet);
-    av_packet_free(&frame_ctx->av_packet);
-    assert(frame_ctx->av_codec_ctx);
-    avcodec_free_context(&frame_ctx->av_codec_ctx);
-    assert(frame_ctx->av_format_ctx);
-    // Freeing the format context frees the linked stream for us.
-    avformat_free_context(frame_ctx->av_format_ctx);
-    assert(frame_ctx->av_frame_to_encode);
-    av_frame_free(&frame_ctx->av_frame_to_encode);
-    assert(frame_ctx->av_filter_graph);
-    // Freeing the graph frees any linked filter contexts for us.
-    avfilter_graph_free(&frame_ctx->av_filter_graph);
-    assert(frame_ctx->av_frame_captured);
-    av_frame_free(&frame_ctx->av_frame_captured);
+    {
+        struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
+        struct scran_output *const st_output = wl_container_of(st_capture, st_output, capture);
 
-    atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
+        destroy_ffmpeg(st_output);
 
-    struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
-    struct scran_output *const st_output = wl_container_of(st_capture, st_output, capture);
-    set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
-    unset_selection_freeze_size(st_output);
+        atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
+
+        set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+        unset_selection_freeze_size(st_output);
+    }
 
     DEBUG("FINISHED RECORDING.\n");
     return;

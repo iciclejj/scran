@@ -316,6 +316,31 @@ init_ffmpeg(struct scran_output *st_output)
     return true;
 }
 
+void
+destroy_ffmpeg(struct scran_output *st_output)
+{
+    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+
+    // Note: Most (all?) of these are fine to call with null pointers, despite
+    // the asserts
+    assert(frame_ctx->av_format_ctx->pb);
+    avio_close(frame_ctx->av_format_ctx->pb);
+    assert(frame_ctx->av_packet);
+    av_packet_free(&frame_ctx->av_packet);
+    assert(frame_ctx->av_codec_ctx);
+    avcodec_free_context(&frame_ctx->av_codec_ctx);
+    assert(frame_ctx->av_format_ctx);
+    // Freeing the format context frees the linked stream for us.
+    avformat_free_context(frame_ctx->av_format_ctx);
+    assert(frame_ctx->av_frame_to_encode);
+    av_frame_free(&frame_ctx->av_frame_to_encode);
+    assert(frame_ctx->av_filter_graph);
+    // Freeing the graph frees any linked filter contexts for us.
+    avfilter_graph_free(&frame_ctx->av_filter_graph);
+    assert(frame_ctx->av_frame_captured);
+    av_frame_free(&frame_ctx->av_frame_captured);
+}
+
 
 bool
 start_video_capture(struct scran_output *st_output)

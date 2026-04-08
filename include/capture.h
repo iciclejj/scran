@@ -22,6 +22,7 @@
 
 bool start_video_capture(struct scran_output *st_output);
 void init_wl_capture_frame__video(struct capture_frame_context *frame_ctx);
+void destroy_ffmpeg(struct scran_output *st_output);
 
 bool start_image_capture(struct scran_output *st_output);
 void dispatch_image_capture_event(struct scran_output_capture *capture);
