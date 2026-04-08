@@ -49,8 +49,6 @@ init_premem__capture(
     bl_image_init(&st_output->capture.frame_ctx.bl_img_captured);
     bl_image_codec_init(&st_output->capture.frame_ctx.bl_imgcodec);
 
-    st_output->capture.frame_ctx.st_datacontrol = st_datacontrol;
-
     return true;
 }
 

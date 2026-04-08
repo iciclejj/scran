@@ -247,7 +247,6 @@ struct capture_frame_context {
     void *img_data_2;
 
     struct ext_image_copy_capture_session_v1 *wl_capture_session;
-    struct scran_seat_datacontrol *st_datacontrol;
 
     AVFormatContext *av_format_ctx;
     AVCodecContext *av_codec_ctx;
