@@ -72,9 +72,6 @@ dispatch_video_capture_event_loop(struct capture_frame_context *frame_ctx)
 
 // TODO:
 //  - Error checking
-//  - Destruction/cleanup
-//      - Don't forget avio_open
-//
 //  - Encoding parameters:
 //      - Let user override the encoding parameters
 //      - Decide on good defaults
@@ -116,9 +113,6 @@ init_ffmpeg(struct scran_output *st_output)
 
 
     // AVFilter
-    // TODO: Ensure filters are freed before clipboard mode and/or before
-    // subsequent video captures. (And do the same for all the other ffmpeg
-    // context objects as well)
     frame_ctx->av_filter_graph = avfilter_graph_alloc();
 
     // AVFilter: Source (receives av_frame_captured)
