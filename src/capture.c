@@ -303,12 +303,7 @@ init_ffmpeg(struct scran_output *st_output)
     avio_open(&(frame_ctx->av_format_ctx)->pb, output_filepath, AVIO_FLAG_WRITE);
     if (0 > avformat_write_header(frame_ctx->av_format_ctx, &opts)) {
         eprintf("Failed to write file header (filepath: %s)\n", output_filepath);
-
-        if (frame_ctx->av_format_ctx != NULL) {
-            avformat_free_context(frame_ctx->av_format_ctx);
-        }
-        // TODO: Should AVCodec * be freed?
-
+        destroy_ffmpeg(st_output); // TODO: goto fail?
         return false;
     }
     av_dict_free(&opts);
