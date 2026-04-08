@@ -100,7 +100,7 @@ in
    <details open> <summary>Arch</summary>
 
    ```bash
-   pacman -S   base-devel wayland wayland-protocols libxkbcommon ffmpeg
+   pacman -S   base-devel wayland wayland-protocols libxkbcommon libsystemd ffmpeg
    # Install Blend2D through the AUR (See below if you prefer to build Blend2D manually.)
    yay -S blend2d
    ```
@@ -108,7 +108,7 @@ in
    <details> <summary>Ubuntu</summary>
 
    ```bash
-   apt install make gcc pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libavcodec-dev libavutil-dev libavformat-dev libavfilter-dev
+   apt install make gcc pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libsystemd libavcodec-dev libavutil-dev libavformat-dev libavfilter-dev
    ```
    </details>
    <details> <summary>Fedora</summary>
