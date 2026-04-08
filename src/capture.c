@@ -361,6 +361,7 @@ start_video_capture(struct scran_output *st_output)
 
     if (!init_ffmpeg(st_output)) {
         eprintf("Error: Failed to initialize ffmpeg libraries.\n");
+        unset_selection_freeze_size(st_output); // TODO: goto fail?
         return false;
     }
 
