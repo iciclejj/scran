@@ -120,7 +120,7 @@ in
             Your mileage may vary.
             
    ```bash
-   dnf install make gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel libavfilter-free-devel blend2d-devel
+   dnf install make gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel systemd-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel libavfilter-free-devel blend2d-devel
    ```
    </details>
 
