@@ -101,6 +101,10 @@ init_premem()
         zxdg_output_v1_add_listener(_st_output->xdg_output, &xdg_output_listener, _st_output);
     }
 
+    if (!init_premem__datacontrol(&g_state.seat.datacontrol)) {
+        return false;
+    }
+
     // We don't need this anymore unless we want to support live geometry updates
     zxdg_output_manager_v1_destroy(g_state.globals.xdg_output_manager);
 
@@ -217,6 +221,8 @@ init_premem__destroy()
     if (!g_state.options.no_keepalive) {
         _stay_alive_while_clipboard_active();
     }
+
+    init_premem__datacontrol__destroy(&g_state.seat.datacontrol);
 
     registry_listener__destroy(&g_state);
 }

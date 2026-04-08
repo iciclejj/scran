@@ -93,4 +93,8 @@ bool init_postmem__selection(struct scran_output *st_output);
  void init_postmem__selection__destroy(struct scran_output *st_output);
 void dispatch_selection_surface_event_loop(struct scran_output *st_output);
 
+bool init_premem__datacontrol(struct scran_seat_datacontrol *st_datacontrol);
+ void init_premem__datacontrol__destroy(struct scran_seat_datacontrol *st_datacontrol);
+
+
 #endif
