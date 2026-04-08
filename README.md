@@ -97,6 +97,16 @@ in
 </summary>
 
 1. **Install Dependencies**
+
+   > `libsystemd`/`systemd-devel` is only used for sd-bus, and can safely be
+     replaced with [`basu`](https://sr.ht/~emersion/basu/) if you're not using
+     systemd and do not wish to pull in all of libsystemd. (Arch users can get
+     it from the AUR.)
+
+   > The libavcodec version installed by your package manager may or may not
+     be built with GPL-licensed video encoders such as libx264. scran will
+     pick from whatever is available.
+
    <details open> <summary>Arch</summary>
 
    ```bash
@@ -118,28 +128,25 @@ in
             can likely be worked around by using a different ffmpeg build than the
             one I was linking against (installed through the below command).
             Your mileage may vary.
-            
+
    ```bash
    dnf install make gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel systemd-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel libavfilter-free-devel blend2d-devel
    ```
    </details>
 
-   Note: The libavcodec version installed by your package manager may or may not
-         be built with GPL-licensed video encoders such as libx264. scran will
-         pick from whatever is available.
-
    <!--
    TODO: Consider adding blend2d as a git submodule.
    -->
    [See instructions below](#blend2d) if Blend2D is not packaged for your distribution.
-2. **Build**
+
+3. **Build**
    ```bash
    git clone "https://github.com/iciclejj/scran"
    cd scran
    make -j release
    ```
 
-3. **Install**
+4. **Install**
    ```bash
    # scran should now be at ./build/release/scran.
 
