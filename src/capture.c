@@ -112,6 +112,7 @@ init_ffmpeg(struct scran_output *st_output)
     frame_ctx->av_frame_captured->format = av_pixel_format_captured;
     // XXX: We won't ever get planar src frame buffers, right..?
     frame_ctx->av_frame_captured->linesize[0] = get_capture_stride(st_output);
+    assert(frame_ctx->av_frame_captured->linesize[0] == frame_ctx->pixel_stride * frame_ctx->source_width_px);
 
 
     // AVFilter

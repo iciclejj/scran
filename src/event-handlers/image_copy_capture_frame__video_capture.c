@@ -111,29 +111,23 @@ handle_image_copy_capture_frame_ready__video_capture(
     void *data,
     struct ext_image_copy_capture_frame_v1 *frame
 ) {
-    struct capture_frame_context *frame_ctx = data;
-
     ext_image_copy_capture_frame_v1_destroy(frame);
 
+    struct capture_frame_context *frame_ctx = data;
 
-    // TODO: Clarify names, more in sync with start_capture names?
-    const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
+
+    // Crop and convert
+
     uint8_t *const area_start_addr =
         frame_ctx->st_buffer.data
         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
-
-
-    // Convert
-
-    int _retval_filter;
     // XXX: Can we make this const so area_start_addr can be const? It should
     // not change for the lifetime of this function (well, at least until the
     // next frame's dispatch at the end).
     frame_ctx->av_frame_captured->data[0] = area_start_addr;
     frame_ctx->av_frame_captured->pts = frame_ctx->presentation_time_nsec;
-
-    _retval_filter = av_buffersrc_add_frame_flags(
+    int _ret_filter = av_buffersrc_add_frame_flags(
             frame_ctx->av_filter_buffersrc_ctx,
             frame_ctx->av_frame_captured,
             // TODO: AV_BUFFERSRC_FLAG_KEEP_REF, but need safe setup, e.g.
@@ -146,33 +140,31 @@ handle_image_copy_capture_frame_ready__video_capture(
             //           safe setup like this for the encoder.
             0
     );
-    assert(0 <= _retval_filter);
+    assert(0 <= _ret_filter);
 
-    _retval_filter = av_buffersink_get_frame(
+    _ret_filter = av_buffersink_get_frame(
             frame_ctx->av_filter_buffersink_ctx,
             frame_ctx->av_frame_to_encode
     );
-    assert(0 <= _retval_filter);
+    assert(0 <= _ret_filter);
 
 
     // Encode
+
     assert(av_frame_is_writable(frame_ctx->av_frame_to_encode));
-    int _retval_enc = avcodec_send_frame(frame_ctx->av_codec_ctx, frame_ctx->av_frame_to_encode);
-    assert(_retval_enc != AVERROR(EINVAL));
+    int _ret_enc = avcodec_send_frame(frame_ctx->av_codec_ctx, frame_ctx->av_frame_to_encode);
+    assert(_ret_enc != AVERROR(EINVAL));
     av_frame_unref(frame_ctx->av_frame_to_encode);
 
-    while (_retval_enc >= 0) {
-        _retval_enc = avcodec_receive_packet(frame_ctx->av_codec_ctx, frame_ctx->av_packet);
-        assert(_retval_enc != AVERROR(EINVAL));
+    while (_ret_enc >= 0) {
+        _ret_enc = avcodec_receive_packet(frame_ctx->av_codec_ctx, frame_ctx->av_packet);
+        assert(_ret_enc != AVERROR(EINVAL));
 
-        // TODO: Are there other > 0 error codes it could return?
-        if (_retval_enc == AVERROR_EOF || _retval_enc == AVERROR(EAGAIN)) {
+        if (_ret_enc == AVERROR_EOF || _ret_enc == AVERROR(EAGAIN)) {
             break;
-        } else if (_retval_enc < 0) {
+        } else if (_ret_enc < 0) {
             eprintf("Error while encoding frame\n");
-
-            // TODO: goto err
-            return;
+            return; // TODO: goto err
         }
 
         _write_video_frame(frame_ctx, frame_ctx->av_packet);
@@ -180,7 +172,7 @@ handle_image_copy_capture_frame_ready__video_capture(
         // INFO: packet gets unreferenced at start of loop by avcodec_receive_packet
     }
 
-   av_packet_unref(frame_ctx->av_packet);
+    av_packet_unref(frame_ctx->av_packet);
 
     // NOTE: We do this check *after* writing the incoming frame. This ensures
     // that the video will not be cut short at the end if we're only capturing
