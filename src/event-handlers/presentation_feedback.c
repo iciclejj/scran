@@ -33,6 +33,8 @@ handle_presentation_feedback_presented(
     uint32_t seq_lo,
     uint32_t flags
 ) {
+    wp_presentation_feedback_destroy(wp_presentation_feedback);
+
     struct scran_output_surface_buffer *st_buffer = data;
     struct scran_output *st_output = &g_state.outputs[get_containing_output_array_index(st_buffer)];
 
@@ -57,7 +59,7 @@ handle_presentation_feedback_discarded(
     void *data,
     struct wp_presentation_feedback *wp_presentation_feedback
 ) {
-    // Nothing to do here...
+    wp_presentation_feedback_destroy(wp_presentation_feedback);
 }
 
 
