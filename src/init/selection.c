@@ -25,10 +25,9 @@ init_premem__selection(
         st_output->surface.wl_surface,
         st_output->wl_output,
         ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,
-        "scran-capture" // TODO: Figure out a namespace name?
+        "scran-selection"
     );
 
-    zwlr_layer_surface_v1_set_exclusive_zone(st_output->surface.layer_surface, -1);
     // Need to set at least anchors before configure event,
     // so that the compositor knows what width/height to give us.
     zwlr_layer_surface_v1_set_anchor(
@@ -37,6 +36,10 @@ init_premem__selection(
         | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT
         | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP
         | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
+    );
+    zwlr_layer_surface_v1_set_exclusive_zone(
+        st_output->surface.layer_surface,
+        -1
     );
     zwlr_layer_surface_v1_set_keyboard_interactivity(
         st_output->surface.layer_surface,
