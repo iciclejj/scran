@@ -67,8 +67,6 @@ handle_image_copy_capture_frame_presentation_time__image_capture(
 //       Not as important for just image capture as with video capture, though
 // - Error handling or robust asserts
 // - Let user decide encoding parameters etc.
-// - Verify all required bl_*_reset() calls are performed before re-entry into
-//   this event handler.
 // - Arg/option to choose: save to file only, clipboard only, or both.
 static void
 handle_image_copy_capture_frame_ready__image_capture(
@@ -210,10 +208,8 @@ handle_image_copy_capture_frame_ready__image_capture(
     // the C-API by bl_*_get_* functions ?
     //     See: https://blend2d.com/doc/group__bl__impl.html
     const BLImageCodecImpl *const bl_img_codec_impl = (BLImageCodecImpl *)(frame_ctx->bl_imgcodec._d.impl);
-    // TODO: Double-check (lack of) refcounting behavior of _get_data functions
-    //           XXX TODO: Also, if not refcounted, then ensure it is nulled
-    //           when invalidated or that it will not matter that it isn't.
     const char *mime_type = bl_string_get_data(&bl_img_codec_impl->mime_type);
+
     if (!update_clipboard(&g_state.seat.datacontrol, &bl_array_img_encoded, mime_type, output_filepath)) {
         eprintf("Error updating clipboard.\n");
     }

@@ -40,10 +40,6 @@ init_premem__selection(
     );
     zwlr_layer_surface_v1_set_keyboard_interactivity(
         st_output->surface.layer_surface,
-        // TODO: Figure out whether this should rather be set to "exclusive"
-        //          (Though both pointer and keyboard focus mechanics will be
-        //           reworked soon anyways to support handing off/retaking
-        //           focus)
         SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED
     );
 
