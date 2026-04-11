@@ -149,7 +149,7 @@ handle_image_copy_capture_frame_ready__image_capture(
         NULL,
         NULL
     );
-    DEBUG("image_copy_capture_frame.c: bl_image_init_as_from_data:  %d\n", res);
+    DEBUG("image_copy_capture_frame.c: bl_image_create_from_data:  %d\n", res);
 
     // TODO: This should only be called once, outside of the capture event
     // pipeline, unless between-capture format changing is implemented.
