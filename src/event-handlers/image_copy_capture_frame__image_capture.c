@@ -67,30 +67,28 @@ handle_image_copy_capture_frame_presentation_time__image_capture(
 //       Not as important for just image capture as with video capture, though
 // - Error handling or robust asserts
 // - Let user decide encoding parameters etc.
+// - Verify all required bl_*_reset() calls are performed before re-entry into
+//   this event handler.
+// - Arg/option to choose: save to file only, clipboard only, or both.
 static void
 handle_image_copy_capture_frame_ready__image_capture(
     void *data,
     struct ext_image_copy_capture_frame_v1 *frame
 ) {
+    ext_image_copy_capture_frame_v1_destroy(frame);
+
     struct scran_output_capture *st_capture = data;
     struct capture_frame_context *frame_ctx = &st_capture->frame_ctx;
+    // XXX TODO: Rework the frame_ctx struct. Probably also just pass entire
+    // scran_output as the listener callback data.
+    struct scran_output *st_output = (void*)((char*)frame_ctx - (offsetof(struct scran_output, capture) + offsetof(struct scran_output_capture, frame_ctx)));
 
     // XXX: Capturing image during video capture implemented yet...
     assert(!frame_ctx->capturing_video);
     assert(g_state.n_captures_in_progress >= 1);
 
-    ext_image_copy_capture_frame_v1_destroy(frame);
-
-
-    // TODO: Do we ever actually need to call blend2d *_reset() fuctions before
-    // re-entry into this event handler?
-
-    BLResult res;
-
-    // TODO: Clarify names, more in sync with start_capture names?
-    const int area_width_no_transform = blboxi_width_abs_unsafe(frame_ctx->capture_area_px);
-    const int area_height_no_transform = blboxi_height_abs_unsafe(frame_ctx->capture_area_px);
-    const uint32_t area_row_bytes = frame_ctx->pixel_stride * area_width_no_transform;
+    const int capture_area_px_w = blboxi_width_abs_unsafe(frame_ctx->capture_area_px);
+    const int capture_area_px_h = blboxi_height_abs_unsafe(frame_ctx->capture_area_px);
     const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
     // XXX TODO: Either separate buffer from video capture OR double-check that
     // the shared buffer doesn't cause issues + add robust checks/asserts.
@@ -99,63 +97,56 @@ handle_image_copy_capture_frame_ready__image_capture(
         frame_ctx->st_buffer.data
         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
+    // XXX TODO(!!):
+    //    Output size is not necessarily guaranteed to be <= raw pixel
+    //    buffer size. In other words, this buffer could overflow, as it
+    //    is (at time of writing) set to equal the size of the raw
+    //    capture source pixel buffer.
+    void *const buf_cropped_converted = frame_ctx->img_data_2;
 
-    // TODO: Double-check that this pointer doesn't get overwritten by blend2d
-    //       and re-allocated.
-    //       ALSO XXX TODO(!!):
-    //           Output size is not necessarily guaranteed to be <= raw pixel
-    //           buffer size. In other words, this buffer could overflow, as it
-    //           is (at time of writing) set to equal the size of the raw
-    //           capture source pixel buffer.
-    void *const bl_buf_cropped_converted = frame_ctx->img_data_2;
-
-    // XXX TODO: Rework the frame_ctx struct. Probably also just pass entire
-    // scran_output as the listener callback data.
-    struct scran_output *st_output = (void*)((char*)frame_ctx - (offsetof(struct scran_output, capture) + offsetof(struct scran_output_capture, frame_ctx)));
-
-    // XXX: We just always run it through the converter for now.
-    // TODO: Only convert if required (not natively supported pixel format by blend2d)
-    // TODO: Probably make some way to easily get padded height/widths etc.
-    //       with some centralized source of truth
-    // TODO: Assert we have available padding.
-    void *bl_buf_cropped_converted_with_offset = NULL;
-    uintptr_t bl_buf_cropped_converted_row_bytes = 0;
-    uint32_t rgba32_shuffle = wl_shm_format_to_blend2d_scran_rgba32_shuffle(st_output->capture.shm_format);
-
+    void     *buf_cropped_converted_with_offset = NULL;
+    uintptr_t buf_cropped_converted_row_bytes = 0;
+    uint32_t  rgba32_shuffle = wl_shm_format_to_blend2d_scran_rgba32_shuffle(st_output->capture.shm_format);
     if (rgba32_shuffle == RGBA32_SHUFFLE_ERROR) {
-        eprintf("WARNING: Output's pixel format is not supported. Attempting anyways...");
+        eprintf("WARNING: Output's pixel format is not supported. Attempting anyways...\n");
         rgba32_shuffle = RGBA32_SHUFFLE_NO_CHANGE;
     }
-
-    // TODO: More asserts before & after this
+    // XXX: We convert etc. unconditionally for now.
+    //    TODO: Only convert if required
+    //            I.e. convert if not natively supported pixel format by blend2d
+    //            encoder and/or needs transform
+    //    TODO: Assert we have available padding.
+    //    TODO: More asserts before & after this
     scranrot_transform_framebuffer(
         area_start_addr,
-        bl_buf_cropped_converted,
-        area_width_no_transform,
-        area_height_no_transform,
+        buf_cropped_converted,
+        capture_area_px_w,
+        capture_area_px_h,
         source_row_bytes,
         rgba32_shuffle,
-        st_output->transform,
-        &bl_buf_cropped_converted_with_offset,
-        &bl_buf_cropped_converted_row_bytes
+        // TODO: add lib-interop.h function for this cast?
+        (enum scranrot_transform)st_output->transform,
+        &buf_cropped_converted_with_offset,
+        &buf_cropped_converted_row_bytes
     );
-    const int area_width_transformed = get_transformed_width(area_width_no_transform, area_height_no_transform, st_output->transform);
-    const int area_height_transformed = get_transformed_height(area_width_no_transform, area_height_no_transform, st_output->transform);
+    const int capture_area_px_w_transformed = get_transformed_width(capture_area_px_w, capture_area_px_h, st_output->transform);
+    const int capture_area_px_h_transformed = get_transformed_height(capture_area_px_w, capture_area_px_h, st_output->transform);
 
+
+    // Encode
+    BLResult res;
 
     // NOTE: The data passed is not freed unless freed by passed destroy_func,
     // if it is not NULL (aka it is not freed here, at time of writing).
-    // const int _post_inverse_transform_area_width = area_height_no_transform;
-    // const int _post_inverse_transform_area_height = area_width_no_transform;
     res = bl_image_create_from_data(
         &frame_ctx->bl_img_captured,
-        area_width_transformed,
-        area_height_transformed,
+        capture_area_px_w_transformed,
+        capture_area_px_h_transformed,
         CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT,
-        bl_buf_cropped_converted_with_offset,
-        bl_buf_cropped_converted_row_bytes,
+        buf_cropped_converted_with_offset,
+        buf_cropped_converted_row_bytes,
         // XXX: Read-only access causes blend2d to make a copy if modified.
-        // TODO: Probably just change to RW.
+        //      TODO: Probably just change to RW.
         BL_DATA_ACCESS_READ,
         NULL,
         NULL
@@ -175,8 +166,6 @@ handle_image_copy_capture_frame_ready__image_capture(
     BLArrayCore bl_array_img_encoded;
     bl_array_init(&bl_array_img_encoded, BL_OBJECT_TYPE_ARRAY_UINT8);
     res = bl_image_write_to_data(&frame_ctx->bl_img_captured, &bl_array_img_encoded, &frame_ctx->bl_imgcodec);
-
-    // TODO: Arg/option to choose: save to file only, clipboard only, or both.
 
     // TODO: Are the internal functions reasonably stable and/or easy to use
     //       directly?
