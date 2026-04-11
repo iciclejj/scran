@@ -44,7 +44,8 @@ set_selection_surface_theme(
 void
 set_selection_initialized(struct scran_output *st_output)
 {
-    assert(st_output->selection_ctx.selection_state == SELECTION_INITIALIZING);
+    assert(st_output->selection_ctx.selection_state == SELECTION_INITIALIZING
+           || g_state.options.have_custom_initial_selection && st_output->selection_ctx.selection_state == SELECTION_NONE);
 
     // TODO: Not sure if we should deinvert in here or let the caller decide
 
