@@ -14,11 +14,11 @@ extern struct scran g_state;
 
 
 static inline bool
-_copy_data(
+_copy_data_weak(
     BLArrayCore *dst,
     BLArrayCore *src
 ) {
-    if (bl_array_init_move(dst, src) != BL_SUCCESS) {
+    if (bl_array_assign_weak(dst, src) != BL_SUCCESS) {
         eprintf("Error: Failed to copy data for clipboard");
         return false;
     }
@@ -62,7 +62,7 @@ _copy_filepath(
 bool
 update_clipboard(
     struct scran_seat_datacontrol *datacontrol,
-    BLArrayCore *data,
+    BLArrayCore *data, // Will be weak-copied. Caller should still _destroy().
     const char *data_mime_type,
     const char *filepath
 ) {
@@ -78,7 +78,7 @@ update_clipboard(
     datacontrol->should_offer_filepath = false;
 
     if (data != NULL && data_mime_type != NULL) {
-        if (!_copy_data(&datacontrol->data_to_send, data)) {
+        if (!_copy_data_weak(&datacontrol->data_to_send, data)) {
             goto err;
         }
         if (!_copy_mime_type(datacontrol->data_to_send_mime_type, data_mime_type)) {

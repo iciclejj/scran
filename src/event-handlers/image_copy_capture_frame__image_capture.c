@@ -156,7 +156,6 @@ handle_image_copy_capture_frame_ready__image_capture(
     // TODO: This should only be called once, outside of the capture event
     // pipeline, unless between-capture format changing is implemented.
     res = bl_image_codec_find_by_name(&frame_ctx->bl_imgcodec, CAPTURE_IMAGE_OUTPUT_BLIMAGECODEC_NAME_DEFAULT, SIZE_MAX, NULL);
-
     // TODO: This should be initialized in init_premem, so we don't re-allocate
     // the array backing every time. Must in that case either be a double-
     // buffer, OR assert that there will never be a race condition with
@@ -218,6 +217,8 @@ handle_image_copy_capture_frame_ready__image_capture(
     if (!update_clipboard(&g_state.seat.datacontrol, &bl_array_img_encoded, mime_type, output_filepath)) {
         eprintf("Error updating clipboard.\n");
     }
+
+    bl_array_destroy(&bl_array_img_encoded);
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 }
