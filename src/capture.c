@@ -420,18 +420,16 @@ end_video_capture(struct scran_output *st_output)
 
 
 void
-dispatch_image_capture_event(struct scran_output_capture *st_capture)
+dispatch_image_capture_event(struct scran_output *st_output)
 {
-    struct capture_frame_context *frame_ctx = &st_capture->frame_ctx;
-
     struct ext_image_copy_capture_frame_v1 *frame =
         ext_image_copy_capture_session_v1_create_frame(
-            frame_ctx->wl_capture_session
+            st_output->capture.frame_ctx.wl_capture_session
         );
-    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__image_capture, st_capture);
+    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__image_capture, st_output);
     ext_image_copy_capture_frame_v1_attach_buffer(
         frame,
-        frame_ctx->st_buffer.wl_buffer
+        st_output->capture.frame_ctx.st_buffer.wl_buffer
     );
     ext_image_copy_capture_frame_v1_capture(frame);
 }
@@ -473,7 +471,7 @@ start_image_capture(struct scran_output *st_output)
         return true;
     }
 
-    dispatch_image_capture_event(&st_output->capture);
+    dispatch_image_capture_event(st_output);
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     return true;
