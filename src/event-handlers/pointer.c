@@ -33,7 +33,7 @@ handle_pointer_enter(
         struct scran_output_surface *st_surface = &state->outputs[i].surface;
 
         if (surface_entered == st_surface->wl_surface) {
-            pointer_ctx->focused_whole_output_layer_surface = st_surface;
+            pointer_ctx->focused_fulloutput_selection_surface = st_surface;
             return;
         }
     }
@@ -47,7 +47,7 @@ handle_pointer_enter(
     // of the code, so this should still not be an error.
     //     XXX: This can currently trigger when dragging out of output bounds
     //     into a second, *left-hand-side* monitor.
-    pointer_ctx->focused_whole_output_layer_surface = NULL;
+    pointer_ctx->focused_fulloutput_selection_surface = NULL;
     DEBUG("WARNING: wl_pointer::enter triggered with unknown surface (see comment in source.)\n");
 }
 
@@ -95,19 +95,19 @@ handle_pointer_motion(
     wl_fixed_t y_surface
 ) {
     struct scran *state = data;
+    struct scran_output_surface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
 
-    if (state->seat.pointer_ctx.focused_whole_output_layer_surface == NULL) {
+    if (focused_selection_surface == NULL) {
         return;
     }
-    struct scran_output_surface *st_surface = state->seat.pointer_ctx.focused_whole_output_layer_surface;
 
-    struct scran_output *st_output = wl_container_of(st_surface, st_output, surface);
+    struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, surface);
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
 
-    int x_px = _selection_surface_logical_coordinate_to_buffer_pixel(st_surface, x_surface);
-    int y_px = _selection_surface_logical_coordinate_to_buffer_pixel(st_surface, y_surface);
+    int x_px = _selection_surface_logical_coordinate_to_buffer_pixel(focused_selection_surface, x_surface);
+    int y_px = _selection_surface_logical_coordinate_to_buffer_pixel(focused_selection_surface, y_surface);
 
     // TODO: Maybe use a BLPoint to neatly pack this into _selection_surface_logical_coordinate_to_buffer_pixel.
     clamp_to_transformed_output_width(&x_px, st_output);
@@ -234,11 +234,11 @@ handle_pointer_button(
     enum wl_pointer_button_state button_state
 ) {
     struct scran *state = data;
+    struct scran_output_surface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
 
-    if (state->seat.pointer_ctx.focused_whole_output_layer_surface == NULL) {
+    if (focused_selection_surface == NULL) {
         return;
     }
-    struct scran_output_surface *st_surface = state->seat.pointer_ctx.focused_whole_output_layer_surface;
 
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
 
@@ -270,7 +270,7 @@ handle_pointer_button(
 
     pointer_ctx->active_button = pointer_ctx->active_button ? SCRAN_BTN_NONE : button;
 
-    struct scran_output *st_output = wl_container_of(st_surface, st_output, surface);
+    struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, surface);
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
     int x_px = pointer_ctx->x_px;

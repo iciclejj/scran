@@ -137,11 +137,12 @@ struct scran_seat_pointerContext {
     // probably just move it into scran_options.
     bool use_presses_only;
 
-    // Focused surface, which must cover the entire output's area, i.e. our
-    // selection layer surface.
+    // Fulloutput => covers entire output's area/resolution.
+    //   (Named this way to prevent any conflation with other uses of the term
+    //   "fullscreen" in Wayland/XDG protocols/etc.
     //   TODO: Should this be for the entire seat, and not just pointer?
     //             Both keyboard and pointer have ::enter events.
-    struct scran_output_surface *focused_whole_output_layer_surface;
+    struct scran_output_surface *focused_fulloutput_selection_surface;
 
     struct wp_cursor_shape_device_v1 *cursor_shape_device;
 };
