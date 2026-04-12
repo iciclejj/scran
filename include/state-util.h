@@ -120,7 +120,16 @@ global_logical_coordinates_to_output_pixel_coordinates(
         if (y_within_bounds && x_within_bounds) {
             *containing_output = &g_state.outputs[i];
 
-            double scale = (*containing_output)->surface.final_scale_factor_normalized;
+            // XXX: Uses selection-surface as source of truth for output-global scale
+            //      TODO: See if there's a better way to do this, e.g. getting scale
+            //      from the xdg-output (doesn't seem possible other than estimating
+            //      based on logical vs mode res), or verify that every layer surface
+            //      on an output will always have the same scale, and unify the scale
+            //      factor state variable to be shared across all surfaces on an
+            //      output (probably with selection surface as source of truth).
+            //      (Yes, as of this comment's commit, we only have one surface per
+            //      output anyways, but preparing to add more.)
+            double scale = (*containing_output)->selection_surface.surface.final_scale_factor_normalized;
 
             rect_out->x = round(scale * (rect_in.x - geometry->x_logical));
             rect_out->y = round(scale * (rect_in.y - geometry->y_logical));

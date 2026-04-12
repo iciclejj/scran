@@ -5,7 +5,7 @@
 #include "selection.h"
 #include "print.h"
 #include "capture.h"
-#include "surface.h"
+#include "surface__selection.h"
 #include "util/blend2d.h"
 
 
@@ -30,7 +30,7 @@ set_selection_surface_theme(
     }
 
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
-        struct scran_output_surface_buffer *st_buffer = &st_output->surface.double_buffer[i];
+        struct scran_output_surface_buffer *st_buffer = &st_output->selection_surface.surface.double_buffer[i];
 
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, fill_style.value);
         bl_context_set_fill_rule(&st_buffer->bl_ctx, fill_rule);
@@ -118,13 +118,15 @@ start_grabbing_focus()
 
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output *st_output = &g_state.outputs[i];
+        struct scran_output_surface *st_surface = &st_output->selection_surface.surface;
+
         // NULL sets an infinite region
-        wl_surface_set_input_region(st_output->surface.wl_surface, NULL);
+        wl_surface_set_input_region(st_surface->wl_surface, NULL);
         zwlr_layer_surface_v1_set_keyboard_interactivity(
-            st_output->surface.layer_surface,
+            st_surface->layer_surface,
             SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED
         );
-        wl_surface_commit(st_output->surface.wl_surface);
+        wl_surface_commit(st_surface->wl_surface);
     }
 }
 
@@ -135,12 +137,14 @@ stop_grabbing_focus()
 
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output *st_output = &g_state.outputs[i];
-        wl_surface_set_input_region(st_output->surface.wl_surface, g_state.empty_wl_region);
+        struct scran_output_surface *st_surface = &st_output->selection_surface.surface;
+
+        wl_surface_set_input_region(st_surface->wl_surface, g_state.empty_wl_region);
         zwlr_layer_surface_v1_set_keyboard_interactivity(
-            st_output->surface.layer_surface,
+            st_surface->layer_surface,
             SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_UNFOCUSED
         );
-        wl_surface_commit(st_output->surface.wl_surface);
+        wl_surface_commit(st_surface->wl_surface);
     }
 }
 

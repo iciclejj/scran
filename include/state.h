@@ -82,10 +82,11 @@ struct scran_output_surface_buffer {
     bool force_redraw;
 };
 
-// TODO: Optimize surface/selection event-loop struct sizes
-//           Make a *_context struct, like for capture_frame
+
 struct scran_output_surface {
     struct wl_surface *wl_surface;
+
+    struct scran_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
 
     // "normalized" implies:
     //   scale == 1 => fractional_scale_factor_normalized = 1
@@ -93,12 +94,8 @@ struct scran_output_surface {
     //   fractional_scale_wp_10 == 180 => fractional_scale_factor_normalized = 1.5
     double final_scale_factor_normalized;
 
-    BLPathCore bl_path;
-
-    // XXX TODO: Turn this into a pointer once we remove the ugly redraw hack
-    // in set_selection_surface_theme(). TODO: Redraw hack is gone now.
-    BLBoxI box_last_drawn;
-    struct scran_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
+    // XXX: Everything below here should probably go in a separate init struct,
+    // detached from the main state struct
 
     // Surface-local coordinates
     int32_t width_logical;
@@ -111,12 +108,21 @@ struct scran_output_surface {
     //   See wp_viewport and wp_fractional_scale xmls for more information
     int32_t width_px_buffer;
     int32_t height_px_buffer;
-
     int32_t fractional_scale_wp_120; // wp_fractional_scale
 
     struct zwlr_layer_surface_v1 *layer_surface;
     struct wp_fractional_scale_v1 *fractional_scale;
     struct wp_viewport *viewport;
+};
+
+
+struct scran_output_selectionSurface {
+    struct scran_output_surface surface;
+
+    BLPathCore bl_path;
+    // XXX TODO: Turn this into a pointer once we remove the ugly redraw hack
+    // in set_selection_surface_theme(). TODO: Redraw hack is gone now.
+    BLBoxI box_last_drawn;
 };
 
 struct scran_seat_pointerContext {
@@ -143,7 +149,7 @@ struct scran_seat_pointerContext {
     //   "fullscreen" in Wayland/XDG protocols/etc.
     //   TODO: Should this be for the entire seat, and not just pointer?
     //             Both keyboard and pointer have ::enter events.
-    struct scran_output_surface *focused_fulloutput_selection_surface;
+    struct scran_output_selectionSurface *focused_fulloutput_selection_surface;
 
     struct wp_cursor_shape_device_v1 *cursor_shape_device;
 };
@@ -329,7 +335,7 @@ struct scran_output {
     int32_t fractional_scale_cosmic_1000;   // zcosmic_output_head
     wl_fixed_t fractional_scale_wlr;        // zwlr_output_head
 
-    struct scran_output_surface surface;
+    struct scran_output_selectionSurface selection_surface;
     struct scran_output_selectionContext selection_ctx;
     struct scran_output_capture capture;
 

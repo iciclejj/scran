@@ -3,7 +3,7 @@
 #include <blend2d/blend2d.h>
 
 #include "state.h"
-#include "surface.h"
+#include "surface__selection.h"
 #include "init.h"
 #include "util/blend2d.h"
 #include "event-handlers.h"
@@ -70,7 +70,7 @@ _get_box_diffs_as_4_rects(
 
 static inline void
 _draw_and_damage_region(
-    struct scran_output_surface *st_surface,
+    struct scran_output_selectionSurface *selection_surface,
     struct scran_output_surface_buffer *st_buffer,
     // Wayland needs to be damaged with difference with the previously drawn box,
     // regardless of which buffer produced it. The buffer itself, on the other
@@ -88,10 +88,10 @@ _draw_and_damage_region(
     // TODO: Is bl_context_clear_all the same as bl_context_clear_rect_i, if we do it after clipping?
     bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &damage_region_buffer);
     bl_context_clear_all(&st_buffer->bl_ctx);
-    bl_context_fill_path_d(&st_buffer->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, &st_surface->bl_path);
+    bl_context_fill_path_d(&st_buffer->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, &selection_surface->bl_path);
     bl_context_restore_clipping(&st_buffer->bl_ctx);
 
-    wl_surface_damage_buffer( st_surface->wl_surface,
+    wl_surface_damage_buffer(selection_surface->surface.wl_surface,
         damage_region_wayland.x, damage_region_wayland.y, damage_region_wayland.w, damage_region_wayland.h
     );
 }
@@ -103,7 +103,7 @@ _draw_and_damage_region(
 // even as part of a force-redraw.
 static inline void
 _draw_and_damage_selection_border(
-    struct scran_output_surface *st_surface,
+    struct scran_output_selectionSurface *selection_surface,
     struct scran_output_surface_buffer *st_buffer,
     BLBoxI capture_area_border_outline,
     BLBoxI capture_area_border_inline,
@@ -111,19 +111,19 @@ _draw_and_damage_selection_border(
     const BLRectI *damage_regions_buffer,
     uint8_t n_damage_regions // shared between 'damage_regions_wayland' and 'damage_regions_buffer'
 ) {
-    bl_path_add_box_i(&st_surface->bl_path, &capture_area_border_inline,  BL_GEOMETRY_DIRECTION_NONE);
-    bl_path_add_box_i(&st_surface->bl_path, &capture_area_border_outline, BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&selection_surface->bl_path, &capture_area_border_inline,  BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&selection_surface->bl_path, &capture_area_border_outline, BL_GEOMETRY_DIRECTION_NONE);
 
     for (int i = 0; i < n_damage_regions; ++i) {
-        _draw_and_damage_region(st_surface, st_buffer, damage_regions_wayland[i], damage_regions_buffer[i]);
+        _draw_and_damage_region(selection_surface, st_buffer, damage_regions_wayland[i], damage_regions_buffer[i]);
     }
 
-    bl_path_clear(&st_surface->bl_path);
+    bl_path_clear(&selection_surface->bl_path);
 }
 
 static inline void
 _draw_and_damage_background(
-    struct scran_output_surface *st_surface,
+    struct scran_output_selectionSurface *selection_surface,
     struct scran_output_surface_buffer *st_buffer,
     BLBoxI capture_area_max_bounds,
     BLBoxI capture_area_border_outline,
@@ -137,18 +137,18 @@ _draw_and_damage_background(
 
     bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, SCRAN_SELECTION_BACKGROUND_COLOR.value);
 
-    bl_path_add_box_i(&st_surface->bl_path, &capture_area_max_bounds,     BL_GEOMETRY_DIRECTION_NONE);
-    bl_path_add_box_i(&st_surface->bl_path, &capture_area_border_outline, BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&selection_surface->bl_path, &capture_area_max_bounds,     BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&selection_surface->bl_path, &capture_area_border_outline, BL_GEOMETRY_DIRECTION_NONE);
 
     for (int i = 0; i < n_damage_regions; ++i) {
-        _draw_and_damage_region(st_surface, st_buffer, damage_regions_wayland[i], damage_regions_buffer[i]);
+        _draw_and_damage_region(selection_surface, st_buffer, damage_regions_wayland[i], damage_regions_buffer[i]);
     }
 
     uint32_t prev_fill_style_rgba32;
     bl_var_to_rgba32(&prev_fill_style, &prev_fill_style_rgba32);
     bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, prev_fill_style_rgba32);
 
-    bl_path_clear(&st_surface->bl_path);
+    bl_path_clear(&selection_surface->bl_path);
 }
 
 
@@ -172,7 +172,7 @@ _get_scalesafe_border_inline(
 
 void
 draw_frame_and_damage_buffer(
-    struct scran_output_surface *st_surface,
+    struct scran_output_selectionSurface *selection_surface,
     struct scran_output_surface_buffer *st_buffer,
     struct BLBoxI capture_area,
     struct BLBoxI capture_area_bounds
@@ -180,7 +180,7 @@ draw_frame_and_damage_buffer(
     // TODO: Assert bl_ctx has already begun
 
     // What the compositor has to overwrite:
-    const struct BLBoxI capture_area_last_used_in_any_buffer = st_surface->box_last_drawn;
+    const struct BLBoxI capture_area_last_used_in_any_buffer = selection_surface->box_last_drawn;
     // What we have to overwrite:
     const struct BLBoxI capture_area_last_used_in_current_buffer = st_buffer->box_currently_drawn;
 
@@ -188,7 +188,7 @@ draw_frame_and_damage_buffer(
     assert(!SCRAN_BL_BOX_IS_INVERTED(capture_area_last_used_in_any_buffer));
     // TODO: Assert box_bounds fully surrounds box_to_draw
 
-    const double scale = st_surface->final_scale_factor_normalized;
+    const double scale = selection_surface->surface.final_scale_factor_normalized;
 
     // TODO: Maybe make this all more readable and not 200 columns wide...
 
@@ -206,12 +206,12 @@ draw_frame_and_damage_buffer(
     if (st_buffer->force_redraw) { // TODO: unlikely()
         // Draw background dim
         const BLRectI damage_region_everything = blboxi_to_blrecti(capture_area_bounds);
-        _draw_and_damage_background(      st_surface, st_buffer, capture_area_bounds        , capture_area_border_outline, &damage_region_everything,       &damage_region_everything,       1);
+        _draw_and_damage_background(      selection_surface, st_buffer, capture_area_bounds        , capture_area_border_outline, &damage_region_everything,       &damage_region_everything,       1);
 
         // Draw selection border
         BLRectI damage_regions_selection_border[4];
         _get_box_diffs_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions_selection_border);
-        _draw_and_damage_selection_border(st_surface, st_buffer, capture_area_border_outline, capture_area_border_inline , damage_regions_selection_border, damage_regions_selection_border, 4);
+        _draw_and_damage_selection_border(selection_surface, st_buffer, capture_area_border_outline, capture_area_border_inline , damage_regions_selection_border, damage_regions_selection_border, 4);
 
         st_buffer->force_redraw = false;
     } else {
@@ -228,7 +228,7 @@ draw_frame_and_damage_buffer(
             _get_box_diffs_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_inline_last_used_in_any_buffer    , damage_regions_wayland + i_old_border_diffs);
             _get_box_diffs_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_inline_last_used_in_current_buffer, damage_regions_buffer  + i_old_border_diffs);
 
-            _draw_and_damage_background(st_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, 8);
+            _draw_and_damage_background(selection_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, 8);
         }
 
         // Draw selection border
@@ -237,7 +237,7 @@ draw_frame_and_damage_buffer(
 
             _get_box_diffs_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
 
-            _draw_and_damage_selection_border(st_surface, st_buffer, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
+            _draw_and_damage_selection_border(selection_surface, st_buffer, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
         }
     }
 
@@ -252,12 +252,12 @@ request_selection_surface_frame_callback(
     struct scran_output *st_output
 ) {
     wl_callback_add_listener(
-        wl_surface_frame(st_output->surface.wl_surface),
-        &surface_frame_callback_listener,
+        wl_surface_frame(st_output->selection_surface.surface.wl_surface),
+        &selection_surface_frame_callback_listener,
         st_output
     );
     // You have to commit for the frame callback to take effect.
-    wl_surface_commit(st_output->surface.wl_surface);
+    wl_surface_commit(st_output->selection_surface.surface.wl_surface);
 }
 
 void

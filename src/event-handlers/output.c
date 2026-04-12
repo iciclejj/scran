@@ -42,8 +42,8 @@ handle_output_scale(
 
         // XXX TODO(!!): Make for_all_fullscreen_surfaces() function/macro, once
         // we add more surfaces
-        update_surface_scale_and_size(&st_output->surface);
-        update_surface_viewport(&st_output->surface);
+        update_surface_scale_and_size(&st_output->selection_surface.surface);
+        update_surface_viewport(&st_output->selection_surface.surface);
     }
 }
 

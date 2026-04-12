@@ -10,7 +10,7 @@
 #include "state-util.h"
 #include "event-handlers.h"
 #include "selection.h"
-#include "surface.h"
+#include "surface__selection.h"
 
 
 bool
@@ -18,11 +18,13 @@ init_premem__selection(
     struct scran_output *st_output,
     struct scran_globals *st_globals
 ) {
+    struct scran_output_surface *st_surface = &st_output->selection_surface.surface;
+
     // Must add role to surface and ack its configure event before adding a buffer.
-    st_output->surface.wl_surface = wl_compositor_create_surface(st_globals->compositor);
-    st_output->surface.layer_surface = zwlr_layer_shell_v1_get_layer_surface(
+    st_surface->wl_surface = wl_compositor_create_surface(st_globals->compositor);
+    st_surface->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         st_globals->layer_shell,
-        st_output->surface.wl_surface,
+        st_surface->wl_surface,
         st_output->wl_output,
         ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,
         "scran-selection"
@@ -31,35 +33,35 @@ init_premem__selection(
     // Need to set at least anchors before configure event,
     // so that the compositor knows what width/height to give us.
     zwlr_layer_surface_v1_set_anchor(
-        st_output->surface.layer_surface,
+        st_surface->layer_surface,
         ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
         | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT
         | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP
         | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
     );
     zwlr_layer_surface_v1_set_exclusive_zone(
-        st_output->surface.layer_surface,
+        st_surface->layer_surface,
         -1
     );
     zwlr_layer_surface_v1_set_keyboard_interactivity(
-        st_output->surface.layer_surface,
+        st_surface->layer_surface,
         SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED
     );
 
-    zwlr_layer_surface_v1_add_listener(st_output->surface.layer_surface, &layer_surface_listener, &st_output->surface);
+    zwlr_layer_surface_v1_add_listener(st_surface->layer_surface, &layer_surface_listener, st_surface);
     // Initial bufferless commit to trigger configure event
-    wl_surface_commit(st_output->surface.wl_surface);
+    wl_surface_commit(st_surface->wl_surface);
 
     // We call set_destination etc. in the ::scale handlers (and in postmem init)
-    st_output->surface.viewport = wp_viewporter_get_viewport(g_state.globals.viewporter, st_output->surface.wl_surface);
+    st_surface->viewport = wp_viewporter_get_viewport(g_state.globals.viewporter, st_surface->wl_surface);
     // Leave st_surface->fractional_scale as 0. output->scale is our fallback.
     if (!st_output->scale) { // did not already get set in output::scale
         st_output->scale = 1;
     }
-    st_output->surface.fractional_scale = wp_fractional_scale_manager_v1_get_fractional_scale(
-        st_globals->fractional_scale_manager, st_output->surface.wl_surface
+    st_surface->fractional_scale = wp_fractional_scale_manager_v1_get_fractional_scale(
+        st_globals->fractional_scale_manager, st_surface->wl_surface
     );
-    wp_fractional_scale_v1_add_listener(st_output->surface.fractional_scale, &fractional_scale_listener, &st_output->surface);
+    wp_fractional_scale_v1_add_listener(st_surface->fractional_scale, &fractional_scale_listener, st_surface);
 
     return true;
 }
@@ -67,10 +69,12 @@ init_premem__selection(
 void
 init_premem__selection__destroy(struct scran_output *st_output)
 {
-    zwlr_layer_surface_v1_destroy(st_output->surface.layer_surface);
-    wl_surface_destroy(st_output->surface.wl_surface);
-    wp_viewport_destroy(st_output->surface.viewport);
-    wp_fractional_scale_v1_destroy(st_output->surface.fractional_scale);
+    struct scran_output_surface *st_surface = &st_output->selection_surface.surface;
+
+    zwlr_layer_surface_v1_destroy(st_surface->layer_surface);
+    wl_surface_destroy(st_surface->wl_surface);
+    wp_viewport_destroy(st_surface->viewport);
+    wp_fractional_scale_v1_destroy(st_surface->fractional_scale);
 }
 
 
@@ -87,12 +91,14 @@ init_postmem__selection(struct scran_output *st_output)
 {
     DEBUG("init_postmem__selection()\n");
 
-    struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
-    struct scran_output_surface          *st_surface    = &st_output->surface;
+    struct scran_output_selectionContext *selection_ctx     = &st_output->selection_ctx;
+    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+    struct scran_output_surface          *st_surface        = &st_output->selection_surface.surface;
+
 
     // Sanity check...
-    assert(st_output->xdg_geometry.w_logical == st_output->surface.width_logical);
-    assert(st_output->xdg_geometry.h_logical == st_output->surface.height_logical);
+    assert(st_output->xdg_geometry.w_logical == st_surface->width_logical);
+    assert(st_output->xdg_geometry.h_logical == st_surface->height_logical);
 
     // Update here in addition to within the ::scale handlers, since they may
     // have fired before the viewport was initialized.
@@ -134,7 +140,7 @@ init_postmem__selection(struct scran_output *st_output)
         bl_context_init_as(&st_buffer->bl_ctx, &st_buffer->bl_img, NULL);
     }
 
-    bl_path_init(&st_surface->bl_path);
+    bl_path_init(&selection_surface->bl_path);
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
 
 
@@ -144,7 +150,7 @@ init_postmem__selection(struct scran_output *st_output)
     // the first frame.
     assert(initial_buffer->busy == false);
     draw_frame_and_damage_buffer(
-        &st_output->surface,
+        selection_surface,
         initial_buffer,
         st_output->selection_ctx.box_px,
         st_output->selection_ctx.box_bounds_px
@@ -158,15 +164,15 @@ init_postmem__selection(struct scran_output *st_output)
     // configure? TODO: Find out if this is compositor-bound or can be
     // worked around somehow.
     wl_surface_attach(
-        st_output->surface.wl_surface, initial_buffer->wl_buffer, 0, 0
+        st_surface->wl_surface, initial_buffer->wl_buffer, 0, 0
     );
     wl_callback_add_listener(
-        wl_surface_frame(st_output->surface.wl_surface),
-        &surface_frame_callback_listener,
+        wl_surface_frame(st_surface->wl_surface),
+        &selection_surface_frame_callback_listener,
         st_output
     );
     wl_surface_commit(
-        st_output->surface.wl_surface
+        st_surface->wl_surface
     );
 
     return true;
@@ -175,8 +181,9 @@ init_postmem__selection(struct scran_output *st_output)
 void
 init_postmem__selection__destroy(struct scran_output *st_output)
 {
-    struct scran_output_selectionContext *const selection_ctx = &st_output->selection_ctx;
-    struct scran_output_surface * st_surface = &st_output->surface;
+    struct scran_output_selectionContext *selection_ctx     = &st_output->selection_ctx;
+    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+    struct scran_output_surface          *st_surface        = &st_output->selection_surface.surface;
 
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
         struct scran_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
@@ -185,6 +192,6 @@ init_postmem__selection__destroy(struct scran_output *st_output)
         bl_image_destroy(&st_buffer->bl_img);
     }
 
-    bl_path_destroy(&st_surface->bl_path);
+    bl_path_destroy(&selection_surface->bl_path);
 }
 

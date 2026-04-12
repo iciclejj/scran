@@ -84,13 +84,13 @@ handle_keyboard_key(
     enum wl_keyboard_key_state key_state
 ) {
     struct scran *state = data;
-    struct scran_output_surface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
+    struct scran_output_selectionSurface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
 
     if (focused_selection_surface == NULL) {
         return;
     }
 
-    struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, surface);
+    struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, selection_surface);
 
     if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
         return;

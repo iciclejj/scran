@@ -48,10 +48,11 @@ _get_framebuffer_size_padded(int32_t width_px, int32_t height_px, uint8_t pixel_
            * (height_px + bottom_padding_pixels);
 }
 
+// TODO: Make get_output_surface_buf_size_padded for "fullscreen" surfaces
 static inline size_t
 get_selection_surface_buf_size_padded(struct scran_output *st_output) {
-    int32_t width_px = st_output->surface.width_px_buffer;
-    int32_t height_px = st_output->surface.height_px_buffer;
+    int32_t width_px = st_output->selection_surface.surface.width_px_buffer;
+    int32_t height_px = st_output->selection_surface.surface.height_px_buffer;
 
     // XXX HACK(kinda): Ensure that we will always allocate a buffer of at
     // least the largest possibly-required size. For example, some compositors

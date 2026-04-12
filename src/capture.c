@@ -485,7 +485,7 @@ dispatch_image_capture_event(struct scran_output *st_output)
 static inline void
 _print_slurp_string(struct scran_output *st_output)
 {
-    const double scale = st_output->surface.final_scale_factor_normalized;
+    const double scale = st_output->selection_surface.surface.final_scale_factor_normalized;
     const struct scran_output_xdg_geometry geometry = st_output->xdg_geometry;
     const struct BLBoxI box_px = st_output->selection_ctx.box_px;
 

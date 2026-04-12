@@ -331,7 +331,7 @@ init_meminit(
             const size_t _surface_buf_size = get_selection_surface_buf_size_padded(_st_output);
             _arena_add_block(
                 shm_arena,
-                _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->surface.double_buffer[i_buffer].data
+                _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->selection_surface.surface.double_buffer[i_buffer].data
             );
         };
 
@@ -392,17 +392,18 @@ init_meminit(
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output *_st_output = &g_state.outputs[i];
 
+        struct scran_output_selectionSurface *_selection_surface = &_st_output->selection_surface;
         for (int i_buffer = 0; i_buffer < SURFACE_BUF_COUNT; i_buffer++) {
-            struct scran_output_surface_buffer *_st_buffer = &_st_output->surface.double_buffer[i_buffer];
+            struct scran_output_surface_buffer *_st_buffer = &_selection_surface->surface.double_buffer[i_buffer];
 
             assert(_st_buffer->data != NULL);
             const ptrdiff_t _surface_buffer_offset = _st_buffer->data - shm_arena->addr;
             _st_buffer->wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
                 _surface_buffer_offset,
-                _st_output->surface.width_px_buffer,
-                _st_output->surface.height_px_buffer,
-                _st_output->surface.width_px_buffer * SURFACE_PIXEL_STRIDE,
+                _selection_surface->surface.width_px_buffer,
+                _selection_surface->surface.height_px_buffer,
+                _selection_surface->surface.width_px_buffer * SURFACE_PIXEL_STRIDE,
                 SURFACE_SHM_FORMAT
             );
 

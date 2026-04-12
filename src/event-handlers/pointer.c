@@ -5,7 +5,7 @@
 
 #include "state.h"
 #include "state-util.h"
-#include "surface.h"
+#include "surface__selection.h"
 #include "util/blend2d.h"
 #include "event-handlers.h"
 #include "selection.h"
@@ -31,10 +31,10 @@ handle_pointer_enter(
     );
 
     for (int i = 0; i < state->n_outputs; ++i) {
-        struct scran_output_surface *st_surface = &state->outputs[i].surface;
+        struct scran_output_selectionSurface *selection_surface = &state->outputs[i].selection_surface;
 
-        if (surface_entered == st_surface->wl_surface) {
-            pointer_ctx->focused_fulloutput_selection_surface = st_surface;
+        if (surface_entered == selection_surface->surface.wl_surface) {
+            pointer_ctx->focused_fulloutput_selection_surface = selection_surface;
             return;
         }
     }
@@ -96,19 +96,19 @@ handle_pointer_motion(
     wl_fixed_t y_surface
 ) {
     struct scran *state = data;
-    struct scran_output_surface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
+    struct scran_output_selectionSurface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
 
     if (focused_selection_surface == NULL) {
         return;
     }
 
-    struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, surface);
+    struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, selection_surface);
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
 
-    int x_px = _selection_surface_logical_coordinate_to_buffer_pixel(focused_selection_surface, x_surface);
-    int y_px = _selection_surface_logical_coordinate_to_buffer_pixel(focused_selection_surface, y_surface);
+    int x_px = _selection_surface_logical_coordinate_to_buffer_pixel(&focused_selection_surface->surface, x_surface);
+    int y_px = _selection_surface_logical_coordinate_to_buffer_pixel(&focused_selection_surface->surface, y_surface);
 
     // TODO: Maybe use a BLPoint to neatly pack this into _selection_surface_logical_coordinate_to_buffer_pixel.
     clamp_to_transformed_output_width(&x_px, st_output);
@@ -234,7 +234,7 @@ handle_pointer_button(
     enum wl_pointer_button_state button_state
 ) {
     struct scran *state = data;
-    struct scran_output_surface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
+    struct scran_output_selectionSurface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
 
     if (focused_selection_surface == NULL) {
         return;
@@ -270,7 +270,7 @@ handle_pointer_button(
 
     pointer_ctx->active_button = pointer_ctx->active_button ? SCRAN_BTN_NONE : button;
 
-    struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, surface);
+    struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, selection_surface);
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
     int x_px = pointer_ctx->x_px;
