@@ -92,9 +92,6 @@ struct scran_output_surface {
     //   fractional_scale_wp_10 == 180 => fractional_scale_factor_normalized = 1.5
     double final_scale_factor_normalized;
 
-    // TODO: Is this worth keeping as a member, when we don't actually retain
-    // its state between render runs? (All it gives us atm is letting us
-    // _reset() it rather than _destroy() it.)
     BLPathCore bl_path;
 
     // XXX TODO: Turn this into a pointer once we remove the ugly redraw hack

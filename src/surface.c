@@ -117,7 +117,7 @@ _draw_and_damage_selection_border(
         _draw_and_damage_region(st_surface, st_buffer, damage_regions_wayland[i], damage_regions_buffer[i]);
     }
 
-    bl_path_reset(&st_surface->bl_path);
+    bl_path_clear(&st_surface->bl_path);
 }
 
 static inline void
@@ -147,7 +147,7 @@ _draw_and_damage_background(
     bl_var_to_rgba32(&prev_fill_style, &prev_fill_style_rgba32);
     bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, prev_fill_style_rgba32);
 
-    bl_path_reset(&st_surface->bl_path);
+    bl_path_clear(&st_surface->bl_path);
 }
 
 
