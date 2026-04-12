@@ -204,8 +204,10 @@ void handle_wlr_output_manager_done(
         st_output->fractional_scale_cosmic_1000 = pending_head->fractional_scale_cosmic_1000;
         st_output->fractional_scale_wlr = pending_head->fractional_scale_wlr;
 
-        update_selection_surface_scale_and_size(st_output);
-        update_selection_surface_viewport(st_output);
+        // XXX TODO(!!): Make for_all_fullscreen_surfaces() function/macro, once we
+        // add more surfaces
+        update_surface_scale_and_size(&st_output->surface);
+        update_surface_viewport(&st_output->surface);
     }
 }
 

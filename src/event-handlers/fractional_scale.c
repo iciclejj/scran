@@ -19,14 +19,14 @@ handle_fractional_scale_preferred_scale(
     struct wp_fractional_scale_v1 *fractional_scale,
     uint32_t scale // denominator: 120
 ) {
-    struct scran_output *st_output = data;
+    struct scran_output_surface *st_surface = data;
 
     DEBUG("handle_fractional_scale_preferred_scale(): %f\n", _get_normalized_scaler(scale, 120));
 
-    if (st_output->surface.fractional_scale_wp_120 != scale) {
-        st_output->surface.fractional_scale_wp_120 = scale;
-        update_selection_surface_scale_and_size(st_output);
-        update_selection_surface_viewport(st_output);
+    if (st_surface->fractional_scale_wp_120 != scale) {
+        st_surface->fractional_scale_wp_120 = scale;
+        update_surface_scale_and_size(st_surface);
+        update_surface_viewport(st_surface);
     }
 }
 

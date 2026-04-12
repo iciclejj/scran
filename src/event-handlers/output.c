@@ -39,8 +39,11 @@ handle_output_scale(
 
     if (st_output->scale != factor) {
         st_output->scale = factor;
-        update_selection_surface_scale_and_size(st_output);
-        update_selection_surface_viewport(st_output);
+
+        // XXX TODO(!!): Make for_all_fullscreen_surfaces() function/macro, once
+        // we add more surfaces
+        update_surface_scale_and_size(&st_output->surface);
+        update_surface_viewport(&st_output->surface);
     }
 }
 

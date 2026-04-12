@@ -165,6 +165,7 @@ _downscale_cosmic_style(
 //   And comment in `handle_fractional_scale_preferred_scale`
 static inline double
 _guess_cosmic_scale_factor(
+    struct scran_output_surface *st_surface,
     struct scran_output *st_output
 ) {
     if (g_state.globals.cosmic_output_manager == NULL
@@ -172,8 +173,6 @@ _guess_cosmic_scale_factor(
     ) {
         return 0;
     }
-
-    struct scran_output_surface *st_surface = &st_output->surface;
 
     const double normalized_scale_cosmic = _get_normalized_scaler(
         st_output->fractional_scale_cosmic_1000, 1000
@@ -220,15 +219,18 @@ _guess_cosmic_scale_factor(
     }
 }
 
+// XXX: This logic is only verified to be correct for wlr-layer-surface
+// surfaces (and technically only ones that span the entire screen, though I
+// doubt that part would affect anything in here).
 static inline double
 get_surface_scale_factor_normalized(
     struct scran_output_surface *st_surface
 ) {
-    struct scran_output *st_output = wl_container_of(st_surface, st_output, surface);
-
     DEBUG("get_surface_scale_factor_normalized()\n");
 
-    const double normalized_scale_cosmic = _guess_cosmic_scale_factor(st_output);
+    struct scran_output *st_output = &g_state.outputs[get_containing_output_array_index(st_surface)];
+
+    const double normalized_scale_cosmic = _guess_cosmic_scale_factor(st_surface, st_output);
     if (normalized_scale_cosmic) {
         return normalized_scale_cosmic;
     }
@@ -243,64 +245,64 @@ get_surface_scale_factor_normalized(
     return st_output->scale;
 }
 
-// TODO: Merge this with update_selection_surface_viewport? Doesn't really make
+// TODO: Merge this with update_surface_viewport? Doesn't really make
 // sense to call them separately other than during init, and we already have a
 // bunch of safeguards in _viewport.
 static inline void
-update_selection_surface_scale_and_size(
-    struct scran_output *st_output
+update_surface_scale_and_size(
+    struct scran_output_surface *st_surface
 ) {
     DEBUG("update_selection_surface_scale_and_size()\n");
 
-    double scale_factor = get_surface_scale_factor_normalized(&st_output->surface);
+    double scale_factor = get_surface_scale_factor_normalized(st_surface);
     DEBUG("  Using scale factor: %f\n", scale_factor);
 
-    st_output->surface.final_scale_factor_normalized = scale_factor;
+    st_surface->final_scale_factor_normalized = scale_factor;
 
-    st_output->surface.width_px_buffer  = round(scale_factor * st_output->surface.width_logical);
-    st_output->surface.height_px_buffer = round(scale_factor * st_output->surface.height_logical);
+    st_surface->width_px_buffer  = round(scale_factor * st_surface->width_logical);
+    st_surface->height_px_buffer = round(scale_factor * st_surface->height_logical);
 }
 
 static inline void
-update_selection_surface_viewport(
-    struct scran_output *st_output
+update_surface_viewport(
+    struct scran_output_surface *st_surface
 ) {
     // TODO: Maybe move this responsibility into output::scale etc, so we're
     // not forced to do this check every time we update
-    if (st_output->surface.viewport == NULL) {
+    if (st_surface->viewport == NULL) {
         return;
     }
-    if (!(st_output->surface.width_px_buffer && st_output->surface.height_px_buffer)) {
+    if (!(st_surface->width_px_buffer && st_surface->height_px_buffer)) {
         return;
     }
-    if (!(st_output->surface.width_logical && st_output->surface.height_logical)) {
+    if (!(st_surface->width_logical && st_surface->height_logical)) {
         return;
     }
 
     DEBUG("update_selection_surface_viewport():"
           "  src_width: %d, src_height: %d,  dst_width: %d, dst_height: %d\n",
-          st_output->surface.width_px_buffer, st_output->surface.height_px_buffer,
-          st_output->surface.width_logical, st_output->surface.height_logical
+          st_surface->width_px_buffer, st_surface->height_px_buffer,
+          st_surface->width_logical, st_surface->height_logical
     );
 
-    if (st_output->surface.width_px_buffer && st_output->surface.height_px_buffer) {
+    if (st_surface->width_px_buffer && st_surface->height_px_buffer) {
         wp_viewport_set_source(
-            st_output->surface.viewport,
+            st_surface->viewport,
             wl_fixed_from_int(0),
             wl_fixed_from_int(0),
-            wl_fixed_from_int(st_output->surface.width_px_buffer),
-            wl_fixed_from_int(st_output->surface.height_px_buffer)
+            wl_fixed_from_int(st_surface->width_px_buffer),
+            wl_fixed_from_int(st_surface->height_px_buffer)
         );
     }
 
     wp_viewport_set_destination(
-        st_output->surface.viewport,
-        st_output->surface.width_logical,
-        st_output->surface.height_logical
+        st_surface->viewport,
+        st_surface->width_logical,
+        st_surface->height_logical
     );
 
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
-        st_output->surface.double_buffer[i].force_redraw = true;
+        st_surface->double_buffer[i].force_redraw = true;
     }
 }
 

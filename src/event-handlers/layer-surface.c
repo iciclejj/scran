@@ -20,17 +20,17 @@ handle_layer_surface_configure(
     uint32_t width_logical,
     uint32_t height_logical
 ) {
-    struct scran_output *st_output = data;
+    struct scran_output_surface *st_surface = data;
 
     DEBUG("handle_layer_surface_configure():  width_logical: %d, height_logical: %d\n", width_logical, height_logical);
 
-    if (   st_output->surface.width_logical != width_logical
-        || st_output->surface.height_logical != height_logical
+    if (   st_surface->width_logical != width_logical
+        || st_surface->height_logical != height_logical
     ) {
-        st_output->surface.width_logical = width_logical;
-        st_output->surface.height_logical = height_logical;
-        update_selection_surface_scale_and_size(st_output);
-        update_selection_surface_viewport(st_output);
+        st_surface->width_logical = width_logical;
+        st_surface->height_logical = height_logical;
+        update_surface_scale_and_size(st_surface);
+        update_surface_viewport(st_surface);
     }
 
 
@@ -41,10 +41,10 @@ handle_layer_surface_configure(
 static void
 handle_layer_surface_closed(void *data, struct zwlr_layer_surface_v1 *layer_surface)
 {
-    struct scran_output *st_output = data;
+    struct scran_output_surface *st_surface = data;
 
     for (int i = 0; i < SURFACE_BUF_COUNT; i++) {
-        wl_buffer_destroy(st_output->surface.double_buffer[i].wl_buffer);
+        wl_buffer_destroy(st_surface->double_buffer[i].wl_buffer);
     }
 }
 

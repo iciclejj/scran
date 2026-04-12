@@ -46,7 +46,7 @@ init_premem__selection(
         SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED
     );
 
-    zwlr_layer_surface_v1_add_listener(st_output->surface.layer_surface, &layer_surface_listener, st_output);
+    zwlr_layer_surface_v1_add_listener(st_output->surface.layer_surface, &layer_surface_listener, &st_output->surface);
     // Initial bufferless commit to trigger configure event
     wl_surface_commit(st_output->surface.wl_surface);
 
@@ -59,7 +59,7 @@ init_premem__selection(
     st_output->surface.fractional_scale = wp_fractional_scale_manager_v1_get_fractional_scale(
         st_globals->fractional_scale_manager, st_output->surface.wl_surface
     );
-    wp_fractional_scale_v1_add_listener(st_output->surface.fractional_scale, &fractional_scale_listener, st_output);
+    wp_fractional_scale_v1_add_listener(st_output->surface.fractional_scale, &fractional_scale_listener, &st_output->surface);
 
     return true;
 }
@@ -96,8 +96,8 @@ init_postmem__selection(struct scran_output *st_output)
 
     // Update here in addition to within the ::scale handlers, since they may
     // have fired before the viewport was initialized.
-    update_selection_surface_scale_and_size(st_output);
-    update_selection_surface_viewport(st_output);
+    update_surface_scale_and_size(st_surface);
+    update_surface_viewport(st_surface);
     DEBUG("  viewport updated\n");
 
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
