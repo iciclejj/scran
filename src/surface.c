@@ -6,6 +6,7 @@
 #include "surface.h"
 #include "init.h"
 #include "util/blend2d.h"
+#include "event-handlers.h"
 
 
 #define MIN(a, b) (a < b ? a : b)
@@ -200,6 +201,8 @@ draw_frame_and_damage_buffer(
     const BLBoxI capture_area_border_outline_last_used_in_any_buffer     = get_blboxi_inflated(capture_area_border_inline_last_used_in_any_buffer    , SCRAN_SELECTION_BORDER_THICKNESS_PX);
     const BLBoxI capture_area_border_outline_last_used_in_current_buffer = get_blboxi_inflated(capture_area_border_inline_last_used_in_current_buffer, SCRAN_SELECTION_BORDER_THICKNESS_PX);
 
+    // TODO: Just do redraw/damage directly whenever we need to redraw, rather
+    // than doing it here with a flag.
     if (st_buffer->force_redraw) { // TODO: unlikely()
         // Draw background dim
         const BLRectI damage_region_everything = blboxi_to_blrecti(capture_area_bounds);
@@ -242,5 +245,28 @@ draw_frame_and_damage_buffer(
     // re-initialize it. Its state is initialized outside of this ::frame
     // event loop. Shouldn't need flushing either unless doing async.
     bl_context_flush(&st_buffer->bl_ctx, BL_CONTEXT_FLUSH_NO_FLAGS);
+}
+
+void
+request_selection_surface_frame_callback(
+    struct scran_output *st_output
+) {
+    wl_callback_add_listener(
+        wl_surface_frame(st_output->surface.wl_surface),
+        &surface_frame_callback_listener,
+        st_output
+    );
+    // You have to commit for the frame callback to take effect.
+    wl_surface_commit(st_output->surface.wl_surface);
+}
+
+void
+request_selection_surface_update(
+    struct scran_output *st_output
+) {
+    if (!st_output->dirty) {
+        st_output->dirty = true;
+        request_selection_surface_frame_callback(st_output);
+    }
 }
 

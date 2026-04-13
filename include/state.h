@@ -334,6 +334,8 @@ struct scran_output {
     // Only really needed during init and destruction:
     struct zxdg_output_v1 *xdg_output;
 
+    bool dirty;
+
     char name[SCRAN_STATE_OUTPUT_NAME_SIZE]; // output::name
 };
 

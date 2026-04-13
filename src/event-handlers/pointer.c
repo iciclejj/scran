@@ -5,6 +5,7 @@
 
 #include "state.h"
 #include "state-util.h"
+#include "surface.h"
 #include "util/blend2d.h"
 #include "event-handlers.h"
 #include "selection.h"
@@ -130,6 +131,7 @@ handle_pointer_motion(
         clamp_to_transformed_output_width(&selection_ctx->box_px.x1, st_output);
         clamp_to_transformed_output_height(&selection_ctx->box_px.y1, st_output);
 
+        request_selection_surface_update(st_output);
         break;
     case SELECTION_COMPLETE:
     case SELECTION_COMPLETE_FREEZE_SIZE:
@@ -172,6 +174,7 @@ handle_pointer_motion(
 
             selection_ctx->box_px = new_box;
         }
+        request_selection_surface_update(st_output);
         break;
     case SELECTION_RESIZING:
         {
@@ -208,6 +211,7 @@ handle_pointer_motion(
                 break;
             }
         }
+        request_selection_surface_update(st_output);
         break;
     }
 }

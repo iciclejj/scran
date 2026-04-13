@@ -37,6 +37,8 @@ set_selection_surface_theme(
 
         st_buffer->force_redraw = true;
     }
+
+    request_selection_surface_update(st_output);
 }
 
 

@@ -56,31 +56,28 @@ surface_frame_callback_handler(
 
     struct scran_output *st_output = data;
 
-    if (g_state.exit_requested) {
-        // Quit before requesting another frame
-        return;
+    if (!st_output->dirty) {
+        goto done;
     }
 
     struct scran_output_surface_buffer *st_buffer = get_free_double_buffer(st_output);
 
     if (st_buffer == NULL) {
         DEBUG("Both buffers busy...\n");
-        goto go_next;
+        request_selection_surface_frame_callback(st_output);
+        return;
     }
 
     const struct BLBoxI capture_area = get_blboxi_deinverted(st_output->selection_ctx.box_px);
-    const struct BLBoxI capture_area_previous_surface_commit = st_output->surface.box_last_drawn;
-
     assert(capture_area.x1 <= get_transformed_output_width(st_output));
     assert(capture_area.y1 <= get_transformed_output_height(st_output));
+    const struct BLBoxI capture_area_previous_surface_commit = st_output->surface.box_last_drawn;
 
     if (!st_buffer->force_redraw && _boxes_are_equal(capture_area, capture_area_previous_surface_commit)) {
-        goto go_next;
+        goto done;
     }
 
-
     st_buffer->busy = true;
-
 
     // XXX HACK: Temporary (hopefully) workaround for regression introduced when
     // trying to fix cosmic sync by assigning on presentation_feedback::presented.
@@ -113,13 +110,9 @@ surface_frame_callback_handler(
         &presentation_feedback_listener,
         st_buffer
     );
-go_next:
-    wl_callback_add_listener(
-        wl_surface_frame(st_output->surface.wl_surface),
-        &surface_frame_callback_listener,
-        st_output
-    );
     wl_surface_commit(st_output->surface.wl_surface);
+done:
+    st_output->dirty = false;
 }
 
 
