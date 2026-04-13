@@ -135,7 +135,39 @@ init_postmem__selection(struct scran_output *st_output)
     }
 
     bl_path_init(&st_surface->bl_path);
+    set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
 
+
+    struct scran_output_surface_buffer *initial_buffer = &st_surface->double_buffer[0];
+
+    // We need to pre-render here if we want the UI to be displayed already on
+    // the first frame.
+    assert(initial_buffer->busy == false);
+    draw_frame_and_damage_buffer(
+        &st_output->surface,
+        initial_buffer,
+        st_output->selection_ctx.box_px,
+        st_output->selection_ctx.box_bounds_px
+    );
+    initial_buffer->busy = true;
+
+    // Dispatch the callback event loop.
+    // XXX: For some reason, the initial frame callback is often delayed by
+    // significantly more than an entire frametime (e.g. 22ms on 16.67 ms
+    // (60fps) frametime). Possibly bound by waiting for layer-surface
+    // configure? TODO: Find out if this is compositor-bound or can be
+    // worked around somehow.
+    wl_surface_attach(
+        st_output->surface.wl_surface, initial_buffer->wl_buffer, 0, 0
+    );
+    wl_callback_add_listener(
+        wl_surface_frame(st_output->surface.wl_surface),
+        &surface_frame_callback_listener,
+        st_output
+    );
+    wl_surface_commit(
+        st_output->surface.wl_surface
+    );
 
     return true;
 }
@@ -154,28 +186,5 @@ init_postmem__selection__destroy(struct scran_output *st_output)
     }
 
     bl_path_destroy(&st_surface->bl_path);
-}
-
-
-void
-dispatch_selection_surface_event_loop(struct scran_output *st_output)
-{
-    set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
-
-    // We need to already draw the frames here if we want the UI to be displayed
-    // already on the first frame
-    //     TODO: Verify the dynamics of this again
-    draw_frame_and_damage_buffer(&st_output->surface, &st_output->surface.double_buffer[0], st_output->selection_ctx.box_px, st_output->selection_ctx.box_bounds_px);
-    draw_frame_and_damage_buffer(&st_output->surface, &st_output->surface.double_buffer[1], st_output->selection_ctx.box_px, st_output->selection_ctx.box_bounds_px);
-
-    // XXX: At the moment, this function is only used at the start of the
-    // program. Handle busy buffers later if/when it will be necessary.
-    assert(st_output->surface.double_buffer[0].busy == false);
-    assert(st_output->surface.double_buffer[1].busy == false);
-
-    struct scran_output_surface_buffer *const initial_buffer = &st_output->surface.double_buffer[0];
-    initial_buffer->busy = true;
-    wl_surface_attach(st_output->surface.wl_surface, initial_buffer->wl_buffer, 0, 0);
-    wl_surface_commit(st_output->surface.wl_surface);
 }
 

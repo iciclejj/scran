@@ -473,28 +473,6 @@ init_postmem()
         set_selection_initialized(custom_selection_output);
     }
 
-    for (int i = 0; i < g_state.n_outputs; ++i) {
-        struct scran_output *_st_output = &g_state.outputs[i];
-
-        // Initial frame callback request.
-        // All subsequent requests are done "recursively" from within ::done
-        wl_callback_add_listener(
-            wl_surface_frame(_st_output->surface.wl_surface),
-            &surface_frame_callback_listener,
-            _st_output
-        );
-
-        // We first commit to get configure event during init, THEN we commit
-        // again here to "dispatch" the event loop.
-        //
-        // XXX: For some reason, the initial frame callback is often delayed by
-        // significantly more than an entire frametime (e.g. 22ms on 16.67 ms
-        // (60fps) frametime). Possibly bound by waiting for layer-surface
-        // configure? TODO: Find out if this is compositor-bound or can be
-        // worked around somehow.
-        dispatch_selection_surface_event_loop(_st_output);
-    }
-
     return true;
 }
 
