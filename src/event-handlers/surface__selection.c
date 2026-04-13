@@ -50,7 +50,6 @@ selection_surface_frame_callback_handler(
     struct wl_callback *callback,
     uint32_t time_ms
 ) {
-    // Destroy callback here and request new frame "recursively" within callback
     wl_callback_destroy(callback);
 
     struct scran_output *st_output = data;
