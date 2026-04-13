@@ -407,6 +407,7 @@ request_end_video_capture(struct scran_output *st_output)
     // timestamp. This also lets the frame listener finalize the
     // recording and clean up as soon as possible.
     ext_image_copy_capture_frame_v1_destroy(st_output->capture.frame_ctx.frame);
+
     // XXX TODO: Client-requested damage does *not* necessarily trigger a new
     // ::ready from the compositor, if no actual damage has occurred. Sway, for
     // example, ignores it, and forces us to wait for an indefinite amount of
@@ -414,6 +415,13 @@ request_end_video_capture(struct scran_output *st_output)
     //
     // The optimal solution might be to handle this internally anyways, either
     // manually duplicating it or changing the frame duration retroactively.
+    //
+    // HACK: For now, just update the theme prematurely to effectively force
+    // the compositor to send us another capture frame... (May not work if the
+    // selection border is not not visible, e.g. fullscreen and out of bounds,
+    // but seems effective even then on my local Sway (v1.11).)
+    set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+
     request_video_capture_frame(
         &st_output->capture.frame_ctx,
         0, 0, st_output->mode.width_px, st_output->mode.height_px
