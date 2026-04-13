@@ -399,6 +399,31 @@ request_video_capture(struct scran_output *st_output)
 }
 
 void
+request_end_video_capture(struct scran_output *st_output)
+{
+    // Ensure one last frame is triggered as soon as possible, even if
+    // no damage has been reported by the compositor. This ensures
+    // variable framerate recordings will end at an appropriate
+    // timestamp. This also lets the frame listener finalize the
+    // recording and clean up as soon as possible.
+    ext_image_copy_capture_frame_v1_destroy(st_output->capture.frame_ctx.frame);
+    // XXX TODO: Client-requested damage does *not* necessarily trigger a new
+    // ::ready from the compositor, if no actual damage has occurred. Sway, for
+    // example, ignores it, and forces us to wait for an indefinite amount of
+    // time for the capture to end, if no movement has happened on screen.
+    //
+    // The optimal solution might be to handle this internally anyways, either
+    // manually duplicating it or changing the frame duration retroactively.
+    request_video_capture_frame(
+        &st_output->capture.frame_ctx,
+        0, 0, st_output->mode.width_px, st_output->mode.height_px
+    );
+    st_output->capture.frame_ctx.capturing_video = false;
+}
+
+// Should only be called once the video capture event loop is finished.
+//    Call request_end_video_capture() instead to initiate graceful completion.
+void
 end_video_capture(struct scran_output *st_output)
 {
     struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;

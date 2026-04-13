@@ -127,7 +127,7 @@ handle_keyboard_key(
         if (st_output->capture.frame_ctx.capturing_video) {
             // TODO: Both stop capture and request exit?
             eprintf(" stopping video capture.\n");
-            st_output->capture.frame_ctx.capturing_video = false;
+            request_end_video_capture(st_output);
         } else {
             eprintf(" exiting.\n");
             state->exit_requested = true;
@@ -150,21 +150,7 @@ handle_keyboard_key(
         break;
     case XKB_KEY_space:
         if (st_output->capture.frame_ctx.capturing_video) {
-            // Ensure one last frame is triggered as soon as possible, even if
-            // no damage has been reported by the compositor. This ensures
-            // variable framerate recordings will end at an appropriate
-            // timestamp. This also lets the frame listener finalize the
-            // recording and clean up as soon as possible.
-            //
-            // Previous frame must be destroyed, because we cannot set damage
-            // to the buffer of a capture_frame that has already started
-            // listening.
-            ext_image_copy_capture_frame_v1_destroy(st_output->capture.frame_ctx.frame);
-            request_video_capture_frame(
-                &st_output->capture.frame_ctx,
-                0, 0, st_output->mode.width_px, st_output->mode.height_px
-            );
-            st_output->capture.frame_ctx.capturing_video = false;
+            request_end_video_capture(st_output);
         } else {
             if (st_output->selection_ctx.selection_state == SELECTION_INITIALIZING) {
                 set_selection_initialized(st_output);
