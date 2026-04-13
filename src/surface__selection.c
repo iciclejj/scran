@@ -270,3 +270,43 @@ request_selection_surface_update(
     }
 }
 
+// Caller is responsible for making sure buffer is valid (e.g. not busy)
+// TODO: Find a nicer name for this funcion
+void
+draw_selection_surface_initial_state(
+    struct scran_output *st_output,
+    struct scran_output_selectionSurface_buffer *st_buffer
+) {
+    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+
+    // HACK: Get the outline out of view...
+    //       A more elegant solution can come when necessary
+    BLBoxI initial_box = (struct BLBoxI) {
+        .x0 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
+        .y0 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
+        .x1 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
+        .y1 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
+    };
+
+    assert(st_buffer->busy == false);
+    st_buffer->busy = true;
+    draw_frame_and_damage_buffer(
+        selection_surface,
+        st_buffer,
+        initial_box,
+        st_output->selection_ctx.box_bounds_px
+    );
+
+    wl_surface_attach(
+        selection_surface->surface.wl_surface, st_buffer->wl_buffer, 0, 0
+    );
+    wl_callback_add_listener(
+        wl_surface_frame(selection_surface->surface.wl_surface),
+        &selection_surface_frame_callback_listener,
+        st_output
+    );
+    wl_surface_commit(
+        selection_surface->surface.wl_surface
+    );
+}
+

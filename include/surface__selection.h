@@ -16,6 +16,7 @@
 void draw_frame_and_damage_buffer(struct scran_output_selectionSurface *selection_surface, struct scran_output_selectionSurface_buffer *st_buffer, struct BLBoxI capture_area, struct BLBoxI capture_area_bounds);
 void request_selection_surface_update(struct scran_output *st_output);
 void request_selection_surface_frame_callback( struct scran_output *st_output);
+void draw_selection_surface_initial_state(struct scran_output *st_output, struct scran_output_selectionSurface_buffer *st_buffer);
 
 
 #endif

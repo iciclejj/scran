@@ -113,14 +113,6 @@ init_postmem__selection(struct scran_output *st_output)
         .x1 = get_transformed_output_width(st_output),
         .y1 = get_transformed_output_height(st_output),
     };
-    // XXX HACK: Get the outline out of view...
-    //      A more elegant solution can come when necessary
-    selection_ctx->box_px = (struct BLBoxI) {
-        .x0 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
-        .y0 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
-        .x1 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
-        .y1 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
-    };
 
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
         struct scran_output_selectionSurface_buffer *st_buffer = &selection_surface->double_buffer[i];
@@ -144,37 +136,17 @@ init_postmem__selection(struct scran_output *st_output)
     bl_path_init(&selection_surface->bl_path);
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
 
-
     struct scran_output_selectionSurface_buffer *initial_buffer = &selection_surface->double_buffer[0];
-
     // We need to pre-render here if we want the UI to be displayed already on
     // the first frame.
-    assert(initial_buffer->busy == false);
-    draw_frame_and_damage_buffer(
-        selection_surface,
-        initial_buffer,
-        st_output->selection_ctx.box_px,
-        st_output->selection_ctx.box_bounds_px
-    );
-    initial_buffer->busy = true;
-
-    // Dispatch the callback event loop.
+    //
     // XXX: For some reason, the initial frame callback is often delayed by
     // significantly more than an entire frametime (e.g. 22ms on 16.67 ms
     // (60fps) frametime). Possibly bound by waiting for layer-surface
     // configure? TODO: Find out if this is compositor-bound or can be
     // worked around somehow.
-    wl_surface_attach(
-        st_surface->wl_surface, initial_buffer->wl_buffer, 0, 0
-    );
-    wl_callback_add_listener(
-        wl_surface_frame(st_surface->wl_surface),
-        &selection_surface_frame_callback_listener,
-        st_output
-    );
-    wl_surface_commit(
-        st_surface->wl_surface
-    );
+    assert(initial_buffer->busy == false);
+    draw_selection_surface_initial_state(st_output, initial_buffer);
 
     return true;
 }
