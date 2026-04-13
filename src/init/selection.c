@@ -85,10 +85,10 @@ init_premem__selection__destroy(struct scran_output *st_output)
 bool
 init_postmem__selection(struct scran_output *st_output)
 {
-    struct scran_output_selectionContext *const selection_ctx = &st_output->selection_ctx;
-    struct scran_output_surface * st_surface = &st_output->surface;
-
     DEBUG("init_postmem__selection()\n");
+
+    struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
+    struct scran_output_surface          *st_surface    = &st_output->surface;
 
     // Sanity check...
     assert(st_output->xdg_geometry.w_logical == st_output->surface.width_logical);
@@ -98,12 +98,27 @@ init_postmem__selection(struct scran_output *st_output)
     // have fired before the viewport was initialized.
     update_surface_scale_and_size(st_surface);
     update_surface_viewport(st_surface);
-    DEBUG("  viewport updated\n");
+
+    selection_ctx->box_bounds_px = (struct BLBoxI) {
+        .x0 = 0,
+        .y0 = 0,
+        // Capture area bounds.
+        .x1 = get_transformed_output_width(st_output),
+        .y1 = get_transformed_output_height(st_output),
+    };
+    // XXX HACK: Get the outline out of view...
+    //      A more elegant solution can come when necessary
+    selection_ctx->box_px = (struct BLBoxI) {
+        .x0 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
+        .y0 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
+        .x1 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
+        .y1 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
+    };
 
     for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
         struct scran_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
 
-        // Shared memory must already be allocated.
+        // Blend2D wrapper for the buffer we will be rendering into
         assert(st_buffer->data != NULL);
         bl_image_init_as_from_data(
             &st_buffer->bl_img,
@@ -116,28 +131,11 @@ init_postmem__selection(struct scran_output *st_output)
             NULL,
             NULL
         );
-
         bl_context_init_as(&st_buffer->bl_ctx, &st_buffer->bl_img, NULL);
     }
 
     bl_path_init(&st_surface->bl_path);
 
-    selection_ctx->box_bounds_px = (struct BLBoxI) {
-        .x0 = 0,
-        .y0 = 0,
-        // Capture area bounds.
-        .x1 = get_transformed_output_width(st_output),
-        .y1 = get_transformed_output_height(st_output),
-    };
-
-    // XXX HACK: Get the outline out of view...
-    //      A more elegant solution can come when necessary
-    selection_ctx->box_px = (struct BLBoxI) {
-        .x0 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
-        .y0 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
-        .x1 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
-        .y1 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
-    };
 
     return true;
 }
