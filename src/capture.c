@@ -341,7 +341,7 @@ destroy_ffmpeg(struct scran_output *st_output)
 
 
 bool
-start_video_capture(struct scran_output *st_output)
+request_video_capture(struct scran_output *st_output)
 {
     // TODO: Assert instead?
     if (st_output->capture.frame_ctx.capturing_video) {
@@ -461,7 +461,7 @@ _print_slurp_string(struct scran_output *st_output)
 }
 
 bool
-start_image_capture(struct scran_output *st_output)
+request_image_capture(struct scran_output *st_output)
 {
     // See TODO at call site
     assert(!st_output->capture.frame_ctx.capturing_video);

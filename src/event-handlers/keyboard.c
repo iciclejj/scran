@@ -140,7 +140,7 @@ handle_keyboard_key(
         if (st_output->capture.frame_ctx.capturing_video) {
             eprintf("Screenshot during video capture not implemented yet, try again later :(\n");
         } else {
-            start_image_capture(st_output);
+            request_image_capture(st_output);
 
             if (!xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE)) {
                 state->exit_requested = true;
@@ -171,7 +171,7 @@ handle_keyboard_key(
                 set_selection_initialized(st_output);
             }
 
-            if (!start_video_capture(st_output)) {
+            if (!request_video_capture(st_output)) {
                 eprintf("Failed to start video capture.\n");
             }
         }
