@@ -160,12 +160,11 @@ handle_keyboard_key(
             // to the buffer of a capture_frame that has already started
             // listening.
             ext_image_copy_capture_frame_v1_destroy(st_output->capture.frame_ctx.frame);
-            init_wl_capture_frame__video(&st_output->capture.frame_ctx);
-            ext_image_copy_capture_frame_v1_damage_buffer(
-                st_output->capture.frame_ctx.frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px
+            request_video_capture_frame(
+                &st_output->capture.frame_ctx,
+                0, 0, st_output->mode.width_px, st_output->mode.height_px
             );
             st_output->capture.frame_ctx.capturing_video = false;
-            ext_image_copy_capture_frame_v1_capture(st_output->capture.frame_ctx.frame);
         } else {
             if (st_output->selection_ctx.selection_state == SELECTION_INITIALIZING) {
                 set_selection_initialized(st_output);

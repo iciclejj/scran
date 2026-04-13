@@ -280,6 +280,7 @@ struct capture_frame_context {
     //       AND it is still asserted to be equal to session::buffer_size's
     //       width arg.
     int32_t source_width_px;
+    int32_t source_height_px;
     uint8_t pixel_stride;
 
     // TODO: Probably turn this into a union with some member that gets

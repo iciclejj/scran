@@ -37,18 +37,32 @@ extern struct scran g_state;
 
 
 void
-init_wl_capture_frame__video(struct capture_frame_context *frame_ctx)
-{
+request_video_capture_frame(
+    struct capture_frame_context *frame_ctx,
+    int32_t damage_x,
+    int32_t damage_y,
+    int32_t damage_w,
+    int32_t damage_h
+) {
     frame_ctx->frame = ext_image_copy_capture_session_v1_create_frame(
         frame_ctx->wl_capture_session
     );
-    ext_image_copy_capture_frame_v1_add_listener(frame_ctx->frame, &image_copy_capture_frame_listener__video_capture, frame_ctx);
-    // TODO: Check ffmpeg's buffering behavior and maybe use ring buffer for
-    // this, with a size that ensures frames still buffered by
-    // avcodec/avfiltergraph etc. stay untouched.
+
     ext_image_copy_capture_frame_v1_attach_buffer(
         frame_ctx->frame,
         frame_ctx->st_buffer.wl_buffer
+    );
+    ext_image_copy_capture_frame_v1_damage_buffer(
+        frame_ctx->frame,
+        damage_x, damage_y, damage_w, damage_h
+    );
+    ext_image_copy_capture_frame_v1_add_listener(
+        frame_ctx->frame,
+        &image_copy_capture_frame_listener__video_capture,
+        frame_ctx
+    );
+    ext_image_copy_capture_frame_v1_capture(
+        frame_ctx->frame
     );
 }
 
@@ -372,13 +386,12 @@ request_video_capture(struct scran_output *st_output)
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
-    init_wl_capture_frame__video(&st_output->capture.frame_ctx);
-
-    // Ensure sure first frame is fully rendered
-    ext_image_copy_capture_frame_v1_damage_buffer(
-        st_output->capture.frame_ctx.frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px
+    request_video_capture_frame(
+        &st_output->capture.frame_ctx,
+        // Ensure the first frame is fully rendered
+        0, 0, st_output->mode.width_px, st_output->mode.height_px
     );
-    ext_image_copy_capture_frame_v1_capture(st_output->capture.frame_ctx.frame);
+
     st_output->capture.frame_ctx.capturing_video = true;
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 

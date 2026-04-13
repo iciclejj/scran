@@ -22,7 +22,7 @@
 
 bool request_video_capture(struct scran_output *st_output);
  void end_video_capture(struct scran_output *st_output);
-void init_wl_capture_frame__video(struct capture_frame_context *frame_ctx);
+void request_video_capture_frame(struct capture_frame_context *frame_ctx, int32_t damage_x, int32_t damage_y, int32_t damage_w, int32_t damage_h);
 void destroy_ffmpeg(struct scran_output *st_output);
 
 bool request_image_capture(struct scran_output *st_output);

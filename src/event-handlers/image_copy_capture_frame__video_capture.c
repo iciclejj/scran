@@ -192,8 +192,13 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     // TODO: avio_flush ?
 
-    init_wl_capture_frame__video(frame_ctx);
-    ext_image_copy_capture_frame_v1_capture(frame_ctx->frame);
+    request_video_capture_frame(
+        frame_ctx,
+        // TODO: Only damage what the capture area will be on next capture,
+        // somehow? Will not be possible to determine from here, though,
+        // at least not portably.
+        0, 0, frame_ctx->source_width_px, frame_ctx->source_height_px
+    );
 
     return;
 

@@ -24,6 +24,7 @@ handle_image_copy_capture_session_buffer_size(
     assert(width == st_output->mode.width_px);
     assert(height == st_output->mode.height_px);
     st_output->capture.frame_ctx.source_width_px = width;
+    st_output->capture.frame_ctx.source_height_px = height;
 }
 
 
