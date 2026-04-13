@@ -416,10 +416,11 @@ request_end_video_capture(struct scran_output *st_output)
     // The optimal solution might be to handle this internally anyways, either
     // manually duplicating it or changing the frame duration retroactively.
     //
-    // HACK: For now, just update the theme prematurely to effectively force
-    // the compositor to send us another capture frame... (May not work if the
-    // selection border is not not visible, e.g. fullscreen and out of bounds,
-    // but seems effective even then on my local Sway (v1.11).)
+    // HACK: For now, just force a surface redraw to effectively force the
+    // compositor to send us another capture frame... (May not work if only
+    // the transparent part of the selection surface is visible, e.g. with
+    // "fullscreen" capture, but seems effective even then on my local
+    // Sway (v1.11).)
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
 
     request_video_capture_frame(
