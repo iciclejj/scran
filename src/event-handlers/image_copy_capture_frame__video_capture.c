@@ -216,10 +216,21 @@ end_capture:
 }
 
 
+void
+handle_image_copy_capture_frame_failed__video_capture(
+    void *data,
+    struct ext_image_copy_capture_frame_v1 *frame,
+    uint32_t reason
+) {
+    ext_image_copy_capture_frame_v1_destroy(frame);
+}
+
+
 struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener__video_capture = {
     .transform = handle_image_copy_capture_frame_transform__video_capture,
     .damage = handle_image_copy_capture_frame_damage__video_capture,
     .presentation_time = handle_image_copy_capture_frame_presentation_time__video_capture,
     .ready = handle_image_copy_capture_frame_ready__video_capture,
+    .failed = handle_image_copy_capture_frame_failed__video_capture,
 };
 

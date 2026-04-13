@@ -215,10 +215,21 @@ handle_image_copy_capture_frame_ready__image_capture(
 }
 
 
+void
+handle_image_copy_capture_frame_failed__image_capture(
+    void *data,
+    struct ext_image_copy_capture_frame_v1 *frame,
+    uint32_t reason
+) {
+    ext_image_copy_capture_frame_v1_destroy(frame);
+}
+
+
 struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener__image_capture = {
     .transform = handle_image_copy_capture_frame_transform__image_capture,
     .damage = handle_image_copy_capture_frame_damage__image_capture,
     .presentation_time = handle_image_copy_capture_frame_presentation_time__image_capture,
     .ready = handle_image_copy_capture_frame_ready__image_capture,
+    .failed = handle_image_copy_capture_frame_failed__image_capture,
 };
 
