@@ -55,6 +55,10 @@ static struct epoll_event m_epoll_events[SCRAN_EPOLL_SIZE];
 static int m_epoll_fd = -1;
 
 
+// Initialize:
+//   - Wayland globals
+//   - init_meminit() dependencies
+//   - Otherwhat that might benefit from early init
 static bool
 init_premem()
 {
@@ -81,8 +85,8 @@ init_premem()
         return false;
     }
 
-    //   Collect dynamic memory requirements
-    // + Initialize otherwhat lacking extra dependencies (beyond globals)
+    // Collect dynamic memory requirements
+    // + otherwhat that might benefit from early init
     for (int i = 0; i < g_state.n_outputs; ++i) {
         struct scran_output *_st_output = &g_state.outputs[i];
 
@@ -123,6 +127,7 @@ init_premem()
 
     // Then roundtrip again for our collected wlr_output_head instances
     // (from wlr_output_manager::head)...
+    //     TODO: This should probably be awaited more properly?
     // This should be our last required roundtrip until the main event loop dispatch.
     wl_display_roundtrip(g_state.globals.display);
 
@@ -479,17 +484,14 @@ init_postmem()
             _st_output
         );
 
-        // NOTE: Most "init" time is spent here (during first dispatch),
-        //       waiting to enter layer_surface::configure (Ex: ~7000us)
-        //          XXX: This part seems possibly framerate-bound/vsynced ?
-        //       And remaining time is mostly during the first roundtrip to get
-        //       globals. (Ex: ~2000us)
-        //         - Second roundtrip where we collect memory requirements is
-        //           relatively fast (Ex: ~130us)
+        // We first commit to get configure event during init, THEN we commit
+        // again here to "dispatch" the event loop.
         //
-        //       XXX NOTE: First we commit to get configure event (during init),
-        //                 THEN we commit again (here) to "dispatch" the
-        //                 event loop (the recursive frame callback).
+        // XXX: For some reason, the initial frame callback is often delayed by
+        // significantly more than an entire frametime (e.g. 22ms on 16.67 ms
+        // (60fps) frametime). Possibly bound by waiting for layer-surface
+        // configure? TODO: Find out if this is compositor-bound or can be
+        // worked around somehow.
         dispatch_selection_surface_event_loop(_st_output);
     }
 
