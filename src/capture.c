@@ -420,7 +420,7 @@ request_end_video_capture(struct scran_output *st_output)
     // the compositor to send us another capture frame... (May not work if the
     // selection border is not not visible, e.g. fullscreen and out of bounds,
     // but seems effective even then on my local Sway (v1.11).)
-    set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+    set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
 
     request_video_capture_frame(
         &st_output->capture.frame_ctx,
