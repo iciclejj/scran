@@ -74,15 +74,6 @@ handle_keyboard_leave (
 }
 
 
-// TODO: Either roundtrip here or ensure that capture etc. pipelines get to
-// finish properly (can be either before or after this function exits)
-static inline void
-_set_state_to_exit_requested(struct scran *state)
-{
-    state->exit_requested = true;
-}
-
-
 static void
 handle_keyboard_key(
     void *data,
@@ -139,7 +130,7 @@ handle_keyboard_key(
             st_output->capture.frame_ctx.capturing_video = false;
         } else {
             eprintf(" exiting.\n");
-            _set_state_to_exit_requested(state);
+            state->exit_requested = true;
         }
         break;
     case XKB_KEY_Return:
