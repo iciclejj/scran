@@ -116,10 +116,6 @@ handle_pointer_motion(
     pointer_ctx->x_px = x_px;
     pointer_ctx->y_px = y_px;
 
-    if (selection_ctx->selection_state == SELECTION_NONE) {
-        return;
-    }
-
     // TODO: Check if out of bounds
     assert(!SCRAN_BL_BOX_IS_INVERTED(selection_ctx->box_before_changes_px));
 
