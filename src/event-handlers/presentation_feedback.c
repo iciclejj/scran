@@ -46,6 +46,10 @@ handle_presentation_feedback_presented(
     // For example, at time of writing, naive assignment from within
     // surface_callback::frame works fine with sway, but not with COSMIC, which
     // is what triggered this change.
+    //
+    // TODO: This naive implementation is not very robust against
+    // delayed/skiped/etc. frames. Probably a frame history and multi-buffered
+    // capture is required, with currently available sync/protocol guarantees.
     st_output->capture.frame_ctx.capture_area_px = get_reverse_transform(
         st_buffer->box_currently_drawn,
         st_output->mode.width_px,
