@@ -53,16 +53,21 @@ get_selection_surface_buf_size_padded(struct scran_output *st_output) {
     int32_t width_px = st_output->surface.width_px_buffer;
     int32_t height_px = st_output->surface.height_px_buffer;
 
-    // XXX HACK(kinda): These asserts should theoretically hold if our scaling
-    // fetching/guesesing is woring as intended. If so, ensuring that we will
-    // always allocate a buffer of at least the largest possibly-required size,
-    // we will ensure that live scale updates will always be handled smoothly,
+    // XXX HACK(kinda): Ensure that we will always allocate a buffer of at
+    // least the largest possibly-required size. For example, some compositors
+    // (COSMIC) may end up with a buffer res within (+/-)2 of our native res.
+    // This ensures that live scale updates will always be handled smoothly,
     // and never require us to allocate a new, larger buffer.
     //     TODO: Possibly remove this if we will ever support live output-mode
     //     updates, although this would still maybe be worth keeping as a
     //     prophylactic measure.
-    assert(get_transformed_output_width(st_output) - 1 <= width_px && width_px  <= get_transformed_output_width(st_output) + 1);
-    assert(get_transformed_output_height(st_output) - 1 <= height_px && height_px  <= get_transformed_output_height(st_output) + 1);
+    //
+    // XXX: These asserts only hold if the compositor is trying to achieve
+    // native resolution. Some compositors like hyprland at the moment, are
+    // instead requesting a multiple of surface-local resolution, and then
+    // downscaling
+    // assert(get_transformed_output_width(st_output) - 1 <= width_px && width_px  <= get_transformed_output_width(st_output) + 1);
+    // assert(get_transformed_output_height(st_output) - 1 <= height_px && height_px  <= get_transformed_output_height(st_output) + 1);
     width_px += 2;
     height_px += 2;
 
