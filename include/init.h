@@ -67,6 +67,8 @@ get_selection_surface_buf_size_padded(struct scran_output *st_output) {
     // native resolution. Some compositors like hyprland at the moment, are
     // instead requesting a multiple of surface-local resolution, and then
     // downscaling
+    //     NOTE: This only happens for some of the configure events, not
+    //     necessarily the final configure event (which will actually be used).
     // assert(get_transformed_output_width(st_output) - 1 <= width_px && width_px  <= get_transformed_output_width(st_output) + 1);
     // assert(get_transformed_output_height(st_output) - 1 <= height_px && height_px  <= get_transformed_output_height(st_output) + 1);
     width_px += 2;
