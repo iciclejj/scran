@@ -79,11 +79,13 @@ surface_frame_callback_handler(
 
     st_buffer->busy = true;
 
-    // XXX HACK: Temporary (hopefully) workaround for regression introduced when
-    // trying to fix cosmic sync by assigning on presentation_feedback::presented.
-    // Should be removed once the syncing logic is more robust, but will not be
-    // easy.
-    if (g_state.globals.cosmic_output_manager == NULL) {
+    // XXX HACK: Temporary (hopefully) workaround for regression introduced by
+    // trying to fix cosmic and hyprland sync by assigning on
+    // presentation_feedback::presented. Should be removed once the syncing
+    // logic is more robust.
+    if (   g_state.globals.cosmic_output_manager == NULL
+        && g_state.globals.hypr_surface_manager == NULL
+    ) {
         // XXX TODO: Check whether we're actually sway more robustly, and assign
         // it as part of our state. (So we don't need to assume the user is
         // running either cosmic or sway.)
