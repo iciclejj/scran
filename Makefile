@@ -70,10 +70,12 @@ WAYLAND_SCANNER   := $(shell $(PKG_CONFIG) --variable=wayland_scanner wayland-sc
 WL_PROTOCOLS_DIR  := $(shell $(PKG_CONFIG) --variable=pkgdatadir wayland-protocols)
 WLR_PROTOCOLS_DIR := wayland-protocol-extensions/wlr-protocols
 COSMIC_PROTOCOLS_DIR := wayland-protocol-extensions/cosmic-protocols
+HYPRLAND_PROTOCOLS_DIR := wayland-protocol-extensions/hyprland-protocols
 wl_protocols_required_xml_paths := \
 	$(WLR_PROTOCOLS_DIR)/unstable/wlr-layer-shell-unstable-v1.xml \
 	$(WLR_PROTOCOLS_DIR)/unstable/wlr-output-management-unstable-v1.xml \
 	$(COSMIC_PROTOCOLS_DIR)/unstable/cosmic-output-management-unstable-v1.xml \
+	$(HYPRLAND_PROTOCOLS_DIR)/hyprland-surface-v1.xml \
 	$(WL_PROTOCOLS_DIR)/stable/xdg-shell/xdg-shell.xml \
 	$(WL_PROTOCOLS_DIR)/stable/tablet/tablet-v2.xml \
 	$(WL_PROTOCOLS_DIR)/stable/presentation-time/presentation-time.xml \
