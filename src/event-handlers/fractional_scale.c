@@ -3,6 +3,7 @@
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
+#include "surface__selection.h"
 #include "print.h"
 
 
@@ -44,10 +45,8 @@ handle_fractional_scale_preferred_scale__selection(
     );
 
     if (ret == SCRAN_COMMON_SURFACE_UPDATE_HANDLER_UPDATED) {
-        // FIXME: Call request_... here instead (this is an intermediate commit)
-        for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
-            selection_surface->double_buffer[i].force_redraw = true;
-        }
+        struct scran_output *st_output = wl_container_of(selection_surface, st_output, selection_surface);
+        request_selection_surface_update(st_output);
     }
 }
 

@@ -3,6 +3,7 @@
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
+#include "surface__selection.h"
 #include "print.h"
 
 
@@ -45,10 +46,7 @@ handle_output_scale(
         struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
         update_surface_scale_and_size(&selection_surface->surface);
         update_surface_viewport(&selection_surface->surface);
-        // FIXME: Call request_... here instead (this is an intermediate commit)
-        for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
-            selection_surface->double_buffer[i].force_redraw = true;
-        }
+        request_selection_surface_update(st_output);
     }
 }
 

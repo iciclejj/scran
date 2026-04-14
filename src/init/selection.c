@@ -104,10 +104,7 @@ init_postmem__selection(struct scran_output *st_output)
     // have fired before the viewport was initialized.
     update_surface_scale_and_size(st_surface);
     update_surface_viewport(st_surface);
-    // FIXME: Call request_... here instead (this is an intermediate commit)
-    for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
-        selection_surface->double_buffer[i].force_redraw = true;
-    }
+    request_selection_surface_update(st_output);
 
     selection_ctx->box_bounds_px = (struct BLBoxI) {
         .x0 = 0,
