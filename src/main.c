@@ -327,11 +327,11 @@ init_meminit(
         //            wayland, because we don't have control over the
         //            padding/stride/etc.
 
-        for (int i_buffer = 0; i_buffer < SURFACE_BUF_COUNT; i_buffer++) {
+        for (int i_buffer = 0; i_buffer < SELECTION_SURFACE_BUF_COUNT; i_buffer++) {
             const size_t _surface_buf_size = get_selection_surface_buf_size_padded(_st_output);
             _arena_add_block(
                 shm_arena,
-                _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->selection_surface.surface.double_buffer[i_buffer].data
+                _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->selection_surface.double_buffer[i_buffer].data
             );
         };
 
@@ -393,8 +393,8 @@ init_meminit(
         struct scran_output *_st_output = &g_state.outputs[i];
 
         struct scran_output_selectionSurface *_selection_surface = &_st_output->selection_surface;
-        for (int i_buffer = 0; i_buffer < SURFACE_BUF_COUNT; i_buffer++) {
-            struct scran_output_surface_buffer *_st_buffer = &_selection_surface->surface.double_buffer[i_buffer];
+        for (int i_buffer = 0; i_buffer < SELECTION_SURFACE_BUF_COUNT; i_buffer++) {
+            struct scran_output_selectionSurface_buffer *_st_buffer = &_selection_surface->double_buffer[i_buffer];
 
             assert(_st_buffer->data != NULL);
             const ptrdiff_t _surface_buffer_offset = _st_buffer->data - shm_arena->addr;
@@ -409,7 +409,7 @@ init_meminit(
 
             wl_buffer_add_listener(
                 _st_buffer->wl_buffer,
-                &surface_buffer_listener,
+                &selectionSurface_buffer_listener,
                 _st_buffer
             );
         }

@@ -272,6 +272,9 @@ update_surface_scale_and_size(
     st_surface->height_px_buffer = round(scale_factor * st_surface->height_logical);
 }
 
+// NOTE: This does not necessarily force-redraw the buffer, since buffer
+// handling, beyond getting/calculating recommended size, is not part of
+// scran_output_surface.
 static inline void
 update_surface_viewport(
     struct scran_output_surface *st_surface
@@ -309,10 +312,6 @@ update_surface_viewport(
         st_surface->width_logical,
         st_surface->height_logical
     );
-
-    for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
-        st_surface->double_buffer[i].force_redraw = true;
-    }
 }
 
 

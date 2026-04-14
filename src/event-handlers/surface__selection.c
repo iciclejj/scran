@@ -27,13 +27,13 @@ _boxes_are_equal(BLBoxI a, BLBoxI b)
     ;
 }
 
-static inline struct scran_output_surface_buffer *
-get_free_double_buffer(struct scran_output_surface *st_surface)
+static inline struct scran_output_selectionSurface_buffer *
+get_free_double_buffer(struct scran_output_selectionSurface *selection_surface)
 {
-    struct scran_output_surface_buffer *buffer =
-        st_surface->double_buffer[0].busy
-        ? &st_surface->double_buffer[1]
-        : &st_surface->double_buffer[0]
+    struct scran_output_selectionSurface_buffer *buffer =
+        selection_surface->double_buffer[0].busy
+        ? &selection_surface->double_buffer[1]
+        : &selection_surface->double_buffer[0]
     ;
 
     if (buffer->busy) {
@@ -59,7 +59,7 @@ selection_surface_frame_callback_handler(
         goto done;
     }
 
-    struct scran_output_surface_buffer *st_buffer = get_free_double_buffer(&st_output->selection_surface.surface);
+    struct scran_output_selectionSurface_buffer *st_buffer = get_free_double_buffer(&st_output->selection_surface);
 
     if (st_buffer == NULL) {
         DEBUG("Both buffers busy...\n");
@@ -108,7 +108,7 @@ selection_surface_frame_callback_handler(
     wl_surface_attach(st_output->selection_surface.surface.wl_surface, st_buffer->wl_buffer, 0, 0);
     wp_presentation_feedback_add_listener(
         wp_presentation_feedback(g_state.globals.presentation, st_output->selection_surface.surface.wl_surface),
-        &presentation_feedback_listener,
+        &presentation_feedback_listener__selection,
         st_buffer
     );
     wl_surface_commit(st_output->selection_surface.surface.wl_surface);

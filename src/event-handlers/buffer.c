@@ -7,12 +7,12 @@
 static void
 handle_surface_buffer_release(void *data, struct wl_buffer *buffer)
 {
-    struct scran_output_surface_buffer *st_surface_buffer = data;
+    struct scran_output_selectionSurface_buffer *st_buffer = data;
 
-    st_surface_buffer->busy = false;
+    st_buffer->busy = false;
 }
 
-struct wl_buffer_listener surface_buffer_listener = {
+struct wl_buffer_listener selectionSurface_buffer_listener = {
     .release = handle_surface_buffer_release
 };
 

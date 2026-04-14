@@ -206,8 +206,13 @@ void handle_wlr_output_manager_done(
 
         // XXX TODO(!!): Make for_all_fullscreen_surfaces() function/macro, once we
         // add more surfaces
-        update_surface_scale_and_size(&st_output->selection_surface.surface);
-        update_surface_viewport(&st_output->selection_surface.surface);
+        struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+        update_surface_scale_and_size(&selection_surface->surface);
+        update_surface_viewport(&selection_surface->surface);
+        // FIXME: Call request_... here instead (this is an intermediate commit)
+        for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
+            selection_surface->double_buffer[i].force_redraw = true;
+        }
     }
 }
 

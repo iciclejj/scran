@@ -48,7 +48,7 @@ init_premem__selection(
         SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED
     );
 
-    zwlr_layer_surface_v1_add_listener(st_surface->layer_surface, &layer_surface_listener, st_surface);
+    zwlr_layer_surface_v1_add_listener(st_surface->layer_surface, &layer_surface_listener__selection, &st_output->selection_surface);
     // Initial bufferless commit to trigger configure event
     wl_surface_commit(st_surface->wl_surface);
 
@@ -61,7 +61,7 @@ init_premem__selection(
     st_surface->fractional_scale = wp_fractional_scale_manager_v1_get_fractional_scale(
         st_globals->fractional_scale_manager, st_surface->wl_surface
     );
-    wp_fractional_scale_v1_add_listener(st_surface->fractional_scale, &fractional_scale_listener, st_surface);
+    wp_fractional_scale_v1_add_listener(st_surface->fractional_scale, &fractional_scale_listener__selection, &st_output->selection_surface);
 
     return true;
 }
@@ -104,6 +104,10 @@ init_postmem__selection(struct scran_output *st_output)
     // have fired before the viewport was initialized.
     update_surface_scale_and_size(st_surface);
     update_surface_viewport(st_surface);
+    // FIXME: Call request_... here instead (this is an intermediate commit)
+    for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
+        selection_surface->double_buffer[i].force_redraw = true;
+    }
 
     selection_ctx->box_bounds_px = (struct BLBoxI) {
         .x0 = 0,
@@ -121,8 +125,8 @@ init_postmem__selection(struct scran_output *st_output)
         .y1 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
     };
 
-    for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
-        struct scran_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
+    for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
+        struct scran_output_selectionSurface_buffer *st_buffer = &selection_surface->double_buffer[i];
 
         // Blend2D wrapper for the buffer we will be rendering into
         assert(st_buffer->data != NULL);
@@ -144,7 +148,7 @@ init_postmem__selection(struct scran_output *st_output)
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
 
 
-    struct scran_output_surface_buffer *initial_buffer = &st_surface->double_buffer[0];
+    struct scran_output_selectionSurface_buffer *initial_buffer = &selection_surface->double_buffer[0];
 
     // We need to pre-render here if we want the UI to be displayed already on
     // the first frame.
@@ -185,8 +189,8 @@ init_postmem__selection__destroy(struct scran_output *st_output)
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
     struct scran_output_surface          *st_surface        = &st_output->selection_surface.surface;
 
-    for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
-        struct scran_output_surface_buffer *st_buffer = &st_surface->double_buffer[i];
+    for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
+        struct scran_output_selectionSurface_buffer *st_buffer = &selection_surface->double_buffer[i];
 
         bl_context_destroy(&st_buffer->bl_ctx);
         bl_image_destroy(&st_buffer->bl_img);

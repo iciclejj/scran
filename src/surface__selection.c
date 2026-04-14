@@ -71,7 +71,7 @@ _get_box_diffs_as_4_rects(
 static inline void
 _draw_and_damage_region(
     struct scran_output_selectionSurface *selection_surface,
-    struct scran_output_surface_buffer *st_buffer,
+    struct scran_output_selectionSurface_buffer *st_buffer,
     // Wayland needs to be damaged with difference with the previously drawn box,
     // regardless of which buffer produced it. The buffer itself, on the other
     // hand, must be damaged relative to itself. Marking Wayland damage does
@@ -104,7 +104,7 @@ _draw_and_damage_region(
 static inline void
 _draw_and_damage_selection_border(
     struct scran_output_selectionSurface *selection_surface,
-    struct scran_output_surface_buffer *st_buffer,
+    struct scran_output_selectionSurface_buffer *st_buffer,
     BLBoxI capture_area_border_outline,
     BLBoxI capture_area_border_inline,
     const BLRectI *damage_regions_wayland,
@@ -124,7 +124,7 @@ _draw_and_damage_selection_border(
 static inline void
 _draw_and_damage_background(
     struct scran_output_selectionSurface *selection_surface,
-    struct scran_output_surface_buffer *st_buffer,
+    struct scran_output_selectionSurface_buffer *st_buffer,
     BLBoxI capture_area_max_bounds,
     BLBoxI capture_area_border_outline,
     const BLRectI *damage_regions_wayland,
@@ -173,7 +173,7 @@ _get_scalesafe_border_inline(
 void
 draw_frame_and_damage_buffer(
     struct scran_output_selectionSurface *selection_surface,
-    struct scran_output_surface_buffer *st_buffer,
+    struct scran_output_selectionSurface_buffer *st_buffer,
     struct BLBoxI capture_area,
     struct BLBoxI capture_area_bounds
 ) {

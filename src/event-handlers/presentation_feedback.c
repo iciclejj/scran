@@ -9,7 +9,7 @@ extern struct scran g_state;
 
 
 static inline void
-handle_presentation_feedback_sync_output(
+handle_presentation_feedback_sync_output__selection(
     void *data,
     struct wp_presentation_feedback *wp_presentation_feedback,
     struct wl_output *wl_output
@@ -19,7 +19,7 @@ handle_presentation_feedback_sync_output(
 
 
 static inline void
-handle_presentation_feedback_presented(
+handle_presentation_feedback_presented__selection(
     void *data,
     struct wp_presentation_feedback *wp_presentation_feedback,
     uint32_t tv_sec_hi,
@@ -35,7 +35,7 @@ handle_presentation_feedback_presented(
 ) {
     wp_presentation_feedback_destroy(wp_presentation_feedback);
 
-    struct scran_output_surface_buffer *st_buffer = data;
+    struct scran_output_selectionSurface_buffer *st_buffer = data;
     struct scran_output *st_output = &g_state.outputs[get_containing_output_array_index(st_buffer)];
 
     // Must be synchronized at actual presentation time, and using the box that
@@ -59,7 +59,7 @@ handle_presentation_feedback_presented(
 }
 
 static inline void
-handle_presentation_feedback_discarded(
+handle_presentation_feedback_discarded__selection(
     void *data,
     struct wp_presentation_feedback *wp_presentation_feedback
 ) {
@@ -67,8 +67,8 @@ handle_presentation_feedback_discarded(
 }
 
 
-struct wp_presentation_feedback_listener presentation_feedback_listener = {
-    .presented = handle_presentation_feedback_presented,
-    .sync_output = handle_presentation_feedback_sync_output,
-    .discarded = handle_presentation_feedback_discarded,
+struct wp_presentation_feedback_listener presentation_feedback_listener__selection = {
+    .presented = handle_presentation_feedback_presented__selection,
+    .sync_output = handle_presentation_feedback_sync_output__selection,
+    .discarded = handle_presentation_feedback_discarded__selection,
 };

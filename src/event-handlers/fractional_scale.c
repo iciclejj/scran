@@ -2,9 +2,27 @@
 
 #include "state.h"
 #include "state-util.h"
-
+#include "event-handlers.h"
 #include "print.h"
 
+
+static inline enum scran_common_surface_update_handler_result
+handle_fractional_scale_preferred_scale__common(
+    struct scran_output_surface *st_surface,
+    struct wp_fractional_scale_v1 *fractional_scale,
+    uint32_t scale // denominator: 120
+) {
+    DEBUG("handle_fractional_scale_preferred_scale(): %f\n", _get_normalized_scaler(scale, 120));
+
+    if (st_surface->fractional_scale_wp_120 != scale) {
+        st_surface->fractional_scale_wp_120 = scale;
+        update_surface_scale_and_size(st_surface);
+        update_surface_viewport(st_surface);
+        return SCRAN_COMMON_SURFACE_UPDATE_HANDLER_UPDATED;
+    }
+
+    return SCRAN_COMMON_SURFACE_UPDATE_HANDLER_UNCHANGED;
+}
 
 // Wayland uses this for its ground truth to scale our layer surface.
 //
@@ -14,23 +32,26 @@
 // one was actually used... And *all* these three sources of scaling factors are
 // incompatible with each others' denominators...
 static inline void
-handle_fractional_scale_preferred_scale(
+handle_fractional_scale_preferred_scale__selection(
     void *data,
     struct wp_fractional_scale_v1 *fractional_scale,
     uint32_t scale // denominator: 120
 ) {
-    struct scran_output_surface *st_surface = data;
+    struct scran_output_selectionSurface *selection_surface = data;
 
-    DEBUG("handle_fractional_scale_preferred_scale(): %f\n", _get_normalized_scaler(scale, 120));
+    enum scran_common_surface_update_handler_result ret = handle_fractional_scale_preferred_scale__common(
+        &selection_surface->surface, fractional_scale, scale
+    );
 
-    if (st_surface->fractional_scale_wp_120 != scale) {
-        st_surface->fractional_scale_wp_120 = scale;
-        update_surface_scale_and_size(st_surface);
-        update_surface_viewport(st_surface);
+    if (ret == SCRAN_COMMON_SURFACE_UPDATE_HANDLER_UPDATED) {
+        // FIXME: Call request_... here instead (this is an intermediate commit)
+        for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
+            selection_surface->double_buffer[i].force_redraw = true;
+        }
     }
 }
 
 
-struct wp_fractional_scale_v1_listener fractional_scale_listener = {
-    .preferred_scale = handle_fractional_scale_preferred_scale,
+struct wp_fractional_scale_v1_listener fractional_scale_listener__selection = {
+    .preferred_scale = handle_fractional_scale_preferred_scale__selection,
 };

@@ -28,7 +28,7 @@
 #define MAX_OUTPUTS 64
 
 #define A_DOUBLE_BUFFER_HAS_TWO_BUFFERS 2
-#define SURFACE_BUF_COUNT A_DOUBLE_BUFFER_HAS_TWO_BUFFERS
+#define SELECTION_SURFACE_BUF_COUNT A_DOUBLE_BUFFER_HAS_TWO_BUFFERS
 
 #define SCRAN_OUTPUT_FILENAME_SIZE_MAX    (NAME_MAX)                                       // Null terminator is  counted
 #define SCRAN_OUTPUT_FILENAME_STRLEN_MAX  (NAME_MAX - 1)                                   // Null terminator not counted
@@ -70,23 +70,8 @@ struct scran_globals {
     struct hyprland_surface_manager_v1 *hypr_surface_manager;
 };
 
-struct scran_output_surface_buffer {
-    struct wl_buffer *wl_buffer;
-    void *data;
-
-    BLContextCore bl_ctx;
-    BLImageCore bl_img;
-    BLBoxI box_currently_drawn;
-
-    bool busy;
-    bool force_redraw;
-};
-
-
 struct scran_output_surface {
     struct wl_surface *wl_surface;
-
-    struct scran_output_surface_buffer double_buffer[SURFACE_BUF_COUNT];
 
     // "normalized" implies:
     //   scale == 1 => fractional_scale_factor_normalized = 1
@@ -115,9 +100,21 @@ struct scran_output_surface {
     struct wp_viewport *viewport;
 };
 
+struct scran_output_selectionSurface_buffer {
+    struct wl_buffer *wl_buffer;
+    void *data;
+
+    BLContextCore bl_ctx;
+    BLImageCore bl_img;
+    BLBoxI box_currently_drawn;
+
+    bool busy;
+    bool force_redraw;
+};
 
 struct scran_output_selectionSurface {
     struct scran_output_surface surface;
+    struct scran_output_selectionSurface_buffer double_buffer[SELECTION_SURFACE_BUF_COUNT];
 
     BLPathCore bl_path;
     // XXX TODO: Turn this into a pointer once we remove the ugly redraw hack

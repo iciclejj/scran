@@ -29,8 +29,8 @@ set_selection_surface_theme(
         break;
     }
 
-    for (int i = 0; i < SURFACE_BUF_COUNT; ++i) {
-        struct scran_output_surface_buffer *st_buffer = &st_output->selection_surface.surface.double_buffer[i];
+    for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
+        struct scran_output_selectionSurface_buffer *st_buffer = &st_output->selection_surface.double_buffer[i];
 
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, fill_style.value);
         bl_context_set_fill_rule(&st_buffer->bl_ctx, fill_rule);
