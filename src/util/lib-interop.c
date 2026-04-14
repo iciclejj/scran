@@ -99,8 +99,8 @@ wl_shm_format_to_ffmpeg(enum wl_shm_format wl_shm_format)
     switch (wl_shm_format) {
         // XXX: Double-check this behavior (at least with session::shm_format)
         //      See TODO at the top.
-        case WL_SHM_FORMAT_ARGB8888: return AV_PIX_FMT_ABGR;
-        case WL_SHM_FORMAT_XRGB8888: return AV_PIX_FMT_0BGR;
+        case WL_SHM_FORMAT_ARGB8888: return AV_PIX_FMT_BGRA;
+        case WL_SHM_FORMAT_XRGB8888: return AV_PIX_FMT_BGR0;
         case WL_SHM_FORMAT_ABGR8888: return AV_PIX_FMT_RGBA;
         case WL_SHM_FORMAT_XBGR8888: return AV_PIX_FMT_RGB0;
         case WL_SHM_FORMAT_C8:       return AV_PIX_FMT_GRAY8;
