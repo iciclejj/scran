@@ -24,7 +24,7 @@ https://github.com/user-attachments/assets/f697827a-8f2c-4649-a1ab-6e0bd6fb1304
 </summary>
 
 Whether a compositor is supported mainly depends on whether it implements the
-requried Wayland protocols. Most currently-unsupported compositors are only
+required Wayland protocols. Most currently-unsupported compositors are only
 missing the `ext_image_copy_capture`/`ext_image_capture_source` protocol pair.
 
 A current list of compositors implementing this protocol can be found at
