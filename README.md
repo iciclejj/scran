@@ -13,6 +13,7 @@ https://github.com/user-attachments/assets/f697827a-8f2c-4649-a1ab-6e0bd6fb1304
 
 - Supported:
   - [Sway](https://swaywm.org/)
+  - [Hyprland](https://hypr.land/)
   - [COSMIC](https://system76.com/cosmic)
 - Not supported:
   - KWin (KDE Plasma)
