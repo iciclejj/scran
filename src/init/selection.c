@@ -87,7 +87,7 @@ init_premem__selection__destroy(struct scran_output *st_output)
 // make it obvious that it is for both surface-specific and general
 // selection-related things.
 bool
-init_postmem__selection(struct scran_output *st_output)
+init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_selection)
 {
     DEBUG("init_postmem__selection()\n");
 
@@ -128,6 +128,20 @@ init_postmem__selection(struct scran_output *st_output)
     bl_path_init(&selection_surface->bl_path);
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
 
+    BLBoxI initial_box;
+    if (custom_initial_selection != NULL) {
+        initial_box = *custom_initial_selection;
+    } else {
+        // HACK: Get the outline out of view...
+        //       TODO: Make a redraw function that doesn't draw the selection.
+        initial_box = (struct BLBoxI) {
+            .x0 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
+            .y0 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
+            .x1 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
+            .y1 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
+        };
+    }
+
     struct scran_output_selectionSurface_buffer *initial_buffer = &selection_surface->double_buffer[0];
     // We need to pre-render here if we want the UI to be displayed already on
     // the first frame.
@@ -138,7 +152,7 @@ init_postmem__selection(struct scran_output *st_output)
     // configure? TODO: Find out if this is compositor-bound or can be
     // worked around somehow.
     assert(initial_buffer->busy == false);
-    draw_selection_surface_initial_state(st_output, initial_buffer);
+    force_update_selection_surface(st_output, initial_buffer, initial_box);
 
     return true;
 }

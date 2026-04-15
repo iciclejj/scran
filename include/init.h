@@ -95,7 +95,7 @@ void init_premem__capture__destroy(struct scran_output *st_output);
 
 bool init_premem__selection(struct scran_output *st_output, struct scran_globals *st_globals);
  void init_premem__selection__destroy(struct scran_output *st_output);
-bool init_postmem__selection(struct scran_output *st_output);
+bool init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_selection);
  void init_postmem__selection__destroy(struct scran_output *st_output);
 
 bool init_premem__datacontrol(struct scran_seat_datacontrol *st_datacontrol);

@@ -445,33 +445,40 @@ init_meminit(
 static bool
 init_postmem()
 {
-    assert(g_state.n_outputs <= MAX_OUTPUTS);
-    for (int i = 0; i < g_state.n_outputs; ++i) {
-        struct scran_output *_st_output = &g_state.outputs[i];
-
-        if (!init_postmem__selection(_st_output)) {
-            return false;
-        }
-    }
+    struct BLBoxI       custom_initial_selection;
+    struct scran_output *custom_initial_selection_output = NULL;
 
     if (g_state.options.have_custom_initial_selection) {
-        struct BLRectI      custom_selection;
-        struct scran_output *custom_selection_output = NULL;
-
+        struct BLRectI      custom_initial_selection_rect;
         global_logical_coordinates_to_output_pixel_coordinates(
             g_state.options.custom_initial_selection_global_coordinates,
-            &custom_selection,
-            &custom_selection_output
+            &custom_initial_selection_rect,
+            &custom_initial_selection_output
         );
 
-        if (custom_selection_output == NULL) {
+        if (custom_initial_selection_output == NULL) {
             eprintf("Error: Top left corner of geometry string is not within any detected output.\n");
             return false;
         }
 
-        custom_selection_output->selection_ctx.box_px = blrecti_to_blboxi(custom_selection);
+        custom_initial_selection = blrecti_to_blboxi(custom_initial_selection_rect);
 
-        set_selection_initialized(custom_selection_output);
+        // TODO: Should this be the responsibility of init_postmem__selection?
+        custom_initial_selection_output->selection_ctx.box_px = custom_initial_selection;
+        set_selection_initialized(custom_initial_selection_output);
+    }
+
+    assert(g_state.n_outputs <= MAX_OUTPUTS);
+    for (int i = 0; i < g_state.n_outputs; ++i) {
+        struct scran_output *_st_output = &g_state.outputs[i];
+
+        struct BLBoxI *_p_custom_initial_selection =
+            (_st_output == custom_initial_selection_output)
+            ? &custom_initial_selection : NULL;
+
+        if (!init_postmem__selection(_st_output, _p_custom_initial_selection)) {
+            return false;
+        }
     }
 
     return true;
