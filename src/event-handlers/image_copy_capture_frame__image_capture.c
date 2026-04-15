@@ -76,6 +76,9 @@ handle_image_copy_capture_frame_ready__image_capture(
     struct scran_output *st_output = data;
     struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
 
+    DEBUG("CAPTURING IMAGE:\n");
+    DEBUG_BLBOXI(frame_ctx->capture_area_px);
+
     // XXX: Capturing image during video capture not implemented yet...
     assert(!frame_ctx->capturing_video);
     assert(g_state.n_captures_in_progress >= 1);
