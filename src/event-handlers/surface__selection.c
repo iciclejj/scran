@@ -98,8 +98,7 @@ selection_surface_frame_callback_handler(
     draw_selection_and_damage_buffer(
         &st_output->selection_surface,
         st_buffer,
-        capture_area,
-        st_output->selection_ctx.box_bounds_px
+        capture_area
     );
     st_output->selection_surface.box_last_drawn = capture_area;
     st_buffer->box_currently_drawn = capture_area;

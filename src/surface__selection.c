@@ -174,8 +174,7 @@ void
 draw_selection_and_damage_buffer(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
-    struct BLBoxI capture_area,
-    struct BLBoxI capture_area_bounds
+    struct BLBoxI capture_area
 ) {
     // TODO: Assert bl_ctx has already begun
 
@@ -187,6 +186,13 @@ draw_selection_and_damage_buffer(
     assert(!SCRAN_BL_BOX_IS_INVERTED(capture_area));
     assert(!SCRAN_BL_BOX_IS_INVERTED(capture_area_last_used_in_any_buffer));
     // TODO: Assert box_bounds fully surrounds box_to_draw
+
+    const struct BLBoxI capture_area_bounds = {
+        0,
+        0,
+        selection_surface->surface.width_px_buffer,
+        selection_surface->surface.height_px_buffer,
+    };
 
     const double scale = selection_surface->surface.final_scale_factor_normalized;
 
@@ -293,8 +299,7 @@ draw_selection_surface_initial_state(
     draw_selection_and_damage_buffer(
         selection_surface,
         st_buffer,
-        initial_box,
-        st_output->selection_ctx.box_bounds_px
+        initial_box
     );
 
     wl_surface_attach(

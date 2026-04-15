@@ -225,9 +225,6 @@ struct scran_output_selectionContext {
     //   TODO: Make the coordinate space distinctions typed, in general?
     //           E.g. BLBoxISelection
     struct BLBoxI box_px;
-    // TODO: This doesn't really need to be a state variable. Make a macro or
-    // something to calculate it inline to match output width/height and x=y=0.
-    struct BLBoxI box_bounds_px;
 
     enum selection_state selection_state;
 

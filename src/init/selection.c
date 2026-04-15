@@ -106,14 +106,6 @@ init_postmem__selection(struct scran_output *st_output)
     update_surface_viewport(st_surface);
     request_selection_surface_update(st_output);
 
-    selection_ctx->box_bounds_px = (struct BLBoxI) {
-        .x0 = 0,
-        .y0 = 0,
-        // Capture area bounds.
-        .x1 = get_transformed_output_width(st_output),
-        .y1 = get_transformed_output_height(st_output),
-    };
-
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
         struct scran_output_selectionSurface_buffer *st_buffer = &selection_surface->double_buffer[i];
 
