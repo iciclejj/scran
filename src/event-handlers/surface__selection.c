@@ -10,6 +10,7 @@
 #include "event-handlers.h"
 #include "util/blend2d.h"
 #include "surface__selection.h"
+#include "capture.h"
 #include "print.h"
 
 
@@ -87,12 +88,7 @@ selection_surface_frame_callback_handler(
         // XXX TODO: Check whether we're actually sway more robustly, and assign
         // it as part of our state. (So we don't need to assume the user is
         // running either cosmic or sway.)
-        st_output->capture.frame_ctx.capture_area_px = get_reverse_transform(
-            st_output->selection_ctx.box_px,
-            st_output->mode.width_px,
-            st_output->mode.height_px,
-            st_output->transform
-        );
+        update_capture_area_with_selection(st_output, st_output->selection_ctx.box_px);
     }
 
     draw_selection_and_damage_buffer(

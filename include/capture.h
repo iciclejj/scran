@@ -20,6 +20,9 @@
 #define CAPTURE_IMAGE_OUTPUT_FILE_EXTENSION_DEFAULT ".png"
 
 
+uint8_t *get_capture_area_start_address(struct capture_frame_context *frame_ctx);
+void update_capture_area_with_selection(struct scran_output *st_output, BLBoxI selection_box);
+
 bool request_video_capture(struct scran_output *st_output);
  void end_video_capture(struct scran_output *st_output);
 void request_video_capture_frame(struct capture_frame_context *frame_ctx, int32_t damage_x, int32_t damage_y, int32_t damage_w, int32_t damage_h);

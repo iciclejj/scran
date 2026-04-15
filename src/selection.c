@@ -59,14 +59,8 @@ set_selection_initialized(struct scran_output *st_output)
 
     // Make sure this is initialized immediately, to not be dependent on
     // surface::frame being done, for example when using 'scran -eg'.
-    //     TODO: Would be better to de-couple this somehow, or just stop
-    //     using capture_area_px, in favor of bl_box_already_drawn.
-    st_output->capture.frame_ctx.capture_area_px = get_reverse_transform(
-        st_output->selection_ctx.box_px,
-        st_output->mode.width_px,
-        st_output->mode.height_px,
-        st_output->transform
-    );
+    //     TODO: Would be better to de-couple this somehow.
+    update_capture_area_with_selection(st_output, st_output->selection_ctx.box_px);
 
     assert(st_output->capture.frame_ctx.capture_area_px.x1 <= get_transformed_output_width(st_output));
     assert(st_output->capture.frame_ctx.capture_area_px.y1 <= get_transformed_output_height(st_output));

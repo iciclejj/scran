@@ -36,6 +36,29 @@
 extern struct scran g_state;
 
 
+uint8_t *
+get_capture_area_start_address(
+    struct capture_frame_context *frame_ctx
+) {
+    return frame_ctx->st_buffer.data
+         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
+         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
+}
+
+// `selection_box` has `scran_output_selectionContext.box` coordinate space!
+void
+update_capture_area_with_selection(
+    struct scran_output *st_output,
+    BLBoxI selection_box
+) {
+    st_output->capture.frame_ctx.capture_area_px = get_reverse_transform(
+        selection_box,
+        st_output->mode.width_px,
+        st_output->mode.height_px,
+        st_output->transform
+    );
+}
+
 void
 request_video_capture_frame(
     struct capture_frame_context *frame_ctx,

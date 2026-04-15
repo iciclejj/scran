@@ -2,7 +2,7 @@
 
 #include "state.h"
 #include "state-util.h"
-#include "util/blend2d.h"
+#include "capture.h"
 
 
 extern struct scran g_state;
@@ -50,12 +50,7 @@ handle_presentation_feedback_presented__selection(
     // TODO: This naive implementation is not very robust against
     // delayed/skiped/etc. frames. Probably a frame history and multi-buffered
     // capture is required, with currently available sync/protocol guarantees.
-    st_output->capture.frame_ctx.capture_area_px = get_reverse_transform(
-        st_buffer->box_currently_drawn,
-        st_output->mode.width_px,
-        st_output->mode.height_px,
-        st_output->transform
-    );
+    update_capture_area_with_selection(st_output, st_buffer->box_currently_drawn);
 }
 
 static inline void

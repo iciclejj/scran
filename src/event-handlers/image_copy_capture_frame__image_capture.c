@@ -76,7 +76,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     struct scran_output *st_output = data;
     struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
 
-    // XXX: Capturing image during video capture implemented yet...
+    // XXX: Capturing image during video capture not implemented yet...
     assert(!frame_ctx->capturing_video);
     assert(g_state.n_captures_in_progress >= 1);
 
@@ -86,10 +86,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     // XXX TODO: Either separate buffer from video capture OR double-check that
     // the shared buffer doesn't cause issues + add robust checks/asserts.
     // (Primarily for when we implement simultaneous image+video capture)
-    const uint8_t *const area_start_addr =
-        frame_ctx->st_buffer.data
-        + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
-        + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
+    const uint8_t *const area_start_addr = get_capture_area_start_address(frame_ctx);
     // XXX TODO(!!):
     //    Output size is not necessarily guaranteed to be <= raw pixel
     //    buffer size. In other words, this buffer could overflow, as it

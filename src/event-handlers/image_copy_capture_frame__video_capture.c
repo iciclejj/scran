@@ -118,10 +118,7 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     // Crop and convert
 
-    uint8_t *const area_start_addr =
-        frame_ctx->st_buffer.data
-        + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
-        + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
+    uint8_t *const area_start_addr = get_capture_area_start_address(frame_ctx);
     // XXX: Can we make this const so area_start_addr can be const? It should
     // not change for the lifetime of this function (well, at least until the
     // next frame's dispatch at the end).
