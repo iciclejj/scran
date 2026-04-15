@@ -138,6 +138,11 @@ _ssse3_rotate_90(
 // ssse3 TODOs:
 // - Prefetch? More specific tiling?
 // - assert() our boundaries within the loops.
+// - Create SCRANOT_SSE_COL_STRIDE macro.
+// - Assert src and dst are already aligned
+// - Handle the of the loop directionality such that we can do aligned stores
+//   and reads for the main part, and only fallback to unaligned during edge/
+//   corner handling?
 //
 
 SCRANROT_TARGET_SSSE3
@@ -151,11 +156,11 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
     const int dst_stride_bytes, // Stride of the final output image
     __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
-    __m128i src_block_rows[SCRANROT_SSE_ROW_STRIDE] = { };
-    const __m128i *src_block_row_addrs[SCRANROT_SSE_ROW_STRIDE] = { };
+    __m128i src_block_rows[SCRANROT_SSE_ROW_STRIDE];
+    const __m128i *src_block_row_addrs[SCRANROT_SSE_ROW_STRIDE];
 
-    __m128i dst_block_rows[SCRANROT_SSE_ROW_STRIDE] = { };
-    __m128i *dst_block_row_addrs[SCRANROT_SSE_ROW_STRIDE] = { };
+    __m128i dst_block_rows[SCRANROT_SSE_ROW_STRIDE];
+    __m128i *dst_block_row_addrs[SCRANROT_SSE_ROW_STRIDE];
 
 
     for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += SCRANROT_SSE_ROW_STRIDE) {
@@ -247,17 +252,17 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
     const int dst_stride_bytes, // Stride of the final output image
     __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
-    __m128i src_block_rows[SCRANROT_SSE_ROW_STRIDE] = { };
-    const __m128i *src_block_row_addrs[SCRANROT_SSE_ROW_STRIDE] = { };
+    __m128i src_block_rows[SCRANROT_SSE_ROW_STRIDE];
+    const __m128i *src_block_row_addrs[SCRANROT_SSE_ROW_STRIDE];
 
-    __m128i dst_block_rows[SCRANROT_SSE_ROW_STRIDE] = { };
-    __m128i *dst_block_row_addrs[SCRANROT_SSE_ROW_STRIDE] = { };
+    __m128i dst_block_rows[SCRANROT_SSE_ROW_STRIDE];
+    __m128i *dst_block_row_addrs[SCRANROT_SSE_ROW_STRIDE];
 
 
     for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += SCRANROT_SSE_ROW_STRIDE) {
         // NOTE: Rotation-specific code:
-        const int dst_col_px = (src_height_px - 4) - src_row_px; // -4 => len -> index
-        SCRANROT_ASSERT(RGBA32_PIXEL_STRIDE * (dst_col_px + PIXELS_PER_M128I) <= src_stride_bytes); // Stay within padded bounds
+        const int dst_col_px = (src_height_px - PIXELS_PER_M128I) - src_row_px; // -4 => len -> __m128i (4 pixels) index
+        SCRANROT_ASSERT(RGBA32_PIXEL_STRIDE * (dst_col_px + PIXELS_PER_M128I) <= dst_stride_bytes); // Stay within padded bounds
         const int dst_col_offset_bytes = dst_col_px * RGBA32_PIXEL_STRIDE;
         char *dst_block_row_addr_0 = (char *)dst
                                      + dst_col_offset_bytes;
