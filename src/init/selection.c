@@ -142,17 +142,29 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
         };
     }
 
-    struct scran_output_selectionSurface_buffer *initial_buffer = &selection_surface->double_buffer[0];
-    // We need to pre-render here if we want the UI to be displayed already on
-    // the first frame.
-    //
-    // XXX: For some reason, the initial frame callback is often delayed by
-    // significantly more than an entire frametime (e.g. 22ms on 16.67 ms
-    // (60fps) frametime). Possibly bound by waiting for layer-surface
-    // configure? TODO: Find out if this is compositor-bound or can be
-    // worked around somehow.
-    assert(initial_buffer->busy == false);
-    force_update_selection_surface(st_output, initial_buffer, initial_box);
+    for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
+        struct scran_output_selectionSurface_buffer *buffer = &selection_surface->double_buffer[i];
+        // We need to pre-render here if we want the UI to be displayed already
+        // on the first frame.
+        //
+        // We draw *both* buffers, to simplify the handling of e.g.
+        // buffer->box_already_drawn for custom vs "out of view" initial box,
+        // etc.
+        //   TODO: Look at this again later and find a clean and robust way to
+        //   not have to initialize both frames. Probably after (or during)
+        //   merging freezeframe, since selection init will have to be somewhat
+        //   more set in stone after that. (Just shoving the non-initial one
+        //   out of view (and not intersecting the initial one) or something
+        //   like that should technically be enough..?)
+        //
+        // XXX: For some reason, the initial frame callback is often delayed by
+        // significantly more than an entire frametime (e.g. 22ms on 16.67 ms
+        // (60fps) frametime). Possibly bound by waiting for layer-surface
+        // configure? TODO: Find out if this is compositor-bound or can be
+        // worked around somehow.
+        assert(buffer->busy == false);
+        force_update_selection_surface(st_output, buffer, initial_box);
+    }
 
     return true;
 }
