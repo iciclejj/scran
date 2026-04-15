@@ -62,8 +62,8 @@ set_selection_initialized(struct scran_output *st_output)
     //     TODO: Would be better to de-couple this somehow.
     update_capture_area_with_selection(st_output, st_output->selection_ctx.box_px);
 
-    assert(st_output->capture.frame_ctx.capture_area_px.x1 <= get_transformed_output_width(st_output));
-    assert(st_output->capture.frame_ctx.capture_area_px.y1 <= get_transformed_output_height(st_output));
+    assert(st_output->capture.frame_ctx.capture_area_px.x1 <= st_output->mode.width_px);
+    assert(st_output->capture.frame_ctx.capture_area_px.y1 <= st_output->mode.width_px);
 
     if (g_state.options.capture_and_exit_after_selection_init) {
         DEBUG("STARTING AUTOMATIC IMAGE CAPTURE\n");
