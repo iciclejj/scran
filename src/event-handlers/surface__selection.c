@@ -95,7 +95,7 @@ selection_surface_frame_callback_handler(
         );
     }
 
-    draw_frame_and_damage_buffer(
+    draw_selection_and_damage_buffer(
         &st_output->selection_surface,
         st_buffer,
         capture_area,

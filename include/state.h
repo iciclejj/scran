@@ -214,11 +214,16 @@ enum selection_resize_direction {
 };
 
 // This struct is used as a shared context struct for event handlers that
-// need to interact with the selection (capture area) state. Keep frequently
-// accessed members near the start.
+// need to interact with the selection (capture area) state.
 struct scran_output_selectionContext {
-    // This is in capture_area coordinate-space (i.e. physical pixels).
-    //   NOTE: This is allowed to be inverted during resizing.
+    // This is in selection-surface viewport-source-buffer coordinate-space.
+    //   XXX NOTE: Most of the code at the moment assumes that this maps onto
+    //   physical pixels +/- 1 pixel (still with the buffer's transform!!).
+    //   This seems to hold true at the moment on Sway, COSMIC and Hyprland,
+    //   once all layer_surface::configure events have fired.
+    //   NOTE: Allowed to be inverted during resizing.
+    //   TODO: Make the coordinate space distinctions typed, in general?
+    //           E.g. BLBoxISelection
     struct BLBoxI box_px;
     // TODO: This doesn't really need to be a state variable. Make a macro or
     // something to calculate it inline to match output width/height and x=y=0.

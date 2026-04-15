@@ -171,7 +171,7 @@ _get_scalesafe_border_inline(
 }
 
 void
-draw_frame_and_damage_buffer(
+draw_selection_and_damage_buffer(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
     struct BLBoxI capture_area,
@@ -290,7 +290,7 @@ draw_selection_surface_initial_state(
 
     assert(st_buffer->busy == false);
     st_buffer->busy = true;
-    draw_frame_and_damage_buffer(
+    draw_selection_and_damage_buffer(
         selection_surface,
         st_buffer,
         initial_box,

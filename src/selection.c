@@ -78,20 +78,6 @@ set_selection_initialized(struct scran_output *st_output)
     }
 }
 
-void
-unset_selection_freeze_size(struct scran_output *st_output)
-{
-    enum selection_state *selection_state = &st_output->selection_ctx.selection_state;
-
-    switch(*selection_state) {
-        case SELECTION_COMPLETE_FREEZE_SIZE: *selection_state = SELECTION_COMPLETE; break;
-        case SELECTION_REBASING_FREEZE_SIZE: *selection_state = SELECTION_REBASING; break;
-        default:
-            assert("UNEXPECTED: unset_selection_freeze() called without frozen selection state");
-            break;
-    }
-}
-
 bool
 set_selection_freeze_size(struct scran_output *st_output)
 {
@@ -109,6 +95,20 @@ set_selection_freeze_size(struct scran_output *st_output)
     }
 
     return true;
+}
+
+void
+unset_selection_freeze_size(struct scran_output *st_output)
+{
+    enum selection_state *selection_state = &st_output->selection_ctx.selection_state;
+
+    switch(*selection_state) {
+        case SELECTION_COMPLETE_FREEZE_SIZE: *selection_state = SELECTION_COMPLETE; break;
+        case SELECTION_REBASING_FREEZE_SIZE: *selection_state = SELECTION_REBASING; break;
+        default:
+            assert("UNEXPECTED: unset_selection_freeze() called without frozen selection state");
+            break;
+    }
 }
 
 void
