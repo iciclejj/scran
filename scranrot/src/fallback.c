@@ -154,7 +154,7 @@ transform_framebuffer__fallback__rotate_90(
 
                     // NOTE: Rotation-specific (90 vs 270)
                     char *const _dst = (char *)dst
-                        + dst_x_px_max - (y + _y) * RGBA32_PIXEL_STRIDE
+                        + (dst_x_px_max - (y + _y)) * RGBA32_PIXEL_STRIDE
                         + (x + _x) * dst_stride_bytes;
 
                     uint32_t val = *(uint32_t *)_src;
