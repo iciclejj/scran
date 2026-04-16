@@ -618,8 +618,10 @@ run_main_loop(struct _scran_signal_masks *signal_masks)
                 }
             }
             if (wayland_ready) {
-                // TODO: Handle error (-1) ?
-                wl_display_read_events(g_state.globals.display);
+                if (-1 == wl_display_read_events(g_state.globals.display)) {
+                    eprintf("Wayland error %d: %s\n", ret, strerror(errno));
+                    return false;
+                }
                 wl_display_dispatch_pending(g_state.globals.display);
             } else {
                 wl_display_cancel_read(g_state.globals.display);
