@@ -7,6 +7,7 @@
 
 #include "../include/scranrot.h"
 #include "../include/scranrot-util.h"
+#include "./generic.h"
 
 
 // TODO: Consider adding aligned and/or streamed versions of the sse functions
@@ -138,7 +139,13 @@ _ssse3_rotate_90(
 // ssse3 TODOs:
 // - Prefetch? More specific tiling?
 // - assert() our boundaries within the loops.
+// - Create SCRANOT_SSE_COL_STRIDE macro.
+// - Assert src and dst are already aligned
+// - Handle the of the loop directionality such that we can do aligned stores
+//   and reads for the main part, and only fallback to unaligned during edge/
+//   corner handling?
 //
+
 
 SCRANROT_TARGET_SSSE3
 static void
@@ -149,13 +156,15 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
     const int src_stride_bytes,
     void *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
-    __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
-    __m128i src_block_rows[SCRANROT_SSE_ROW_STRIDE] = { };
-    const __m128i *src_block_row_addrs[SCRANROT_SSE_ROW_STRIDE] = { };
+    __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
-    __m128i dst_block_rows[SCRANROT_SSE_ROW_STRIDE] = { };
-    __m128i *dst_block_row_addrs[SCRANROT_SSE_ROW_STRIDE] = { };
+    __m128i src_block_rows[SCRANROT_SSE_ROW_STRIDE];
+    const __m128i *src_block_row_addrs[SCRANROT_SSE_ROW_STRIDE];
+
+    __m128i dst_block_rows[SCRANROT_SSE_ROW_STRIDE];
+    __m128i *dst_block_row_addrs[SCRANROT_SSE_ROW_STRIDE];
 
 
     for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += SCRANROT_SSE_ROW_STRIDE) {
@@ -194,6 +203,7 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
     }
 }
 
+
 // XXX TODO: Double-check the padding and alignment for this
 SCRANROT_TARGET_SSSE3
 static void
@@ -204,8 +214,10 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
     const int src_stride_bytes,
     void *const restrict dst,
     const int dst_stride_bytes,
-    __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
+    __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
+
     // NOTE: Rotation-specific:
     rgba32_shuffle_mask_128 = _ssse3_rotate_180_get_modified_rgba_shuffle(rgba32_shuffle_mask_128);
 
@@ -236,6 +248,7 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
     }
 }
 
+
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer__ssse3_unaligned__rotate_90(
@@ -245,19 +258,21 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
     const int src_stride_bytes,
     void *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
-    __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
-    __m128i src_block_rows[SCRANROT_SSE_ROW_STRIDE] = { };
-    const __m128i *src_block_row_addrs[SCRANROT_SSE_ROW_STRIDE] = { };
+    __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
-    __m128i dst_block_rows[SCRANROT_SSE_ROW_STRIDE] = { };
-    __m128i *dst_block_row_addrs[SCRANROT_SSE_ROW_STRIDE] = { };
+    __m128i src_block_rows[SCRANROT_SSE_ROW_STRIDE];
+    const __m128i *src_block_row_addrs[SCRANROT_SSE_ROW_STRIDE];
+
+    __m128i dst_block_rows[SCRANROT_SSE_ROW_STRIDE];
+    __m128i *dst_block_row_addrs[SCRANROT_SSE_ROW_STRIDE];
 
 
     for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += SCRANROT_SSE_ROW_STRIDE) {
         // NOTE: Rotation-specific code:
-        const int dst_col_px = (src_height_px - 4) - src_row_px; // -4 => len -> index
-        SCRANROT_ASSERT(RGBA32_PIXEL_STRIDE * (dst_col_px + PIXELS_PER_M128I) <= src_stride_bytes); // Stay within padded bounds
+        const int dst_col_px = (src_height_px - PIXELS_PER_M128I) - src_row_px; // -4 => len -> __m128i (4 pixels) index
+        SCRANROT_ASSERT(RGBA32_PIXEL_STRIDE * (dst_col_px + PIXELS_PER_M128I) <= dst_stride_bytes); // Stay within padded bounds
         const int dst_col_offset_bytes = dst_col_px * RGBA32_PIXEL_STRIDE;
         char *dst_block_row_addr_0 = (char *)dst
                                      + dst_col_offset_bytes;
@@ -284,6 +299,7 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
     }
 }
 
+
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer__ssse3_unaligned__rotate_0(
@@ -293,8 +309,10 @@ transform_framebuffer__ssse3_unaligned__rotate_0(
     const int src_stride_bytes,
     void *const restrict dst,
     const int dst_stride_bytes,
-    __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
+    __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
+
     __m128i *dst_curr = (__m128i *)dst;
     const __m128i *src_curr = src;
 
@@ -317,8 +335,8 @@ transform_framebuffer__ssse3_unaligned__rotate_0(
     }
 }
 
-SCRANROT_TARGET_SSSE3
-void
+
+bool
 scranrot_transform_framebuffer_ssse3__unaligned(
     const void *src,
     void *dst,
@@ -333,6 +351,18 @@ scranrot_transform_framebuffer_ssse3__unaligned(
     void **dst_with_offset,
     uintptr_t *dst_stride
 ) {
+
+    bool dimensions_supported = src_width_px >= PIXELS_PER_M128I && src_height_px >= SCRANROT_SSE_ROW_STRIDE;
+    if (!dimensions_supported) {
+        return scranrot_transform_framebuffer_fallback(
+                src, dst,
+                src_width_px, src_height_px, src_stride_bytes,
+                rgba_shuffle_mask, transform,
+                dst_with_offset, dst_stride
+        );
+    }
+
+
     // TODO: Assert rgba_shuffle is valid (and let (0 => 0,1,2,3) ?)
     const __m128i _rgba_shuffle_mask_128_offsets = _mm_setr_epi8(0,0,0,0, 4,4,4,4, 8,8,8,8, 12,12,12,12);
     const __m128i _rgba_shuffle_mask_128 = _mm_set1_epi32(rgba_shuffle_mask);
@@ -345,7 +375,7 @@ scranrot_transform_framebuffer_ssse3__unaligned(
     *dst_stride = dst_stride_bytes;
     *dst_with_offset = dst;
 
-    _scranrot_transform_framebuffer_fn__ssse3 transform_fn = NULL;
+    scranrot_transform_framebuffer_impl_fn transform_fn = NULL;
 
     switch (transform) {
     case SCRANROT_TRANSFORM_270:
@@ -358,24 +388,29 @@ scranrot_transform_framebuffer_ssse3__unaligned(
         transform_fn = transform_framebuffer__ssse3_unaligned__rotate_0;  break;
     default:
         // XXX TODO: Implement flipped
-        scranrot_transform_framebuffer_fallback(
+        return scranrot_transform_framebuffer_fallback(
                 src, dst,
                 src_width_px, src_height_px, src_stride_bytes,
                 rgba_shuffle_mask, transform,
                 dst_with_offset, dst_stride
         );
-        return;
+        assert(false);
     }
 
     SCRANROT_ASSERT(transform_fn != NULL);
-    transform_fn(
+    return transform_framebuffer__generic_dispatcher(
         src,
         src_width_px,
         src_height_px,
         src_stride_bytes,
         dst,
         dst_stride_bytes,
-        rgba_shuffle_mask_128
+
+        transform_fn,
+        transform,
+        &rgba_shuffle_mask_128,
+        PIXELS_PER_M128I,
+        SCRANROT_SSE_ROW_STRIDE
     );
 }
 
