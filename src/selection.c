@@ -139,6 +139,19 @@ stop_grabbing_focus()
             SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_UNFOCUSED
         );
         wl_surface_commit(st_surface->wl_surface);
+
+        // XXX: We need to do this to make our cursor update shape without
+        // having to move it. Seems like most compositors behave this way...
+        // Marked with XXX because theoretically we would want it to be set to
+        // the cursor shape of the surface below us, which is not necessarily
+        // default, but this is a lot better than nothing. Even in cases where
+        // where the other surface uses a non-default cursor, this still gives
+        // us nice visual feedback.
+        wp_cursor_shape_device_v1_set_shape(
+            g_state.seat.pointer_ctx.cursor_shape_device,
+            g_state.seat.pointer_ctx.last_enter_serial,
+            WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT
+        );
     }
 }
 

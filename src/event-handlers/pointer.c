@@ -39,6 +39,8 @@ handle_pointer_enter(
         }
     }
 
+    pointer_ctx->last_enter_serial = serial;
+
     // XXX: We do not have any other surfaces at the moment, so this should
     // never happen. This was changed to tracking the surface rather than
     // the output to make the scaling code more sane, despite only having one

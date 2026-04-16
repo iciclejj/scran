@@ -141,6 +141,8 @@ struct scran_seat_pointerContext {
     // probably just move it into scran_options.
     bool use_presses_only;
 
+    uint32_t last_enter_serial;
+
     // Fulloutput => covers entire output's area/resolution.
     //   (Named this way to prevent any conflation with other uses of the term
     //   "fullscreen" in Wayland/XDG protocols/etc.
