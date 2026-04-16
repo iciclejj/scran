@@ -10,6 +10,7 @@
 
 
 #include <stdint.h>
+#include <stdbool.h>
 
 
 #define SCRANROT_ALWAYS_INLINE \
@@ -41,7 +42,7 @@ enum scranrot_transform {
 	SCRANROT_TRANSFORM_FLIPPED_270 = 7,
 };
 
-typedef void scranrot_transform_framebuffer_fn(
+typedef bool scranrot_transform_framebuffer_fn(
     const void *src,
     void *dst,
     int src_width_px,

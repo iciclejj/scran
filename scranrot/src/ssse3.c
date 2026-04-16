@@ -7,6 +7,7 @@
 
 #include "../include/scranrot.h"
 #include "../include/scranrot-util.h"
+#include "./generic.h"
 
 
 // TODO: Consider adding aligned and/or streamed versions of the sse functions
@@ -146,136 +147,19 @@ _ssse3_rotate_90(
 //
 
 
-SCRANROT_ALWAYS_INLINE
-static inline int
-_get_max_tileDivisible_height_px(int height) {
-    return (height / SCRANROT_SSE_ROW_STRIDE) * SCRANROT_SSE_ROW_STRIDE;
-}
-
-SCRANROT_ALWAYS_INLINE
-static inline int
-_get_max_tileDivisible_height_remainder_px(int height) {
-    return (height % SCRANROT_SSE_ROW_STRIDE);
-}
-
-SCRANROT_ALWAYS_INLINE
-static inline int
-_get_max_tileDivisible_width_px(int width) {
-    return (width / PIXELS_PER_M128I) * PIXELS_PER_M128I;
-}
-
-SCRANROT_ALWAYS_INLINE
-static inline int
-_get_max_tileDivisible_width_remainder_px(int width) {
-    return (width % PIXELS_PER_M128I);
-}
-
 SCRANROT_TARGET_SSSE3
 static void
-_transform_framebuffer__ssse3_unaligned__generic_dispatcher(
+transform_framebuffer__ssse3_unaligned__rotate_270(
     const void *const restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
     void *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
-    __m128i rgba32_shuffle_mask_128, // Mask for _mm_shuffle_epi8
-
-    _scranrot_transform_framebuffer_fn__ssse3 rotation_impl_fn,
-    // dst must be within bounds of the crop created by src_w/h_px_divisible,
-    // when they are used for the image dimensions
-    //   I.e. rotation_impl_fn(..., src_width=src_w_divisible)
-    //        => must do dst+=dst_divisible_src_w_offset.
-    int dst_divisible_src_w_offset,
-    int dst_divisible_src_h_offset,
-    // After we finish rendering the cleanly tile-divisible part of src into
-    // dst, we must then draw the remaining edges and corner. We do this by
-    // rendering the edges and corner as if they're separate images, cropped
-    // so that the end of the tile is perfectly stopping at the end of the
-    // entire src's image.
-    //
-    // The corresponding dst offsets for this crop depends on rotation, which
-    // is what these arguments represent.
-    int dst_right_src_edge_crop_offset,
-    int dst_bottom_src_edge_crop_offset
-
+    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
+    __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
-    int src_w_px_divisible = _get_max_tileDivisible_width_px(src_width_px);
-    int src_w_px_remaining = _get_max_tileDivisible_width_remainder_px(src_width_px);
-
-    int src_h_px_divisible = _get_max_tileDivisible_height_px(src_height_px);
-    int src_h_px_remaining = _get_max_tileDivisible_height_remainder_px(src_height_px);
-
-    { // Tilesize-divisible area
-        void *_dst = dst + dst_divisible_src_w_offset + dst_divisible_src_h_offset;
-        rotation_impl_fn(
-            src,
-            src_w_px_divisible,
-            src_h_px_divisible,
-            src_stride_bytes,
-            _dst, dst_stride_bytes, rgba32_shuffle_mask_128
-        );
-    }
-
-
-    //
-    // Edge handling
-    //
-    const int src_right_src_edge_crop_offset  = (src_width_px  - PIXELS_PER_M128I)        * RGBA32_PIXEL_STRIDE;
-    const int src_bottom_src_edge_crop_offset = (src_height_px - SCRANROT_SSE_ROW_STRIDE) * src_stride_bytes;
-
-    if (src_w_px_remaining > 0) { // Right edge (relative to src)
-        const void       *_src           = src + src_right_src_edge_crop_offset;
-        const int         _src_width_px  = PIXELS_PER_M128I;
-        const int         _src_height_px = src_h_px_divisible; // Corner is done separately at the end
-        void             *_dst           = dst + dst_right_src_edge_crop_offset + dst_divisible_src_h_offset;
-
-        rotation_impl_fn(
-            _src, _src_width_px, _src_height_px, src_stride_bytes,
-            _dst, dst_stride_bytes,
-            rgba32_shuffle_mask_128
-        );
-    }
-
-    if (src_h_px_remaining > 0) { // Bottom edge (relative to src)
-        const void       *_src           = src + src_bottom_src_edge_crop_offset;
-        const int         _src_width_px  = src_w_px_divisible; // Corner is done separately at the end
-        const int         _src_height_px = SCRANROT_SSE_ROW_STRIDE;
-        void             *_dst           = dst + dst_bottom_src_edge_crop_offset + dst_divisible_src_w_offset;
-
-        rotation_impl_fn(
-            _src, _src_width_px, _src_height_px, src_stride_bytes,
-            _dst, dst_stride_bytes,
-            rgba32_shuffle_mask_128
-        );
-    }
-
-    if (src_w_px_remaining > 0 && src_h_px_remaining > 0) { // Bottom-right corner (relative to src)
-        const void       *_src           = src + src_right_src_edge_crop_offset + src_bottom_src_edge_crop_offset;
-        const int         _src_width_px  = PIXELS_PER_M128I;
-        const int         _src_height_px = SCRANROT_SSE_ROW_STRIDE;
-        void             *_dst           = dst + dst_right_src_edge_crop_offset + dst_bottom_src_edge_crop_offset;
-
-        rotation_impl_fn(
-            _src, _src_width_px, _src_height_px, src_stride_bytes,
-            _dst, dst_stride_bytes,
-            rgba32_shuffle_mask_128
-        );
-    }
-}
-
-SCRANROT_TARGET_SSSE3
-static void
-_transform_framebuffer__ssse3_unaligned__rotate_270(
-    const void *const restrict src,
-    const int src_width_px, // Stride of the entire capture source
-    const int src_height_px,
-    const int src_stride_bytes,
-    void *const restrict dst,
-    const int dst_stride_bytes, // Stride of the final output image
-    __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
-) {
     __m128i src_block_rows[SCRANROT_SSE_ROW_STRIDE];
     const __m128i *src_block_row_addrs[SCRANROT_SSE_ROW_STRIDE];
 
@@ -319,46 +203,21 @@ _transform_framebuffer__ssse3_unaligned__rotate_270(
     }
 }
 
-SCRANROT_TARGET_SSSE3
-static void
-transform_framebuffer__ssse3_unaligned__rotate_270(
-    const void *const restrict src,
-    const int src_width_px, // Stride of the entire capture source
-    const int src_height_px,
-    const int src_stride_bytes,
-    void *const restrict dst,
-    const int dst_stride_bytes, // Stride of the final output image
-    __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
-) {
-    int dst_divisible_src_w_offset = dst_stride_bytes * _get_max_tileDivisible_width_remainder_px(src_width_px);
-    int dst_divisible_src_h_offset = 0;
-
-    int _dst_width_px  = src_height_px;
-    const int dst_right_src_edge_crop_offset  = 0;
-    const int dst_bottom_src_edge_crop_offset = (_dst_width_px - SCRANROT_SSE_ROW_STRIDE) * RGBA32_PIXEL_STRIDE;
-
-    _transform_framebuffer__ssse3_unaligned__generic_dispatcher(
-        src, src_width_px, src_height_px, src_stride_bytes,
-        dst, dst_stride_bytes,
-        rgba32_shuffle_mask_128,
-        &_transform_framebuffer__ssse3_unaligned__rotate_270,
-        dst_divisible_src_w_offset, dst_divisible_src_h_offset,
-        dst_right_src_edge_crop_offset, dst_bottom_src_edge_crop_offset
-    );
-}
 
 // XXX TODO: Double-check the padding and alignment for this
 SCRANROT_TARGET_SSSE3
 static void
-_transform_framebuffer__ssse3_unaligned__rotate_180(
+transform_framebuffer__ssse3_unaligned__rotate_180(
     const void *const restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
     void *const restrict dst,
     const int dst_stride_bytes,
-    __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
+    __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
+
     // NOTE: Rotation-specific:
     rgba32_shuffle_mask_128 = _ssse3_rotate_180_get_modified_rgba_shuffle(rgba32_shuffle_mask_128);
 
@@ -389,44 +248,20 @@ _transform_framebuffer__ssse3_unaligned__rotate_180(
     }
 }
 
+
 SCRANROT_TARGET_SSSE3
 static void
-transform_framebuffer__ssse3_unaligned__rotate_180(
+transform_framebuffer__ssse3_unaligned__rotate_90(
     const void *const restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
     void *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
-    __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
-    int dst_divisible_src_w_offset = RGBA32_PIXEL_STRIDE * _get_max_tileDivisible_width_remainder_px(src_width_px);
-    int dst_divisible_src_h_offset = dst_stride_bytes    * _get_max_tileDivisible_height_remainder_px(src_height_px);
+    __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
-    const int dst_right_src_edge_crop_offset  = 0;
-    const int dst_bottom_src_edge_crop_offset = 0;
-
-    _transform_framebuffer__ssse3_unaligned__generic_dispatcher(
-        src, src_width_px, src_height_px, src_stride_bytes,
-        dst, dst_stride_bytes,
-        rgba32_shuffle_mask_128,
-        &_transform_framebuffer__ssse3_unaligned__rotate_180,
-        dst_divisible_src_w_offset, dst_divisible_src_h_offset,
-        dst_right_src_edge_crop_offset, dst_bottom_src_edge_crop_offset
-    );
-}
-
-SCRANROT_TARGET_SSSE3
-static void
-_transform_framebuffer__ssse3_unaligned__rotate_90(
-    const void *const restrict src,
-    const int src_width_px, // Stride of the entire capture source
-    const int src_height_px,
-    const int src_stride_bytes,
-    void *const restrict dst,
-    const int dst_stride_bytes, // Stride of the final output image
-    __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
-) {
     __m128i src_block_rows[SCRANROT_SSE_ROW_STRIDE];
     const __m128i *src_block_row_addrs[SCRANROT_SSE_ROW_STRIDE];
 
@@ -464,45 +299,20 @@ _transform_framebuffer__ssse3_unaligned__rotate_90(
     }
 }
 
-SCRANROT_TARGET_SSSE3
-static void
-transform_framebuffer__ssse3_unaligned__rotate_90(
-    const void *const restrict src,
-    const int src_width_px, // Stride of the entire capture source
-    const int src_height_px,
-    const int src_stride_bytes,
-    void *const restrict dst,
-    const int dst_stride_bytes, // Stride of the final output image
-    __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
-) {
-    int dst_divisible_src_w_offset = 0;
-    int dst_divisible_src_h_offset = RGBA32_PIXEL_STRIDE * _get_max_tileDivisible_height_remainder_px(src_height_px);
-
-    int _dst_height_px = src_width_px;
-    const int dst_right_src_edge_crop_offset  = (_dst_height_px - SCRANROT_SSE_ROW_STRIDE) * dst_stride_bytes;
-    const int dst_bottom_src_edge_crop_offset = 0;
-
-    _transform_framebuffer__ssse3_unaligned__generic_dispatcher(
-        src, src_width_px, src_height_px, src_stride_bytes,
-        dst, dst_stride_bytes,
-        rgba32_shuffle_mask_128,
-        &_transform_framebuffer__ssse3_unaligned__rotate_90,
-        dst_divisible_src_w_offset, dst_divisible_src_h_offset,
-        dst_right_src_edge_crop_offset, dst_bottom_src_edge_crop_offset
-    );
-}
 
 SCRANROT_TARGET_SSSE3
 static void
-_transform_framebuffer__ssse3_unaligned__rotate_0(
+transform_framebuffer__ssse3_unaligned__rotate_0(
     const void *const restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
     void *const restrict dst,
     const int dst_stride_bytes,
-    __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
+    __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
+
     __m128i *dst_curr = (__m128i *)dst;
     const __m128i *src_curr = src;
 
@@ -525,35 +335,8 @@ _transform_framebuffer__ssse3_unaligned__rotate_0(
     }
 }
 
-SCRANROT_TARGET_SSSE3
-static void
-transform_framebuffer__ssse3_unaligned__rotate_0(
-    const void *const restrict src,
-    const int src_width_px, // Stride of the entire capture source
-    const int src_height_px,
-    const int src_stride_bytes,
-    void *const restrict dst,
-    const int dst_stride_bytes, // Stride of the final output image
-    __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
-) {
-    int dst_divisible_src_w_offset = 0;
-    int dst_divisible_src_h_offset = 0;
 
-    const int dst_right_src_edge_crop_offset  = (src_width_px  - PIXELS_PER_M128I)        * RGBA32_PIXEL_STRIDE;
-    const int dst_bottom_src_edge_crop_offset = (src_height_px - SCRANROT_SSE_ROW_STRIDE) * dst_stride_bytes;
-
-    _transform_framebuffer__ssse3_unaligned__generic_dispatcher(
-        src, src_width_px, src_height_px, src_stride_bytes,
-        dst, dst_stride_bytes,
-        rgba32_shuffle_mask_128,
-        &_transform_framebuffer__ssse3_unaligned__rotate_0,
-        dst_divisible_src_w_offset, dst_divisible_src_h_offset,
-        dst_right_src_edge_crop_offset, dst_bottom_src_edge_crop_offset
-    );
-}
-
-SCRANROT_TARGET_SSSE3
-void
+bool
 scranrot_transform_framebuffer_ssse3__unaligned(
     const void *src,
     void *dst,
@@ -568,6 +351,18 @@ scranrot_transform_framebuffer_ssse3__unaligned(
     void **dst_with_offset,
     uintptr_t *dst_stride
 ) {
+
+    bool dimensions_supported = src_width_px >= PIXELS_PER_M128I && src_height_px >= SCRANROT_SSE_ROW_STRIDE;
+    if (!dimensions_supported) {
+        return scranrot_transform_framebuffer_fallback(
+                src, dst,
+                src_width_px, src_height_px, src_stride_bytes,
+                rgba_shuffle_mask, transform,
+                dst_with_offset, dst_stride
+        );
+    }
+
+
     // TODO: Assert rgba_shuffle is valid (and let (0 => 0,1,2,3) ?)
     const __m128i _rgba_shuffle_mask_128_offsets = _mm_setr_epi8(0,0,0,0, 4,4,4,4, 8,8,8,8, 12,12,12,12);
     const __m128i _rgba_shuffle_mask_128 = _mm_set1_epi32(rgba_shuffle_mask);
@@ -580,10 +375,7 @@ scranrot_transform_framebuffer_ssse3__unaligned(
     *dst_stride = dst_stride_bytes;
     *dst_with_offset = dst;
 
-    _scranrot_transform_framebuffer_fn__ssse3 transform_fn = NULL;
-
-    // XXX TODO(!!): Handle image smaller than (ROW_STRIDE * COL_STRIDE)px with fallback functions!
-    assert(src_width_px >= PIXELS_PER_M128I && src_height_px >= SCRANROT_SSE_ROW_STRIDE);
+    scranrot_transform_framebuffer_impl_fn transform_fn = NULL;
 
     switch (transform) {
     case SCRANROT_TRANSFORM_270:
@@ -596,24 +388,29 @@ scranrot_transform_framebuffer_ssse3__unaligned(
         transform_fn = transform_framebuffer__ssse3_unaligned__rotate_0;  break;
     default:
         // XXX TODO: Implement flipped
-        scranrot_transform_framebuffer_fallback(
+        return scranrot_transform_framebuffer_fallback(
                 src, dst,
                 src_width_px, src_height_px, src_stride_bytes,
                 rgba_shuffle_mask, transform,
                 dst_with_offset, dst_stride
         );
-        return;
+        assert(false);
     }
 
     SCRANROT_ASSERT(transform_fn != NULL);
-    transform_fn(
+    return transform_framebuffer__generic_dispatcher(
         src,
         src_width_px,
         src_height_px,
         src_stride_bytes,
         dst,
         dst_stride_bytes,
-        rgba_shuffle_mask_128
+
+        transform_fn,
+        transform,
+        &rgba_shuffle_mask_128,
+        PIXELS_PER_M128I,
+        SCRANROT_SSE_ROW_STRIDE
     );
 }
 
