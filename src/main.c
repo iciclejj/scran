@@ -8,6 +8,11 @@
 #include <sys/un.h>
 #include <sys/mman.h>
 #include <sys/epoll.h>
+#ifdef __GLIBC__
+  // for malloc_trim() of other libraries' mallocs (mainly ffmpeg) before
+  // background keepalive
+  #include <malloc.h>
+#endif
 
 #include <linux/input-event-codes.h>
 
@@ -137,6 +142,19 @@ init_premem()
 static inline void
 _stay_alive_while_clipboard_active()
 {
+
+#ifdef __GLIBC__
+    // ffmpeg's internal mallocs can hold onto significant amounts of memory
+    // even after all contexts etc. are destroyed.
+    //
+    // Keeping a page of memory available for basu/wayland-client
+    //     TODO: Verify that this is a reasonable amount of memory to keep.
+    //     We'd probably want to keep enough for an image paste to go through
+    //     without new allocations? (Our image buffers stay in our own arena.)
+    malloc_trim(4096);
+    DEBUG("Trimmed memory\n");
+#endif
+
     atomic_int *clipboard_refcount = &g_state.seat.datacontrol.selection_refcount;
     assert(*clipboard_refcount >= 0);
 
