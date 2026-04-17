@@ -223,6 +223,8 @@ _stay_alive_while_clipboard_active()
 static void
 init_premem__destroy()
 {
+    registry_listener__destroy(&g_state);
+
     assert(g_state.n_outputs <= MAX_OUTPUTS);
 
     for (int i = 0; i < g_state.n_outputs; ++i) {
@@ -248,8 +250,6 @@ init_premem__destroy()
     }
 
     init_premem__datacontrol__destroy(&g_state.seat.datacontrol);
-
-    registry_listener__destroy(&g_state);
 }
 
 
