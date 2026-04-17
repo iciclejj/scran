@@ -47,7 +47,7 @@ simpler to fix.
 
 ### Nix flake
 
-> **`nix run "github:iciclejj/scran"` to try it out without installing.**
+> `nix run "github:iciclejj/scran"` to try it out without installing.
 
 Add the flake to your your NixOS or home-manager flake inputs
 ```nix
@@ -69,7 +69,7 @@ Other architectures have not been tested, and so are not in the flake.
 
 <details> <summary>
 
-### Non-flake Nix example
+#### Without flakes
 </summary>
 
 ```nix
@@ -85,6 +85,7 @@ let
   scran = pkgs.callPackage scran_src { };
 in
 {
+  # For home-manager, use home.packages = [ ... ];
   environment.systemPackages = [
     scran
   ];
@@ -186,13 +187,26 @@ cmake --install build && ldconfig
 </details>
 
 ## Usage
+
+### Keymap
+```
+  Left mouse button    Initialize and move selection
+  Right mouse button   Resize selection
+  Enter                Capture image and exit
+                         Stays alive in the background to handle clipboard,
+                         unless the -B option is provided.
+  Shift+Enter          Capture image
+  Space                Capture video (start/stop)
+  Tab                  Release focus (stop capturing inputs)
+                         SIGUSR1 to retake focus - see Signals section and
+                         sway config examples.
+  Arrow keys           Move selection by one pixel
+  Escape               Exit scran, or stop video capture if in progress
+```
+
 Images and videos are saved to the file or directory specified by `output_directory`,
 or to `/tmp/scran-capture/scran-<timestamp>.<file-extension>` by default.
 Saved images and videos are also sent to the clipboard.
-
-NOTE: The video capture pipeline is fully CPU-based at the moment.
-GPU/hardware-acceleration is planned for after the CPU pipeline is
-is more optimized (primarily improving performance for rotated displays).
 
 See also `scran -h`.
 
@@ -217,21 +231,6 @@ bindsym Print          exec 'scran -B - | satty -f -'
 bindsym Print          exec 'scran -Be - | satty -f -'
 ```
 
-### Keymap
-```
-  Left mouse button    Initialize and move selection
-  Right mouse button   Resize selection
-  Enter                Capture image and exit
-                         Stays alive in the background to handle clipboard,
-                         unless the -B option is provided.
-  Shift+Enter          Capture image
-  Space                Capture video (start/stop)
-  Tab                  Release focus (stop capturing inputs)
-                         SIGUSR1 to retake focus - see Signals section and
-                         sway config examples.
-  Arrow keys           Move selection by one pixel
-  Escape               Exit scran, or stop video capture if in progress
-```
 
 ### Command-line Arguments
 See `scran -h` for more details
@@ -271,6 +270,7 @@ Send SIGUSR1 to the running scran to start grabbing inputs again after releasing
 ## Primary Feature TODOs
 Feel free to open a feature request even if something is already listed here.
 - GPU-accelerated video capture
+  - planned for after the CPU pipeline is more optimized (primarily improving performance for rotated displays).
 - More configuration
   - **Specify output file formats, encoding, etc.**
   - Customizable keybindings
