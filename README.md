@@ -21,7 +21,7 @@ https://github.com/user-attachments/assets/f697827a-8f2c-4649-a1ab-6e0bd6fb1304
 
 <details> <summary>
 
-#### Notes on compositor support
+#### <ins>Notes on compositor support</ins>
 </summary>
 
 Whether a compositor is supported mainly depends on whether it implements the
@@ -69,7 +69,7 @@ Other architectures have not been tested, and so are not in the flake.
 
 <details> <summary>
 
-#### Without flakes
+#### <ins>Without flakes</ins>
 </summary>
 
 ```nix
@@ -95,7 +95,7 @@ in
 
 <details> <summary>
 
-### Arch, Ubuntu etc., without Nix
+### <ins>Arch, Ubuntu etc., without Nix</ins>
 </summary>
 
 1. **Install Dependencies**
@@ -109,7 +109,7 @@ in
      be built with GPL-licensed video encoders such as libx264. scran will
      pick from whatever is available.
 
-   <details open> <summary>Arch</summary>
+   <details open> <summary><ins>Arch</ins></summary>
 
    ```bash
    pacman -S   base-devel wayland wayland-protocols libxkbcommon libsystemd ffmpeg
@@ -117,13 +117,13 @@ in
    yay -S blend2d
    ```
    </details>
-   <details> <summary>Ubuntu</summary>
+   <details> <summary><ins>Ubuntu</ins></summary>
 
    ```bash
    apt install make gcc pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libsystemd libavcodec-dev libavutil-dev libavformat-dev libavfilter-dev
    ```
    </details>
-   <details> <summary>Fedora</summary>
+   <details> <summary><ins>Fedora</ins></summary>
 
    #### Fedora:
    Warning: Personally tested Fedora builds are failing to video correctly, at the moment. The bug
@@ -161,7 +161,7 @@ in
 If Blend2D was not packaged for your package manager (e.g. Ubuntu), you can
 compile and install it manually prior to building scran. It should not take
 very long to build:
-<details> <summary>Build Instructions</summary>
+<details> <summary><ins>Build Instructions</ins></summary>
 
 ```bash
 # First install cmake and g++ through your package manager.
@@ -212,7 +212,7 @@ See also `scran -h`.
 
 <details> <summary>
 
-### Sway config examples
+### <ins>Sway config examples</ins>
 </summary>
 
 Launch scran:
@@ -227,7 +227,7 @@ bindsym Shift+Alt+Tab  exec 'pkill -SIGUSR1 scran'
 
 <details> <summary>
 
-### Hyprland config examples
+### <ins>Hyprland config examples</ins>
 </summary>
 
 Launch scran:
