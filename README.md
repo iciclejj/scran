@@ -210,7 +210,11 @@ Saved images and videos are also sent to the clipboard.
 
 See also `scran -h`.
 
+<details> <summary>
+
 ### Sway config examples
+</summary>
+
 Launch scran:
 ```bash # works well enough...
 bindsym Print          exec  scran
@@ -219,16 +223,33 @@ Grab focus (after releasing with Tab):
 ```bash
 bindsym Shift+Alt+Tab  exec 'pkill -SIGUSR1 scran'
 ```
+</details>
+
+<details> <summary>
+
+### Hyprland config examples
+</summary>
+
+Launch scran:
+```bash # works well enough... kinda. github doesn't seem to support hypr/hyprlang.
+bind =          , print, exec, scran
+```
+Grab focus (after releasing with Tab):
+```bash
+bind = ALT SHIFT, tab  , exec, pkill -SIGUSR1 scran
+```
+</details>
+
 
 If you want to pipe scran's output to another program, you might need to
 prevent scran from staying alive to manage the clipboard. You can do this
 by passing -B:
 ```bash
-bindsym Print          exec 'scran -B - | satty -f -'
+scran -B - | satty -f -
 ```
 ...or for similar behavior to `grim -g "$(slurp -d)" - | satty -f -`:
 ```bash
-bindsym Print          exec 'scran -Be - | satty -f -'
+scran -Be - | satty -f -
 ```
 
 
