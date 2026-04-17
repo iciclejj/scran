@@ -150,7 +150,20 @@ registry_listener__destroy(struct scran *state)
     wp_cursor_shape_manager_v1_destroy(globals->cursor_shape_manager);
     ext_output_image_capture_source_manager_v1_destroy(globals->output_image_capture_source_manager);
     ext_image_copy_capture_manager_v1_destroy(globals->image_copy_capture_manager);
-    // TODO: Add remaining..?
+    ext_data_control_manager_v1_destroy(globals->data_control_manager);
+    wp_presentation_destroy(globals->presentation);
+    wp_fractional_scale_manager_v1_destroy(globals->fractional_scale_manager);
+    wp_viewporter_destroy(globals->viewporter);
+
+    if (globals->wlr_output_manager != NULL) {
+        zwlr_output_manager_v1_destroy(globals->wlr_output_manager);
+    }
+    if (globals->cosmic_output_manager != NULL) {
+        zcosmic_output_manager_v1_destroy(globals->cosmic_output_manager);
+    }
+    if (globals->hypr_surface_manager != NULL) {
+        hyprland_surface_manager_v1_destroy(globals->hypr_surface_manager);
+    }
 
     wl_registry_destroy(globals->registry);
 }
