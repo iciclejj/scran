@@ -19,8 +19,6 @@ handle_image_copy_capture_session_buffer_size(
     struct scran_output *st_output = data;
 
     // This seemingly always hold true, so use output::mode w/h only.
-    // TODO: See if xdg_output can somehow be used as backing for the session.
-    //           As a foreign toplevel..?
     assert(width == st_output->mode.width_px);
     assert(height == st_output->mode.height_px);
     st_output->capture.frame_ctx.source_width_px = width;
@@ -50,7 +48,6 @@ handle_image_copy_capture_session_shm_format(
     ) {
         st_output->capture.shm_format = shm_format;
         st_output->capture.frame_ctx.pixel_stride = 4;
-    } else {
     }
 }
 

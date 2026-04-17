@@ -124,18 +124,9 @@ handle_image_copy_capture_frame_ready__video_capture(
     // next frame's dispatch at the end).
     frame_ctx->av_frame_captured->data[0] = area_start_addr;
     frame_ctx->av_frame_captured->pts = frame_ctx->presentation_time_nsec;
-    int _ret_filter = av_buffersrc_add_frame_flags(
+    int _ret_filter = av_buffersrc_write_frame(
             frame_ctx->av_filter_buffersrc_ctx,
-            frame_ctx->av_frame_captured,
-            // TODO: AV_BUFFERSRC_FLAG_KEEP_REF, but need safe setup, e.g.
-            //       a ring buffer, so we know the frame doesn't get
-            //       overwritten
-            //           TODO: Check whether the graph can actually buffer
-            //           frames in a way where this matters, beyond the
-            //           life of this function (until next capture frame
-            //           dispatch). In any case, we will probably need a
-            //           safe setup like this for the encoder.
-            0
+            frame_ctx->av_frame_captured
     );
     assert(0 <= _ret_filter);
 

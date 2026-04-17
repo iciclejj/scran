@@ -12,8 +12,7 @@
 
 // TODO: Consider adding aligned and/or streamed versions of the sse functions
 //           Initial testing did not show a significant difference for simple
-//           image capture, on a 5600h CPU. Not tested for video, since we'll
-//           probably just stick to swscale/libav* filters.
+//           image capture, on a 5600h CPU.
 
 
 
