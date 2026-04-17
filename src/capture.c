@@ -316,16 +316,17 @@ init_ffmpeg(struct scran_output *st_output)
 
 
     // AVFormat (cont.)
-    AVDictionary *opts = NULL;
-    av_dict_set(&opts, "movflags", "frag_keyframe", 0);
-    assert(!((frame_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
     avio_open(&(frame_ctx->av_format_ctx)->pb, output_filepath, AVIO_FLAG_WRITE);
-    if (0 > avformat_write_header(frame_ctx->av_format_ctx, &opts)) {
+    assert(!((frame_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
+    AVDictionary *format_opts = NULL;
+    av_dict_set(&format_opts, "movflags", "frag_keyframe", 0);
+    int format_ret = avformat_write_header(frame_ctx->av_format_ctx, &format_opts);
+    av_dict_free(&format_opts);
+    if (format_ret < 0) {
         eprintf("Failed to write file header (filepath: %s)\n", output_filepath);
         destroy_ffmpeg(st_output); // TODO: goto fail?
         return false;
     }
-    av_dict_free(&opts);
 
     return true;
 }
