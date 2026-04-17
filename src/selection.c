@@ -121,6 +121,13 @@ start_grabbing_focus()
             SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED
         );
         wl_surface_commit(st_surface->wl_surface);
+
+        // XXX: See comment in stop_grabbing_focus() below
+        wp_cursor_shape_device_v1_set_shape(
+            g_state.seat.pointer_ctx.cursor_shape_device,
+            g_state.seat.pointer_ctx.last_enter_serial,
+            WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR
+        );
     }
 }
 
