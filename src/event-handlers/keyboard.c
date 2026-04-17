@@ -10,6 +10,7 @@
 #include "capture.h"
 #include "print.h"
 #include "selection.h"
+#include "surface__selection.h"
 #include "util/blend2d.h"
 
 
@@ -109,15 +110,19 @@ handle_keyboard_key(
     // TODO: Probably reorganize all of this later
     case XKB_KEY_Left:
         shift_blboxi(&st_output->selection_ctx.box_px, -1,  0);
+        request_selection_surface_update(st_output);
         break;
     case XKB_KEY_Right:
         shift_blboxi(&st_output->selection_ctx.box_px, +1,  0);
+        request_selection_surface_update(st_output);
         break;
     case XKB_KEY_Up:
         shift_blboxi(&st_output->selection_ctx.box_px,  0, -1);
+        request_selection_surface_update(st_output);
         break;
     case XKB_KEY_Down:
         shift_blboxi(&st_output->selection_ctx.box_px,  0, +1);
+        request_selection_surface_update(st_output);
         break;
     case XKB_KEY_Tab:
         stop_grabbing_focus();
