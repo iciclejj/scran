@@ -277,9 +277,9 @@ init_ffmpeg(struct scran_output *st_output)
     frame_ctx->av_codec_ctx->max_b_frames = 2;
     frame_ctx->av_codec_ctx->gop_size     = 120;
     AVDictionary *codec_opts = NULL;
-    av_dict_set(&codec_opts, "crf"   , "20"    , 0);
+    av_dict_set(&codec_opts, "crf"   , "20"       , 0);
     av_dict_set(&codec_opts, "preset", "superfast", 0);
-    avcodec_open2(frame_ctx->av_codec_ctx, codec, NULL);
+    avcodec_open2(frame_ctx->av_codec_ctx, codec, &codec_opts);
     av_dict_free(&codec_opts);
 
     assert(frame_ctx->av_frame_to_encode->width  != 0);
