@@ -132,7 +132,7 @@ _draw_and_damage_background(
     uint8_t n_damage_regions // shared between 'damage_regions_wayland' and 'damage_regions_buffer'
 ) {
     // TODO: Just store the fill styles in state
-    BLVarCore prev_fill_style;
+    BLVarCore prev_fill_style = { };
     bl_context_get_fill_style(&st_buffer->bl_ctx, &prev_fill_style);
 
     bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, SCRAN_SELECTION_BACKGROUND_COLOR.value);
