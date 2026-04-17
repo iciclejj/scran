@@ -276,13 +276,11 @@ init_ffmpeg(struct scran_output *st_output)
     // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
     frame_ctx->av_codec_ctx->max_b_frames = 2;
     frame_ctx->av_codec_ctx->gop_size     = 120;
-    // TODO: Figure out a good default qmin/qmax.
-    //      NOTE: This is the largest factor influencing init_ffmpeg's time
-    //      to finish (wide q-range => longer codec init time).
-    // frame_ctx->av_codec_ctx->qmin = 20;
-    // frame_ctx->av_codec_ctx->qmax = 30;
-    frame_ctx->av_codec_ctx->bit_rate = 6 * BITS_PER_MEGABIT;
+    AVDictionary *codec_opts = NULL;
+    av_dict_set(&codec_opts, "crf"   , "20"    , 0);
+    av_dict_set(&codec_opts, "preset", "superfast", 0);
     avcodec_open2(frame_ctx->av_codec_ctx, codec, NULL);
+    av_dict_free(&codec_opts);
 
     assert(frame_ctx->av_frame_to_encode->width  != 0);
     assert(frame_ctx->av_frame_to_encode->height != 0);
