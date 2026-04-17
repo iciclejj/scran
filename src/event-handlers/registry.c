@@ -90,6 +90,12 @@ registry_handle_global(
         globals->fractional_scale_manager = wl_registry_bind(registry, name, &wp_fractional_scale_manager_v1_interface, 1);
     } else if (_INTERFACE_IS(zwlr_output_manager_v1_interface)) {
         // v3 => head::release
+        //
+        // FIXME: For some reason this bind leaks 4800 (50 * 96) bytes of
+        // memory (valgrind). calling ::release on the heads immediately upon
+        // output_manager::head frees up 2 of those 50 blocks (so 4608 total
+        // leaked). Adding the listener immediately on the line after this bind
+        // also does not help. Not sure if all of the lost blocks are heads.
         globals->wlr_output_manager = wl_registry_bind(registry, name, &zwlr_output_manager_v1_interface, 3);
     } else if (_INTERFACE_IS(zcosmic_output_manager_v1_interface)) {
         globals->cosmic_output_manager = wl_registry_bind(registry, name, &zcosmic_output_manager_v1_interface, 1);
