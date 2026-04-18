@@ -497,7 +497,7 @@ static const char help_string[] =
     "  - Example:            `pkill -SIGUSR1 scran`\n"
     "  - As sway keybinding: `bindsym Shift+Alt+Tab exec 'pkill -SIGUSR1 scran'`\n"
     "\n"
-    "v0.6.1\n"
+    "v0.7.0\n"
 ;
 
 bool
