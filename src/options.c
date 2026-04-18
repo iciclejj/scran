@@ -123,7 +123,7 @@ _create_filename(
             break;
         case 'm':
             if (i_out > filename_strlen_max - 2) goto filename_out_overflow;
-            _filename_advance_itoa_2(tm->tm_mon , filename_out, &i_out);
+            _filename_advance_itoa_2(tm->tm_mon + 1, filename_out, &i_out);
             break;
         case 'd':
             if (i_out > filename_strlen_max - 2) goto filename_out_overflow;
