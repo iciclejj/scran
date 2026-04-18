@@ -45,7 +45,22 @@ simpler to fix.
 
 ## Installing
 
-### Nix flake
+
+<details open> <summary>
+
+### <ins>Arch (AUR)</ins>
+</summary>
+
+```bash
+yay -S scran
+```
+
+<details> <summary>
+
+### <ins>Nix</ins>
+</summary>
+
+### Flake
 
 > `nix run "github:iciclejj/scran"` to try it out without installing.
 
@@ -64,13 +79,9 @@ systemPackages = [
   inputs.scran.packages.x86_64-linux.scran
 ];
 ```
-
 Other architectures have not been tested, and so are not in the flake.
 
-<details> <summary>
-
-#### <ins>Without flakes</ins>
-</summary>
+### Without flakes
 
 ```nix
 let
@@ -95,7 +106,7 @@ in
 
 <details> <summary>
 
-### <ins>Arch, Ubuntu etc., without Nix</ins>
+### <ins>Building and installing manually</ins>
 </summary>
 
 1. **Install Dependencies**
@@ -214,6 +225,7 @@ See also `scran -h`.
 
 ### <ins>Sway config examples</ins>
 </summary>
+<ul>
 
 Launch scran:
 ```bash # works well enough...
@@ -228,11 +240,13 @@ Grab focus (after releasing with Tab):
 bindsym Shift+Alt+Tab  exec 'pkill -SIGUSR1 scran'
 ```
 </details>
+</ul>
 
 <details> <summary>
 
 ### <ins>Hyprland config examples</ins>
 </summary>
+<ul>
 
 Launch scran:
 ```bash # works well enough... kinda. github doesn't seem to support hypr/hyprlang.
@@ -247,6 +261,7 @@ Grab focus (after releasing with Tab):
 bind = ALT SHIFT, tab  , exec, pkill -SIGUSR1 scran
 ```
 </details>
+</ul>
 
 
 If you want to pipe scran's output to another program, you might need to
