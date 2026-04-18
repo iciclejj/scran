@@ -217,7 +217,11 @@ See also `scran -h`.
 
 Launch scran:
 ```bash # works well enough...
-bindsym Print          exec  scran
+bindsym Print          exec  'scran'
+```
+... or with custom directory (-d directory must exist)
+```bash
+bindsym Print          exec  'scran -d "$HOME/Pictures/"'
 ```
 Grab focus (after releasing with Tab):
 ```bash
@@ -234,6 +238,10 @@ Launch scran:
 ```bash # works well enough... kinda. github doesn't seem to support hypr/hyprlang.
 bind =          , print, exec, scran
 ```
+... or with custom directory (-d directory must exist)
+```bash
+bind =          , print, exec, scran -d "$HOME/Pictures/"
+```
 Grab focus (after releasing with Tab):
 ```bash
 bind = ALT SHIFT, tab  , exec, pkill -SIGUSR1 scran
@@ -247,7 +255,7 @@ by passing -B:
 ```bash
 scran -B - | satty -f -
 ```
-...or for similar behavior to `grim -g "$(slurp -d)" - | satty -f -`:
+... or for similar behavior to `grim -g "$(slurp -d)" - | satty -f -`:
 ```bash
 scran -Be - | satty -f -
 ```
@@ -258,9 +266,14 @@ See `scran -h` for more details
 ```
   Usage: scran [options...] [output_directory]
 
-  output_directory   path to output directory
-                       Directory will be created if it does not exist.
-                       If set to -, scran writes to stdout (see also -B)
+  output_directory   path to output directory, or - (a hyphen) to write to stdout
+                        Directory will be created if it does not exist.
+                        See also -B if writing to stdout.
+                        NOTE:
+                          Other than "- (a hyphen) to write to stdout", the rest
+                          of this convenience argument's behavior is still subject
+                          to change. Please use -d and -f if you need stable
+                          commands for keybindings or scripts.
 
   -f   <filename_pattern>
          Name of the file that will be placed inside of `output_directory`
@@ -272,6 +285,7 @@ See `scran -h` for more details
                                        %U  Microsecond  (000000-999999)
            %E  File extension (e.g. .png or .mp4)
            %%  A literal '%' character
+  -d   set an existing directory as output directory
   -p   press-only mouse buttons (presses toggle pressed/released state)
   -e   automatically capture and exit immediately after initial selection
   -B   do not keep background process alive

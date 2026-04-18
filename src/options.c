@@ -339,7 +339,8 @@ _mkdir_recursive(
 
 static inline bool
 _init_output_dir(
-    const struct scran_options *st_options
+    const struct scran_options *st_options,
+    bool should_create
 ) {
     bool output_directory_exists;
     {
@@ -355,6 +356,11 @@ _init_output_dir(
         }
     }
     if (!output_directory_exists) {
+        if (!should_create) {
+            eprintf("Error: output directory does not exist: '%s'\n", st_options->output_path);
+            return false;
+        }
+
         const size_t output_directory_strlen = st_options->output_path_filename_pointer
                                              - st_options->output_path;
         assert(st_options->output_path[output_directory_strlen] == '\0');
@@ -393,11 +399,6 @@ _handle_cli_arg_output_directory(
     struct scran_options *restrict st_options,
     const char *restrict arg
 ) {
-    if (arg[0] == '-' && arg[1] == '\0') {
-        st_options->output_to_stdout = true;
-        return true;
-    }
-
     assert(sizeof(st_options->output_path) >= SCRAN_OUTPUT_DIRPATH_SIZE_MAX);
     size_t output_directory_strlen = strlcpy(st_options->output_path, arg, SCRAN_OUTPUT_DIRPATH_SIZE_MAX);
 
@@ -405,7 +406,7 @@ _handle_cli_arg_output_directory(
         eprintf("Error: output_directory cannot be empty.\n");
         return false;
     } else if (output_directory_strlen > SCRAN_OUTPUT_DIRPATH_STRLEN_MAX) {
-        eprintf("output_directory is too long. Max length: %d\n", SCRAN_OUTPUT_DIRPATH_STRLEN_MAX);
+        eprintf("Error: output_directory is too long. Max length: %d\n", SCRAN_OUTPUT_DIRPATH_STRLEN_MAX);
         return false;
     }
 
@@ -443,9 +444,14 @@ static const char help_string[] =
     // the recursive directory structure creation by default, and just give an
     // error message notification that directory doesn't exist. (Maybe still keep
     // the functionality behind an --mkdir flag.)
-    "  output_directory   path to output directory\n"
-    "                       Directory will be created if it does not exist.\n"
-    "                       If set to -, scran writes to stdout (see also -B)\n"
+    "  output_directory   path to output directory, or - (a hyphen) to write to stdout\n"
+    "                        Directory will be created if it does not exist.\n"
+    "                        See also -B if writing to stdout.\n"
+    "                        NOTE:\n"
+    "                          Other than \"- (a hyphen) to write to stdout\", the rest\n"
+    "                          of this convenience argument's behavior is still subject\n"
+    "                          to change. Please use -d and -f if you need stable\n"
+    "                          commands for keybindings or scripts.\n"
     "\n"
     "  -f   <filename_pattern>\n"
     "         Name of the file that will be placed inside of `output_directory`\n"
@@ -458,6 +464,7 @@ static const char help_string[] =
     "           %E  File extension (e.g. .png or .mp4)\n"
     "           %%  A literal '%' character\n"
     "         Default: "SCRAN_OUTPUT_FILENAME_FORMATSTRING_DEFAULT"\n"
+    "  -d   set an existing directory as output directory\n"
     "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
     "  -e   automatically capture and exit immediately after initial selection\n"
     "         Note: does not make -B redundant.\n"
@@ -497,12 +504,14 @@ bool
 scran_handle_args(int argc, char *const *argv)
 {
     extern struct scran g_state;
-    char *opt_filename = NULL;
+    char *opt_filename    = NULL;
+    char *opt_output_directory = NULL;
 
     int opt;
-    while ((opt = getopt(argc, argv, "f:peBsg:Nh")) != -1) {
+    while ((opt = getopt(argc, argv, "f:d:peBsg:Nh")) != -1) {
         switch (opt) {
         case 'f': opt_filename                                          = optarg; break;
+        case 'd': opt_output_directory                                  = optarg; break;
         case 'p': g_state.seat.pointer_ctx.use_presses_only             = true;   break;
         case 'e': g_state.options.capture_and_exit_after_selection_init = true;   break;
         case 'B': g_state.options.no_keepalive                          = true;   break;
@@ -544,7 +553,7 @@ scran_handle_args(int argc, char *const *argv)
     // making optind point to them, unless POSIXLY_CORRECT or optstring[0] == '+'.
     int i_posarg = optind;
 
-    const char *output_directory_arg = argv[i_posarg++];
+    const char *arg_output_directory = argv[i_posarg++];
 
     if (i_posarg < argc) {
         eprintf("Error: Too many non-option arguments: ");
@@ -555,22 +564,38 @@ scran_handle_args(int argc, char *const *argv)
         return false;
     }
 
+    const char *output_directory = NULL;
+    bool should_create_output_dir = false;
+
+    if (opt_output_directory && arg_output_directory) {
+        eprintf("Error: Received both `-d` and `output_path`\n");
+        return false;
+    } else if (opt_output_directory) {
+        output_directory = opt_output_directory;
+    } else if (arg_output_directory) {
+        if (arg_output_directory[0] == '-' && arg_output_directory[1] == '\0') {
+            g_state.options.output_to_stdout = true;
+        } else {
+            output_directory = arg_output_directory;
+            should_create_output_dir = true;
+        }
+    }
+
     // Compile-time initialized
     assert(0 == strcmp(g_state.options.output_path, SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH));
     assert(g_state.options.output_path_filename_pointer == g_state.options.output_path + sizeof(SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH) - 1);
-    if (output_directory_arg != NULL) {
+    if (output_directory != NULL) {
         // Just for some safety, since these are not zero-initialized
         g_state.options.output_path[0] = '\0';
         g_state.options.output_path_filename_pointer = NULL;
 
-        if (!_handle_cli_arg_output_directory(&g_state.options, output_directory_arg)) {
-            eprintf("Error: Failed parsing output_path.\n");
+        if (!_handle_cli_arg_output_directory(&g_state.options, output_directory)) {
             return false;
         }
     }
 
     if (!g_state.options.output_to_stdout) {
-        if (!_init_output_dir(&g_state.options)) {
+        if (!_init_output_dir(&g_state.options, should_create_output_dir)) {
             return false;
         }
     }
