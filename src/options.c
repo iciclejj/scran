@@ -227,7 +227,7 @@ scran_update_output_filepath(
                                               + sizeof(st_options->output_path)
                                               - st_options->output_path_filename_pointer;
     if (available_chars_for_filename < SCRAN_OUTPUT_FILENAME_SIZE_MAX) {
-        eprintf("Error: scran_update-output_filepath: filename pointer too deep. THIS IS A BUG, please open an issue.\n");
+        eprintf("Error: scran_update_output_filepath: filename pointer too deep. THIS IS A BUG, please open an issue.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -454,8 +454,8 @@ static const char help_string[] =
     "                          commands for keybindings or scripts.\n"
     "\n"
     "  -f   <filename_pattern>\n"
-    "         Name of the file that will be placed inside of `output_directory`\n"
-    "         Ignored if output_directory is - (stdout)\n"
+    "         Name of the file that will be placed in the output directory\n"
+    "         Ignored if `output_directory` is - (stdout)\n"
     "         Expanded patterns:\n"
     "           %Y  Year  (4 digits)        %H  Hour         (00-23)\n"
     "           %m  Month (01-12)           %M  Minute       (00-59)\n"

@@ -276,8 +276,8 @@ See `scran -h` for more details
                           commands for keybindings or scripts.
 
   -f   <filename_pattern>
-         Name of the file that will be placed inside of `output_directory`
-         Ignored if output_directory is - (stdout)
+         Name of the file that will be placed in the output directory
+         Ignored if `output_directory` is - (stdout)
          Expanded patterns:
            %Y  Year  (4 digits)        %H  Hour         (00-23)
            %m  Month (01-12)           %M  Minute       (00-59)
