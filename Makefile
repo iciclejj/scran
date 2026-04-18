@@ -136,9 +136,9 @@ objs_release := $(addprefix $(build_dir_release)/, $(_objs))
 objs_debug :=   $(addprefix $(build_dir_debug)/,   $(_objs))
 
 $(prog_release): $(objs_release)
-	$(CC) $(ALL_CFLAGS_REL) $^ $(ALL_LDLIBS) -o $(prog_release)
+	$(CC) $(ALL_CFLAGS_REL) $(LDFLAGS) $^ $(ALL_LDLIBS) -o $(prog_release)
 $(prog_debug):	 $(objs_debug)
-	$(CC) $(ALL_CFLAGS_DBG) $^ $(ALL_LDLIBS) -o $(prog_debug)
+	$(CC) $(ALL_CFLAGS_DBG) $(LDFLAGS) $^ $(ALL_LDLIBS) -o $(prog_debug)
 
 
 .PHONY: all
