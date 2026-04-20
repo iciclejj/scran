@@ -268,7 +268,6 @@ struct capture_frame_context {
     AVFilterContext *av_filter_buffersink_ctx;
 
     BLImageCore bl_img_captured;
-    BLPixelConverterCore bl_pixel_converter;
     BLImageCodecCore bl_imgcodec;
 
     uint64_t presentation_time_nsec;
