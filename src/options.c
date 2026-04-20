@@ -1,5 +1,6 @@
 #include <getopt.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <assert.h>
@@ -578,6 +579,11 @@ scran_handle_args(int argc, char *const *argv)
         } else {
             output_directory = arg_output_directory;
             should_create_output_dir = true;
+        }
+    } else {
+        const char *env_output_directory = getenv("SCRAN_OUTPUT_DIR");
+        if (env_output_directory) {
+            output_directory = env_output_directory;
         }
     }
 
