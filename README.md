@@ -321,6 +321,7 @@ Send SIGUSR1 to the running scran to start grabbing inputs again after releasing
 - Example: `pkill -SIGUSR1 scran`
 
 ## TODOs (*not comprehensive*)
+- Audio capture
 - GPU-accelerated video capture
   - planned for after the CPU pipeline is more optimized (primarily improving performance for rotated displays).
 - More configuration
