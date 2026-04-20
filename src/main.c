@@ -348,7 +348,7 @@ init_meminit(
         //            padding/stride/etc.
 
         for (int i_buffer = 0; i_buffer < SELECTION_SURFACE_BUF_COUNT; i_buffer++) {
-            const size_t _surface_buf_size = get_selection_surface_buf_size_padded(_st_output);
+            const size_t _surface_buf_size = get_surface_buf_size_padded(&_st_output->selection_surface.surface);
             _arena_add_block(
                 shm_arena,
                 _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->selection_surface.double_buffer[i_buffer].data
