@@ -290,8 +290,8 @@ See `scran -h` for more details
                         NOTE:
                           Other than "- (a hyphen) to write to stdout", the rest
                           of this convenience argument's behavior is still subject
-                          to change. Please use -d and -f if you need stable
-                          commands for keybindings or scripts.
+                          to change. Please use -f, -d and SCRAN_OUTPUT_DIR if you
+                          need stable commands for keybindings or scripts.
 
   -f   <filename_pattern>
          Name of the file that will be placed in the output directory
@@ -304,6 +304,7 @@ See `scran -h` for more details
            %E  File extension (e.g. .png or .mp4)
            %%  A literal '%' character
   -d   set an existing directory as output directory
+         You may also use $SCRAN_OUTPUT_DIR.
   -p   press-only mouse buttons (presses toggle pressed/released state)
   -e   automatically capture and exit immediately after initial selection
   -B   do not keep background process alive
