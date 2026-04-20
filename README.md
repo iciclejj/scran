@@ -28,8 +28,11 @@ Whether a compositor is supported mainly depends on whether it implements the
 required Wayland protocols. Most currently-unsupported compositors are only
 missing the `ext_image_copy_capture`/`ext_image_capture_source` protocol pair.
 
-A current list of compositors implementing this protocol can be found at
+A list of compositors implementing this protocol can be found at
 https://wayland.app/protocols/ext-image-copy-capture-v1#compositor-support.
+NOTE: This website is not automatically updated. If the protocols were only
+recently implemented for your compositor, then it might still be incorrectly
+listed as unsupported.
 
 As of today, the only reasonable way of supporting most of the remaining
 compositors, to my knowledge, would be to implement screen capture through
@@ -317,16 +320,17 @@ See `scran -h` for more details
 Send SIGUSR1 to the running scran to start grabbing inputs again after releasing with Tab.
 - Example: `pkill -SIGUSR1 scran`
 
-## Primary Feature TODOs
-Feel free to open a feature request even if something is already listed here.
+## TODOs (*not comprehensive*)
 - GPU-accelerated video capture
   - planned for after the CPU pipeline is more optimized (primarily improving performance for rotated displays).
 - More configuration
-  - **Specify output file formats, encoding, etc.**
+  - Specify output file formats, encoding, etc.
   - Customizable keybindings
-  - Config file?
+    - Config file?
   - UI customization, for example:
     - Custom colors
     - Option to display current selection size
 - Cross-display capture
     - Already handles separate simultaneous video capture per individual display
+
+**Feel free to open a feature request, even if something is already listed here.**
