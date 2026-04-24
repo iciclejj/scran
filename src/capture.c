@@ -124,10 +124,10 @@ init_ffmpeg(struct scran_output *st_output)
 
 
     // AVFrame (captured)
-    frame_ctx->av_frame_captured = av_frame_alloc();
-    frame_ctx->av_frame_captured->width = width_px_captured;
-    frame_ctx->av_frame_captured->height = height_px_captured;
-    frame_ctx->av_frame_captured->format = av_pixel_format_captured;
+    frame_ctx->av_frame_captured              = av_frame_alloc();
+    frame_ctx->av_frame_captured->width       = width_px_captured;
+    frame_ctx->av_frame_captured->height      = height_px_captured;
+    frame_ctx->av_frame_captured->format      = av_pixel_format_captured;
     // XXX: We won't ever get planar src frame buffers, right..?
     frame_ctx->av_frame_captured->linesize[0] = get_capture_stride(st_output);
     assert(frame_ctx->av_frame_captured->linesize[0] == frame_ctx->pixel_stride * frame_ctx->source_width_px);
@@ -204,8 +204,8 @@ init_ffmpeg(struct scran_output *st_output)
 
 
     // AVFrame (converted, ready to be fed to encoder)
-    frame_ctx->av_frame_to_encode = av_frame_alloc();
-    frame_ctx->av_frame_to_encode->width = width_px_to_encode;
+    frame_ctx->av_frame_to_encode         = av_frame_alloc();
+    frame_ctx->av_frame_to_encode->width  = width_px_to_encode;
     frame_ctx->av_frame_to_encode->height = height_px_to_encode;
     frame_ctx->av_frame_to_encode->format = av_pixel_format_to_encode;
 
