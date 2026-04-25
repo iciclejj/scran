@@ -8,6 +8,7 @@
   blend2d,
   libxkbcommon,
   ffmpeg,
+  pipewire,
   basu, # libsystemd's sd-bus library
   copyDesktopItems,
   makeDesktopItem,
@@ -37,6 +38,7 @@ stdenv.mkDerivation {
     blend2d
     libxkbcommon
     ffmpeg
+    pipewire
     basu
   ];
 

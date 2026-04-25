@@ -126,7 +126,7 @@ in
    <details open> <summary><ins>Arch</ins></summary>
 
    ```bash
-   pacman -S   base-devel wayland wayland-protocols libxkbcommon libsystemd ffmpeg
+   pacman -S   base-devel wayland wayland-protocols libxkbcommon libsystemd libpipewire ffmpeg
    # Install Blend2D through the AUR (See below if you prefer to build Blend2D manually.)
    yay -S blend2d
    ```
@@ -134,7 +134,7 @@ in
    <details> <summary><ins>Ubuntu</ins></summary>
 
    ```bash
-   apt install make gcc pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libsystemd libavcodec-dev libavutil-dev libavformat-dev libavfilter-dev
+   apt install make gcc pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libsystemd libpipewire-0.3-dev libavcodec-dev libavutil-dev libavformat-dev libavfilter-dev
    ```
    </details>
    <details> <summary><ins>Fedora</ins></summary>
@@ -146,7 +146,7 @@ in
             Your mileage may vary.
 
    ```bash
-   dnf install make gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel systemd-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel libavfilter-free-devel blend2d-devel
+   dnf install make gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel systemd-devel pipewire-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel libavfilter-free-devel blend2d-devel
    ```
    </details>
 
@@ -307,6 +307,7 @@ See `scran -h` for more details
          You may also use $SCRAN_OUTPUT_DIR.
   -p   press-only mouse buttons (presses toggle pressed/released state)
   -e   automatically capture and exit immediately after initial selection
+  -A   disable audio capture (during video capture)
   -B   do not keep background process alive
   -s   slurp: send selection as geometry string to standard output
          Equivalent to slurp's default output.
@@ -322,7 +323,6 @@ Send SIGUSR1 to the running scran to start grabbing inputs again after releasing
 - Example: `pkill -SIGUSR1 scran`
 
 ## TODOs (*not comprehensive*)
-- Audio capture
 - GPU-accelerated video capture
   - planned for after the CPU pipeline is more optimized (primarily improving performance for rotated displays).
 - More configuration

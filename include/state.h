@@ -13,6 +13,7 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavfilter/avfilter.h>
+#include <libavutil/audio_fifo.h>
 
 #include "wlr-layer-shell-unstable-v1.h"
 #include "ext-image-capture-source-v1.h"
@@ -269,11 +270,18 @@ struct capture_frame_context {
     // graph's refcouning?
     AVFilterContext *av_filter_transpose_ctx;
     AVFilterContext *av_filter_buffersink_ctx;
+    //
+    // Audio
+    //
+    AVCodecContext  *av_codec_ctx_audio;
+    AVFrame         *av_frame_captured_audio;
+    AVPacket        *av_packet_audio;
+    AVAudioFifo     *av_audio_fifo;
 
     BLImageCore bl_img_captured;
     BLImageCodecCore bl_imgcodec;
 
-    uint64_t presentation_time_nsec_start;
+    int64_t presentation_time_nsec_start;
     int64_t presentation_time_nsec;
 
     //  NOTE: Capture area should be set synchronously with the drawn overlay's
@@ -294,10 +302,8 @@ struct capture_frame_context {
     int32_t source_height_px;
     uint8_t pixel_stride;
 
-    // TODO: Probably turn this into a union with some member that gets
-    //       re-initialized with every start/stop capture.
-    //         - Union with presentation_time ?
     bool capturing_video;
+    bool audio_active;
 };
 
 struct scran_output_capture {
@@ -359,6 +365,7 @@ struct scran_options {
 
     bool output_to_stdout;
     bool no_keepalive;
+    bool disable_audio_capture;
     bool capture_and_exit_after_selection_init;
     bool produce_slurp;                 // output slurp-style geometry string
     bool no_notifications;

@@ -11,8 +11,9 @@ PKG_CONFIG ?= pkg-config
 SD_BUS_LIB := $(shell if   $(PKG_CONFIG) --exists basu       2>/dev/null; then echo "basu"; \
 			          elif $(PKG_CONFIG) --exists libsystemd 2>/dev/null; then echo "libsystemd"; \
 					  fi)
-ffmpeg_libs := libavcodec libavutil libavformat libavfilter
-PKGCONF_LIBS := xkbcommon wayland-client $(ffmpeg_libs) $(SD_BUS_LIB)
+ffmpeg_libs   := libavcodec libavutil libavformat libavfilter
+pipewire_libs := libpipewire-0.3 libspa-0.2
+PKGCONF_LIBS  := xkbcommon wayland-client $(pipewire_libs) $(ffmpeg_libs) $(SD_BUS_LIB)
 
 _LDLIBS := -lblend2d -lm
 _LDLIBS += $(shell $(PKG_CONFIG) --libs $(PKGCONF_LIBS))
