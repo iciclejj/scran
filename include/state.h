@@ -273,6 +273,7 @@ struct capture_frame_context {
     BLImageCore bl_img_captured;
     BLImageCodecCore bl_imgcodec;
 
+    uint64_t presentation_time_nsec_start;
     uint64_t presentation_time_nsec;
 
     //  NOTE: Capture area should be set synchronously with the drawn overlay's

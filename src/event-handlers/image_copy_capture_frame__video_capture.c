@@ -64,7 +64,7 @@ handle_image_copy_capture_frame_presentation_time__video_capture(
     // XXX: Will overflow at tv_sec > ~584.9 years...
     const uint64_t tv_sec_to_nsec = ((uint64_t)tv_sec_hi << 32 | tv_sec_lo) * NSEC_PER_SEC;
 
-    frame_ctx->presentation_time_nsec = tv_sec_to_nsec + tv_nsec;
+    frame_ctx->presentation_time_nsec = tv_sec_to_nsec + tv_nsec - frame_ctx->presentation_time_nsec_start;
 }
 
 
