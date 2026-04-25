@@ -36,6 +36,34 @@
 extern struct scran g_state;
 
 
+void
+write_video_frame(
+    struct capture_frame_context *frame_ctx,
+    AVPacket *pkt // Encoded frame
+) {
+    assert(pkt != NULL);
+
+    const AVStream *const _av_stream = frame_ctx->av_format_ctx->streams[AV_FORMAT_STREAM_IDX_VIDEO];
+
+    pkt->stream_index = AV_FORMAT_STREAM_IDX_VIDEO;
+    assert(pkt->stream_index == _av_stream->index);
+
+    // NOTE: This is doing the work of av_packet_rescale_ts(), but with
+    // asserts instead of conditionals. Just switch to that or to
+    // if-statements if indeterminism becomes necessary.
+    assert(pkt->pts != AV_NOPTS_VALUE);
+    pkt->pts = av_rescale_q(pkt->pts, frame_ctx->av_codec_ctx->time_base, _av_stream->time_base);
+    assert(pkt->dts != AV_NOPTS_VALUE);
+    pkt->dts = av_rescale_q(pkt->dts, frame_ctx->av_codec_ctx->time_base, _av_stream->time_base);
+
+    // We don't use durations for VFR.
+    //     XXX: This gives a warning on the last frame before
+    //     avformat_write_header(). Not sure if worth fixing.
+    assert(pkt->duration <= 0);
+
+    av_interleaved_write_frame(frame_ctx->av_format_ctx, pkt);
+}
+
 uint8_t *
 get_capture_area_start_address(
     struct capture_frame_context *frame_ctx
@@ -440,16 +468,12 @@ end_video_capture(struct scran_output *st_output)
 {
     struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
 
-#ifndef NDEBUG
-    // All actual capture/encoding-related logic, including draining the codec
-    // before end of capture, is done in the capture_frame::ready event loop.
-    {
-        AVPacket *pkt = av_packet_alloc();
-        int ret = avcodec_receive_packet(frame_ctx->av_codec_ctx, pkt);
-        av_packet_free(&pkt);
-        assert(ret == AVERROR_EOF && "Encoder was not fully drained before end_video_capture()");
+    // Drain codec
+    avcodec_send_frame(frame_ctx->av_codec_ctx, NULL);
+    assert(frame_ctx->av_packet != NULL);
+    while (avcodec_receive_packet(frame_ctx->av_codec_ctx, frame_ctx->av_packet) != AVERROR_EOF) {
+        write_video_frame(frame_ctx, frame_ctx->av_packet);
     }
-#endif/*NDEBUG*/
 
     av_write_trailer(frame_ctx->av_format_ctx);
     eprintf("Video saved: %s\n", g_state.options.output_path);

@@ -68,34 +68,6 @@ handle_image_copy_capture_frame_presentation_time__video_capture(
 }
 
 
-static inline void
-_write_video_frame(
-    struct capture_frame_context *frame_ctx,
-    AVPacket *av_packet // Encoded frame
-) {
-    assert(av_packet != NULL);
-
-    const AVStream *const _av_stream = frame_ctx->av_format_ctx->streams[AV_FORMAT_STREAM_IDX_VIDEO];
-
-    av_packet->stream_index = AV_FORMAT_STREAM_IDX_VIDEO;
-    assert(av_packet->stream_index == _av_stream->index);
-
-    // NOTE: This is doing the work of av_packet_rescale_ts(), but with
-    // asserts instead of conditionals. Just switch to that or to
-    // if-statements if indeterminism becomes necessary.
-    assert(av_packet->pts != AV_NOPTS_VALUE);
-    av_packet->pts = av_rescale_q(av_packet->pts, frame_ctx->av_codec_ctx->time_base, _av_stream->time_base);
-    assert(av_packet->dts != AV_NOPTS_VALUE);
-    av_packet->dts = av_rescale_q(av_packet->dts, frame_ctx->av_codec_ctx->time_base, _av_stream->time_base);
-
-    assert(av_packet->duration <= 0);
-
-    // TODO: Look into conditionally using av_write_frame for sequential
-    //       encoding
-    av_interleaved_write_frame(frame_ctx->av_format_ctx, av_packet);
-}
-
-
 // TODO:
 //  - Can we fully avoid capturing the overlay (beyond just 
 //    making sure it's out of frame) ?
@@ -155,7 +127,7 @@ handle_image_copy_capture_frame_ready__video_capture(
             return; // TODO: goto err
         }
 
-        _write_video_frame(frame_ctx, frame_ctx->av_packet);
+        write_video_frame(frame_ctx, frame_ctx->av_packet);
 
         // INFO: packet gets unreferenced at start of loop by avcodec_receive_packet
     }
@@ -191,13 +163,6 @@ handle_image_copy_capture_frame_ready__video_capture(
     return;
 
 end_capture:
-    // Drain codec
-    avcodec_send_frame(frame_ctx->av_codec_ctx, NULL);
-    assert(frame_ctx->av_packet != NULL);
-    while (avcodec_receive_packet(frame_ctx->av_codec_ctx, frame_ctx->av_packet) != AVERROR_EOF) {
-        _write_video_frame(frame_ctx, frame_ctx->av_packet);
-    }
-
     {
         struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
         struct scran_output *const st_output = wl_container_of(st_capture, st_output, capture);
