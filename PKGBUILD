@@ -11,6 +11,7 @@ depends=(
     'libxkbcommon'
     'libsystemd'
     'ffmpeg'
+    'libpipewire'
     'blend2d'
 )
 

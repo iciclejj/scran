@@ -24,6 +24,7 @@
 #include "options.h"
 #include "clipboard.h"
 #include "portals.h"
+#include "pipewires.h"
 
 
 #define _FORMAT_MP4_FILE_EXTENSION ".mp4"
@@ -35,6 +36,58 @@
 
 extern struct scran g_state;
 
+
+void
+write_audio_packet(
+    struct capture_frame_context *frame_ctx,
+    AVPacket *pkt // Encoded frame
+) {
+    assert(pkt != NULL);
+
+    const AVStream *const av_stream = frame_ctx->av_format_ctx->streams[AV_FORMAT_STREAM_IDX_AUDIO];
+    pkt->stream_index = AV_FORMAT_STREAM_IDX_AUDIO;
+    assert(pkt->stream_index == av_stream->index);
+
+    // NOTE: This is doing the work of av_packet_rescale_ts(), but with
+    // asserts instead of conditionals. Just switch to that or to
+    // if-statements if indeterminism becomes necessary.
+    assert(pkt->pts != AV_NOPTS_VALUE);
+    pkt->pts = av_rescale_q(pkt->pts, frame_ctx->av_codec_ctx_audio->time_base, av_stream->time_base);
+    assert(pkt->dts != AV_NOPTS_VALUE);
+    pkt->dts = av_rescale_q(pkt->dts, frame_ctx->av_codec_ctx_audio->time_base, av_stream->time_base);
+    assert(pkt->duration != AV_NOPTS_VALUE);
+    pkt->duration = av_rescale_q(pkt->duration, frame_ctx->av_codec_ctx_audio->time_base, av_stream->time_base);
+
+    av_interleaved_write_frame(frame_ctx->av_format_ctx, pkt);
+}
+
+void
+write_video_frame(
+    struct capture_frame_context *frame_ctx,
+    AVPacket *pkt // Encoded frame
+) {
+    assert(pkt != NULL);
+
+    const AVStream *const _av_stream = frame_ctx->av_format_ctx->streams[AV_FORMAT_STREAM_IDX_VIDEO];
+
+    pkt->stream_index = AV_FORMAT_STREAM_IDX_VIDEO;
+    assert(pkt->stream_index == _av_stream->index);
+
+    // NOTE: This is doing the work of av_packet_rescale_ts(), but with
+    // asserts instead of conditionals. Just switch to that or to
+    // if-statements if indeterminism becomes necessary.
+    assert(pkt->pts != AV_NOPTS_VALUE);
+    pkt->pts = av_rescale_q(pkt->pts, frame_ctx->av_codec_ctx->time_base, _av_stream->time_base);
+    assert(pkt->dts != AV_NOPTS_VALUE);
+    pkt->dts = av_rescale_q(pkt->dts, frame_ctx->av_codec_ctx->time_base, _av_stream->time_base);
+
+    // We don't use durations for VFR.
+    //     XXX: This gives a warning on the last frame before
+    //     avformat_write_header(). Not sure if worth fixing.
+    assert(pkt->duration <= 0);
+
+    av_interleaved_write_frame(frame_ctx->av_format_ctx, pkt);
+}
 
 uint8_t *
 get_capture_area_start_address(
@@ -90,6 +143,77 @@ request_video_capture_frame(
 }
 
 
+static inline bool
+destroy_ffmpeg_audio(struct scran_output *st_output)
+{
+    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+
+    avcodec_free_context(&frame_ctx->av_codec_ctx_audio);
+    av_frame_free(&frame_ctx->av_frame_captured_audio);
+    av_audio_fifo_free(frame_ctx->av_audio_fifo);
+    av_packet_free(&frame_ctx->av_packet_audio);
+
+    return true;
+}
+
+static inline bool
+init_ffmpeg_audio(struct scran_output *st_output)
+{
+    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+
+    // Float planar should be guaranteed supported for pipewire(?)
+    // TODO: Retrieve the sample_fmt using avcodec_get_supported_config() if we
+    // implement user-provided settings. FLTP/F32P is supported for AAC.
+    static const enum AVSampleFormat sample_fmt     = AV_SAMPLE_FMT_FLTP;
+    static const enum AVCodecID      codec_id       = AV_CODEC_ID_AAC;
+    static const AVChannelLayout     channel_layout = AV_CHANNEL_LAYOUT_STEREO;
+    static const int                 sample_rate    = SCRAN_PIPEWIRE_SAMPLE_RATE;
+    static const AVRational          time_base      = { 1, NSEC_PER_SEC };
+
+    assert(channel_layout.nb_channels == SCRAN_PIPEWIRE_N_CHANNELS);
+
+    scran_pipewire_init(frame_ctx, ffmpeg_sample_format_to_pipewire(sample_fmt));
+
+    // AVFrame (captured)
+    frame_ctx->av_frame_captured_audio              = av_frame_alloc();
+    frame_ctx->av_frame_captured_audio->format      = sample_fmt;
+    frame_ctx->av_frame_captured_audio->sample_rate = sample_rate;
+    frame_ctx->av_frame_captured_audio->ch_layout   = channel_layout;
+
+    // AVCodec
+    const AVCodec *codec = avcodec_find_encoder(codec_id);
+
+    // AVCodecContext
+    frame_ctx->av_codec_ctx_audio              = avcodec_alloc_context3(codec);
+    if (frame_ctx->av_format_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
+        frame_ctx->av_codec_ctx_audio->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+    }
+    frame_ctx->av_codec_ctx_audio->sample_rate = sample_rate;
+    frame_ctx->av_codec_ctx_audio->sample_fmt  = sample_fmt;
+    frame_ctx->av_codec_ctx_audio->time_base   = time_base;
+    frame_ctx->av_codec_ctx_audio->ch_layout   = channel_layout;
+    avcodec_open2(frame_ctx->av_codec_ctx_audio, codec, NULL);
+
+    // AVFrame (captured, cont.)
+    frame_ctx->av_frame_captured_audio->nb_samples  = frame_ctx->av_codec_ctx_audio->frame_size;
+    av_frame_get_buffer(frame_ctx->av_frame_captured_audio, 0);
+
+    // AVAudioFifo
+    frame_ctx->av_audio_fifo = av_audio_fifo_alloc(
+        sample_fmt, channel_layout.nb_channels, frame_ctx->av_codec_ctx_audio->frame_size
+    );
+
+    // AVPacket (encoded)
+    frame_ctx->av_packet_audio = av_packet_alloc();
+
+    // AVStream
+    AVStream *audio_stream = avformat_new_stream(frame_ctx->av_format_ctx, codec);
+    assert(audio_stream == frame_ctx->av_format_ctx->streams[AV_FORMAT_STREAM_IDX_AUDIO]);
+    avcodec_parameters_from_context(audio_stream->codecpar, frame_ctx->av_codec_ctx_audio);
+
+    return true;
+}
+
 // TODO:
 //  - Error checking
 //  - Encoding parameters:
@@ -124,10 +248,10 @@ init_ffmpeg(struct scran_output *st_output)
 
 
     // AVFrame (captured)
-    frame_ctx->av_frame_captured = av_frame_alloc();
-    frame_ctx->av_frame_captured->width = width_px_captured;
-    frame_ctx->av_frame_captured->height = height_px_captured;
-    frame_ctx->av_frame_captured->format = av_pixel_format_captured;
+    frame_ctx->av_frame_captured              = av_frame_alloc();
+    frame_ctx->av_frame_captured->width       = width_px_captured;
+    frame_ctx->av_frame_captured->height      = height_px_captured;
+    frame_ctx->av_frame_captured->format      = av_pixel_format_captured;
     // XXX: We won't ever get planar src frame buffers, right..?
     frame_ctx->av_frame_captured->linesize[0] = get_capture_stride(st_output);
     assert(frame_ctx->av_frame_captured->linesize[0] == frame_ctx->pixel_stride * frame_ctx->source_width_px);
@@ -204,8 +328,8 @@ init_ffmpeg(struct scran_output *st_output)
 
 
     // AVFrame (converted, ready to be fed to encoder)
-    frame_ctx->av_frame_to_encode = av_frame_alloc();
-    frame_ctx->av_frame_to_encode->width = width_px_to_encode;
+    frame_ctx->av_frame_to_encode         = av_frame_alloc();
+    frame_ctx->av_frame_to_encode->width  = width_px_to_encode;
     frame_ctx->av_frame_to_encode->height = height_px_to_encode;
     frame_ctx->av_frame_to_encode->format = av_pixel_format_to_encode;
 
@@ -315,6 +439,17 @@ init_ffmpeg(struct scran_output *st_output)
     }
 
 
+    if (!g_state.options.disable_audio_capture) {
+        if (init_ffmpeg_audio(st_output)) {
+            frame_ctx->audio_active = true;
+        } else {
+            eprintf("Warning: Failed to init audio capture.\n");
+            scran_pipewire_reset();
+            destroy_ffmpeg_audio(st_output);
+        }
+    }
+
+
     // AVFormat (cont.)
     avio_open(&(frame_ctx->av_format_ctx)->pb, output_filepath, AVIO_FLAG_WRITE);
     assert(!((frame_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
@@ -338,21 +473,14 @@ destroy_ffmpeg(struct scran_output *st_output)
 
     // Note: Most (all?) of these are fine to call with null pointers, despite
     // the asserts
-    assert(frame_ctx->av_format_ctx->pb);
     avio_close(frame_ctx->av_format_ctx->pb);
-    assert(frame_ctx->av_packet);
     av_packet_free(&frame_ctx->av_packet);
-    assert(frame_ctx->av_codec_ctx);
     avcodec_free_context(&frame_ctx->av_codec_ctx);
-    assert(frame_ctx->av_format_ctx);
     // Freeing the format context frees the linked stream for us.
     avformat_free_context(frame_ctx->av_format_ctx);
-    assert(frame_ctx->av_frame_to_encode);
     av_frame_free(&frame_ctx->av_frame_to_encode);
-    assert(frame_ctx->av_filter_graph);
     // Freeing the graph frees any linked filter contexts for us.
     avfilter_graph_free(&frame_ctx->av_filter_graph);
-    assert(frame_ctx->av_frame_captured);
     av_frame_free(&frame_ctx->av_frame_captured);
 }
 
@@ -387,6 +515,13 @@ request_video_capture(struct scran_output *st_output)
 
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
 
+    // image-copy-capture protocol guarantees we get presentation time based
+    // on system monotonic time.
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    // XXX: Will overflow at tv_sec > ~584.9 years...
+    st_output->capture.frame_ctx.presentation_time_nsec_start = ts.tv_sec * NSEC_PER_SEC + ts.tv_nsec;
+
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
     request_video_capture_frame(
@@ -394,6 +529,7 @@ request_video_capture(struct scran_output *st_output)
         // Ensure the first frame is fully rendered
         0, 0, st_output->mode.width_px, st_output->mode.height_px
     );
+    scran_pipewire_connect();
 
     st_output->capture.frame_ctx.capturing_video = true;
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
@@ -435,21 +571,33 @@ request_end_video_capture(struct scran_output *st_output)
 
 // Should only be called once the video capture event loop is finished.
 //    Call request_end_video_capture() instead to initiate graceful completion.
+// TODO: Rename this function to be less ambiguous now that we have audio as well.
 void
 end_video_capture(struct scran_output *st_output)
 {
     struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
 
-#ifndef NDEBUG
-    // All actual capture/encoding-related logic, including draining the codec
-    // before end of capture, is done in the capture_frame::ready event loop.
-    {
-        AVPacket *pkt = av_packet_alloc();
-        int ret = avcodec_receive_packet(frame_ctx->av_codec_ctx, pkt);
-        av_packet_free(&pkt);
-        assert(ret == AVERROR_EOF && "Encoder was not fully drained before end_video_capture()");
+    if (frame_ctx->audio_active) {
+        scran_pipewire_reset();
+
+        // Drain audio codec
+        avcodec_send_frame(frame_ctx->av_codec_ctx_audio, NULL);
+        assert(frame_ctx->av_packet_audio != NULL);
+        while (avcodec_receive_packet(frame_ctx->av_codec_ctx_audio, frame_ctx->av_packet_audio) != AVERROR_EOF) {
+            write_audio_packet(frame_ctx, frame_ctx->av_packet_audio);
+        }
+
+        destroy_ffmpeg_audio(st_output);
+
+        frame_ctx->audio_active = false;
     }
-#endif/*NDEBUG*/
+
+    // Drain video codec
+    avcodec_send_frame(frame_ctx->av_codec_ctx, NULL);
+    assert(frame_ctx->av_packet != NULL);
+    while (avcodec_receive_packet(frame_ctx->av_codec_ctx, frame_ctx->av_packet) != AVERROR_EOF) {
+        write_video_frame(frame_ctx, frame_ctx->av_packet);
+    }
 
     av_write_trailer(frame_ctx->av_format_ctx);
     eprintf("Video saved: %s\n", g_state.options.output_path);

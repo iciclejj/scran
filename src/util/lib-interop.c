@@ -8,6 +8,7 @@
 
 #include "util/lib-interop.h"
 #include "capture.h"
+#include "spa/param/audio/raw.h"
 
 
 // XXX TODO: Verify that this assignment happens at compile time.
@@ -152,6 +153,33 @@ wl_output_transform_to_ffmpeg_transpose_dir__inverse(enum wl_output_transform tr
         case WL_OUTPUT_TRANSFORM_FLIPPED:     return SCRAN_AV_TRANSPOSE_DIR_FLIPPED;
         case WL_OUTPUT_TRANSFORM_FLIPPED_90:  return SCRAN_AV_TRANSPOSE_DIR_FLIPPED_270;
         case WL_OUTPUT_TRANSFORM_FLIPPED_270: return SCRAN_AV_TRANSPOSE_DIR_FLIPPED_90;
+    }
+}
+
+enum spa_audio_format
+ffmpeg_sample_format_to_pipewire(enum AVSampleFormat format)
+{
+    // XXX TODO: Revisit the SPA_AUDIO_FORMAT_UNKNOWN assignments once they
+    // might actually become relevant/selected.
+
+    switch (format) {
+        case AV_SAMPLE_FMT_NONE: return SPA_AUDIO_FORMAT_UNKNOWN;
+
+        case AV_SAMPLE_FMT_U8:   return SPA_AUDIO_FORMAT_U8;
+        case AV_SAMPLE_FMT_S16:  return SPA_AUDIO_FORMAT_S16;
+        case AV_SAMPLE_FMT_S32:  return SPA_AUDIO_FORMAT_S32;
+        case AV_SAMPLE_FMT_FLT:  return SPA_AUDIO_FORMAT_F32;
+        case AV_SAMPLE_FMT_DBL:  return SPA_AUDIO_FORMAT_F64;
+
+        case AV_SAMPLE_FMT_U8P:  return SPA_AUDIO_FORMAT_U8P;
+        case AV_SAMPLE_FMT_S16P: return SPA_AUDIO_FORMAT_S16P;
+        case AV_SAMPLE_FMT_S32P: return SPA_AUDIO_FORMAT_S32P;
+        case AV_SAMPLE_FMT_FLTP: return SPA_AUDIO_FORMAT_F32P;
+        case AV_SAMPLE_FMT_DBLP: return SPA_AUDIO_FORMAT_F64P;
+        case AV_SAMPLE_FMT_S64:  return SPA_AUDIO_FORMAT_UNKNOWN;
+        case AV_SAMPLE_FMT_S64P: return SPA_AUDIO_FORMAT_UNKNOWN;
+
+        default:                 return SPA_AUDIO_FORMAT_UNKNOWN;
     }
 }
 

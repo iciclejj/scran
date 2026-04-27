@@ -13,7 +13,7 @@
 #define BITS_PER_MEGABIT 1000000
 
 #define AV_FORMAT_STREAM_IDX_VIDEO 0
-// #define AV_FORMAT_STREAM_IDX_AUDIO 1
+#define AV_FORMAT_STREAM_IDX_AUDIO 1
 
 #define CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT BL_FORMAT_PRGB32
 #define CAPTURE_IMAGE_OUTPUT_BLIMAGECODEC_NAME_DEFAULT "PNG"
@@ -23,6 +23,8 @@
 uint8_t *get_capture_area_start_address(struct capture_frame_context *frame_ctx);
 void update_capture_area_with_selection(struct scran_output *st_output, BLBoxI selection_box);
 
+void write_video_frame(struct capture_frame_context *frame_ctx, AVPacket *pkt);
+void write_audio_packet(struct capture_frame_context *frame_ctx, AVPacket *av_packet);
 bool request_video_capture(struct scran_output *st_output);
  void end_video_capture(struct scran_output *st_output);
 void request_video_capture_frame(struct capture_frame_context *frame_ctx, int32_t damage_x, int32_t damage_y, int32_t damage_w, int32_t damage_h);

@@ -33,6 +33,7 @@
 #include "signal-handlers.h"
 #include "util/blend2d.h"
 #include "portals.h"
+#include "pipewires.h"
 
 //  General TODO:
 //  - Don't use libwayland..? Handle its allocations etc. ourselves?
@@ -55,7 +56,7 @@ struct scran g_state = {
     },
 };
 
-#define SCRAN_EPOLL_SIZE 2 // XXX: hardcoded: dbus/portal + wayland
+#define SCRAN_EPOLL_SIZE 3 // XXX: hardcoded: dbus/portal + wayland + pipewire
 static struct epoll_event m_epoll_events[SCRAN_EPOLL_SIZE];
 static int m_epoll_fd = -1;
 
@@ -588,6 +589,8 @@ run_main_loop(struct _scran_signal_masks *signal_masks)
         assert(scran_portal_timeout_ms == -1);
     }
 
+    scran_pipewire_pre_init(m_epoll_fd);
+
     // Block/defer our signal handlers until explicit unblock during epoll
     if (sigprocmask(SIG_BLOCK, &signal_masks->with_scran_handlers_masked, NULL) == -1) {
         eprintf("sigprocmask failed: %s\n", strerror(errno));
@@ -633,8 +636,12 @@ run_main_loop(struct _scran_signal_masks *signal_masks)
         } else {
             bool wayland_ready = false;
             for (int i = 0; i < ret; ++i) {
-                if (m_epoll_events[i].data.fd == wl_display_fd) {
+                int ready_fd = m_epoll_events[i].data.fd;
+                if (ready_fd == wl_display_fd) {
                     wayland_ready = true;
+                } else {
+                    // XXX: This could be nicer. It currently checks its own fd.
+                    scran_pipewire_update(ready_fd);
                 }
             }
             if (wayland_ready) {
@@ -657,6 +664,8 @@ run_main_loop(struct _scran_signal_masks *signal_masks)
             g_state.sig_focus_requested = false;
         }
     };
+
+    scran_pipewire_destroy();
 
     return true;
 }
