@@ -476,6 +476,7 @@ static const char help_string[] =
     // "  -ee  like -e, but ensure the scran process exits fully\n"
     // "         Equivalent to -Be"
     "  -A   disable audio capture (during video capture)\n"
+    "         Note: audio capture requires PipeWire.\n"
     "  -B   do not keep background process alive\n"
     "         Example: 'scran -B - | satty -f -'\n"
     "          By default, scran stays alive after exit to manage the clipboard\n"

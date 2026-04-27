@@ -10,7 +10,6 @@ https://github.com/user-attachments/assets/f697827a-8f2c-4649-a1ab-6e0bd6fb1304
 
 ### Compositor support:
 
-
 - Supported:
   - [Sway](https://swaywm.org/)
   - [Hyprland](https://hypr.land/)
@@ -122,6 +121,9 @@ in
    > The libavcodec version installed by your package manager may or may not
      be built with GPL-licensed video encoders such as libx264. scran will
      pick from whatever is available.
+
+   > Audio capture requires PipeWire at runtime. Missing PipeWire is handled
+     gracefully, with a printed WARNING message.
 
    <details open> <summary><ins>Arch</ins></summary>
 
@@ -308,6 +310,7 @@ See `scran -h` for more details
   -p   press-only mouse buttons (presses toggle pressed/released state)
   -e   automatically capture and exit immediately after initial selection
   -A   disable audio capture (during video capture)
+         Note: audio capture requires PipeWire.
   -B   do not keep background process alive
   -s   slurp: send selection as geometry string to standard output
          Equivalent to slurp's default output.
