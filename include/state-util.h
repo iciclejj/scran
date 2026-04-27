@@ -219,7 +219,7 @@ _guess_cosmic_scale_factor(
     } else {
         // This should honestly be considered a bug, but I guess better to
         // avoid crashing for something like this.
-        eprintf("  Warning: Could not verify correct scaling factor.\n");
+        eprintf("  WARNING: Could not verify correct scaling factor.\n");
         eprintf("    Guessing COSMIC scaler: %f\n", normalized_scale_cosmic);
         // Default to this since it's what the official cosmic tools use,
         // and has higher precision

@@ -585,7 +585,7 @@ run_main_loop(struct _scran_signal_masks *signal_masks)
     // Only our portal fd actually cares about max timeout atm
     int scran_portal_timeout_ms = -1;
     if (!scran_portal_init(m_epoll_fd, &scran_portal_timeout_ms)) {
-        eprintf("Warning: Failed to initialize XDG Desktop Portals\n");
+        eprintf("WARNING: Failed to initialize XDG Desktop Portals\n");
         assert(scran_portal_timeout_ms == -1);
     }
 
