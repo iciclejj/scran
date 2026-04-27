@@ -203,6 +203,10 @@ scran_pipewire_init(
     }
 
     m_state.loop    = pw_loop_new(NULL);
+    if (m_state.loop == NULL) {
+        eprintf("WARNING: Failed to create PipeWire loop\n");
+        return false;
+    }
     m_state.loop_fd = pw_loop_get_fd(m_state.loop);
 
     assert(m_state.epoll_fd != -1);
@@ -213,7 +217,16 @@ scran_pipewire_init(
     epoll_ctl(m_state.epoll_fd, EPOLL_CTL_ADD, m_state.loop_fd, &epoll_event);
 
     m_state.ctx  = pw_context_new(    m_state.loop, NULL, 0);
+    if (m_state.ctx == NULL) {
+        eprintf("WARNING: Failed to create PipeWire context\n");
+        return false;
+    }
+
     m_state.core = pw_context_connect(m_state.ctx , NULL, 0);
+    if (m_state.core == NULL) {
+        eprintf("WARNING: Failed to connect to PipeWire daemon\n");
+        return false;
+    }
 
     // NOTE: pw_stream takes ownership of this. Don't free.
     struct pw_properties *props = pw_properties_new(

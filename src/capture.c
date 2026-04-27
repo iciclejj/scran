@@ -172,7 +172,9 @@ init_ffmpeg_audio(struct scran_output *st_output)
 
     assert(channel_layout.nb_channels == SCRAN_PIPEWIRE_N_CHANNELS);
 
-    scran_pipewire_init(frame_ctx, ffmpeg_sample_format_to_pipewire(sample_fmt));
+    if (!scran_pipewire_init(frame_ctx, ffmpeg_sample_format_to_pipewire(sample_fmt))) {
+        return false;
+    }
 
     // AVFrame (captured)
     frame_ctx->av_frame_captured_audio              = av_frame_alloc();
@@ -443,7 +445,7 @@ init_ffmpeg(struct scran_output *st_output)
         if (init_ffmpeg_audio(st_output)) {
             frame_ctx->audio_active = true;
         } else {
-            eprintf("Warning: Failed to init audio capture.\n");
+            eprintf("WARNING: Failed to init audio capture.\n");
             scran_pipewire_reset();
             destroy_ffmpeg_audio(st_output);
         }
@@ -529,7 +531,10 @@ request_video_capture(struct scran_output *st_output)
         // Ensure the first frame is fully rendered
         0, 0, st_output->mode.width_px, st_output->mode.height_px
     );
-    scran_pipewire_connect();
+
+    if (st_output->capture.frame_ctx.audio_active) {
+        scran_pipewire_connect();
+    }
 
     st_output->capture.frame_ctx.capturing_video = true;
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
