@@ -1,5 +1,5 @@
 pkgname=scran
-pkgver=0.8.0
+pkgver=0.8.1
 pkgrel=1
 pkgdesc='Image and video capture for Wayland'
 arch=('x86_64')
