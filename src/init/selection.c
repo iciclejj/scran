@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <assert.h>
-#include <math.h>
 
 #include "viewporter.h"
 #include "fractional-scale-v1.h"
@@ -11,6 +10,7 @@
 #include "event-handlers.h"
 #include "selection.h"
 #include "surface__selection.h"
+#include "ui.h"
 
 
 bool
@@ -18,7 +18,8 @@ init_premem__selection(
     struct scran_output *st_output,
     struct scran_globals *st_globals
 ) {
-    struct scran_output_surface *st_surface = &st_output->selection_surface.surface;
+    struct scran_output_surface          *st_surface        = &st_output->selection_surface.surface;
+    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
 
     // Must add role to surface and ack its configure event before adding a buffer.
     st_surface->wl_surface = wl_compositor_create_surface(st_globals->compositor);
@@ -63,6 +64,8 @@ init_premem__selection(
     );
     wp_fractional_scale_v1_add_listener(st_surface->fractional_scale, &fractional_scale_listener__selection, &st_output->selection_surface);
 
+    init_scran_ui(&selection_surface->ui_ctx, selection_surface->surface.final_scale_factor_normalized);
+
     return true;
 }
 
@@ -94,7 +97,6 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
     struct scran_output_selectionContext *selection_ctx     = &st_output->selection_ctx;
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
     struct scran_output_surface          *st_surface        = &st_output->selection_surface.surface;
-
 
     // Sanity check...
     assert(st_output->xdg_geometry.w_logical == st_surface->width_logical);
@@ -131,13 +133,13 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
     if (custom_initial_selection != NULL) {
         initial_box = *custom_initial_selection;
     } else {
-        // HACK: Get the outline out of view...
-        //       TODO: Make a redraw function that doesn't draw the selection.
         initial_box = (struct BLBoxI) {
-            .x0 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
-            .y0 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
-            .x1 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
-            .y1 = 0 - ceil(SCRAN_SELECTION_BORDER_THICKNESS_PX),
+            // HACK: Get the UI out of view
+            //       TODO: Make a redraw function that only draws the background dim.
+            .x0 = 0,
+            .y0 = 0 + 2 * selection_surface->surface.height_px_buffer,
+            .x1 = 0,
+            .y1 = 0 + 2 * selection_surface->surface.height_px_buffer,
         };
     }
 
@@ -183,5 +185,7 @@ init_postmem__selection__destroy(struct scran_output *st_output)
     }
 
     bl_path_destroy(&selection_surface->bl_path);
+
+    destroy_scran_ui(&selection_surface->ui_ctx);
 }
 

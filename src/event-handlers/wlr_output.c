@@ -210,6 +210,7 @@ void handle_wlr_output_manager_done(
         struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
         update_surface_scale_and_size(&selection_surface->surface);
         update_surface_viewport(&selection_surface->surface);
+        reinit_scran_ui(&selection_surface->ui_ctx, selection_surface->surface.final_scale_factor_normalized);
         request_selection_surface_update(st_output);
     }
 }

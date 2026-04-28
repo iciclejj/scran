@@ -1,4 +1,5 @@
 #include <wayland-client.h>
+#include <blend2d/blend2d.h>
 
 #include "state.h"
 #include "state-util.h"
@@ -6,7 +7,7 @@
 #include "print.h"
 #include "capture.h"
 #include "surface__selection.h"
-#include "util/blend2d.h"
+#include "ui.h"
 
 
 extern struct scran g_state;
@@ -128,6 +129,15 @@ start_grabbing_focus()
             g_state.seat.pointer_ctx.last_enter_serial,
             WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR
         );
+
+        {
+            struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
+            for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
+                scran_ui_keymap_item_set_disabled(ui_ctx, i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, false);
+            }
+            scran_ui_keymap_item_set_text(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT);
+            request_selection_surface_update(st_output);
+        }
     }
 }
 
@@ -159,6 +169,15 @@ stop_grabbing_focus()
             g_state.seat.pointer_ctx.last_enter_serial,
             WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT
         );
+
+        {
+            struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
+            for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
+                scran_ui_keymap_item_set_disabled(ui_ctx, i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, true);
+            }
+            scran_ui_keymap_item_set_text(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED);
+            request_selection_surface_update(st_output);
+        }
     }
 }
 

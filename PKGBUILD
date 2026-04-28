@@ -30,4 +30,5 @@ package() {
     cd "$srcdir/$pkgname-$pkgver"
     install -D -m 755 "./build/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
     install -D -m 644 "./LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -D -m 644 "./assets/IosevkaScranEmbed.ttf.license" "$pkgdir/usr/share/licenses/$pkgname/IosevkaScranEmbed.ttf.license"
 }

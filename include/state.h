@@ -26,6 +26,8 @@
 #include "wlr-output-management-unstable-v1.h"
 #include "cosmic-output-management-unstable-v1.h"
 
+#include "ui.h"
+
 #define MAX_OUTPUTS 64
 
 #define A_DOUBLE_BUFFER_HAS_TWO_BUFFERS 2
@@ -101,6 +103,11 @@ struct scran_output_surface {
     struct wp_viewport *viewport;
 };
 
+struct scran_ui_keymap_surface_state {
+    BLPointI origin;
+    int total_width_px;
+};
+
 struct scran_output_selectionSurface_buffer {
     struct wl_buffer *wl_buffer;
     void *data;
@@ -108,6 +115,8 @@ struct scran_output_selectionSurface_buffer {
     BLContextCore bl_ctx;
     BLImageCore bl_img;
     BLBoxI box_currently_drawn;
+
+    struct scran_ui_keymap_surface_state ui_keymap_state_currently_drawn;
 
     bool busy;
     bool force_redraw;
@@ -117,10 +126,13 @@ struct scran_output_selectionSurface {
     struct scran_output_surface surface;
     struct scran_output_selectionSurface_buffer double_buffer[SELECTION_SURFACE_BUF_COUNT];
 
+    struct scran_ui_context ui_ctx;
+
     BLPathCore bl_path;
     // XXX TODO: Turn this into a pointer once we remove the ugly redraw hack
     // in set_selection_surface_theme(). TODO: Redraw hack is gone now.
     BLBoxI box_last_drawn;
+    struct scran_ui_keymap_surface_state ui_keymap_state_last_drawn;
 };
 
 struct scran_seat_pointerContext {

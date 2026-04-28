@@ -62,7 +62,10 @@ handle_pointer_leave(
     uint32_t serial,
     struct wl_surface *surface_left
 ) {
-    // Nothing to do here yet...
+    struct scran *state = data;
+    struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
+
+    pointer_ctx->focused_fulloutput_selection_surface = NULL;
 }
 
 

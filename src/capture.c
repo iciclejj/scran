@@ -14,6 +14,7 @@
 
 #include "state.h"
 #include "state-util.h"
+#include "ui.h"
 #include "util/blend2d.h"
 #include "util/lib-interop.h"
 #include "event-handlers.h"
@@ -515,6 +516,10 @@ request_video_capture(struct scran_output *st_output)
         return false;
     }
 
+    {
+        struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
+        scran_ui_keymap_item_set_disabled(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, true);
+    }
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
 
     // image-copy-capture protocol guarantees we get presentation time based
@@ -615,6 +620,10 @@ end_video_capture(struct scran_output *st_output)
 
     destroy_ffmpeg(st_output);
 
+    {
+        struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
+        scran_ui_keymap_item_set_disabled(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, false);
+    }
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
     unset_selection_freeze_size(st_output);
 
