@@ -75,6 +75,25 @@
 #endif /* __has_include(<wayland-client.h>) */
 
 
+static inline bool
+blboxi_are_equal(BLBoxI a, BLBoxI b) {
+    return  a.x0 == b.x0 &&
+            a.x1 == b.x1 &&
+            a.y0 == b.y0 &&
+            a.y1 == b.y1
+    ;
+}
+
+static inline double
+blboxd_width(BLBox box) {
+    return box.x1 - box.x0;
+}
+
+static inline int
+blboxd_height(BLBox box) {
+    return box.y1 - box.y0;
+}
+
 static inline int
 blboxi_width(BLBoxI box) {
     return box.x1 - box.x0;

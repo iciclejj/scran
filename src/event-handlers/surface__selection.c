@@ -17,17 +17,6 @@
 extern struct scran g_state;
 
 
-// TODO: Move into blend2d utils header
-static inline bool
-_boxes_are_equal(BLBoxI a, BLBoxI b)
-{
-    return  a.x0 == b.x0 &&
-            a.x1 == b.x1 &&
-            a.y0 == b.y0 &&
-            a.y1 == b.y1
-    ;
-}
-
 static inline struct scran_output_selectionSurface_buffer *
 get_free_double_buffer(struct scran_output_selectionSurface *selection_surface)
 {
@@ -72,7 +61,7 @@ selection_surface_frame_callback_handler(
     assert(capture_area.y1 <= get_transformed_output_height(st_output));
     const struct BLBoxI capture_area_previous_surface_commit = st_output->selection_surface.box_last_drawn;
 
-    if (!st_buffer->force_redraw && _boxes_are_equal(capture_area, capture_area_previous_surface_commit)) {
+    if (!st_buffer->force_redraw && blboxi_are_equal(capture_area, capture_area_previous_surface_commit)) {
         goto done;
     }
 
