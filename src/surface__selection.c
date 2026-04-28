@@ -15,6 +15,9 @@
 
 static inline void
 _get_box_diffs_as_4_rects(
+// Operation: a ^ b
+static inline void
+_get_box_symdiff_as_4_rects(
     struct BLBoxI a,
     struct BLBoxI b,
     struct BLRectI ret[static 4]
@@ -216,7 +219,7 @@ draw_selection_and_damage_buffer(
 
         // Draw selection border
         BLRectI damage_regions_selection_border[4];
-        _get_box_diffs_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions_selection_border);
+        _get_box_symdiff_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions_selection_border);
         _draw_and_damage_selection_border(selection_surface, st_buffer, capture_area_border_outline, capture_area_border_inline , damage_regions_selection_border, damage_regions_selection_border, 4);
 
         st_buffer->force_redraw = false;
@@ -227,12 +230,12 @@ draw_selection_and_damage_buffer(
             BLRectI damage_regions_buffer[8];
 
             static const int i_background_diffs = 0;
-            _get_box_diffs_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_outline                           , damage_regions_wayland + i_background_diffs);
-            _get_box_diffs_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_outline                           , damage_regions_buffer  + i_background_diffs);
+            _get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_outline                           , damage_regions_wayland + i_background_diffs);
+            _get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_outline                           , damage_regions_buffer  + i_background_diffs);
 
             static const int i_old_border_diffs = 4;
-            _get_box_diffs_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_inline_last_used_in_any_buffer    , damage_regions_wayland + i_old_border_diffs);
-            _get_box_diffs_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_inline_last_used_in_current_buffer, damage_regions_buffer  + i_old_border_diffs);
+            _get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_inline_last_used_in_any_buffer    , damage_regions_wayland + i_old_border_diffs);
+            _get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_inline_last_used_in_current_buffer, damage_regions_buffer  + i_old_border_diffs);
 
             _draw_and_damage_background(selection_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, 8);
         }
@@ -241,7 +244,7 @@ draw_selection_and_damage_buffer(
         {
             BLRectI damage_regions[4];
 
-            _get_box_diffs_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
+            _get_box_symdiff_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
 
             _draw_and_damage_selection_border(selection_surface, st_buffer, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
         }
