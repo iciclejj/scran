@@ -1,3 +1,6 @@
+#
+# This file serves as a template only. Hashes etc. are not necessarily kept up to date.
+#
 pkgname=scran
 pkgver=0.8.1
 pkgrel=1
