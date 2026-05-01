@@ -208,15 +208,21 @@ cmake --install build && ldconfig
 ```
   Left mouse button    Initialize and move selection
   Right mouse button   Resize selection
+
   Enter                Capture image and exit
                          Stays alive in the background to handle clipboard,
                          unless the -B option is provided.
   Shift+Enter          Capture image
-  Space                Capture video (start/stop)
+
+  Space                Capture video with audio
+  Shift+Space          Capture video without audio
+
+  Arrow keys           Move selection by one pixel
+
   Tab                  Release focus (stop capturing inputs)
                          SIGUSR1 to retake focus - see Signals section and
                          sway config examples.
-  Arrow keys           Move selection by one pixel
+
   Escape               Exit scran, or stop video capture if in progress
 ```
 

@@ -316,6 +316,7 @@ struct capture_frame_context {
 
     bool capturing_video;
     bool audio_active;
+    bool audio_disable_modifier_active;
 };
 
 struct scran_output_capture {

@@ -442,7 +442,7 @@ init_ffmpeg(struct scran_output *st_output)
     }
 
 
-    if (!g_state.options.disable_audio_capture) {
+    if (!g_state.options.disable_audio_capture && !frame_ctx->audio_disable_modifier_active) {
         if (init_ffmpeg_audio(st_output)) {
             frame_ctx->audio_active = true;
         } else {
@@ -519,6 +519,7 @@ request_video_capture(struct scran_output *st_output)
     {
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
         scran_ui_keymap_item_set_disabled(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, true);
+        scran_ui_keymap_item_set_color(   ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_VIDEO_CAPTURE);
     }
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
 
@@ -623,6 +624,7 @@ end_video_capture(struct scran_output *st_output)
     {
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
         scran_ui_keymap_item_set_disabled(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, false);
+        scran_ui_keymap_item_set_color(   ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_DEFAULT);
     }
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
     unset_selection_freeze_size(st_output);

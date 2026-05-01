@@ -7,6 +7,7 @@
 
 #include "init.h"
 #include "ui.h"
+#include "surface__selection.h"
 #include "util/blend2d.h"
 #include "util/lib-interop.h"
 
@@ -26,9 +27,10 @@ static inline const void * _get_font_data() {
 }
 
 static const BLRgba32 keymap_colors[] = {
-    [SCRAN_UI_KEYMAP_COLOR_DEFAULT] = { 0xE0DDDDDD },
-    [SCRAN_UI_KEYMAP_COLOR_MOD]     = { 0xE0FFFFAA },
-    [SCRAN_UI_KEYMAP_COLOR_ALT]     = { 0xE0888888 },
+    [SCRAN_UI_KEYMAP_COLOR_DEFAULT]       = { 0xE0DDDDDD },
+    [SCRAN_UI_KEYMAP_COLOR_MOD]           = { 0xE0FFFFAA },
+    [SCRAN_UI_KEYMAP_COLOR_ALT]           = { 0xE0888888 },
+    [SCRAN_UI_KEYMAP_COLOR_VIDEO_CAPTURE] = SCRAN_SELECTION_BORDER_COLOR_VIDEO_CAPTURE,
 };
 static_assert( sizeof(keymap_colors) / sizeof(keymap_colors[0]) == SCRAN_UI_KEYMAP_N_COLORS,
                "keymap_colors[] length must exactly cover all color enum values." );
@@ -42,7 +44,8 @@ static const struct _sized_u16_string keymap_image_texts[] = {
     [SCRAN_UI_KEYMAP_TEXT_IMAGE_DEFAULT]  = INIT_SIZED_U16_STRING(u"[↵] Image & Exit"),
     [SCRAN_UI_KEYMAP_TEXT_IMAGE_MOD]      = INIT_SIZED_U16_STRING(u"[↵] Image       "),
 
-    [SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT]  = INIT_SIZED_U16_STRING(u"[␣] Video"),
+    [SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT]  = INIT_SIZED_U16_STRING(u"[␣] Video \uf028"),
+    [SCRAN_UI_KEYMAP_TEXT_VIDEO_MOD]      = INIT_SIZED_U16_STRING(u"[␣] Video \uf026"),
 
     [SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT]  = INIT_SIZED_U16_STRING(u"[⇥] Release focus"),
     [SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED] = INIT_SIZED_U16_STRING(u"[⇥] Focus released. 'scran -h' for help."),
