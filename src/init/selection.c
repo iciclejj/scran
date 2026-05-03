@@ -104,7 +104,6 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
     // have fired before the viewport was initialized.
     update_surface_scale_and_size(st_surface);
     update_surface_viewport(st_surface);
-    request_selection_surface_update(st_output);
 
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
         struct scran_output_selectionSurface_buffer *st_buffer = &selection_surface->double_buffer[i];
