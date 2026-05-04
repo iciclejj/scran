@@ -301,7 +301,11 @@ handle_pointer_button(
             }
             selection_ctx->selection_state = SELECTION_INITIALIZING;
 
+            // TODO: Create set_selection_initializing()/set_selection_stage(),
+            // analogous to current set_selection_initialized()?
             scran_ui_set_selection_stage_defaults(&st_output->selection_surface.ui_ctx);
+            set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+            request_selection_surface_update(st_output);
 
             break;
         case SELECTION_INITIALIZING:

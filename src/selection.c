@@ -1,6 +1,10 @@
+#include <assert.h>
+
+#include <wayland-client-protocol.h>
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 
+#include "init.h"
 #include "state.h"
 #include "state-util.h"
 #include "selection.h"
@@ -22,6 +26,11 @@ set_selection_surface_theme(
     static const enum BLFillRule fill_rule = BL_FILL_RULE_EVEN_ODD;
 
     switch (action) {
+    case SURFACE_THEME_PRE_SELECTION:
+        // Alpha channel must be respected for invisibility.
+        assert(SURFACE_SHM_FORMAT_BL == BL_FORMAT_PRGB32);
+        fill_style = SCRAN_SELECTION_BORDER_COLOR_INVISIBLE;
+        break;
     case SURFACE_THEME_DEFAULT:
         fill_style = SCRAN_SELECTION_BORDER_COLOR_DEFAULT;
         break;

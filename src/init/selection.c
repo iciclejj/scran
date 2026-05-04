@@ -128,7 +128,7 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
 
     bl_path_init(&selection_surface->bl_path);
 
-    set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+    set_selection_surface_theme(st_output, SURFACE_THEME_PRE_SELECTION);
     request_selection_surface_update(st_output);
 
     BLBoxI initial_box = (custom_initial_selection != NULL) ? *custom_initial_selection : (BLBoxI){ };

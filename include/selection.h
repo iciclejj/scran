@@ -11,6 +11,11 @@
 
 
 enum surface_theme {
+    // HACK: Using this to make selection invisible
+    //       TODO: Rework the surface redraw functions for more granular
+    //       control over what to draw instead.
+    SURFACE_THEME_PRE_SELECTION,
+
     SURFACE_THEME_DEFAULT,
     SURFACE_THEME_VIDEO_CAPTURE,
 };
