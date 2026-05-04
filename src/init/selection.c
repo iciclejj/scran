@@ -129,19 +129,7 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
     bl_path_init(&selection_surface->bl_path);
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
 
-    BLBoxI initial_box;
-    if (custom_initial_selection != NULL) {
-        initial_box = *custom_initial_selection;
-    } else {
-        initial_box = (struct BLBoxI) {
-            // HACK: Get the UI out of view
-            //       TODO: Make a redraw function that only draws the background dim.
-            .x0 = 0,
-            .y0 = 0 + 2 * selection_surface->surface.height_px_buffer,
-            .x1 = 0,
-            .y1 = 0 + 2 * selection_surface->surface.height_px_buffer,
-        };
-    }
+    BLBoxI initial_box = (custom_initial_selection != NULL) ? *custom_initial_selection : (BLBoxI){ };
 
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
         struct scran_output_selectionSurface_buffer *buffer = &selection_surface->double_buffer[i];

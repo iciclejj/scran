@@ -517,6 +517,7 @@ force_update_selection_surface(
         box
     );
     st_buffer->box_currently_drawn = box;
+    st_output->selection_ctx.box_px = box;
 
     wl_surface_attach(
         selection_surface->surface.wl_surface, st_buffer->wl_buffer, 0, 0
