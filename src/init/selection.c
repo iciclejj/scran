@@ -64,7 +64,7 @@ init_premem__selection(
     );
     wp_fractional_scale_v1_add_listener(st_surface->fractional_scale, &fractional_scale_listener__selection, &st_output->selection_surface);
 
-    init_scran_ui(&selection_surface->ui_ctx, selection_surface->surface.final_scale_factor_normalized);
+    init_scran_ui_pre_selection(&selection_surface->ui_ctx, selection_surface->surface.final_scale_factor_normalized);
 
     return true;
 }

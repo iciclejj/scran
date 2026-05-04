@@ -102,6 +102,13 @@ handle_keyboard_key(
         key + 8 // See wl_keyboard::keymap_format
     );
 
+    // TODO: Add custom pre-init actions.
+    if (st_output->selection_ctx.selection_state == SELECTION_NONE
+        && xkb_key != XKB_KEY_Escape // Allow exit
+    ) {
+        return;
+    }
+
     // TODO: Nested switch for released/pressed
     if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
         switch(xkb_key) {
@@ -110,7 +117,6 @@ handle_keyboard_key(
             request_selection_surface_update(st_output);
             break;
         case XKB_KEY_space:
-            DEBUG("GOT SPACE RELEASE\n");
             scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
             request_selection_surface_update(st_output);
             break;
@@ -230,11 +236,16 @@ handle_keyboard_modifiers(
         return;
     }
 
+    struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, selection_surface);
+
+    if (st_output->selection_ctx.selection_state == SELECTION_NONE) {
+        return;
+    }
+
     bool mod_key_active = xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
 
     {
-        struct scran_output     *st_output = wl_container_of(focused_selection_surface, st_output, selection_surface);
-        struct scran_ui_context *ui_ctx    = &focused_selection_surface->ui_ctx;
+        struct scran_ui_context *ui_ctx = &focused_selection_surface->ui_ctx;
 
         if (mod_key_active) {
             scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_KEYMAP_TEXT_IMAGE_MOD);

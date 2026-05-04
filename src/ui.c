@@ -41,14 +41,23 @@ struct _sized_u16_string {
 };
 #define INIT_SIZED_U16_STRING(s) { .str = (s), .strlen = CHAR16_STRLEN(s) }
 static const struct _sized_u16_string keymap_image_texts[] = {
-    [SCRAN_UI_KEYMAP_TEXT_IMAGE_DEFAULT]  = INIT_SIZED_U16_STRING(u"[↵] Image & Exit"),
-    [SCRAN_UI_KEYMAP_TEXT_IMAGE_MOD]      = INIT_SIZED_U16_STRING(u"[↵] Image       "),
+    // XXX: Leading space so it doesn't hug the edge when drawn at x=0,y=0.
+    //      The top margin is fine already.
+    //      Somewhat of a HACK, but shouldn't cause any issues unless we change
+    //      the font or origin point.
+    [SCRAN_UI_KEYMAP_TEXT_EXTRA_PRE_INIT_DEFAULT] = INIT_SIZED_U16_STRING(u" Click and drag to make selection"),
 
-    [SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT]  = INIT_SIZED_U16_STRING(u"[␣] Video \uf028"),
-    [SCRAN_UI_KEYMAP_TEXT_VIDEO_MOD]      = INIT_SIZED_U16_STRING(u"[␣] Video \uf026"),
+    [SCRAN_UI_KEYMAP_TEXT_IMAGE_DEFAULT]          = INIT_SIZED_U16_STRING(u"[↵] Image & Exit"),
+    [SCRAN_UI_KEYMAP_TEXT_IMAGE_MOD]              = INIT_SIZED_U16_STRING(u"[↵] Image       "),
 
-    [SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT]  = INIT_SIZED_U16_STRING(u"[⇥] Release focus"),
-    [SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED] = INIT_SIZED_U16_STRING(u"[⇥] Focus released. 'scran -h' for help."),
+    [SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT]          = INIT_SIZED_U16_STRING(u"[␣] Video \uf028"),
+    [SCRAN_UI_KEYMAP_TEXT_VIDEO_MOD]              = INIT_SIZED_U16_STRING(u"[␣] Video \uf026"),
+
+    [SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT]          = INIT_SIZED_U16_STRING(u"[⇥] Release focus"),
+    [SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED]         = INIT_SIZED_U16_STRING(u"[⇥] Focus released. 'scran -h' for help."),
+
+
+    [SCRAN_UI_KEYMAP_TEXT_EMPTY]                  = INIT_SIZED_U16_STRING(u""),
 };
 static_assert( (sizeof(keymap_image_texts) / sizeof(keymap_image_texts[0])) == SCRAN_UI_KEYMAP_N_TEXTS,
                "keymap_image_texts[] length must exactly cover all text enum values.");
@@ -213,13 +222,25 @@ reinit_scran_ui(
 static const struct {
     enum scran_ui_keymap_text  text;
     enum scran_ui_keymap_color color;
-} _default_items[] = {
+} _pre_selection_items[] = {
+    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE] = { SCRAN_UI_KEYMAP_TEXT_EMPTY                 , SCRAN_UI_KEYMAP_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO] = { SCRAN_UI_KEYMAP_TEXT_EMPTY                 , SCRAN_UI_KEYMAP_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS] = { SCRAN_UI_KEYMAP_TEXT_EMPTY                 , SCRAN_UI_KEYMAP_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA] = { SCRAN_UI_KEYMAP_TEXT_EXTRA_PRE_INIT_DEFAULT, SCRAN_UI_KEYMAP_COLOR_DEFAULT },
+};
+
+static const struct {
+    enum scran_ui_keymap_text  text;
+    enum scran_ui_keymap_color color;
+} _post_selection_items[] = {
     [SCRAN_UI_KEYMAP_ITEM_I_IMAGE] = { SCRAN_UI_KEYMAP_TEXT_IMAGE_DEFAULT, SCRAN_UI_KEYMAP_COLOR_DEFAULT },
     [SCRAN_UI_KEYMAP_ITEM_I_VIDEO] = { SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT, SCRAN_UI_KEYMAP_COLOR_DEFAULT },
     [SCRAN_UI_KEYMAP_ITEM_I_FOCUS] = { SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT, SCRAN_UI_KEYMAP_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA] = { SCRAN_UI_KEYMAP_TEXT_EMPTY        , SCRAN_UI_KEYMAP_COLOR_DEFAULT },
 };
+
 bool
-init_scran_ui(
+init_scran_ui_pre_selection(
     struct scran_ui_context *ui_ctx,
     double scale
 ) {
@@ -231,11 +252,26 @@ init_scran_ui(
 
         bl_image_init(&keymap_item->bl_img);
 
-        keymap_item->text  = _default_items[i].text;
-        keymap_item->color = _default_items[i].color;
+        keymap_item->text  = _pre_selection_items[i].text;
+        keymap_item->color = _pre_selection_items[i].color;
     }
 
     reinit_scran_ui(ui_ctx, scale);
+
+    return true;
+}
+
+bool
+scran_ui_set_selection_stage_defaults(
+    struct scran_ui_context *ui_ctx
+) {
+    for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
+        struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[i];
+        keymap_item->text  = _post_selection_items[i].text;
+        keymap_item->color = _post_selection_items[i].color;
+    }
+
+    ui_ctx->dirty = true;
 
     return true;
 }

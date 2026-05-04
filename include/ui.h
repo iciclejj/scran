@@ -18,6 +18,7 @@ enum scran_ui_keymap_item_index {
     SCRAN_UI_KEYMAP_ITEM_I_IMAGE,
     SCRAN_UI_KEYMAP_ITEM_I_VIDEO,
     SCRAN_UI_KEYMAP_ITEM_I_FOCUS,
+    SCRAN_UI_KEYMAP_ITEM_I_EXTRA,
     SCRAN_UI_KEYMAP_N_ITEMS,
 };
 
@@ -30,6 +31,9 @@ enum scran_ui_keymap_color {
 };
 
 enum scran_ui_keymap_text {
+    SCRAN_UI_KEYMAP_TEXT_EXTRA_PRE_INIT_DEFAULT,
+
+
     SCRAN_UI_KEYMAP_TEXT_IMAGE_DEFAULT,
     SCRAN_UI_KEYMAP_TEXT_IMAGE_MOD,
 
@@ -38,6 +42,10 @@ enum scran_ui_keymap_text {
 
     SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT,
     SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED,
+
+
+    SCRAN_UI_KEYMAP_TEXT_EMPTY,
+
 
     SCRAN_UI_KEYMAP_N_TEXTS,
 };
@@ -73,8 +81,9 @@ struct scran_ui_context {
 };
 
 
-bool init_scran_ui(struct scran_ui_context *ui_ctx, double scale);
+bool init_scran_ui_pre_selection(struct scran_ui_context *ui_ctx, double scale);
  void destroy_scran_ui(struct scran_ui_context *ui_ctx);
+bool scran_ui_set_selection_stage_defaults( struct scran_ui_context *ui_ctx);
 bool reinit_scran_ui(struct scran_ui_context *ui_ctx, double scale);
 void redraw_keymap(struct scran_ui_context *ui_ctx);
 
@@ -135,21 +144,6 @@ scran_ui_keymap_item_set_disabled(
 
     ui_ctx->dirty = true;
 }
-
-static inline int
-sum_keymap_item_widths_px(
-    struct scran_ui_keymap *keymap
-) {
-    int width_px = 0;
-
-    for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        struct scran_ui_keymap_item  *keymap_item = &keymap->items[i];
-        width_px += keymap_item->width_px;
-    }
-
-    return width_px;
-}
-
 
 
 #endif

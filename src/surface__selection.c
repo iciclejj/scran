@@ -219,6 +219,28 @@ _draw_and_damage_background(
     bl_path_clear(&selection_surface->bl_path);
 }
 
+
+static inline int
+_get_total_keymap_width_px(
+    struct scran_ui_keymap *keymap,
+    int item_spacing_px
+) {
+    int total_width_px = 0;
+
+    for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
+        struct scran_ui_keymap_item *keymap_item = &keymap->items[i];
+        if (keymap_item->width_px != 0) {
+            total_width_px += keymap_item->width_px + item_spacing_px;
+        }
+    }
+
+    // Switch to if statement if no-text scenarios will be possible in the future.
+    assert(total_width_px != 0);
+    total_width_px -= item_spacing_px;
+
+    return total_width_px;
+}
+
 static inline void
 _draw_and_damage_keymap(
     struct scran_output_selectionSurface *selection_surface,
@@ -235,7 +257,8 @@ _draw_and_damage_keymap(
         ui_ctx->dirty = false;
     }
 
-    const int image_spacing_px = 3 * ui_ctx->fixed_width_font_glyph_width_px;
+    const int item_spacing_px = 3 * ui_ctx->fixed_width_font_glyph_width_px;
+    const int total_width_px = _get_total_keymap_width_px(keymap, item_spacing_px);
 
     struct scran_ui_keymap_surface_state *state_prev            = &st_buffer->ui_keymap_state_currently_drawn;
     struct scran_ui_keymap_surface_state *state_prev_any_buffer = &selection_surface->ui_keymap_state_last_drawn;
@@ -244,7 +267,7 @@ _draw_and_damage_keymap(
             .x = capture_area_border_outline.x0,
             .y = capture_area_border_outline.y1,
         },
-        .total_width_px = (SCRAN_UI_KEYMAP_N_ITEMS - 1) * image_spacing_px + sum_keymap_item_widths_px(keymap),
+        .total_width_px = total_width_px,
     };
 
     bool should_redraw =
@@ -324,9 +347,17 @@ _draw_and_damage_keymap(
     BLPointI _origin_new_curr_item = state_new.origin;
     for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
         struct scran_ui_keymap_item *keymap_item = &keymap->items[i];
-        bl_context_blit_image_i(&st_buffer->bl_ctx, &_origin_new_curr_item, &keymap_item->bl_img, NULL);
-        _origin_new_curr_item.x += keymap_item->width_px + image_spacing_px;
+
+        if (keymap_item->width_px != 0) {
+            bl_context_blit_image_i(&st_buffer->bl_ctx, &_origin_new_curr_item, &keymap_item->bl_img, NULL);
+            _origin_new_curr_item.x += keymap_item->width_px + item_spacing_px;
+        }
     }
+
+    // See _get_total_keymap_width_px()
+    assert(_origin_new_curr_item.x != 0);
+    assert((_origin_new_curr_item.x - state_new.origin.x) - item_spacing_px == total_width_px);
+
     wl_surface_damage_buffer(
         selection_surface->surface.wl_surface,
         state_new.origin.x,

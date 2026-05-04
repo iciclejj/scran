@@ -300,6 +300,9 @@ handle_pointer_button(
                 selection_ctx->box_px = initial_selection_area;
             }
             selection_ctx->selection_state = SELECTION_INITIALIZING;
+
+            scran_ui_set_selection_stage_defaults(&st_output->selection_surface.ui_ctx);
+
             break;
         case SELECTION_INITIALIZING:
             selection_ctx->box_px.x1 = x_px;
