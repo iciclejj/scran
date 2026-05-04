@@ -422,7 +422,7 @@ _handle_cli_arg_output_directory(
 }
 
 #define SCRAN_USAGE    "Usage: scran [options...] [output_directory]"
-#define VERSION_STRING "v0.8.1"
+#define VERSION_STRING "v0.9.0"
 
 static const char help_string[] =
     SCRAN_USAGE "\n"
