@@ -6,7 +6,7 @@ Scran is still under heavy development. Please open an issue if you find any bug
 Inspired by [grim](https://wayland.emersion.fr/grim/) and [slurp](https://wayland.emersion.fr/slurp/).
 
 
-https://github.com/user-attachments/assets/f697827a-8f2c-4649-a1ab-6e0bd6fb1304
+https://github.com/user-attachments/assets/bee48b04-f073-48f1-a37f-511e5d7c8426
 
 ### Compositor support:
 
