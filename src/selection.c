@@ -36,10 +36,9 @@ set_selection_surface_theme(
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, fill_style.value);
         bl_context_set_fill_rule(&st_buffer->bl_ctx, fill_rule);
 
+        // XXX TODO: Move this responsibility out of here.
         st_buffer->force_redraw = true;
     }
-
-    request_selection_surface_update(st_output);
 }
 
 
