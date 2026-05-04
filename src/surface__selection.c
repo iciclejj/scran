@@ -13,8 +13,6 @@
 #define MAX(a, b) (a > b ? a : b)
 
 
-static inline void
-_get_box_diffs_as_4_rects(
 // Operation: a ^ b
 static inline void
 _get_box_symdiff_as_4_rects(
