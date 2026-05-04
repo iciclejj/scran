@@ -250,23 +250,19 @@ handle_keyboard_modifiers(
         if (mod_key_active) {
             scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_KEYMAP_TEXT_IMAGE_MOD);
             scran_ui_keymap_item_set_color(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_KEYMAP_COLOR_MOD);
+            scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_TEXT_VIDEO_MOD);
+            scran_ui_keymap_item_set_color(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_MOD);
         } else {
             scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_KEYMAP_TEXT_IMAGE_DEFAULT);
             scran_ui_keymap_item_set_color(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_KEYMAP_COLOR_DEFAULT);
-        }
-
-        if (!st_output->capture.frame_ctx.capturing_video) {
-            if (mod_key_active) {
-                scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_TEXT_VIDEO_MOD);
-                scran_ui_keymap_item_set_color(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_MOD);
-            } else {
-                scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT);
-                scran_ui_keymap_item_set_color(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_DEFAULT);
-            }
+            scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT);
+            scran_ui_keymap_item_set_color(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_DEFAULT);
         }
 
         // This is only used during video init, so just set this unconditionally
         // to avoid future possible sticky key bugs...
+        // TODO: Probably merge the authority for these things into the ui code,
+        // especially if we want to support mouse clicks.
         st_output->capture.frame_ctx.audio_disable_modifier_active = mod_key_active;
 
         request_selection_surface_update(st_output);

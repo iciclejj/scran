@@ -7,6 +7,7 @@
 
 #include <blend2d/blend2d.h>
 
+#include "print.h"
 
 enum scran_ui_disable_reason {
     SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO,
@@ -50,13 +51,20 @@ enum scran_ui_keymap_text {
     SCRAN_UI_KEYMAP_N_TEXTS,
 };
 
+struct scran_ui_keymap_item_lockable_state {
+    uint8_t text;
+    uint8_t color;
+};
+
 struct scran_ui_keymap_item {
     BLImageCore bl_img;
-    enum scran_ui_keymap_text text;
-    enum scran_ui_keymap_color color;
     int width_px; // height_px is in parent
 
+    struct scran_ui_keymap_item_lockable_state live_state;
+    struct scran_ui_keymap_item_lockable_state locked_state;
+
     uint8_t disable_reason_mask;
+    bool locked;
 };
 static_assert( sizeof((struct scran_ui_keymap_item){}.disable_reason_mask) * CHAR_BIT >= SCRAN_UI_N_DISABLE_REASONS,
                ".disable_reason_mask must fit all possible disable reasons.");
@@ -64,6 +72,7 @@ static_assert( sizeof((struct scran_ui_keymap_item){}.disable_reason_mask) * CHA
 struct scran_ui_keymap {
     struct scran_ui_keymap_item items[SCRAN_UI_KEYMAP_N_ITEMS];
     int height_px;
+
     uint32_t pressed_items_mask;
 };
 
@@ -94,8 +103,13 @@ scran_ui_keymap_item_set_color(
     enum scran_ui_keymap_item_index item_index,
     enum scran_ui_keymap_color color
 ) {
-    ui_ctx->ui_keymap.items[item_index].color = color;
-    ui_ctx->dirty = true;
+    struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[item_index];
+
+    keymap_item->live_state.color = color;
+
+    if (!keymap_item->locked) {
+        ui_ctx->dirty = true;
+    }
 }
 
 static inline void
@@ -104,8 +118,13 @@ scran_ui_keymap_item_set_text(
     enum scran_ui_keymap_item_index item_index,
     enum scran_ui_keymap_text text
 ) {
-    ui_ctx->ui_keymap.items[item_index].text = text;
-    ui_ctx->dirty = true;
+    struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[item_index];
+
+    keymap_item->live_state.text = text;
+
+    if (!keymap_item->locked) {
+        ui_ctx->dirty = true;
+    }
 }
 
 static inline void
@@ -141,6 +160,24 @@ scran_ui_keymap_item_set_disabled(
     } else {
         keymap_item->disable_reason_mask &= ~bit;
     }
+
+    ui_ctx->dirty = true;
+}
+
+static inline void
+scran_ui_keymap_item_set_locked(
+    struct scran_ui_context *ui_ctx,
+    enum scran_ui_keymap_item_index item_index,
+    bool locked
+) {
+    struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[item_index];
+
+    if (locked && keymap_item->locked) {
+        eprintf("ERROR: Tried to lock already-locked key state. THIS IS A BUG, please open an issue.\n");
+    }
+
+    keymap_item->locked_state = keymap_item->live_state;
+    keymap_item->locked = locked;
 
     ui_ctx->dirty = true;
 }

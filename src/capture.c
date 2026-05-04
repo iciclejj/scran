@@ -521,6 +521,7 @@ request_video_capture(struct scran_output *st_output)
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
         scran_ui_keymap_item_set_disabled(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, true);
         scran_ui_keymap_item_set_color(   ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_VIDEO_CAPTURE);
+        scran_ui_keymap_item_set_locked(  ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
     }
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
     request_selection_surface_update(st_output);
@@ -628,6 +629,7 @@ end_video_capture(struct scran_output *st_output)
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
         scran_ui_keymap_item_set_disabled(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, false);
         scran_ui_keymap_item_set_color(   ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_DEFAULT);
+        scran_ui_keymap_item_set_locked(  ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
     }
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
     request_selection_surface_update(st_output);

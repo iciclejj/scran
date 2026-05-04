@@ -90,8 +90,11 @@ _redraw_keymap_image(
     bool            pressed,
     int             height_px
 ) {
-    const char16_t *text = keymap_image_texts[keymap_item->text].str;
-    size_t   text_strlen = keymap_image_texts[keymap_item->text].strlen;
+    const struct scran_ui_keymap_item_lockable_state lockable_state =
+        keymap_item->locked ? keymap_item->locked_state : keymap_item->live_state;
+
+    const char16_t *text = keymap_image_texts[lockable_state.text].str;
+    size_t   text_strlen = keymap_image_texts[lockable_state.text].strlen;
 
     BLTextMetrics text_metrics = _get_bl_text_metrics(&ui_ctx->font, text, text_strlen);
     const double  width        = text_metrics.advance.x;
@@ -117,7 +120,7 @@ _redraw_keymap_image(
 
         // TODO: Is bl_context_clear_all() needed after bl_image_reset()?
 
-        BLRgba32 color = keymap_colors[keymap_item->color];
+        BLRgba32 color = keymap_colors[lockable_state.color];
         bl_context_clear_all(&ui_ctx->bl_ctx);
 
         if (keymap_item->disable_reason_mask != 0U) {
@@ -252,8 +255,9 @@ init_scran_ui_pre_selection(
 
         bl_image_init(&keymap_item->bl_img);
 
-        keymap_item->text  = _pre_selection_items[i].text;
-        keymap_item->color = _pre_selection_items[i].color;
+        assert(keymap_item->locked == false);
+        keymap_item->live_state.text  = _pre_selection_items[i].text;
+        keymap_item->live_state.color = _pre_selection_items[i].color;
     }
 
     reinit_scran_ui(ui_ctx, scale);
@@ -267,8 +271,10 @@ scran_ui_set_selection_stage_defaults(
 ) {
     for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
         struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[i];
-        keymap_item->text  = _post_selection_items[i].text;
-        keymap_item->color = _post_selection_items[i].color;
+
+        keymap_item->locked = false;
+        keymap_item->live_state.text  = _post_selection_items[i].text;
+        keymap_item->live_state.color = _post_selection_items[i].color;
     }
 
     ui_ctx->dirty = true;
