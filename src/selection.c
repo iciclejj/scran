@@ -1,12 +1,17 @@
-#include <wayland-client.h>
+#include <assert.h>
 
+#include <wayland-client-protocol.h>
+#include <wayland-client.h>
+#include <blend2d/blend2d.h>
+
+#include "init.h"
 #include "state.h"
 #include "state-util.h"
 #include "selection.h"
 #include "print.h"
 #include "capture.h"
 #include "surface__selection.h"
-#include "util/blend2d.h"
+#include "ui.h"
 
 
 extern struct scran g_state;
@@ -21,6 +26,11 @@ set_selection_surface_theme(
     static const enum BLFillRule fill_rule = BL_FILL_RULE_EVEN_ODD;
 
     switch (action) {
+    case SURFACE_THEME_PRE_SELECTION:
+        // Alpha channel must be respected for invisibility.
+        assert(SURFACE_SHM_FORMAT_BL == BL_FORMAT_PRGB32);
+        fill_style = SCRAN_SELECTION_BORDER_COLOR_INVISIBLE;
+        break;
     case SURFACE_THEME_DEFAULT:
         fill_style = SCRAN_SELECTION_BORDER_COLOR_DEFAULT;
         break;
@@ -35,10 +45,9 @@ set_selection_surface_theme(
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, fill_style.value);
         bl_context_set_fill_rule(&st_buffer->bl_ctx, fill_rule);
 
+        // XXX TODO: Move this responsibility out of here.
         st_buffer->force_redraw = true;
     }
-
-    request_selection_surface_update(st_output);
 }
 
 
@@ -128,6 +137,15 @@ start_grabbing_focus()
             g_state.seat.pointer_ctx.last_enter_serial,
             WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR
         );
+
+        {
+            struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
+            for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
+                scran_ui_keymap_item_set_disabled(ui_ctx, i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, false);
+            }
+            scran_ui_keymap_item_set_text(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT);
+            request_selection_surface_update(st_output);
+        }
     }
 }
 
@@ -159,6 +177,15 @@ stop_grabbing_focus()
             g_state.seat.pointer_ctx.last_enter_serial,
             WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT
         );
+
+        {
+            struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
+            for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
+                scran_ui_keymap_item_set_disabled(ui_ctx, i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, true);
+            }
+            scran_ui_keymap_item_set_text(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED);
+            request_selection_surface_update(st_output);
+        }
     }
 }
 

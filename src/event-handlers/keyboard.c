@@ -11,6 +11,7 @@
 #include "print.h"
 #include "selection.h"
 #include "surface__selection.h"
+#include "ui.h"
 #include "util/blend2d.h"
 
 
@@ -91,23 +92,44 @@ handle_keyboard_key(
         return;
     }
 
-    struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, selection_surface);
-
-    if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
-        return;
-    }
+    struct scran_output          *st_output    = wl_container_of(focused_selection_surface, st_output, selection_surface);
+    struct scran_ui_context      *ui_ctx       = &focused_selection_surface->ui_ctx;
 
     // Only xkb key format supported
     assert(state->seat.keyboard.xkb_state != NULL);
-
     const xkb_keysym_t xkb_key = xkb_state_key_get_one_sym(
         state->seat.keyboard.xkb_state,
         key + 8 // See wl_keyboard::keymap_format
     );
 
+    // TODO: Add custom pre-init actions.
+    if (st_output->selection_ctx.selection_state == SELECTION_NONE
+        && xkb_key != XKB_KEY_Escape // Allow exit
+    ) {
+        return;
+    }
+
+    // TODO: Nested switch for released/pressed
+    if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
+        switch(xkb_key) {
+        case XKB_KEY_Return:
+            scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, false);
+            request_selection_surface_update(st_output);
+            break;
+        case XKB_KEY_space:
+            scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
+            request_selection_surface_update(st_output);
+            break;
+        case XKB_KEY_Tab:
+            scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, false);
+            request_selection_surface_update(st_output);
+            break;
+        }
+        return;
+    }
+
     assert(key_state != WL_KEYBOARD_KEY_STATE_RELEASED);
     switch (xkb_key) {
-    // TODO: Probably reorganize all of this later
     case XKB_KEY_Left:
         shift_blboxi(&st_output->selection_ctx.box_px, -1,  0);
         request_selection_surface_update(st_output);
@@ -150,10 +172,15 @@ handle_keyboard_key(
             if (!xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE)) {
                 state->exit_requested = true;
             }
+
+            scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
+            request_selection_surface_update(st_output);
         }
 
         break;
     case XKB_KEY_space:
+        bool video_button_got_jammed = false;
+
         if (st_output->capture.frame_ctx.capturing_video) {
             request_end_video_capture(st_output);
         } else {
@@ -162,8 +189,15 @@ handle_keyboard_key(
             }
 
             if (!request_video_capture(st_output)) {
+                // TODO: Fire a notification instead?
+                video_button_got_jammed = true; // :(
                 eprintf("Failed to start video capture.\n");
             }
+        }
+
+        if (!video_button_got_jammed) {
+            scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
+            request_selection_surface_update(st_output);
         }
         break;
     }
@@ -195,6 +229,44 @@ handle_keyboard_modifiers(
         0,
         group
     );
+
+    struct scran_output_selectionSurface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
+
+    if (focused_selection_surface == NULL) {
+        return;
+    }
+
+    struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, selection_surface);
+
+    if (st_output->selection_ctx.selection_state == SELECTION_NONE) {
+        return;
+    }
+
+    bool mod_key_active = xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
+
+    {
+        struct scran_ui_context *ui_ctx = &focused_selection_surface->ui_ctx;
+
+        if (mod_key_active) {
+            scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_KEYMAP_TEXT_IMAGE_MOD);
+            scran_ui_keymap_item_set_color(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_KEYMAP_COLOR_MOD);
+            scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_TEXT_VIDEO_MOD);
+            scran_ui_keymap_item_set_color(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_MOD);
+        } else {
+            scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_KEYMAP_TEXT_IMAGE_DEFAULT);
+            scran_ui_keymap_item_set_color(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_KEYMAP_COLOR_DEFAULT);
+            scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT);
+            scran_ui_keymap_item_set_color(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_DEFAULT);
+        }
+
+        // This is only used during video init, so just set this unconditionally
+        // to avoid future possible sticky key bugs...
+        // TODO: Probably merge the authority for these things into the ui code,
+        // especially if we want to support mouse clicks.
+        st_output->capture.frame_ctx.audio_disable_modifier_active = mod_key_active;
+
+        request_selection_surface_update(st_output);
+    }
 }
 
 

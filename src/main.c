@@ -484,8 +484,7 @@ init_postmem()
 
         custom_initial_selection = blrecti_to_blboxi(custom_initial_selection_rect);
 
-        // TODO: Should this be the responsibility of init_postmem__selection?
-        custom_initial_selection_output->selection_ctx.box_px = custom_initial_selection;
+        scran_ui_set_selection_stage_defaults(&custom_initial_selection_output->selection_surface.ui_ctx);
         set_selection_initialized(custom_initial_selection_output);
     }
 

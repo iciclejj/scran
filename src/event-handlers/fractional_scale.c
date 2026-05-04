@@ -5,6 +5,7 @@
 #include "event-handlers.h"
 #include "surface__selection.h"
 #include "print.h"
+#include "ui.h"
 
 
 static inline enum scran_common_surface_update_handler_result
@@ -46,6 +47,7 @@ handle_fractional_scale_preferred_scale__selection(
 
     if (ret == SCRAN_COMMON_SURFACE_UPDATE_HANDLER_UPDATED) {
         struct scran_output *st_output = wl_container_of(selection_surface, st_output, selection_surface);
+        reinit_scran_ui(&selection_surface->ui_ctx, selection_surface->surface.final_scale_factor_normalized);
         request_selection_surface_update(st_output);
     }
 }

@@ -14,6 +14,8 @@
 
 #include "state.h"
 #include "state-util.h"
+#include "surface__selection.h"
+#include "ui.h"
 #include "util/blend2d.h"
 #include "util/lib-interop.h"
 #include "event-handlers.h"
@@ -441,7 +443,7 @@ init_ffmpeg(struct scran_output *st_output)
     }
 
 
-    if (!g_state.options.disable_audio_capture) {
+    if (!g_state.options.disable_audio_capture && !frame_ctx->audio_disable_modifier_active) {
         if (init_ffmpeg_audio(st_output)) {
             frame_ctx->audio_active = true;
         } else {
@@ -515,7 +517,14 @@ request_video_capture(struct scran_output *st_output)
         return false;
     }
 
+    {
+        struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
+        scran_ui_keymap_item_set_disabled(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, true);
+        scran_ui_keymap_item_set_color(   ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_VIDEO_CAPTURE);
+        scran_ui_keymap_item_set_locked(  ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
+    }
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
+    request_selection_surface_update(st_output);
 
     // image-copy-capture protocol guarantees we get presentation time based
     // on system monotonic time.
@@ -566,6 +575,7 @@ request_end_video_capture(struct scran_output *st_output)
     // "fullscreen" capture, but seems effective even then on my local
     // Sway (v1.11).)
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
+    request_selection_surface_update(st_output);
 
     request_video_capture_frame(
         &st_output->capture.frame_ctx,
@@ -615,7 +625,15 @@ end_video_capture(struct scran_output *st_output)
 
     destroy_ffmpeg(st_output);
 
+    {
+        struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
+        scran_ui_keymap_item_set_disabled(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, false);
+        scran_ui_keymap_item_set_color(   ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_DEFAULT);
+        scran_ui_keymap_item_set_locked(  ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
+    }
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+    request_selection_surface_update(st_output);
+
     unset_selection_freeze_size(st_output);
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);

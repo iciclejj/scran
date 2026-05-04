@@ -62,7 +62,10 @@ handle_pointer_leave(
     uint32_t serial,
     struct wl_surface *surface_left
 ) {
-    // Nothing to do here yet...
+    struct scran *state = data;
+    struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
+
+    pointer_ctx->focused_fulloutput_selection_surface = NULL;
 }
 
 
@@ -297,6 +300,13 @@ handle_pointer_button(
                 selection_ctx->box_px = initial_selection_area;
             }
             selection_ctx->selection_state = SELECTION_INITIALIZING;
+
+            // TODO: Create set_selection_initializing()/set_selection_stage(),
+            // analogous to current set_selection_initialized()?
+            scran_ui_set_selection_stage_defaults(&st_output->selection_surface.ui_ctx);
+            set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+            request_selection_surface_update(st_output);
+
             break;
         case SELECTION_INITIALIZING:
             selection_ctx->box_px.x1 = x_px;

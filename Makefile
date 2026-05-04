@@ -2,6 +2,8 @@
 
 PROG := scran
 
+FONT := assets/font.ttf
+
 BUILD_DIR := build
 wayland_protocols_generated_source_dir := $(BUILD_DIR)/wayland-protocols-generated-source
 WL_PROTOCOLS_DIR_LOCAL := $(wayland_protocols_generated_source_dir)
@@ -136,9 +138,18 @@ _objs := $(srcs:.c=.o) $(wayland_protocols_srcs_c:.c=.o)
 objs_release := $(addprefix $(build_dir_release)/, $(_objs))
 objs_debug :=   $(addprefix $(build_dir_debug)/,   $(_objs))
 
-$(prog_release): $(objs_release)
+# TODO: Allow arch override/detection
+obj_font := $(FONT:.ttf=.o)
+$(obj_font): $(FONT)
+	objcopy \
+		--input-target binary \
+		--output-target elf64-x86-64 \
+		--binary-architecture i386:x86-64 \
+		$< $@
+
+$(prog_release): $(objs_release) $(obj_font)
 	$(CC) $(ALL_CFLAGS_REL) $(LDFLAGS) $^ $(ALL_LDLIBS) -o $(prog_release)
-$(prog_debug):	 $(objs_debug)
+$(prog_debug):	 $(objs_debug)   $(obj_font)
 	$(CC) $(ALL_CFLAGS_DBG) $(LDFLAGS) $^ $(ALL_LDLIBS) -o $(prog_debug)
 
 
@@ -155,9 +166,9 @@ protocols: $(wayland_protocols_srcs) $(_wayland_protocols_objs_debug)
 
 .PHONY: clean clean-objs clean-generated-src
 clean: 
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) $(obj_font)
 clean-objs:
-	rm -f $(objs_release) $(objs_debug)
+	rm -f $(objs_release) $(objs_debug) $(obj_font)
 clean-generated-src:
 	rm -rf $(wayland_protocols_generated_source_dir)
 

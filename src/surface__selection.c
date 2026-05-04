@@ -7,11 +7,78 @@
 #include "init.h"
 #include "util/blend2d.h"
 #include "event-handlers.h"
+#include "ui.h"
 
 
 #define MIN(a, b) (a < b ? a : b)
 #define MAX(a, b) (a > b ? a : b)
 
+
+// Operation: a - b
+static inline void
+_get_box_diff_as_4_rects(
+    struct BLBoxI a,
+    struct BLBoxI b,
+    struct BLRectI ret[static 4]
+) {
+    assert(!SCRAN_BL_BOX_IS_INVERTED(a));
+    assert(!SCRAN_BL_BOX_IS_INVERTED(b));
+
+    const struct BLBoxI intersection = {
+        .x0 = MAX(a.x0, b.x0),
+        .x1 = MIN(a.x1, b.x1),
+        .y0 = MAX(a.y0, b.y0),
+        .y1 = MIN(a.y1, b.y1),
+    };
+
+
+    if (intersection.x0 > a.x1 || intersection.x1 < a.x0
+     || intersection.y0 > a.y1 || intersection.y1 < a.y0
+    ) {
+        // No overlap
+        ret[0] = blboxi_to_blrecti(a);
+        ret[1] = (struct BLRectI){ 0 };
+        ret[2] = (struct BLRectI){ 0 };
+        ret[3] = (struct BLRectI){ 0 };
+        return;
+    }
+
+    const BLRectI left_full = (struct BLRectI) {
+        .x = a.x0,
+        .w = intersection.x0 - a.x0,
+        .y = a.y0,
+        .h = a.y1 - a.y0,
+    };
+
+    ret[0] = left_full;
+
+    const BLRectI right_full = (struct BLRectI) {
+        .x = intersection.x1,
+        .w = a.x1 - intersection.x1,
+        .y = a.y0,
+        .h = a.y1 - a.y0,
+    };
+
+    ret[1] = right_full;
+
+    const BLRectI top_remaining = (struct BLRectI) {
+        .x = intersection.x0,
+        .w = intersection.x1 - intersection.x0,
+        .y = a.y0,
+        .h = intersection.y0 - a.y0,
+    };
+
+    ret[2] = top_remaining;
+
+    const BLRectI bottom_remaining = (struct BLRectI) {
+        .x = intersection.x0,
+        .w = intersection.x1 - intersection.x0,
+        .y = intersection.y1,
+        .h = a.y1 - intersection.y1,
+    };
+
+    ret[3] = bottom_remaining;
+}
 
 // Operation: a ^ b
 static inline void
@@ -153,6 +220,156 @@ _draw_and_damage_background(
 }
 
 
+static inline int
+_get_total_keymap_width_px(
+    struct scran_ui_keymap *keymap,
+    int item_spacing_px
+) {
+    int total_width_px = 0;
+
+    for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
+        struct scran_ui_keymap_item *keymap_item = &keymap->items[i];
+        if (keymap_item->width_px != 0) {
+            total_width_px += keymap_item->width_px + item_spacing_px;
+        }
+    }
+
+    // Switch to if statement if no-text scenarios will be possible in the future.
+    assert(total_width_px != 0);
+    total_width_px -= item_spacing_px;
+
+    return total_width_px;
+}
+
+static inline void
+_draw_and_damage_keymap(
+    struct scran_output_selectionSurface *selection_surface,
+    struct scran_output_selectionSurface_buffer *st_buffer,
+    BLBoxI capture_area_border_outline
+) {
+    struct scran_ui_context *ui_ctx = &selection_surface->ui_ctx;
+    struct scran_ui_keymap  *keymap = &selection_surface->ui_ctx.ui_keymap;
+
+    bool ui_was_dirty = ui_ctx->dirty;
+
+    if (ui_was_dirty) {
+        redraw_keymap(ui_ctx);
+        ui_ctx->dirty = false;
+    }
+
+    const int item_spacing_px = 3 * ui_ctx->fixed_width_font_glyph_width_px;
+    const int total_width_px = _get_total_keymap_width_px(keymap, item_spacing_px);
+
+    struct scran_ui_keymap_surface_state *state_prev            = &st_buffer->ui_keymap_state_currently_drawn;
+    struct scran_ui_keymap_surface_state *state_prev_any_buffer = &selection_surface->ui_keymap_state_last_drawn;
+    struct scran_ui_keymap_surface_state  state_new = {
+        .origin         = {
+            .x = capture_area_border_outline.x0,
+            .y = capture_area_border_outline.y1,
+        },
+        .total_width_px = total_width_px,
+    };
+
+    bool should_redraw =
+        st_buffer->force_redraw
+        || ui_was_dirty
+        || !blpointi_are_equal(state_prev->origin, state_new.origin)
+        || state_prev->total_width_px != state_new.total_width_px
+    ;
+    if (!should_redraw) {
+        return;
+    }
+
+    // Clamp to buffer width
+    if (state_new.origin.x < 0) {
+        state_new.origin.x = 0;
+    } else if ((state_new.origin.x + state_new.total_width_px) > selection_surface->surface.width_px_buffer) {
+        state_new.origin.x = selection_surface->surface.width_px_buffer - state_new.total_width_px;
+    }
+
+    // Clear out old ui
+    {
+        // TODO: Just store the fill styles in state
+        BLVarCore prev_fill_style = { };
+        bl_context_get_fill_style(&st_buffer->bl_ctx, &prev_fill_style);
+        // XXX TODO: We should probably just be setting this at every render location
+        // so we don't have to juggle them like this. Same with fill rule and fill style.
+        BLCompOp comp_op = bl_context_get_comp_op(&st_buffer->bl_ctx);
+        bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
+
+        BLRectI text_rect_prev = {
+            .x = state_prev->origin.x,
+            .y = state_prev->origin.y,
+            .w = state_prev->total_width_px,
+            .h = keymap->height_px,
+        };
+
+        BLRectI text_rect_prev_any_buffer = {
+            .x = state_prev_any_buffer->origin.x,
+            .y = state_prev_any_buffer->origin.y,
+            .w = state_prev_any_buffer->total_width_px,
+            .h = keymap->height_px,
+        };
+
+        bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, SCRAN_SELECTION_BACKGROUND_COLOR.value);
+
+        BLRectI text_rect_prev_uncovered[4];
+        _get_box_diff_as_4_rects(blrecti_to_blboxi(text_rect_prev), capture_area_border_outline, text_rect_prev_uncovered);
+        // XXX: idk if this one is actually worth doing
+        BLRectI text_rect_prev_any_buffer_uncovered[4];
+        _get_box_diff_as_4_rects(blrecti_to_blboxi(text_rect_prev_any_buffer), capture_area_border_outline, text_rect_prev_any_buffer_uncovered);
+
+        for (int i = 0; i < 4; ++i) {
+            bl_context_fill_rect_i(
+                &st_buffer->bl_ctx,
+                &text_rect_prev_uncovered[i]
+            );
+            // See _draw_and_damage_region() comment for why we damage a different
+            // region than we blit.
+            wl_surface_damage_buffer(
+                selection_surface->surface.wl_surface,
+                text_rect_prev_any_buffer_uncovered[i].x,
+                text_rect_prev_any_buffer_uncovered[i].y,
+                text_rect_prev_any_buffer_uncovered[i].w,
+                text_rect_prev_any_buffer_uncovered[i].h
+            );
+        }
+
+        // XXX TODO: See comment above near bl_context_set_comp_op().
+        bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_OVER);
+        // Restore fill style
+        uint32_t prev_fill_style_rgba32;
+        bl_var_to_rgba32(&prev_fill_style, &prev_fill_style_rgba32);
+        bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, prev_fill_style_rgba32);
+    }
+
+    // Blit new ui
+    BLPointI _origin_new_curr_item = state_new.origin;
+    for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
+        struct scran_ui_keymap_item *keymap_item = &keymap->items[i];
+
+        if (keymap_item->width_px != 0) {
+            bl_context_blit_image_i(&st_buffer->bl_ctx, &_origin_new_curr_item, &keymap_item->bl_img, NULL);
+            _origin_new_curr_item.x += keymap_item->width_px + item_spacing_px;
+        }
+    }
+
+    // See _get_total_keymap_width_px()
+    assert(_origin_new_curr_item.x != 0);
+    assert((_origin_new_curr_item.x - state_new.origin.x) - item_spacing_px == total_width_px);
+
+    wl_surface_damage_buffer(
+        selection_surface->surface.wl_surface,
+        state_new.origin.x,
+        state_new.origin.y,
+        state_new.total_width_px,
+        keymap->height_px
+    );
+
+    selection_surface->ui_keymap_state_last_drawn = state_new;
+    st_buffer->ui_keymap_state_currently_drawn    = state_new;
+}
+
 // We trunc/ceil like this to make sure that fractionally scaled displays
 // will not be able to bleed our capture border into the captured frame,
 // not matter how they do their rounding/down-/upscaling.
@@ -215,6 +432,9 @@ draw_selection_and_damage_buffer(
         const BLRectI damage_region_everything = blboxi_to_blrecti(capture_area_bounds);
         _draw_and_damage_background(      selection_surface, st_buffer, capture_area_bounds        , capture_area_border_outline, &damage_region_everything,       &damage_region_everything,       1);
 
+        // Draw keymap
+        _draw_and_damage_keymap(selection_surface, st_buffer, capture_area_border_outline);
+
         // Draw selection border
         BLRectI damage_regions_selection_border[4];
         _get_box_symdiff_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions_selection_border);
@@ -236,6 +456,9 @@ draw_selection_and_damage_buffer(
             _get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_inline_last_used_in_current_buffer, damage_regions_buffer  + i_old_border_diffs);
 
             _draw_and_damage_background(selection_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, 8);
+
+            // Draw keymap
+            _draw_and_damage_keymap(selection_surface, st_buffer, capture_area_border_outline);
         }
 
         // Draw selection border
@@ -294,6 +517,7 @@ force_update_selection_surface(
         box
     );
     st_buffer->box_currently_drawn = box;
+    st_output->selection_ctx.box_px = box;
 
     wl_surface_attach(
         selection_surface->surface.wl_surface, st_buffer->wl_buffer, 0, 0

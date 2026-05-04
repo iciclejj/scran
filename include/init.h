@@ -5,7 +5,6 @@
 
 #include <wayland-client.h>
 
-#include "state-util.h"
 #include "state.h"
 #include "scranrot.h"
 
@@ -20,7 +19,6 @@
 #define FRAMEBUFFER_ALIGNMENT_BYTES 64 // 64 should cover most bases (cache, simd)
 #define FRAMEBUFFER_RIGHT_ALIGNMENT_BYTES  SSE_ALIGNMENT_BYTES
 #define FRAMEBUFFER_BOTTOM_ALIGNMENT_PX    SCRANROT_SSE_ROW_STRIDE
-
 
 static inline size_t
 get_units_until_alignment(

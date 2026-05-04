@@ -74,6 +74,57 @@
     }
 #endif /* __has_include(<wayland-client.h>) */
 
+struct scran_rgba32 {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
+};
+static inline struct scran_rgba32
+get_blrgba32_values(BLRgba32 *color) {
+    // : value((r << 16) | (g << 8) | b | (a << 24)) {}
+    return (struct scran_rgba32) {
+        .r = color->value >> 16,
+        .g = color->value >>  8,
+        .b = color->value >>  0,
+        .a = color->value >> 24,
+    };
+}
+
+static inline void
+set_blrgba32_values(BLRgba32 *color, struct scran_rgba32 scran_color) {
+    color->value = (
+        scran_color.r << 16 |
+        scran_color.g <<  8 |
+        scran_color.b <<  0 |
+        scran_color.a << 24
+    );
+}
+
+static inline void
+scale_blrgba32_colors(BLRgba32 *color, float scale) {
+    struct scran_rgba32 scran_color = get_blrgba32_values(color);
+    scran_color.r = ceil(scran_color.r * scale);
+    scran_color.g = ceil(scran_color.g * scale);
+    scran_color.b = ceil(scran_color.b * scale);
+    scran_color.a = ceil(scran_color.a * scale);
+    set_blrgba32_values(color, scran_color);
+}
+
+
+static inline bool
+blpointi_are_equal(BLPointI a, BLPointI b) {
+    return  a.x == b.x && a.y == b.y;
+}
+
+static inline bool
+blrecti_are_equal(BLRectI a, BLRectI b) {
+    return  a.x == b.x &&
+            a.y == b.y &&
+            a.w == b.w &&
+            a.h == b.h
+    ;
+}
 
 static inline bool
 blboxi_are_equal(BLBoxI a, BLBoxI b) {

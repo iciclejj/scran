@@ -2,6 +2,7 @@
   stdenv,
   lib,
   pkg-config,
+  bintools,
   wayland,
   wayland-scanner,
   wayland-protocols,
@@ -30,6 +31,7 @@ stdenv.mkDerivation {
     wayland-scanner
     wayland-protocols
     pkg-config
+    bintools
     copyDesktopItems
   ];
 
@@ -48,6 +50,7 @@ stdenv.mkDerivation {
   installPhase = ''
     runHook preInstall
     install -D build/${_target}/scran $out/bin/scran
+    install -D assets/IosevkaScranEmbed.ttf.license $out/share/licenses/IosevkaScranEmbed.ttf.license
     runHook postInstall
   '';
 
@@ -65,7 +68,10 @@ stdenv.mkDerivation {
   meta = {
     description = "Sway screen capture";
     mainProgram = "scran";
-    license = lib.licenses.mit;
+    license = [
+      lib.licenses.mit
+      lib.licenses.ofl
+    ];
     homepage = "https://github.com/iciclejj/scran";
   };
 }
