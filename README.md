@@ -324,6 +324,7 @@ See `scran -h` for more details
   -g   "<x>,<y> <width>x<height>"
          Pre-initialize selection using slurp-style geometry string
   -N   disable notifications
+  -v   show version and exit
   -h   show help message and exit
 ```
 

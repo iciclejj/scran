@@ -498,6 +498,7 @@ static const char help_string[] =
     "         The area is clamped to the output containing the top-left corner.\n"
     "           Subject to change if/when scran will support cross-output capture.\n"
     "  -N   disable notifications\n"
+    "  -v   show version and exit\n"
     "  -h   show this help message and exit\n"
     "\n"
     "Signals\n"
