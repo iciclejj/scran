@@ -478,6 +478,7 @@ static const char help_string[] =
     // "  -ee  like -e, but ensure the scran process exits fully\n"
     // "         Equivalent to -Be"
     "  -A   disable audio capture (during video capture)\n"
+    "  -C   disable cursor capture (during video capture)\n"
     "         Note: audio capture requires PipeWire.\n"
     "  -B   do not keep background process alive\n"
     "         Example: 'scran -B - | satty -f -'\n"
@@ -517,13 +518,14 @@ scran_handle_args(int argc, char *const *argv)
     char *opt_output_directory = NULL;
 
     int opt;
-    while ((opt = getopt(argc, argv, "f:d:peABsg:Nvh")) != -1) {
+    while ((opt = getopt(argc, argv, "f:d:peACBsg:Nvh")) != -1) {
         switch (opt) {
         case 'f': opt_filename                                          = optarg; break;
         case 'd': opt_output_directory                                  = optarg; break;
         case 'p': g_state.seat.pointer_ctx.use_presses_only             = true;   break;
         case 'e': g_state.options.capture_and_exit_after_selection_init = true;   break;
         case 'A': g_state.options.disable_audio_capture                 = true;   break;
+        case 'C': g_state.options.disable_cursor_capture                = true;   break;
         case 'B': g_state.options.no_keepalive                          = true;   break;
         case 's': g_state.options.produce_slurp                         = true;   break;
         case 'g':

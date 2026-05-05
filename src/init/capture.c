@@ -12,6 +12,9 @@
 #include "event-handlers.h"
 
 
+extern struct scran g_state;
+
+
 bool
 init_premem__capture(
     struct scran_output *st_output,
@@ -26,10 +29,9 @@ init_premem__capture(
     st_output->capture.frame_ctx.wl_capture_session = ext_image_copy_capture_manager_v1_create_session(
         globals->image_copy_capture_manager,
         st_output->capture.source,
-        // TODO: Make this a scran arg option
         // TODO: Not a big deal, but cursor doesn't seem in sync with area
         //       movement.
-        EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS
+        g_state.options.disable_cursor_capture ? 0 : EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS
     );
 
     // XXX: Maybe there's a nicer way to do this or to properly assert this
