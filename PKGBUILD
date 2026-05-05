@@ -23,12 +23,16 @@ sha256sums=('b7d3e266c2084ee1457e011c8d7e6162d99c19d5d7e7ee1a066f15fc2bc80134')
 
 build() {
     cd "$srcdir/$pkgname-$pkgver"
+
     make release SD_BUS_LIB=libsystemd
 }
 
 package() {
     cd "$srcdir/$pkgname-$pkgver"
+
     install -D -m 755 "./build/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
+
     install -D -m 644 "./LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-    install -D -m 644 "./assets/IosevkaScranEmbed.ttf.license" "$pkgdir/usr/share/licenses/$pkgname/IosevkaScranEmbed.ttf.license"
+    install -D -m 644 "./assets/Iosevka.license" "$pkgdir/usr/share/licenses/$pkgname/Iosevka.license"
+    install -D -m 644 "./assets/NerdFontsSymbolsOnly.license" "$pkgdir/usr/share/licenses/$pkgname/NerdFontsSymbolsOnly.license"
 }

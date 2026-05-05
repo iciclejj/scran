@@ -50,7 +50,6 @@ stdenv.mkDerivation {
   installPhase = ''
     runHook preInstall
     install -D build/${_target}/scran $out/bin/scran
-    install -D assets/IosevkaScranEmbed.ttf.license $out/share/licenses/IosevkaScranEmbed.ttf.license
     runHook postInstall
   '';
 
