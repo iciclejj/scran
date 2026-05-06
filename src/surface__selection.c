@@ -348,9 +348,19 @@ _draw_and_damage_keymap(
     for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
         struct scran_ui_keymap_item *keymap_item = &keymap->items[i];
 
-        if (keymap_item->width_px != 0) {
-            bl_context_blit_image_i(&st_buffer->bl_ctx, &_origin_new_curr_item, &keymap_item->bl_img, NULL);
-            _origin_new_curr_item.x += keymap_item->width_px + item_spacing_px;
+        const int width_px  = keymap_item->width_px;
+        const int height_px = ui_ctx->font_height_px;
+
+        if (width_px != 0) {
+            // Allocated BLImage dimensions may be larger than its current contents.
+            BLRectI area = {
+                .x = 0,
+                .y = 0,
+                .w = width_px,
+                .h = height_px,
+            };
+            bl_context_blit_image_i(&st_buffer->bl_ctx, &_origin_new_curr_item, &keymap_item->bl_img, &area);
+            _origin_new_curr_item.x += width_px + item_spacing_px;
         }
     }
 

@@ -35,52 +35,33 @@ static const BLRgba32 keymap_colors[] = {
 static_assert( sizeof(keymap_colors) / sizeof(keymap_colors[0]) == SCRAN_UI_KEYMAP_N_COLORS,
                "keymap_colors[] length must exactly cover all color enum values." );
 
-struct _sized_u16_string {
+struct keymap_string {
     const char16_t *str;
-    size_t strlen;
+    const size_t strlen;
+    int width_px;
 };
-#define INIT_SIZED_U16_STRING(s) { .str = (s), .strlen = CHAR16_STRLEN(s) }
-static const struct _sized_u16_string keymap_image_texts[] = {
+#define INIT_KEYMAP_STRING(s) { .str = (s), .strlen = CHAR16_STRLEN(s) }
+static struct keymap_string keymap_image_texts[] = {
     // XXX: Leading space so it doesn't hug the edge when drawn at x=0,y=0.
     //      The top margin is fine already.
     //      Somewhat of a HACK, but shouldn't cause any issues unless we change
     //      the font or origin point.
-    [SCRAN_UI_KEYMAP_TEXT_EXTRA_PRE_INIT_DEFAULT] = INIT_SIZED_U16_STRING(u" Click and drag to make selection"),
+    [SCRAN_UI_KEYMAP_TEXT_EXTRA_PRE_INIT_DEFAULT] = INIT_KEYMAP_STRING(u" Click and drag to make selection"),
 
-    [SCRAN_UI_KEYMAP_TEXT_IMAGE_DEFAULT]          = INIT_SIZED_U16_STRING(u"[↵] Image & Exit"),
-    [SCRAN_UI_KEYMAP_TEXT_IMAGE_MOD]              = INIT_SIZED_U16_STRING(u"[↵] Image       "),
+    [SCRAN_UI_KEYMAP_TEXT_IMAGE_DEFAULT]          = INIT_KEYMAP_STRING(u"[↵] Image & Exit"),
+    [SCRAN_UI_KEYMAP_TEXT_IMAGE_MOD]              = INIT_KEYMAP_STRING(u"[↵] Image       "),
 
-    [SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT]          = INIT_SIZED_U16_STRING(u"[␣] Video \uf028"),
-    [SCRAN_UI_KEYMAP_TEXT_VIDEO_MOD]              = INIT_SIZED_U16_STRING(u"[␣] Video \uf026"),
+    [SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT]          = INIT_KEYMAP_STRING(u"[␣] Video \uf028"),
+    [SCRAN_UI_KEYMAP_TEXT_VIDEO_MOD]              = INIT_KEYMAP_STRING(u"[␣] Video \uf026"),
 
-    [SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT]          = INIT_SIZED_U16_STRING(u"[⇥] Release focus"),
-    [SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED]         = INIT_SIZED_U16_STRING(u"[⇥] Focus released. 'scran -h' for help."),
+    [SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT]          = INIT_KEYMAP_STRING(u"[⇥] Release focus"),
+    [SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED]         = INIT_KEYMAP_STRING(u"[⇥] Focus released. 'scran -h' for help."),
 
 
-    [SCRAN_UI_KEYMAP_TEXT_EMPTY]                  = INIT_SIZED_U16_STRING(u""),
+    [SCRAN_UI_KEYMAP_TEXT_EMPTY]                  = INIT_KEYMAP_STRING(u""),
 };
 static_assert( (sizeof(keymap_image_texts) / sizeof(keymap_image_texts[0])) == SCRAN_UI_KEYMAP_N_TEXTS,
                "keymap_image_texts[] length must exactly cover all text enum values.");
-
-// TODO: Benchmark this once we're done with refactor and see if we want to
-// cache any of it.
-static inline struct BLTextMetrics
-_get_bl_text_metrics(
-    BLFontCore *font,
-    const char16_t *text,
-    size_t text_strlen
-) {
-    BLGlyphBufferCore glyph_buffer;
-    bl_glyph_buffer_init(&glyph_buffer);
-    bl_glyph_buffer_set_text(&glyph_buffer, text, text_strlen, BL_TEXT_ENCODING_UTF16);
-
-    BLTextMetrics text_metrics;
-    bl_font_get_text_metrics(font, &glyph_buffer, &text_metrics);
-
-    bl_glyph_buffer_destroy(&glyph_buffer);
-
-    return text_metrics;
-}
 
 
 static inline void
@@ -93,59 +74,44 @@ _redraw_keymap_image(
     const struct scran_ui_keymap_item_lockable_state lockable_state =
         keymap_item->locked ? keymap_item->locked_state : keymap_item->live_state;
 
-    const char16_t *text = keymap_image_texts[lockable_state.text].str;
-    size_t   text_strlen = keymap_image_texts[lockable_state.text].strlen;
+    const struct keymap_string *string = &keymap_image_texts[lockable_state.text];
 
-    BLTextMetrics text_metrics = _get_bl_text_metrics(&ui_ctx->font, text, text_strlen);
-    const double  width        = text_metrics.advance.x;
-    const int     width_px     = ceil(width) + (!!width * SCRAN_SELECTION_SHADOW_OFFSET_PX);
+    bl_context_begin(&ui_ctx->bl_ctx, &keymap_item->bl_img, NULL);
 
-    if (width_px != 0) {
-        // TODO: Pre-allocate the largest buffer we might need here so we don't need
-        //       to keep resetting/recreating.
-        //           Or at least check if we actually resized.
-        bl_image_reset(&keymap_item->bl_img);
-        bl_image_create(&keymap_item->bl_img, width_px, height_px, wl_shm_format_to_blend2d(SURFACE_SHM_FORMAT));
+    BLPointI origin = {
+        .x = 0,
+        .y = ui_ctx->ascent_px,
+    };
+    BLPointI origin_shadow = {
+        .x = 0               + SCRAN_SELECTION_SHADOW_OFFSET_PX,
+        .y = ui_ctx->ascent_px + SCRAN_SELECTION_SHADOW_OFFSET_PX,
+    };
 
-        bl_context_begin(&ui_ctx->bl_ctx, &keymap_item->bl_img, NULL);
+    BLRgba32 color = keymap_colors[lockable_state.color];
+    bl_context_clear_all(&ui_ctx->bl_ctx);
 
-        BLPointI origin = {
-            .x = 0,
-            .y = ui_ctx->ascent_px,
-        };
-        BLPointI origin_shadow = {
-            .x = 0               + SCRAN_SELECTION_SHADOW_OFFSET_PX,
-            .y = ui_ctx->ascent_px + SCRAN_SELECTION_SHADOW_OFFSET_PX,
-        };
-
-        // TODO: Is bl_context_clear_all() needed after bl_image_reset()?
-
-        BLRgba32 color = keymap_colors[lockable_state.color];
-        bl_context_clear_all(&ui_ctx->bl_ctx);
-
-        if (keymap_item->disable_reason_mask != 0U) {
-            BLRgba32 _color = color;
-            scale_blrgba32_colors(&_color, 0.64f); // dim the color
-            bl_context_fill_utf16_text_i_rgba32(
-                &ui_ctx->bl_ctx, &origin_shadow, &ui_ctx->font, text, text_strlen, _color.value
-            );
-        } else if (pressed) {
-            bl_context_fill_utf16_text_i_rgba32(
-                &ui_ctx->bl_ctx, &origin_shadow, &ui_ctx->font, text, text_strlen, color.value
-            );
-        } else {
-            bl_context_fill_utf16_text_i_rgba32(
-                &ui_ctx->bl_ctx, &origin_shadow, &ui_ctx->font, text, text_strlen, SCRAN_SELECTION_SHADOW_COLOR.value
-            );
-            bl_context_fill_utf16_text_i_rgba32(
-                &ui_ctx->bl_ctx, &origin       , &ui_ctx->font, text, text_strlen, color.value
-            );
-        }
-
-        bl_context_end(&ui_ctx->bl_ctx);
+    if (keymap_item->disable_reason_mask != 0U) {
+        BLRgba32 _color = color;
+        scale_blrgba32_colors(&_color, 0.64f); // dim the color
+        bl_context_fill_utf16_text_i_rgba32(
+            &ui_ctx->bl_ctx, &origin_shadow, &ui_ctx->font, string->str, string->strlen, _color.value
+        );
+    } else if (pressed) {
+        bl_context_fill_utf16_text_i_rgba32(
+            &ui_ctx->bl_ctx, &origin_shadow, &ui_ctx->font, string->str, string->strlen, color.value
+        );
+    } else {
+        bl_context_fill_utf16_text_i_rgba32(
+            &ui_ctx->bl_ctx, &origin_shadow, &ui_ctx->font, string->str, string->strlen, SCRAN_SELECTION_SHADOW_COLOR.value
+        );
+        bl_context_fill_utf16_text_i_rgba32(
+            &ui_ctx->bl_ctx, &origin       , &ui_ctx->font, string->str, string->strlen, color.value
+        );
     }
 
-    keymap_item->width_px = width_px;
+    bl_context_end(&ui_ctx->bl_ctx);
+
+    keymap_item->width_px = string->width_px;
 }
 
 void
@@ -168,6 +134,37 @@ redraw_keymap(
 }
 
 
+static inline struct BLTextMetrics
+_get_bl_text_metrics(
+    BLFontCore *font,
+    const char16_t *text,
+    size_t text_strlen
+) {
+    BLGlyphBufferCore glyph_buffer;
+    bl_glyph_buffer_init(&glyph_buffer);
+    bl_glyph_buffer_set_text(&glyph_buffer, text, text_strlen, BL_TEXT_ENCODING_UTF16);
+
+    BLTextMetrics text_metrics;
+    bl_font_get_text_metrics(font, &glyph_buffer, &text_metrics);
+
+    bl_glyph_buffer_destroy(&glyph_buffer);
+
+    return text_metrics;
+}
+
+static inline int
+_calculate_bl_text_width_px(
+    BLFontCore *font,
+    const char16_t *text,
+    size_t text_strlen
+) {
+    BLTextMetrics text_metrics = _get_bl_text_metrics(font, text, text_strlen);
+    double        width        = text_metrics.advance.x;
+    int           width_px     = ceil(width) + (!!width * SCRAN_SELECTION_SHADOW_OFFSET_PX);
+
+    return width_px;
+}
+
 // Should be called on scale changes to resize fonts etc.
 bool
 reinit_scran_ui(
@@ -175,6 +172,10 @@ reinit_scran_ui(
     double scale
 ) {
     BLFontCore *font = &ui_ctx->font;
+
+    if (scale == 0) {
+        return false;
+    }
 
     bl_font_reset(font);
     {
@@ -216,6 +217,36 @@ reinit_scran_ui(
     ui_ctx->font_height_px = font_height_px;
     ui_ctx->fixed_width_font_glyph_width_px = fixed_width_font_glyph_width_px;
     ui_ctx->ui_keymap.height_px = font_height_px;
+
+    // - Allocate a buffer that fits the largest possible string for all keymap images
+    // - Pre-calculate the pixel-widths of each text
+    {
+        int width_px_max   = 0;
+
+        // Some of this could be done at compile-time, but would require some ugly macros...
+        for (size_t i = 0; i < SCRAN_UI_KEYMAP_N_TEXTS; ++i) {
+            struct keymap_string *string = &keymap_image_texts[i];
+            int width_px = _calculate_bl_text_width_px(&ui_ctx->font, string->str, string->strlen);
+            if (width_px_max < width_px) {
+                width_px_max = width_px;
+            }
+            string->width_px = width_px;
+        }
+
+        assert(width_px_max != 0);
+
+        for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
+            struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[i];
+
+            bl_image_reset(&keymap_item->bl_img);
+            bl_image_create(
+                &keymap_item->bl_img,
+                width_px_max,
+                ui_ctx->font_height_px,
+                wl_shm_format_to_blend2d(SURFACE_SHM_FORMAT)
+            );
+        }
+    }
 
     redraw_keymap(ui_ctx);
 
