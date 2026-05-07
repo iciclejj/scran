@@ -58,7 +58,7 @@ struct scran_ui_keymap_item_lockable_state {
 
 struct scran_ui_keymap_item {
     BLImageCore bl_img;
-    int width_px; // height_px is in parent
+    int width_px; // width of currently displayed text. height_px is in parent.
 
     struct scran_ui_keymap_item_lockable_state live_state;
     struct scran_ui_keymap_item_lockable_state locked_state;
@@ -72,6 +72,8 @@ static_assert( sizeof((struct scran_ui_keymap_item){}.disable_reason_mask) * CHA
 struct scran_ui_keymap {
     struct scran_ui_keymap_item items[SCRAN_UI_KEYMAP_N_ITEMS];
     int height_px;
+    // Must be cached per output in case of different scale factors.
+    int cached_text_widths_px[SCRAN_UI_KEYMAP_N_TEXTS];
 
     uint32_t pressed_items_mask;
 };

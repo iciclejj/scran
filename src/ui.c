@@ -38,7 +38,6 @@ static_assert( sizeof(keymap_colors) / sizeof(keymap_colors[0]) == SCRAN_UI_KEYM
 struct keymap_string {
     const char16_t *str;
     const size_t strlen;
-    int width_px;
 };
 #define INIT_KEYMAP_STRING(s) { .str = (s), .strlen = CHAR16_STRLEN(s) }
 static struct keymap_string keymap_image_texts[] = {
@@ -83,7 +82,7 @@ _redraw_keymap_image(
         .y = ui_ctx->ascent_px,
     };
     BLPointI origin_shadow = {
-        .x = 0               + SCRAN_SELECTION_SHADOW_OFFSET_PX,
+        .x = 0                 + SCRAN_SELECTION_SHADOW_OFFSET_PX,
         .y = ui_ctx->ascent_px + SCRAN_SELECTION_SHADOW_OFFSET_PX,
     };
 
@@ -111,7 +110,7 @@ _redraw_keymap_image(
 
     bl_context_end(&ui_ctx->bl_ctx);
 
-    keymap_item->width_px = string->width_px;
+    keymap_item->width_px = ui_ctx->ui_keymap.cached_text_widths_px[lockable_state.text];
 }
 
 void
@@ -226,11 +225,11 @@ reinit_scran_ui(
         // Some of this could be done at compile-time, but would require some ugly macros...
         for (size_t i = 0; i < SCRAN_UI_KEYMAP_N_TEXTS; ++i) {
             struct keymap_string *string = &keymap_image_texts[i];
-            int width_px = _calculate_bl_text_width_px(&ui_ctx->font, string->str, string->strlen);
+            int width_px = _calculate_bl_text_width_px(font, string->str, string->strlen);
             if (width_px_max < width_px) {
                 width_px_max = width_px;
             }
-            string->width_px = width_px;
+            ui_ctx->ui_keymap.cached_text_widths_px[i] = width_px;
         }
 
         assert(width_px_max != 0);
@@ -242,7 +241,7 @@ reinit_scran_ui(
             bl_image_create(
                 &keymap_item->bl_img,
                 width_px_max,
-                ui_ctx->font_height_px,
+                font_height_px,
                 wl_shm_format_to_blend2d(SURFACE_SHM_FORMAT)
             );
         }
