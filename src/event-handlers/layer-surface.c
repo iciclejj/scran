@@ -67,12 +67,7 @@ handle_layer_surface_configure__selection(
 static void
 handle_layer_surface_closed__selection(void *data, struct zwlr_layer_surface_v1 *layer_surface)
 {
-    struct scran_output_selectionSurface *selection_surface = data;
-
-    // XXX TODO: Move this responsibility elsewhere
-    for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; i++) {
-        wl_buffer_destroy(selection_surface->double_buffer[i].wl_buffer);
-    }
+    // struct scran_output_selectionSurface *selection_surface = data;
 }
 
 

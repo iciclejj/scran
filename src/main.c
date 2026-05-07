@@ -462,6 +462,29 @@ init_meminit(
     return true;
 }
 
+static void
+init_meminit__destroy(
+    struct _arena_context *shm_arena,
+    struct _arena_context *private_arena
+) {
+    for (int i = 0; i < g_state.n_outputs; ++i) {
+        struct scran_output *st_output = &g_state.outputs[i];
+
+        for (int i_buf = 0; i_buf < SELECTION_SURFACE_BUF_COUNT; i_buf++) {
+            struct scran_output_selectionSurface_buffer *selection_surface_buffer = &st_output->selection_surface.double_buffer[i_buf];
+            wl_buffer_destroy(selection_surface_buffer->wl_buffer);
+        }
+
+        {
+            struct scran_capture_buffer *capture_buffer = &st_output->capture.frame_ctx.st_buffer;
+            wl_buffer_destroy(capture_buffer->wl_buffer);
+        }
+    }
+
+    assert(shm_arena->addr != NULL && private_arena->addr != NULL);
+    munmap(shm_arena->addr, shm_arena->size);
+    munmap(private_arena->addr, private_arena->size);
+}
 
 static bool
 init_postmem()
@@ -720,9 +743,7 @@ int main(int argc, char *argv[])
 
 
     init_postmem__destroy();
-    assert(shm_arena.addr != NULL && private_arena.addr != NULL);
-    munmap(shm_arena.addr, shm_arena.size); // TODO: Put into init_meminit__destroy?
-    munmap(private_arena.addr, private_arena.size); // TODO: Put into init_meminit__destroy?
+    init_meminit__destroy(&shm_arena, &private_arena);
     init_premem__destroy();
 
     // TODO: Implement scran_portal_drain() to call here? Shouldn't really be
