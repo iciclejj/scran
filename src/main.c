@@ -243,9 +243,8 @@ init_premem__destroy()
 
     wl_region_destroy(g_state.empty_wl_region);
 
-    // TODO: Make sure this happens at an appropriate point in time (memory
-    // footprint should be minimized), once the init/cleanup is more
-    // finalized.
+    // NOTE: Make sure this stays at an appropriate place in the teardown
+    // sequence, so that memory footprint is minimized.
     if (!g_state.options.no_keepalive) {
         _stay_alive_while_clipboard_active();
     }
