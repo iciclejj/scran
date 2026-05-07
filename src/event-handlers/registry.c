@@ -176,6 +176,11 @@ registry_listener__destroy(struct scran *state)
         hyprland_surface_manager_v1_destroy(globals->hypr_surface_manager);
     }
 
+    for (int i = 0; i < state->n_outputs; ++i) {
+        struct scran_output *st_output = &state->outputs[i];
+        wl_output_release(st_output->wl_output);
+    }
+
     wl_registry_destroy(globals->registry);
 }
 
