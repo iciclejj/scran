@@ -47,7 +47,7 @@ handle_wlr_output_head_scale(
     struct _pending_head *pending_head = data;
 
     pending_head->fractional_scale_wlr = scale;
-    DEBUG("handle_wlr_output_head_scale(): %f\n", _get_normalized_scaler(scale, 256));
+    DEBUG("handle_wlr_output_head_scale(): %f\n", get_normalized_scaler(scale, 256));
 }
 
 void handle_wlr_output_head_name(
@@ -118,7 +118,7 @@ void handle_cosmic_output_head_scale_1000(
     struct _pending_head *pending_head = data;
 
     pending_head->fractional_scale_cosmic_1000 = scale_1000;
-    DEBUG("handle_cosmic_output_head_scale_1000(): %f\n", _get_normalized_scaler(scale_1000, 1000));
+    DEBUG("handle_cosmic_output_head_scale_1000(): %f\n", get_normalized_scaler(scale_1000, 1000));
 }
 
 void handle_cosmic_output_head_mirroring( void *data, struct zcosmic_output_head_v1 *zcosmic_output_head_v1, const char *name) { /* No-op. */ }
