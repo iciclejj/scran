@@ -81,8 +81,6 @@ double
 get_surface_scale_factor_normalized(
     struct scran_output_surface *st_surface
 ) {
-    DEBUG("get_surface_scale_factor_normalized()\n");
-
     struct scran_output *st_output = &g_state.outputs[get_containing_output_array_index(st_surface)];
 
     const double normalized_scale_cosmic = _guess_cosmic_scale_factor(st_surface, st_output);
@@ -92,11 +90,11 @@ get_surface_scale_factor_normalized(
 
     const double normalized_scale_wp = (double)st_surface->fractional_scale_wp_120 / 120.0;
     if (normalized_scale_wp) {
-        DEBUG("  getting wp_fractional_scale: %f\n", normalized_scale_wp);
+        DEBUG("      getting wp_fractional_scale: %f\n", normalized_scale_wp);
         return normalized_scale_wp;
     }
 
-    DEBUG("  getting wl_output scale: %d\n", st_output->scale);
+    DEBUG("      getting wl_output scale: %d\n", st_output->scale);
     return st_output->scale;
 }
 
@@ -104,10 +102,8 @@ static inline void
 _update_surface_scale_and_size(
     struct scran_output_surface *st_surface
 ) {
-    DEBUG("update_selection_surface_scale_and_size()\n");
-
     double scale_factor = get_surface_scale_factor_normalized(st_surface);
-    DEBUG("  Using scale factor: %f\n", scale_factor);
+    DEBUG("      Using scale factor: %f\n", scale_factor);
 
     st_surface->final_scale_factor_normalized = scale_factor;
 
@@ -123,7 +119,9 @@ update_surface_scale_bufsize_viewport(
     struct scran_output *st_output
 ) {
     struct scran_output_surface *st_surface = &st_output->selection_surface.surface;
+    DEBUG("  update_surface_scale_bufsize_viewport()\n");
 
+    DEBUG("    Updating scale and size...\n");
     _update_surface_scale_and_size(st_surface);
 
     // TODO: Maybe move this responsibility into output::scale etc, so we're
@@ -138,8 +136,8 @@ update_surface_scale_bufsize_viewport(
         return;
     }
 
-    DEBUG("update_selection_surface_viewport():"
-          "  src_width: %d, src_height: %d,  dst_width: %d, dst_height: %d\n",
+    DEBUG("    Updating viewport...\n");
+    DEBUG("      src_width: %d, src_height: %d,  dst_width: %d, dst_height: %d\n",
           st_surface->width_px_buffer, st_surface->height_px_buffer,
           st_surface->width_logical, st_surface->height_logical
     );

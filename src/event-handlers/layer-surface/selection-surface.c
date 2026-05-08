@@ -25,7 +25,8 @@ handle_layer_surface_configure__selection(
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
     struct scran_output_surface          *st_surface        = &st_output->selection_surface.surface;
 
-    DEBUG("handle_layer_surface_configure():  width_logical: %d, height_logical: %d\n", width_logical, height_logical);
+    DEBUG("layer_surface::configure():\n");
+    DEBUG("  width_logical: %d, height_logical: %d\n", width_logical, height_logical);
 
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 
