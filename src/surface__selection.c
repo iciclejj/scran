@@ -538,6 +538,7 @@ force_update_selection_surface(
     wl_surface_attach(selection_surface->surface.wl_surface, st_buffer->wl_buffer, 0, 0);
 
     _arm_selection_surface_frame_callback(st_output, false);
+    set_force_redraw_selection_surface_buffers(st_output);
     wl_surface_commit(selection_surface->surface.wl_surface);
 }
 
