@@ -574,8 +574,7 @@ request_end_video_capture(struct scran_output *st_output)
     // the transparent part of the selection surface is visible, e.g. with
     // "fullscreen" capture, but seems effective even then on my local
     // Sway (v1.11).)
-    set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
-
+    set_force_redraw_selection_surface_buffers(st_output);
     request_selection_surface_frame_callback(st_output);
 
     request_video_capture_frame(
