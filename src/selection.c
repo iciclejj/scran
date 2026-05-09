@@ -144,7 +144,7 @@ start_grabbing_focus()
                 scran_ui_keymap_item_set_disabled(ui_ctx, i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, false);
             }
             scran_ui_keymap_item_set_text(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT);
-            request_selection_surface_update(st_output);
+            request_selection_surface_frame_callback(st_output);
         }
     }
 }
@@ -184,7 +184,7 @@ stop_grabbing_focus()
                 scran_ui_keymap_item_set_disabled(ui_ctx, i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, true);
             }
             scran_ui_keymap_item_set_text(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED);
-            request_selection_surface_update(st_output);
+            request_selection_surface_frame_callback(st_output);
         }
     }
 }

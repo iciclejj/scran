@@ -133,6 +133,8 @@ struct scran_output_selectionSurface {
     // in set_selection_surface_theme(). TODO: Redraw hack is gone now.
     BLBoxI box_last_drawn;
     struct scran_ui_keymap_surface_state ui_keymap_state_last_drawn;
+
+    bool awaiting_frame_callback;
 };
 
 struct scran_seat_pointerContext {
@@ -364,8 +366,6 @@ struct scran_output {
 
     // Only really needed during init and destruction:
     struct zxdg_output_v1 *xdg_output;
-
-    bool dirty;
 
     char name[SCRAN_STATE_OUTPUT_NAME_SIZE]; // output::name
 };

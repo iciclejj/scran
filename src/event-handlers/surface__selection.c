@@ -42,11 +42,14 @@ selection_surface_frame_callback_handler(
 ) {
     wl_callback_destroy(callback);
 
-    struct scran_output *st_output = data;
+    struct scran_output                  *st_output         = data;
+    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
 
-    if (!st_output->dirty) {
-        goto done;
+    if (!selection_surface->awaiting_frame_callback) {
+        return;
     }
+
+    selection_surface->awaiting_frame_callback = false;
 
     struct scran_output_selectionSurface_buffer *st_buffer = get_free_double_buffer(&st_output->selection_surface);
 
@@ -100,8 +103,6 @@ selection_surface_frame_callback_handler(
         st_buffer
     );
     wl_surface_commit(st_output->selection_surface.surface.wl_surface);
-done:
-    st_output->dirty = false;
 }
 
 

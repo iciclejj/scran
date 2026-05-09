@@ -487,27 +487,32 @@ draw_selection_and_damage_buffer(
     bl_context_flush(&st_buffer->bl_ctx, BL_CONTEXT_FLUSH_NO_FLAGS);
 }
 
+static inline void
+_arm_selection_surface_frame_callback(
+    struct scran_output *st_output,
+    bool commit_if_armed // used as template specialization (if passing a literal)
+) {
+    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+
+    if (selection_surface->awaiting_frame_callback == false) {
+        wl_callback_add_listener(
+            wl_surface_frame(selection_surface->surface.wl_surface),
+            &selection_surface_frame_callback_listener,
+            st_output
+        );
+        selection_surface->awaiting_frame_callback = true;
+
+        if (commit_if_armed) {
+            wl_surface_commit(selection_surface->surface.wl_surface);
+        }
+    }
+}
+
 void
 request_selection_surface_frame_callback(
     struct scran_output *st_output
 ) {
-    wl_callback_add_listener(
-        wl_surface_frame(st_output->selection_surface.surface.wl_surface),
-        &selection_surface_frame_callback_listener,
-        st_output
-    );
-    // You have to commit for the frame callback to take effect.
-    wl_surface_commit(st_output->selection_surface.surface.wl_surface);
-}
-
-void
-request_selection_surface_update(
-    struct scran_output *st_output
-) {
-    if (!st_output->dirty) {
-        st_output->dirty = true;
-        request_selection_surface_frame_callback(st_output);
-    }
+    _arm_selection_surface_frame_callback(st_output, true);
 }
 
 // Caller is responsible for making sure buffer is valid (e.g. not busy)
@@ -526,19 +531,13 @@ force_update_selection_surface(
         st_buffer,
         box
     );
+    // TODO: Probably move box_currently_drawn setting responsibility into the
+    // actual drawing function (draw_selection_and_damage_buffer()).
     st_buffer->box_currently_drawn = box;
     st_output->selection_ctx.box_px = box;
+    wl_surface_attach(selection_surface->surface.wl_surface, st_buffer->wl_buffer, 0, 0);
 
-    wl_surface_attach(
-        selection_surface->surface.wl_surface, st_buffer->wl_buffer, 0, 0
-    );
-    wl_callback_add_listener(
-        wl_surface_frame(selection_surface->surface.wl_surface),
-        &selection_surface_frame_callback_listener,
-        st_output
-    );
-    wl_surface_commit(
-        selection_surface->surface.wl_surface
-    );
+    _arm_selection_surface_frame_callback(st_output, false);
+    wl_surface_commit(selection_surface->surface.wl_surface);
 }
 

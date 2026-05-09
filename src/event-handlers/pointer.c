@@ -136,7 +136,7 @@ handle_pointer_motion(
         clamp_to_transformed_output_width(&selection_ctx->box_px.x1, st_output);
         clamp_to_transformed_output_height(&selection_ctx->box_px.y1, st_output);
 
-        request_selection_surface_update(st_output);
+        request_selection_surface_frame_callback(st_output);
         break;
     case SELECTION_COMPLETE:
     case SELECTION_COMPLETE_FREEZE_SIZE:
@@ -179,7 +179,7 @@ handle_pointer_motion(
 
             selection_ctx->box_px = new_box;
         }
-        request_selection_surface_update(st_output);
+        request_selection_surface_frame_callback(st_output);
         break;
     case SELECTION_RESIZING:
         {
@@ -216,7 +216,7 @@ handle_pointer_motion(
                 break;
             }
         }
-        request_selection_surface_update(st_output);
+        request_selection_surface_frame_callback(st_output);
         break;
     }
 }
@@ -305,7 +305,7 @@ handle_pointer_button(
             // analogous to current set_selection_initialized()?
             scran_ui_set_selection_stage_defaults(&st_output->selection_surface.ui_ctx);
             set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
-            request_selection_surface_update(st_output);
+            request_selection_surface_frame_callback(st_output);
 
             break;
         case SELECTION_INITIALIZING:

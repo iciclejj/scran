@@ -524,7 +524,7 @@ request_video_capture(struct scran_output *st_output)
         scran_ui_keymap_item_set_locked(  ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
     }
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
-    request_selection_surface_update(st_output);
+    request_selection_surface_frame_callback(st_output);
 
     // image-copy-capture protocol guarantees we get presentation time based
     // on system monotonic time.
@@ -575,7 +575,8 @@ request_end_video_capture(struct scran_output *st_output)
     // "fullscreen" capture, but seems effective even then on my local
     // Sway (v1.11).)
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
-    request_selection_surface_update(st_output);
+
+    request_selection_surface_frame_callback(st_output);
 
     request_video_capture_frame(
         &st_output->capture.frame_ctx,
@@ -632,7 +633,7 @@ end_video_capture(struct scran_output *st_output)
         scran_ui_keymap_item_set_locked(  ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
     }
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
-    request_selection_surface_update(st_output);
+    request_selection_surface_frame_callback(st_output);
 
     unset_selection_freeze_size(st_output);
 

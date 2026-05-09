@@ -114,15 +114,15 @@ handle_keyboard_key(
         switch(xkb_key) {
         case XKB_KEY_Return:
             scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, false);
-            request_selection_surface_update(st_output);
+            request_selection_surface_frame_callback(st_output);
             break;
         case XKB_KEY_space:
             scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
-            request_selection_surface_update(st_output);
+            request_selection_surface_frame_callback(st_output);
             break;
         case XKB_KEY_Tab:
             scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, false);
-            request_selection_surface_update(st_output);
+            request_selection_surface_frame_callback(st_output);
             break;
         }
         return;
@@ -132,19 +132,19 @@ handle_keyboard_key(
     switch (xkb_key) {
     case XKB_KEY_Left:
         shift_blboxi(&st_output->selection_ctx.box_px, -1,  0);
-        request_selection_surface_update(st_output);
+        request_selection_surface_frame_callback(st_output);
         break;
     case XKB_KEY_Right:
         shift_blboxi(&st_output->selection_ctx.box_px, +1,  0);
-        request_selection_surface_update(st_output);
+        request_selection_surface_frame_callback(st_output);
         break;
     case XKB_KEY_Up:
         shift_blboxi(&st_output->selection_ctx.box_px,  0, -1);
-        request_selection_surface_update(st_output);
+        request_selection_surface_frame_callback(st_output);
         break;
     case XKB_KEY_Down:
         shift_blboxi(&st_output->selection_ctx.box_px,  0, +1);
-        request_selection_surface_update(st_output);
+        request_selection_surface_frame_callback(st_output);
         break;
     case XKB_KEY_Tab:
         stop_grabbing_focus();
@@ -174,7 +174,7 @@ handle_keyboard_key(
             }
 
             scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
-            request_selection_surface_update(st_output);
+            request_selection_surface_frame_callback(st_output);
         }
 
         break;
@@ -197,7 +197,7 @@ handle_keyboard_key(
 
         if (!video_button_got_jammed) {
             scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
-            request_selection_surface_update(st_output);
+            request_selection_surface_frame_callback(st_output);
         }
         break;
     }
@@ -265,7 +265,7 @@ handle_keyboard_modifiers(
         // especially if we want to support mouse clicks.
         st_output->capture.frame_ctx.audio_disable_modifier_active = mod_key_active;
 
-        request_selection_surface_update(st_output);
+        request_selection_surface_frame_callback(st_output);
     }
 }
 
