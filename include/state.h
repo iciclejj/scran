@@ -114,6 +114,8 @@ struct scran_output_selectionSurface_buffer {
 
     BLContextCore bl_ctx;
     BLImageCore bl_img;
+    // TODO: Rename this here and elsewhere to e.g. selection_box_currently_drawn,
+    // now that we have more things going on in the selection surface (like ui_keymap)?
     BLBoxI box_currently_drawn;
 
     struct scran_ui_keymap_surface_state ui_keymap_state_currently_drawn;

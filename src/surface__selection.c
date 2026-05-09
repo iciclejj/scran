@@ -173,6 +173,7 @@ static inline void
 _draw_and_damage_selection_border(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
+    BLBoxI capture_area,
     BLBoxI capture_area_border_outline,
     BLBoxI capture_area_border_inline,
     const BLRectI *damage_regions_wayland,
@@ -187,6 +188,8 @@ _draw_and_damage_selection_border(
     }
 
     bl_path_clear(&selection_surface->bl_path);
+
+    st_buffer->box_currently_drawn = capture_area;
 }
 
 static inline void
@@ -448,7 +451,7 @@ draw_selection_and_damage_buffer(
         // Draw selection border
         BLRectI damage_regions_selection_border[4];
         _get_box_symdiff_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions_selection_border);
-        _draw_and_damage_selection_border(selection_surface, st_buffer, capture_area_border_outline, capture_area_border_inline , damage_regions_selection_border, damage_regions_selection_border, 4);
+        _draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline , damage_regions_selection_border, damage_regions_selection_border, 4);
 
         st_buffer->force_redraw = false;
     } else {
@@ -477,7 +480,7 @@ draw_selection_and_damage_buffer(
 
             _get_box_symdiff_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
 
-            _draw_and_damage_selection_border(selection_surface, st_buffer, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
+            _draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
         }
     }
 
@@ -531,9 +534,6 @@ force_update_selection_surface(
         st_buffer,
         box
     );
-    // TODO: Probably move box_currently_drawn setting responsibility into the
-    // actual drawing function (draw_selection_and_damage_buffer()).
-    st_buffer->box_currently_drawn = box;
     st_output->selection_ctx.box_px = box;
     wl_surface_attach(selection_surface->surface.wl_surface, st_buffer->wl_buffer, 0, 0);
 
