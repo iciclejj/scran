@@ -4,6 +4,7 @@
 #include "state-util.h"
 #include "event-handlers.h"
 #include "selection-surface.h"
+#include "freezeframe.h"
 #include "print.h"
 
 
@@ -44,6 +45,7 @@ handle_output_scale(
         st_output->scale = factor;
 
         update_surface_scale_bufsize_viewport(st_output);
+        update_freezeframe_scale_size_viewport(st_output);
         reinit_scran_ui(&selection_surface->ui_ctx, selection_surface->surface.final_scale_factor_normalized);
         request_selection_surface_frame_callback(st_output);
     }

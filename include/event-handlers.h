@@ -12,11 +12,6 @@
 //   - Go through every listener and make sure we have all desired events handled
 //   - Create add_listener wrappers with typed `data` args
 
-enum scran_common_surface_update_handler_result {
-    SCRAN_COMMON_SURFACE_UPDATE_HANDLER_UNCHANGED,
-    SCRAN_COMMON_SURFACE_UPDATE_HANDLER_UPDATED,
-};
-
 extern struct wl_pointer_listener pointer_listener;
 extern struct zwlr_layer_surface_v1_listener layer_surface_listener__selection;
 extern struct wl_buffer_listener selectionSurface_buffer_listener;
@@ -33,6 +28,11 @@ extern struct wp_fractional_scale_v1_listener fractional_scale_listener__selecti
 extern struct zcosmic_output_head_v1_listener cosmic_output_head_listener;
 extern struct zwlr_output_head_v1_listener wlr_output_head_listener;
 extern struct zwlr_output_manager_v1_listener wlr_output_manager_listener;
+extern struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener__freezeframe;
+extern struct zwlr_layer_surface_v1_listener layer_surface_listener__freezeframe;
+extern struct wp_presentation_feedback_listener presentation_feedback_listener__selection_transparent_for_freezeframe;
+extern struct ext_image_copy_capture_session_v1_listener image_copy_capture_session_listener__freezeframe;
+extern struct wp_fractional_scale_v1_listener fractional_scale_listener__freezeframe;
 
 extern struct wl_registry_listener registry_listener;
  void registry_listener__destroy(struct scran *state);

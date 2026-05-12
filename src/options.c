@@ -487,6 +487,7 @@ static const char help_string[] =
     "         browser). Useful if you want to pipe scran's output to an application\n"
     "         that is waiting for scran to fully exit.\n"
     "         NOTE: This also disables notification interaction\n"
+    "  -z   freeze the display at startup\n"
     "  -s   slurp: send selection as geometry string to standard output\n"
     "         Replaces/disables image capture.\n"
     "         Format: '<x>,<y> <width>x<height>'\n"
@@ -518,7 +519,7 @@ scran_handle_args(int argc, char *const *argv)
     char *opt_output_directory = NULL;
 
     int opt;
-    while ((opt = getopt(argc, argv, "f:d:peACBsg:Nvh")) != -1) {
+    while ((opt = getopt(argc, argv, "f:d:peACBzsg:Nvh")) != -1) {
         switch (opt) {
         case 'f': opt_filename                                          = optarg; break;
         case 'd': opt_output_directory                                  = optarg; break;
@@ -527,6 +528,7 @@ scran_handle_args(int argc, char *const *argv)
         case 'A': g_state.options.disable_audio_capture                 = true;   break;
         case 'C': g_state.options.disable_cursor_capture                = true;   break;
         case 'B': g_state.options.no_keepalive                          = true;   break;
+        case 'z': g_state.options.freezeframe                           = true;   break;
         case 's': g_state.options.produce_slurp                         = true;   break;
         case 'g':
             {

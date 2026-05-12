@@ -52,6 +52,16 @@ get_transformed_width(int src_width, int src_height, enum wl_output_transform tr
          : src_width;
 }
 
+// Just for clarifying intent
+static inline int
+get_reverse_transformed_width(int src_width, int src_height, enum wl_output_transform transform) {
+    return get_transformed_width(src_width, src_height, transform);
+}
+static inline int
+get_reverse_transformed_height(int src_width, int src_height, enum wl_output_transform transform) {
+    return get_transformed_height(src_width, src_height, transform);
+}
+
 static inline int32_t
 get_transformed_output_width(struct scran_output *st_output) {
     return get_transformed_width(st_output->mode.width_px, st_output->mode.height_px, st_output->transform);

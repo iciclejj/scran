@@ -11,6 +11,8 @@
 #include "capture.h"
 #include "selection-surface.h"
 #include "ui.h"
+#include "freezeframe.h"
+#include "init.h"
 
 
 extern struct scran g_state;
@@ -111,37 +113,56 @@ unset_selection_freeze_size(struct scran_output *st_output)
     }
 }
 
+// We need an output-specific function since freezeframe will need to call back
+// into it from the output-specific capture_frame::ready handler.
+void
+start_grabbing_focus_for_output(
+    struct scran_output *st_output
+) {
+    struct scran_output_surface *st_surface = &st_output->selection_surface.surface;
+
+    DEBUG("start_grabbing_focus_for_output()\n");
+
+    // NULL sets an infinite region
+    wl_surface_set_input_region(st_surface->wl_surface, NULL);
+    zwlr_layer_surface_v1_set_keyboard_interactivity(
+        st_surface->layer_surface,
+        SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED
+    );
+    wl_surface_commit(st_surface->wl_surface);
+
+    // XXX: See comment in stop_grabbing_focus() below
+    wp_cursor_shape_device_v1_set_shape(
+        g_state.seat.pointer_ctx.cursor_shape_device,
+        g_state.seat.pointer_ctx.last_enter_serial,
+        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR
+    );
+
+    {
+        struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
+        for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
+            scran_ui_keymap_item_set_disabled(ui_ctx, i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, false);
+        }
+        scran_ui_keymap_item_set_text(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT);
+    }
+
+    // TODO: Make arm_selection_surface_frame_callback externally callable, so
+    // that we avoid potential double-commit here?
+    request_selection_surface_frame_callback(st_output);
+}
+
 void
 start_grabbing_focus()
 {
     DEBUG("Grabbing focus\n");
 
     FOR_EACH_OUTPUT(i, st_output) {
-        struct scran_output_surface *st_surface = &st_output->selection_surface.surface;
-
-        // NULL sets an infinite region
-        wl_surface_set_input_region(st_surface->wl_surface, NULL);
-        zwlr_layer_surface_v1_set_keyboard_interactivity(
-            st_surface->layer_surface,
-            SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED
-        );
-        wl_surface_commit(st_surface->wl_surface);
-
-        // XXX: See comment in stop_grabbing_focus() below
-        wp_cursor_shape_device_v1_set_shape(
-            g_state.seat.pointer_ctx.cursor_shape_device,
-            g_state.seat.pointer_ctx.last_enter_serial,
-            WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR
-        );
-
-        {
-            struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-            for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-                scran_ui_keymap_item_set_disabled(ui_ctx, i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, false);
-            }
-            scran_ui_keymap_item_set_text(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT);
-            request_selection_surface_frame_callback(st_output);
+        if (g_state.options.freezeframe) {
+            refresh_freezeframe(st_output);
+            continue; // freezeframe will call start_grabbing_focus_for_output once it's done
         }
+
+        start_grabbing_focus_for_output(st_output);
     }
 }
 
@@ -149,6 +170,10 @@ void
 stop_grabbing_focus()
 {
     DEBUG("Releasing focus\n");
+
+    if (g_state.options.freezeframe) {
+        hide_freezeframe_surfaces();
+    }
 
     FOR_EACH_OUTPUT(i, st_output) {
         struct scran_output_surface *st_surface = &st_output->selection_surface.surface;

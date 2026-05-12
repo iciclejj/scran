@@ -8,6 +8,7 @@
 #include "util/blend2d.h"
 #include "event-handlers.h"
 #include "ui.h"
+#include "print.h"
 
 
 static inline void
@@ -392,24 +393,50 @@ request_selection_surface_frame_callback(
     _arm_selection_surface_frame_callback(st_output, true);
 }
 
-// Caller is responsible for making sure buffer is valid (e.g. not busy)
-void
-force_update_selection_surface(
-    struct scran_output *st_output,
-    struct scran_output_selectionSurface_buffer *st_buffer,
-    struct BLBoxI box
-) {
-    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
 
-    assert(st_buffer->busy == false);
-    st_buffer->busy = true;
-    draw_selection_and_damage_buffer(
-        selection_surface,
-        st_buffer,
-        box
+// Draws the initial state of the buffers and commits.
+//
+// Caller is responsible for making sure buffer, surface etc. is valid (e.g.
+// not busy).
+//
+// st_output.selection_surface.initial_box initialization must also happen
+// prior to calling this function.
+void
+init_selection_surface_content(
+    struct scran_output *st_output
+) {
+    DEBUG("  init_selection_surface_content()\n");
+
+    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+    struct BLBoxI                         initial_box       =  st_output->initial_selection;
+
+    for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
+        struct scran_output_selectionSurface_buffer *st_buffer = &selection_surface->double_buffer[i];
+
+        // Initialized as busy; reset them now.
+        //   See init_premem__selection() for more info
+        assert(st_buffer->busy == true);
+        st_buffer->busy = false;
+        draw_selection_and_damage_buffer(
+            selection_surface,
+            st_buffer,
+            initial_box
+        );
+    }
+
+    st_output->selection_ctx.box_px = initial_box;
+
+    struct scran_output_selectionSurface_buffer *initial_buffer = &selection_surface->double_buffer[0];
+    initial_buffer->busy = true;
+    wl_surface_attach(
+        selection_surface->surface.wl_surface, initial_buffer->wl_buffer, 0, 0
     );
-    st_output->selection_ctx.box_px = box;
-    wl_surface_attach(selection_surface->surface.wl_surface, st_buffer->wl_buffer, 0, 0);
+    wl_surface_damage_buffer(
+        selection_surface->surface.wl_surface,
+        0, 0,
+        selection_surface->surface.width_px_buffer,
+        selection_surface->surface.height_px_buffer
+    );
 
     _arm_selection_surface_frame_callback(st_output, false);
     set_force_redraw_selection_surface_buffers(st_output);

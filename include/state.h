@@ -140,6 +140,37 @@ struct scran_output_selectionSurface {
     bool awaiting_frame_callback;
 };
 
+
+struct scran_output_freezeframe_buffer {
+    struct wl_buffer *wl_buffer;
+    void *data;
+};
+
+enum scran_freezeframe_state {
+    SCRAN_FREEZEFRAME_UNINITIALIZED,
+    SCRAN_FREEZEFRAME_HIDDEN,
+    SCRAN_FREEZEFRAME_REFRESH_REQUESTED_PENDING_REFOCUS,
+    SCRAN_FREEZEFRAME_SHOWING,
+};
+
+struct scran_output_freezeframe {
+    struct scran_output_surface surface;
+
+    struct ext_image_copy_capture_session_v1 *wl_capture_session;
+    enum wl_shm_format shm_format;
+
+    enum scran_freezeframe_state state;
+
+    // We have multiple buffers because we use a separate buffer for making it
+    // transparent... Calling e.g. wl_surface_attach with a NULL buffer would
+    // unmap the entire layer surface, and would need to wait for new configure
+    // events. Behavior is also not consistent across compositors. Using
+    // wp_single_pixel_buffer also has damage-related bugs on some compositors,
+    // at least on Sway.
+    struct scran_output_freezeframe_buffer capture_buffer;
+    struct scran_output_freezeframe_buffer transparent_single_pixel_buffer;
+};
+
 struct scran_seat_pointerContext {
     int x_px;
     int y_px;
@@ -359,6 +390,9 @@ struct scran_output {
     struct scran_output_selectionSurface selection_surface;
     struct scran_output_selectionContext selection_ctx;
     struct scran_output_capture capture;
+    struct scran_output_freezeframe freezeframe;
+
+    BLBoxI initial_selection;
 
     // Only really needed during init and destruction:
     struct zxdg_output_v1 *xdg_output;
@@ -376,6 +410,7 @@ struct scran_options {
     bool no_keepalive;
     bool disable_audio_capture;
     bool disable_cursor_capture;
+    bool freezeframe;
     bool capture_and_exit_after_selection_init;
     bool produce_slurp;                 // output slurp-style geometry string
     bool no_notifications;

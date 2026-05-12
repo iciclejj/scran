@@ -38,7 +38,6 @@ _get_framebuffer_size(int32_t width_px, int32_t height_px, uint8_t pixel_stride)
     return width_bytes * height_px;
 }
 
-// TODO: Make get_output_surface_buf_size_padded for "fullscreen" surfaces
 static inline size_t
 get_surface_buf_size_padded(struct scran_output_surface *st_surface) {
     int32_t width_px = st_surface->width_px_buffer;
@@ -88,6 +87,12 @@ bool init_premem__selection(struct scran_output *st_output, struct scran_globals
  void init_premem__selection__destroy(struct scran_output *st_output);
 bool init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_selection);
  void init_postmem__selection__destroy(struct scran_output *st_output);
+
+bool init_premem__freezeframe( struct scran_output *st_output);
+ void reinit_freezeframe_layer_surface( struct scran_output *st_output);
+ void init_premem__freezeframe__destroy( struct scran_output *st_output);
+bool init_postmem__freezeframe(struct scran_output *st_output);
+ void init_postmem__freezeframe__destroy(struct scran_output *st_output);
 
 bool init_premem__datacontrol(struct scran_seat_datacontrol *st_datacontrol);
  void init_premem__datacontrol__destroy(struct scran_seat_datacontrol *st_datacontrol);

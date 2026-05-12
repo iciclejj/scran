@@ -10,6 +10,7 @@
 #include "event-handlers.h"
 #include "selection.h"
 #include "selection-surface.h"
+#include "freezeframe.h"
 #include "ui.h"
 
 
@@ -20,6 +21,14 @@ init_premem__selection(
 ) {
     struct scran_output_surface          *st_surface        = &st_output->selection_surface.surface;
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+
+    for (int i_buffer = 0; i_buffer < SELECTION_SURFACE_BUF_COUNT; i_buffer++) {
+        struct scran_output_selectionSurface_buffer *buffer = &selection_surface->double_buffer[i_buffer];
+        // We initialize the buffers as busy so that e.g. scale handlers won't
+        // do anything funny before we're done with all initialization, e.g.
+        // freezeframe's init pipeline (which gatekeeps selection surface init).
+        buffer->busy = true;
+    }
 
     // Must add role to surface and ack its configure event before adding a buffer.
     st_surface->wl_surface = wl_compositor_create_surface(st_globals->compositor);
@@ -135,10 +144,18 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
         set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
     }
 
-    BLBoxI initial_box = (custom_initial_selection == NULL) ? (BLBoxI){ } : *custom_initial_selection;
+    st_output->initial_selection = (custom_initial_selection == NULL) ? (BLBoxI){ } : *custom_initial_selection;
 
-    for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
-        struct scran_output_selectionSurface_buffer *buffer = &selection_surface->double_buffer[i];
+    // If we freezeframe, then we must initialize the selection surface from
+    // within the freezeframe callback, to make sure we don't "freeze" an
+    // already dimmed (our UI dim) frame. TODO: Make this a bit neater?
+    if (g_state.options.freezeframe) {
+        // This commits the surface in the capture-frame::ready handler, handing
+        // over the wl_buffer containing the captured freezeframe.
+        assert(st_output->freezeframe.state == SCRAN_FREEZEFRAME_UNINITIALIZED);
+        request_freezeframe(st_output);
+    }
+    else {
         // We need to pre-render here if we want the UI to be displayed already
         // on the first frame.
         //
@@ -157,8 +174,7 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
         // (60fps) frametime). Possibly bound by waiting for layer-surface
         // configure? TODO: Find out if this is compositor-bound or can be
         // worked around somehow.
-        assert(buffer->busy == false);
-        force_update_selection_surface(st_output, buffer, initial_box);
+        init_selection_surface_content(st_output);
     }
 
     return true;

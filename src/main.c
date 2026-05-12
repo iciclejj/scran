@@ -36,6 +36,7 @@
 #include "util/blend2d.h"
 #include "portals.h"
 #include "pipewires.h"
+#include "scranrot.h"
 
 //  General TODO:
 //  - Don't use libwayland..? Handle its allocations etc. ourselves?
@@ -93,14 +94,27 @@ init_premem()
         return false;
     }
 
+
     // Collect dynamic memory requirements
     // + otherwhat that might benefit from early init
+
+    // We need this early for freezeframe init
+    g_state.empty_wl_region = wl_compositor_create_region(g_state.globals.compositor);
+
     FOR_EACH_OUTPUT(i, st_output) {
-        if (!init_premem__selection(st_output, &g_state.globals)) {
+        if (!init_premem__capture(st_output, &g_state.seat.datacontrol, &g_state.globals)) {
             return false;
         }
 
-        if (!init_premem__capture(st_output, &g_state.seat.datacontrol, &g_state.globals)) {
+        // NOTE: Must initialized be prior to selection, since they're both on
+        // the same layer-shell layer.
+        if (g_state.options.freezeframe) {
+            if (!init_premem__freezeframe(st_output)) {
+                return false;
+            }
+        }
+
+        if (!init_premem__selection(st_output, &g_state.globals)) {
             return false;
         }
 
@@ -125,8 +139,6 @@ init_premem()
         DEBUG("Adding wlr_output_manager listener\n");
         zwlr_output_manager_v1_add_listener(g_state.globals.wlr_output_manager, &wlr_output_manager_listener, &g_state);
     }
-
-    g_state.empty_wl_region = wl_compositor_create_region(g_state.globals.compositor);
 
     // Then roundtrip to collect listener-provided memory requirements into our state struct.
     wl_display_roundtrip(g_state.globals.display);
@@ -226,11 +238,12 @@ init_premem__destroy()
 {
     registry_listener__destroy(&g_state);
 
-    assert(g_state.n_outputs <= MAX_OUTPUTS);
-
     FOR_EACH_OUTPUT(i, st_output) {
         init_premem__selection__destroy(st_output);
         init_premem__capture__destroy(st_output);
+        if (g_state.options.freezeframe) {
+            init_premem__freezeframe__destroy(st_output);
+        }
 
         // XXX: This could be probably be destroyed within output::done if we
         //      we won't support live updating. Keeping it here for now.
@@ -252,7 +265,8 @@ init_premem__destroy()
 
 
 // Just bump this if/when we need more
-#define _ARENA_BLOCKS_MAX (MAX_OUTPUTS * 3)
+// TODO: Make this cleaner...
+#define _ARENA_BLOCKS_MAX (MAX_OUTPUTS * 6)
 
 struct _arena_context {
     void *addr;
@@ -333,7 +347,7 @@ init_meminit(
     FOR_EACH_OUTPUT(i, st_output) {
         // XXX: Handle this gracefully (and maybe in a nicer location?)
         if (st_output->capture.shm_format == SCRAN_SHM_FORMAT_UNSET) {
-            DEBUG("Failed to select shm_buffer format.\n");
+            DEBUG("Failed to select shm_format for capture buffer.\n");
             return false;
         }
 
@@ -344,6 +358,31 @@ init_meminit(
                 _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->selection_surface.double_buffer[i_buffer].data
             );
         };
+
+        if (g_state.options.freezeframe) {
+            if (st_output->freezeframe.shm_format == SCRAN_SHM_FORMAT_UNSET) {
+                DEBUG("Failed to select shm_format for freezeframe capture buffer.\n");
+                return false;
+            }
+
+            // TODO: Maybe do proper ::released handling for these buffers, but
+            // has not caused issues yet, since we're effectively guaranteed
+            // multiple frames between each freezeframe refresh
+
+            // We capture directly into the buffer
+            const size_t _capture_buf_size = get_capture_buf_size(st_output);
+            _arena_add_block(
+                shm_arena,
+                _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.capture_buffer.data
+            );
+
+            // single-pixel buffer
+            const size_t _transparent_buf_size = RGBA32_PIXEL_STRIDE;
+            _arena_add_block(
+                shm_arena,
+                _transparent_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.transparent_single_pixel_buffer.data
+            );
+        }
 
         const size_t _capture_buf_size = get_capture_buf_size(st_output);
         _arena_add_block(
@@ -422,6 +461,33 @@ init_meminit(
             );
         }
 
+        if (g_state.options.freezeframe) {
+            struct scran_output_freezeframe *_freezeframe_surface = &st_output->freezeframe;
+
+            struct scran_output_freezeframe_buffer *_capture_buffer = &_freezeframe_surface->capture_buffer;
+            const ptrdiff_t _capture_buffer_offset = _capture_buffer->data - shm_arena->addr;
+            _capture_buffer->wl_buffer = wl_shm_pool_create_buffer(
+                global_pool_wl,
+                _capture_buffer_offset,
+                _freezeframe_surface->surface.width_px_buffer,
+                _freezeframe_surface->surface.height_px_buffer,
+                get_capture_stride(st_output),
+                _freezeframe_surface->shm_format
+            );
+
+            struct scran_output_freezeframe_buffer *_transparent_buffer = &_freezeframe_surface->transparent_single_pixel_buffer;
+            const ptrdiff_t _transparent_buffer_offset = _transparent_buffer->data - shm_arena->addr;
+            _transparent_buffer->wl_buffer = wl_shm_pool_create_buffer(
+                global_pool_wl,
+                _transparent_buffer_offset,
+                // single-pixel buffer
+                1, 1, SURFACE_PIXEL_STRIDE,
+                // TODO: Assert this has alpha channel? Though we have bigger
+                // problems if that ever fails...
+                SURFACE_SHM_FORMAT
+            );
+        }
+
         assert(st_output->capture.frame_ctx.st_buffer.data != NULL);
         const ptrdiff_t _capture_buffer_offset = st_output->capture.frame_ctx.st_buffer.data - shm_arena->addr;
         st_output->capture.frame_ctx.st_buffer.wl_buffer = wl_shm_pool_create_buffer(
@@ -464,6 +530,11 @@ init_meminit__destroy(
             struct scran_capture_buffer *capture_buffer = &st_output->capture.frame_ctx.st_buffer;
             wl_buffer_destroy(capture_buffer->wl_buffer);
         }
+
+        if (g_state.options.freezeframe) {
+            wl_buffer_destroy(st_output->freezeframe.capture_buffer.wl_buffer);
+            wl_buffer_destroy(st_output->freezeframe.transparent_single_pixel_buffer.wl_buffer);
+        }
     }
 
     assert(shm_arena->addr != NULL && private_arena->addr != NULL);
@@ -501,6 +572,12 @@ init_postmem()
             (st_output == custom_initial_selection_output)
             ? &custom_initial_selection : NULL;
 
+        if (g_state.options.freezeframe) {
+            if (!init_postmem__freezeframe(st_output)) {
+                return false;
+            }
+        }
+
         if (!init_postmem__selection(st_output, _p_custom_initial_selection)) {
             return false;
         }
@@ -514,6 +591,10 @@ init_postmem__destroy()
 {
     FOR_EACH_OUTPUT(i, st_output) {
         init_postmem__selection__destroy(st_output);
+
+        if (g_state.options.freezeframe) {
+            init_postmem__freezeframe__destroy(st_output);
+        }
     }
 }
 
