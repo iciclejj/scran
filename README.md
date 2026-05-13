@@ -317,7 +317,7 @@ See `scran -h` for more details
   -e   automatically capture and exit immediately after initial selection
   -A   disable audio capture (during video capture)
          Note: audio capture requires PipeWire.
-  -C   disable cursor capture (during video capture)
+  -C   disable cursor capture
   -B   do not keep background process alive
   -s   slurp: send selection as geometry string to standard output
          Equivalent to slurp's default output.
