@@ -9,6 +9,7 @@
 #include <libavutil/opt.h>
 #include <libavutil/display.h>
 #include <libavutil/version.h>
+#include <libavformat/version.h>
 
 #include "ext-image-copy-capture-v1.h"
 
@@ -458,7 +459,13 @@ init_ffmpeg(struct scran_output *st_output)
     avio_open(&(frame_ctx->av_format_ctx)->pb, output_filepath, AVIO_FLAG_WRITE);
     assert(!((frame_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
     AVDictionary *format_opts = NULL;
-    av_dict_set(&format_opts, "movflags", "frag_keyframe", 0);
+#if !defined LIBAVFORMAT_VERSION_INT || (LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(61,4,100))
+    // Best we can do for seeking/playback-duration compatibility without remuxing or custom
+    // "hybrid mp4" implementation, if hybrid_fragmented is unavailable.
+    av_dict_set(&format_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
+#else
+    av_dict_set(&format_opts, "movflags", "hybrid_fragmented", 0);
+#endif /* LIBAVFORMAT_VERSION_INT */
     int format_ret = avformat_write_header(frame_ctx->av_format_ctx, &format_opts);
     av_dict_free(&format_opts);
     if (format_ret < 0) {
