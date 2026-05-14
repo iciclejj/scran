@@ -24,7 +24,7 @@
 
 stdenv.mkDerivation {
   pname = "scran";
-  version = "v0.9.0";
+  version = "v0.9.2";
   src = _src;
 
   nativeBuildInputs = [

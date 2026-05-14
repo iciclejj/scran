@@ -2,7 +2,7 @@
 # This file serves as a template only. Hashes etc. are not necessarily kept up to date.
 #
 pkgname=scran
-pkgver=0.9.0
+pkgver=0.9.2
 pkgrel=1
 pkgdesc='Image and video capture for Wayland'
 arch=('x86_64')
