@@ -93,22 +93,20 @@ init_premem()
 
     // Collect dynamic memory requirements
     // + otherwhat that might benefit from early init
-    for (int i = 0; i < g_state.n_outputs; ++i) {
-        struct scran_output *_st_output = &g_state.outputs[i];
-
-        if (!init_premem__selection(_st_output, &g_state.globals)) {
+    FOR_EACH_OUTPUT(i, st_output) {
+        if (!init_premem__selection(st_output, &g_state.globals)) {
             return false;
         }
 
-        if (!init_premem__capture(_st_output, &g_state.seat.datacontrol, &g_state.globals)) {
+        if (!init_premem__capture(st_output, &g_state.seat.datacontrol, &g_state.globals)) {
             return false;
         }
 
-        _st_output->xdg_output = zxdg_output_manager_v1_get_xdg_output(
-            g_state.globals.xdg_output_manager, _st_output->wl_output
+        st_output->xdg_output = zxdg_output_manager_v1_get_xdg_output(
+            g_state.globals.xdg_output_manager, st_output->wl_output
         );
 
-        zxdg_output_v1_add_listener(_st_output->xdg_output, &xdg_output_listener, _st_output);
+        zxdg_output_v1_add_listener(st_output->xdg_output, &xdg_output_listener, st_output);
     }
 
     if (!init_premem__datacontrol(&g_state.seat.datacontrol)) {
@@ -228,17 +226,15 @@ init_premem__destroy()
 
     assert(g_state.n_outputs <= MAX_OUTPUTS);
 
-    for (int i = 0; i < g_state.n_outputs; ++i) {
-        struct scran_output *_st_output = &g_state.outputs[i];
-
-        init_premem__selection__destroy(_st_output);
-        init_premem__capture__destroy(_st_output);
+    FOR_EACH_OUTPUT(i, st_output) {
+        init_premem__selection__destroy(st_output);
+        init_premem__capture__destroy(st_output);
 
         // XXX: This could be probably be destroyed within output::done if we
         //      we won't support live updating. Keeping it here for now.
         //      NOTE: Use output::done for xdg_output <v3, and xdg_output::done
         //            for v3 (see xml)
-        zxdg_output_v1_destroy(_st_output->xdg_output);
+        zxdg_output_v1_destroy(st_output->xdg_output);
     }
 
     wl_region_destroy(g_state.empty_wl_region);
@@ -332,11 +328,9 @@ init_meminit(
     //
     // Gather memory requirements
     //
-    for (int i = 0; i < g_state.n_outputs; ++i) {
-        struct scran_output *_st_output = &g_state.outputs[i];
-
+    FOR_EACH_OUTPUT(i, st_output) {
         // XXX: Handle this gracefully (and maybe in a nicer location?)
-        if (_st_output->capture.shm_format == -1) {
+        if (st_output->capture.shm_format == -1) {
             DEBUG("Failed to select shm_buffer format.\n");
             return false;
         }
@@ -348,23 +342,23 @@ init_meminit(
         //            padding/stride/etc.
 
         for (int i_buffer = 0; i_buffer < SELECTION_SURFACE_BUF_COUNT; i_buffer++) {
-            const size_t _surface_buf_size = get_surface_buf_size_padded(&_st_output->selection_surface.surface);
+            const size_t _surface_buf_size = get_surface_buf_size_padded(&st_output->selection_surface.surface);
             _arena_add_block(
                 shm_arena,
-                _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->selection_surface.double_buffer[i_buffer].data
+                _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->selection_surface.double_buffer[i_buffer].data
             );
         };
 
-        const size_t _capture_buf_size = get_capture_buf_size_padded(_st_output);
+        const size_t _capture_buf_size = get_capture_buf_size_padded(st_output);
         _arena_add_block(
             shm_arena,
-            _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->capture.frame_ctx.st_buffer.data
+            _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.st_buffer.data
         );
 
-        const size_t _capture_buf_2_size = get_capture_buf_size_padded(_st_output);
+        const size_t _capture_buf_2_size = get_capture_buf_size_padded(st_output);
         _arena_add_block(
             private_arena,
-            _capture_buf_2_size, FRAMEBUFFER_ALIGNMENT_BYTES, &_st_output->capture.frame_ctx.img_data_2
+            _capture_buf_2_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.img_data_2
         );
     }
 
@@ -409,10 +403,8 @@ init_meminit(
     //
     // Create wayland buffers
     //
-    for (int i = 0; i < g_state.n_outputs; ++i) {
-        struct scran_output *_st_output = &g_state.outputs[i];
-
-        struct scran_output_selectionSurface *_selection_surface = &_st_output->selection_surface;
+    FOR_EACH_OUTPUT(i, st_output) {
+        struct scran_output_selectionSurface *_selection_surface = &st_output->selection_surface;
         for (int i_buffer = 0; i_buffer < SELECTION_SURFACE_BUF_COUNT; i_buffer++) {
             struct scran_output_selectionSurface_buffer *_st_buffer = &_selection_surface->double_buffer[i_buffer];
 
@@ -434,21 +426,21 @@ init_meminit(
             );
         }
 
-        assert(_st_output->capture.frame_ctx.st_buffer.data != NULL);
-        const ptrdiff_t _capture_buffer_offset = _st_output->capture.frame_ctx.st_buffer.data - shm_arena->addr;
-        _st_output->capture.frame_ctx.st_buffer.wl_buffer = wl_shm_pool_create_buffer(
+        assert(st_output->capture.frame_ctx.st_buffer.data != NULL);
+        const ptrdiff_t _capture_buffer_offset = st_output->capture.frame_ctx.st_buffer.data - shm_arena->addr;
+        st_output->capture.frame_ctx.st_buffer.wl_buffer = wl_shm_pool_create_buffer(
             global_pool_wl,
             _capture_buffer_offset,
-            _st_output->mode.width_px,
-            _st_output->mode.height_px,
-            get_capture_stride(_st_output),
-            _st_output->capture.shm_format
+            st_output->mode.width_px,
+            st_output->mode.height_px,
+            get_capture_stride(st_output),
+            st_output->capture.shm_format
         );
 
         wl_buffer_add_listener(
-            _st_output->capture.frame_ctx.st_buffer.wl_buffer,
+            st_output->capture.frame_ctx.st_buffer.wl_buffer,
             &capture_buffer_listener,
-            &_st_output->capture.frame_ctx.st_buffer
+            &st_output->capture.frame_ctx.st_buffer
         );
     }
 
@@ -466,9 +458,7 @@ init_meminit__destroy(
     struct _arena_context *shm_arena,
     struct _arena_context *private_arena
 ) {
-    for (int i = 0; i < g_state.n_outputs; ++i) {
-        struct scran_output *st_output = &g_state.outputs[i];
-
+    FOR_EACH_OUTPUT(i, st_output) {
         for (int i_buf = 0; i_buf < SELECTION_SURFACE_BUF_COUNT; i_buf++) {
             struct scran_output_selectionSurface_buffer *selection_surface_buffer = &st_output->selection_surface.double_buffer[i_buf];
             wl_buffer_destroy(selection_surface_buffer->wl_buffer);
@@ -510,15 +500,12 @@ init_postmem()
         set_selection_initialized(custom_initial_selection_output);
     }
 
-    assert(g_state.n_outputs <= MAX_OUTPUTS);
-    for (int i = 0; i < g_state.n_outputs; ++i) {
-        struct scran_output *_st_output = &g_state.outputs[i];
-
+    FOR_EACH_OUTPUT(i, st_output) {
         struct BLBoxI *_p_custom_initial_selection =
-            (_st_output == custom_initial_selection_output)
+            (st_output == custom_initial_selection_output)
             ? &custom_initial_selection : NULL;
 
-        if (!init_postmem__selection(_st_output, _p_custom_initial_selection)) {
+        if (!init_postmem__selection(st_output, _p_custom_initial_selection)) {
             return false;
         }
     }
@@ -529,8 +516,8 @@ init_postmem()
 static void
 init_postmem__destroy()
 {
-    for (int i = 0; i < g_state.n_outputs; ++i) {
-        init_postmem__selection__destroy(&g_state.outputs[i]);
+    FOR_EACH_OUTPUT(i, st_output) {
+        init_postmem__selection__destroy(st_output);
     }
 }
 

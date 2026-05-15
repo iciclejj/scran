@@ -30,8 +30,8 @@ handle_pointer_enter(
         WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR
     );
 
-    for (int i = 0; i < state->n_outputs; ++i) {
-        struct scran_output_selectionSurface *selection_surface = &state->outputs[i].selection_surface;
+    FOR_EACH_OUTPUT(i, st_output) {
+        struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
 
         if (surface_entered == selection_surface->surface.wl_surface) {
             pointer_ctx->focused_fulloutput_selection_surface = selection_surface;

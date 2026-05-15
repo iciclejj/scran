@@ -60,9 +60,7 @@ void handle_wlr_output_head_name(
     DEBUG("handle_wlr_output_head_name\n");
 
     // Match wlr_output_head with wl_output so we can set data pointers appropriately.
-    for (int i = 0; i < g_state.n_outputs; ++i) {
-        struct scran_output *st_output = &g_state.outputs[i];
-
+    FOR_EACH_OUTPUT(i, st_output) {
         if (0 == strncmp(name, st_output->name, sizeof(st_output->name))) {
             pending_head->st_output = st_output;
             DEBUG("Matched wlr/cosmic_output_head with wl_output.\n");

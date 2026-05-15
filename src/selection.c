@@ -120,8 +120,7 @@ start_grabbing_focus()
 {
     DEBUG("Grabbing focus\n");
 
-    for (int i = 0; i < g_state.n_outputs; ++i) {
-        struct scran_output *st_output = &g_state.outputs[i];
+    FOR_EACH_OUTPUT(i, st_output) {
         struct scran_output_surface *st_surface = &st_output->selection_surface.surface;
 
         // NULL sets an infinite region
@@ -155,8 +154,7 @@ stop_grabbing_focus()
 {
     DEBUG("Releasing focus\n");
 
-    for (int i = 0; i < g_state.n_outputs; ++i) {
-        struct scran_output *st_output = &g_state.outputs[i];
+    FOR_EACH_OUTPUT(i, st_output) {
         struct scran_output_surface *st_surface = &st_output->selection_surface.surface;
 
         wl_surface_set_input_region(st_surface->wl_surface, g_state.empty_wl_region);

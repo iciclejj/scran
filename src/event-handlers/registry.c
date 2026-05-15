@@ -15,6 +15,7 @@
 #include "viewporter.h"
 
 #include "state.h"
+#include "state-util.h"
 #include "event-handlers.h"
 #include "print.h"
 
@@ -176,8 +177,7 @@ registry_listener__destroy(struct scran *state)
         hyprland_surface_manager_v1_destroy(globals->hypr_surface_manager);
     }
 
-    for (int i = 0; i < state->n_outputs; ++i) {
-        struct scran_output *st_output = &state->outputs[i];
+    FOR_EACH_OUTPUT(i, st_output) {
         wl_output_release(st_output->wl_output);
     }
 

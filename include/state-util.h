@@ -15,6 +15,11 @@
 extern struct scran g_state;
 
 
+#define FOR_EACH_OUTPUT(i, varname) \
+    for (int i = (assert(g_state.n_outputs <= MAX_OUTPUTS), 0); i < g_state.n_outputs; ++i) \
+        for (struct scran_output *varname = &g_state.outputs[i]; varname; varname = NULL)
+
+
 // XXX: These functions are duplicated in scranrot. Maybe just use scranrot's.
 static inline int
 get_transformed_height(int src_width, int src_height, enum wl_output_transform transform)
@@ -72,8 +77,8 @@ static inline int8_t
 get_containing_output_array_index(void *ptr) {
     char *ptr_ = ptr;
 
-    for (int i = 0; i < g_state.n_outputs; ++i) {
-        if ((char *)(g_state.outputs + i) <= ptr_ && ptr_ < (char *)(g_state.outputs + i + 1)) {
+    FOR_EACH_OUTPUT(i, st_output) {
+        if ((char *)st_output <= ptr_ && ptr_ < (char *)(st_output + 1)) {
             return i;
         }
     }
@@ -108,8 +113,8 @@ global_logical_coordinates_to_output_pixel_coordinates(
 ) {
     *containing_output = NULL;
 
-    for (int i = 0; i < g_state.n_outputs; ++i) {
-        struct scran_output_xdg_geometry *geometry = &g_state.outputs[i].xdg_geometry;
+    FOR_EACH_OUTPUT(i, st_output) {
+        struct scran_output_xdg_geometry *geometry = &st_output->xdg_geometry;
 
         bool y_within_bounds = rect_in.y >= geometry->y_logical
                             && rect_in.y  < geometry->y_logical + geometry->h_logical;
@@ -118,7 +123,7 @@ global_logical_coordinates_to_output_pixel_coordinates(
                             && rect_in.x < geometry->x_logical + geometry->w_logical;
 
         if (y_within_bounds && x_within_bounds) {
-            *containing_output = &g_state.outputs[i];
+            *containing_output = st_output;
 
             // XXX: Uses selection-surface as source of truth for output-global scale
             //      TODO: See if there's a better way to do this, e.g. getting scale
