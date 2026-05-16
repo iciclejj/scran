@@ -128,10 +128,14 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
 
     bl_path_init(&selection_surface->bl_path);
 
-    set_selection_surface_theme(st_output, SURFACE_THEME_PRE_SELECTION);
-    request_selection_surface_frame_callback(st_output);
+    if (custom_initial_selection == NULL) {
+        set_selection_surface_theme(st_output, SURFACE_THEME_PRE_SELECTION);
+        request_selection_surface_frame_callback(st_output);
+    } else {
+        set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+    }
 
-    BLBoxI initial_box = (custom_initial_selection != NULL) ? *custom_initial_selection : (BLBoxI){ };
+    BLBoxI initial_box = (custom_initial_selection == NULL) ? (BLBoxI){ } : *custom_initial_selection;
 
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
         struct scran_output_selectionSurface_buffer *buffer = &selection_surface->double_buffer[i];
