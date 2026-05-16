@@ -123,7 +123,7 @@ handle_pointer_motion(
     pointer_ctx->y_px = y_px;
 
     // TODO: Check if out of bounds
-    assert(!SCRAN_BL_BOX_IS_INVERTED(selection_ctx->box_before_changes_px));
+    assert(!blboxi_is_inverted(selection_ctx->box_before_changes_px));
 
     switch (selection_ctx->selection_state) {
     case SELECTION_NONE:
@@ -156,7 +156,7 @@ handle_pointer_motion(
             };
 
             // The rebase should have been initiated with a valid box.
-            assert(!SCRAN_BL_BOX_IS_INVERTED(box_before_rebase));
+            assert(!blboxi_is_inverted(box_before_rebase));
             assert(box_before_rebase.x0 >= 0 && box_before_rebase.x1 <= get_transformed_output_width(st_output));
             assert(box_before_rebase.y0 >= 0 && box_before_rebase.y1 <= get_transformed_output_height(st_output));
 

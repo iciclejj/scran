@@ -288,8 +288,8 @@ draw_selection_and_damage_buffer(
     // What we have to overwrite:
     const struct BLBoxI capture_area_last_used_in_current_buffer = st_buffer->box_currently_drawn;
 
-    assert(!SCRAN_BL_BOX_IS_INVERTED(capture_area));
-    assert(!SCRAN_BL_BOX_IS_INVERTED(capture_area_last_used_in_any_buffer));
+    assert(!blboxi_is_inverted(capture_area));
+    assert(!blboxi_is_inverted(capture_area_last_used_in_any_buffer));
     // TODO: Assert box_bounds fully surrounds box_to_draw
 
     const struct BLBoxI capture_area_bounds = {

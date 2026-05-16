@@ -11,16 +11,6 @@
 #define MIN(a, b) (a < b ? a : b)
 #define MAX(a, b) (a > b ? a : b)
 
-#define SCRAN_BL_BOX_IS_INVERTED_OR_EMPTY(box) ( \
-    box.x0 >= box.x1 \
- || box.y0 >= box.y1 \
-)
-
-#define SCRAN_BL_BOX_IS_INVERTED(box) ( \
-    box.x0 > box.x1 \
- || box.y0 > box.y1 \
-)
-
 
 #if __has_include(<wayland-client.h>)
     #include <wayland-client.h>
@@ -80,6 +70,16 @@
         }
     }
 #endif /* __has_include(<wayland-client.h>) */
+
+static inline bool
+blboxi_is_inverted_or_empty(BLBoxI box) {
+    return box.x1 <= box.x0 || box.y1 <= box.y0;
+}
+
+static inline bool
+blboxi_is_inverted(BLBoxI box) {
+    return box.x1 < box.x0 || box.y1 < box.y0;
+}
 
 struct scran_rgba32 {
     uint8_t r;
@@ -304,7 +304,7 @@ blboxi_intersection(
 ) {
     const BLBoxI intersection = blboxi_intersection_raw(a, b);
 
-    if (SCRAN_BL_BOX_IS_INVERTED_OR_EMPTY(intersection)) {
+    if (blboxi_is_inverted_or_empty(intersection)) {
         return (BLBoxI){ 0, 0, 0, 0 };
     }
 
@@ -318,12 +318,12 @@ get_box_diff_as_4_rects(
     struct BLBoxI b,
     struct BLRectI ret[static 4]
 ) {
-    assert(!SCRAN_BL_BOX_IS_INVERTED(a));
-    assert(!SCRAN_BL_BOX_IS_INVERTED(b));
+    assert(!blboxi_is_inverted(a));
+    assert(!blboxi_is_inverted(b));
 
     const struct BLBoxI raw_intersection = blboxi_intersection_raw(a, b);
 
-    if (SCRAN_BL_BOX_IS_INVERTED_OR_EMPTY(raw_intersection)) {
+    if (blboxi_is_inverted_or_empty(raw_intersection)) {
         // No overlap
         ret[0] = blboxi_to_blrecti(a);
         ret[1] = (struct BLRectI){ 0 };
@@ -378,12 +378,12 @@ get_box_symdiff_as_4_rects(
     struct BLBoxI b,
     struct BLRectI ret[static 4]
 ) {
-    assert(!SCRAN_BL_BOX_IS_INVERTED(a));
-    assert(!SCRAN_BL_BOX_IS_INVERTED(b));
+    assert(!blboxi_is_inverted(a));
+    assert(!blboxi_is_inverted(b));
 
     const struct BLBoxI raw_intersection = blboxi_intersection_raw(a, b);
 
-    if (SCRAN_BL_BOX_IS_INVERTED_OR_EMPTY(raw_intersection)) {
+    if (blboxi_is_inverted_or_empty(raw_intersection)) {
         // No overlap
         ret[0] = blboxi_to_blrecti(a);
         ret[1] = blboxi_to_blrecti(b);

@@ -673,7 +673,7 @@ _print_slurp_string(struct scran_output *st_output)
     const struct scran_output_xdg_geometry geometry = st_output->xdg_geometry;
     const struct BLBoxI box_px = st_output->selection_ctx.box_px;
 
-    assert(!SCRAN_BL_BOX_IS_INVERTED(box_px));
+    assert(!blboxi_is_inverted(box_px));
     const struct BLRectI rect_logical = {
         .x = round(  box_px.x0              / scale),
         .y = round(  box_px.y0              / scale),
