@@ -32,9 +32,7 @@ _get_box_diff_as_4_rects(
     };
 
 
-    if (intersection.x0 > a.x1 || intersection.x1 < a.x0
-     || intersection.y0 > a.y1 || intersection.y1 < a.y0
-    ) {
+    if (intersection.x1 <= intersection.x0 || intersection.y1 <= intersection.y0) {
         // No overlap
         ret[0] = blboxi_to_blrecti(a);
         ret[1] = (struct BLRectI){ 0 };
@@ -96,6 +94,15 @@ _get_box_symdiff_as_4_rects(
         .y0 = MAX(a.y0, b.y0),
         .y1 = MIN(a.y1, b.y1),
     };
+
+    if (intersection.x1 <= intersection.x0 || intersection.y1 <= intersection.y0) {
+        // No overlap
+        ret[0] = blboxi_to_blrecti(a);
+        ret[1] = blboxi_to_blrecti(b);
+        ret[2] = (struct BLRectI){ 0 };
+        ret[3] = (struct BLRectI){ 0 };
+        return;
+    }
 
     const BLBoxI leftmost  = a.x0 < b.x0 ? a : b;
     const BLRectI left_full = (struct BLRectI) {
