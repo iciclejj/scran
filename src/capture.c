@@ -113,6 +113,9 @@ update_capture_area_with_selection(
         st_output->mode.height_px,
         st_output->transform
     );
+
+    assert(st_output->capture.frame_ctx.capture_area_px.x1 <= st_output->mode.width_px);
+    assert(st_output->capture.frame_ctx.capture_area_px.y1 <= st_output->mode.height_px);
 }
 
 void
