@@ -59,6 +59,8 @@ selection_surface_frame_callback_handler(
         return;
     }
 
+    // This is the capture area that the rest of this function is assuming will
+    // be in use for the frame in which this selection area is presented.
     const struct BLBoxI capture_area = get_blboxi_deinverted(st_output->selection_ctx.box_px);
     assert(capture_area.x1 <= get_transformed_output_width(st_output));
     assert(capture_area.y1 <= get_transformed_output_height(st_output));
@@ -85,7 +87,7 @@ selection_surface_frame_callback_handler(
         // XXX TODO: Check whether we're actually sway more robustly, and assign
         // it as part of our state. (So we don't need to assume the user is
         // running either cosmic or sway.)
-        update_capture_area_with_selection(st_output, st_output->selection_ctx.box_px);
+        update_capture_area_with_selection(st_output, capture_area);
     }
 
     draw_selection_and_damage_buffer(

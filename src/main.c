@@ -483,7 +483,7 @@ init_postmem()
 
     if (g_state.options.have_custom_initial_selection) {
         struct BLRectI      custom_initial_selection_rect;
-        global_logical_coordinates_to_output_pixel_coordinates(
+        global_logical_rect_to_selection(
             g_state.options.custom_initial_selection_global_coordinates,
             &custom_initial_selection_rect,
             &custom_initial_selection_output

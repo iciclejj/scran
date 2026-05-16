@@ -185,6 +185,7 @@ handle_keyboard_key(
             request_end_video_capture(st_output);
         } else {
             if (st_output->selection_ctx.selection_state == SELECTION_INITIALIZING) {
+                // TODO: Guard against capture_and_exit_after_selection_init?
                 set_selection_initialized(st_output);
             }
 

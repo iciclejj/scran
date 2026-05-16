@@ -106,7 +106,7 @@ get_output_array_index(const struct scran_output *st_output) {
 
 
 static inline void
-global_logical_coordinates_to_output_pixel_coordinates(
+global_logical_rect_to_selection(
     BLRectI rect_in,
     BLRectI *rect_out,
     struct scran_output **containing_output
