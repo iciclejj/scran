@@ -7,7 +7,7 @@
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 #include <libavcodec/avcodec.h>
-#include "spa/param/audio/raw.h"
+#include <spa/param/audio/raw.h>
 
 
 #define RGBA32_SHUFFLE_ERROR ((uint32_t)0x00000000)
