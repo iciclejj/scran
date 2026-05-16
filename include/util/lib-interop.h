@@ -1,13 +1,20 @@
 #ifndef LIB_INTEROP_H
 #define LIB_INTEROP_H
 
+
+#include <assert.h>
+
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 #include <libavcodec/avcodec.h>
 #include "spa/param/audio/raw.h"
 
+
 #define RGBA32_SHUFFLE_ERROR ((uint32_t)0x00000000)
 #define RGBA32_SHUFFLE_NO_CHANGE ((uint32_t)0x03020100)
+
+#define ASSERT_SAME_TYPE(a, b) static_assert(_Generic((a), __typeof_unqual__(b): 1, default: 0), "types do not match")
+
 
 // XXX: libavfilter doesn't expose the transpose filter's header in the public
 // API, for some reason...
