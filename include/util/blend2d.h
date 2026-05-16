@@ -8,6 +8,9 @@
 #include <blend2d/blend2d.h>
 
 
+#define MIN(a, b) (a < b ? a : b)
+#define MAX(a, b) (a > b ? a : b)
+
 // TODO: Figure out whether 0 height or weight should be allowed.
 #define SCRAN_BL_BOX_IS_INVERTED(box) ( \
     box.x0 > box.x1 \
@@ -275,6 +278,135 @@ shift_blboxi(BLBoxI *box, int x_shift, int y_shift) {
     box->y0 += y_shift;
     box->x1 += x_shift;
     box->y1 += y_shift;
+}
+
+// Operation: a - b
+static inline void
+get_box_diff_as_4_rects(
+    struct BLBoxI a,
+    struct BLBoxI b,
+    struct BLRectI ret[static 4]
+) {
+    assert(!SCRAN_BL_BOX_IS_INVERTED(a));
+    assert(!SCRAN_BL_BOX_IS_INVERTED(b));
+
+    const struct BLBoxI intersection = {
+        .x0 = MAX(a.x0, b.x0),
+        .x1 = MIN(a.x1, b.x1),
+        .y0 = MAX(a.y0, b.y0),
+        .y1 = MIN(a.y1, b.y1),
+    };
+
+
+    if (intersection.x1 <= intersection.x0 || intersection.y1 <= intersection.y0) {
+        // No overlap
+        ret[0] = blboxi_to_blrecti(a);
+        ret[1] = (struct BLRectI){ 0 };
+        ret[2] = (struct BLRectI){ 0 };
+        ret[3] = (struct BLRectI){ 0 };
+        return;
+    }
+
+    const BLRectI left_full = (struct BLRectI) {
+        .x = a.x0,
+        .w = intersection.x0 - a.x0,
+        .y = a.y0,
+        .h = a.y1 - a.y0,
+    };
+
+    ret[0] = left_full;
+
+    const BLRectI right_full = (struct BLRectI) {
+        .x = intersection.x1,
+        .w = a.x1 - intersection.x1,
+        .y = a.y0,
+        .h = a.y1 - a.y0,
+    };
+
+    ret[1] = right_full;
+
+    const BLRectI top_remaining = (struct BLRectI) {
+        .x = intersection.x0,
+        .w = intersection.x1 - intersection.x0,
+        .y = a.y0,
+        .h = intersection.y0 - a.y0,
+    };
+
+    ret[2] = top_remaining;
+
+    const BLRectI bottom_remaining = (struct BLRectI) {
+        .x = intersection.x0,
+        .w = intersection.x1 - intersection.x0,
+        .y = intersection.y1,
+        .h = a.y1 - intersection.y1,
+    };
+
+    ret[3] = bottom_remaining;
+}
+
+// Operation: a ^ b
+static inline void
+get_box_symdiff_as_4_rects(
+    struct BLBoxI a,
+    struct BLBoxI b,
+    struct BLRectI ret[static 4]
+) {
+    assert(!SCRAN_BL_BOX_IS_INVERTED(a));
+    assert(!SCRAN_BL_BOX_IS_INVERTED(b));
+
+    const struct BLBoxI intersection = {
+        .x0 = MAX(a.x0, b.x0),
+        .x1 = MIN(a.x1, b.x1),
+        .y0 = MAX(a.y0, b.y0),
+        .y1 = MIN(a.y1, b.y1),
+    };
+
+    if (intersection.x1 <= intersection.x0 || intersection.y1 <= intersection.y0) {
+        // No overlap
+        ret[0] = blboxi_to_blrecti(a);
+        ret[1] = blboxi_to_blrecti(b);
+        ret[2] = (struct BLRectI){ 0 };
+        ret[3] = (struct BLRectI){ 0 };
+        return;
+    }
+
+    const BLBoxI leftmost  = a.x0 < b.x0 ? a : b;
+    const BLRectI left_full = (struct BLRectI) {
+        .x = leftmost.x0,
+        .w = intersection.x0 - leftmost.x0,
+        .y = leftmost.y0,
+        .h = leftmost.y1 - leftmost.y0,
+    };
+
+    ret[0] = left_full;
+
+    const BLBoxI rightmost = a.x1 > b.x1 ? a : b;
+    const BLRectI right_full = (struct BLRectI) {
+        .x = intersection.x1,
+        .w = rightmost.x1 - intersection.x1,
+        .y = rightmost.y0,
+        .h = rightmost.y1 - rightmost.y0,
+    };
+
+    ret[1] = right_full;
+
+    const BLRectI top_remaining = (struct BLRectI) {
+        .x = intersection.x0,
+        .w = intersection.x1 - intersection.x0,
+        .y = MIN(a.y0, b.y0),
+        .h = intersection.y0 - MIN(a.y0, b.y0),
+    };
+
+    ret[2] = top_remaining;
+
+    const BLRectI bottom_remaining = (struct BLRectI) {
+        .x = intersection.x0,
+        .w = intersection.x1 - intersection.x0,
+        .y = intersection.y1,
+        .h = MAX(a.y1, b.y1) - intersection.y1,
+    };
+
+    ret[3] = bottom_remaining;
 }
 
 

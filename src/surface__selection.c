@@ -10,139 +10,6 @@
 #include "ui.h"
 
 
-#define MIN(a, b) (a < b ? a : b)
-#define MAX(a, b) (a > b ? a : b)
-
-
-// Operation: a - b
-static inline void
-_get_box_diff_as_4_rects(
-    struct BLBoxI a,
-    struct BLBoxI b,
-    struct BLRectI ret[static 4]
-) {
-    assert(!SCRAN_BL_BOX_IS_INVERTED(a));
-    assert(!SCRAN_BL_BOX_IS_INVERTED(b));
-
-    const struct BLBoxI intersection = {
-        .x0 = MAX(a.x0, b.x0),
-        .x1 = MIN(a.x1, b.x1),
-        .y0 = MAX(a.y0, b.y0),
-        .y1 = MIN(a.y1, b.y1),
-    };
-
-
-    if (intersection.x1 <= intersection.x0 || intersection.y1 <= intersection.y0) {
-        // No overlap
-        ret[0] = blboxi_to_blrecti(a);
-        ret[1] = (struct BLRectI){ 0 };
-        ret[2] = (struct BLRectI){ 0 };
-        ret[3] = (struct BLRectI){ 0 };
-        return;
-    }
-
-    const BLRectI left_full = (struct BLRectI) {
-        .x = a.x0,
-        .w = intersection.x0 - a.x0,
-        .y = a.y0,
-        .h = a.y1 - a.y0,
-    };
-
-    ret[0] = left_full;
-
-    const BLRectI right_full = (struct BLRectI) {
-        .x = intersection.x1,
-        .w = a.x1 - intersection.x1,
-        .y = a.y0,
-        .h = a.y1 - a.y0,
-    };
-
-    ret[1] = right_full;
-
-    const BLRectI top_remaining = (struct BLRectI) {
-        .x = intersection.x0,
-        .w = intersection.x1 - intersection.x0,
-        .y = a.y0,
-        .h = intersection.y0 - a.y0,
-    };
-
-    ret[2] = top_remaining;
-
-    const BLRectI bottom_remaining = (struct BLRectI) {
-        .x = intersection.x0,
-        .w = intersection.x1 - intersection.x0,
-        .y = intersection.y1,
-        .h = a.y1 - intersection.y1,
-    };
-
-    ret[3] = bottom_remaining;
-}
-
-// Operation: a ^ b
-static inline void
-_get_box_symdiff_as_4_rects(
-    struct BLBoxI a,
-    struct BLBoxI b,
-    struct BLRectI ret[static 4]
-) {
-    assert(!SCRAN_BL_BOX_IS_INVERTED(a));
-    assert(!SCRAN_BL_BOX_IS_INVERTED(b));
-
-    const struct BLBoxI intersection = {
-        .x0 = MAX(a.x0, b.x0),
-        .x1 = MIN(a.x1, b.x1),
-        .y0 = MAX(a.y0, b.y0),
-        .y1 = MIN(a.y1, b.y1),
-    };
-
-    if (intersection.x1 <= intersection.x0 || intersection.y1 <= intersection.y0) {
-        // No overlap
-        ret[0] = blboxi_to_blrecti(a);
-        ret[1] = blboxi_to_blrecti(b);
-        ret[2] = (struct BLRectI){ 0 };
-        ret[3] = (struct BLRectI){ 0 };
-        return;
-    }
-
-    const BLBoxI leftmost  = a.x0 < b.x0 ? a : b;
-    const BLRectI left_full = (struct BLRectI) {
-        .x = leftmost.x0,
-        .w = intersection.x0 - leftmost.x0,
-        .y = leftmost.y0,
-        .h = leftmost.y1 - leftmost.y0,
-    };
-
-    ret[0] = left_full;
-
-    const BLBoxI rightmost = a.x1 > b.x1 ? a : b;
-    const BLRectI right_full = (struct BLRectI) {
-        .x = intersection.x1,
-        .w = rightmost.x1 - intersection.x1,
-        .y = rightmost.y0,
-        .h = rightmost.y1 - rightmost.y0,
-    };
-
-    ret[1] = right_full;
-
-    const BLRectI top_remaining = (struct BLRectI) {
-        .x = intersection.x0,
-        .w = intersection.x1 - intersection.x0,
-        .y = MIN(a.y0, b.y0),
-        .h = intersection.y0 - MIN(a.y0, b.y0),
-    };
-
-    ret[2] = top_remaining;
-
-    const BLRectI bottom_remaining = (struct BLRectI) {
-        .x = intersection.x0,
-        .w = intersection.x1 - intersection.x0,
-        .y = intersection.y1,
-        .h = MAX(a.y1, b.y1) - intersection.y1,
-    };
-
-    ret[3] = bottom_remaining;
-}
-
 static inline void
 _draw_and_damage_region(
     struct scran_output_selectionSurface *selection_surface,
@@ -324,10 +191,10 @@ _draw_and_damage_keymap(
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, SCRAN_SELECTION_BACKGROUND_COLOR.value);
 
         BLRectI text_rect_prev_uncovered[4];
-        _get_box_diff_as_4_rects(blrecti_to_blboxi(text_rect_prev), capture_area_border_outline, text_rect_prev_uncovered);
+        get_box_diff_as_4_rects(blrecti_to_blboxi(text_rect_prev), capture_area_border_outline, text_rect_prev_uncovered);
         // XXX: idk if this one is actually worth doing
         BLRectI text_rect_prev_any_buffer_uncovered[4];
-        _get_box_diff_as_4_rects(blrecti_to_blboxi(text_rect_prev_any_buffer), capture_area_border_outline, text_rect_prev_any_buffer_uncovered);
+        get_box_diff_as_4_rects(blrecti_to_blboxi(text_rect_prev_any_buffer), capture_area_border_outline, text_rect_prev_any_buffer_uncovered);
 
         for (int i = 0; i < 4; ++i) {
             bl_context_fill_rect_i(
@@ -457,7 +324,7 @@ draw_selection_and_damage_buffer(
 
         // Draw selection border
         BLRectI damage_regions_selection_border[4];
-        _get_box_symdiff_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions_selection_border);
+        get_box_symdiff_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions_selection_border);
         _draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline , damage_regions_selection_border, damage_regions_selection_border, 4);
 
         st_buffer->force_redraw = false;
@@ -468,12 +335,12 @@ draw_selection_and_damage_buffer(
             BLRectI damage_regions_buffer[8];
 
             static const int i_background_diffs = 0;
-            _get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_outline                           , damage_regions_wayland + i_background_diffs);
-            _get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_outline                           , damage_regions_buffer  + i_background_diffs);
+            get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_outline                           , damage_regions_wayland + i_background_diffs);
+            get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_outline                           , damage_regions_buffer  + i_background_diffs);
 
             static const int i_old_border_diffs = 4;
-            _get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_inline_last_used_in_any_buffer    , damage_regions_wayland + i_old_border_diffs);
-            _get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_inline_last_used_in_current_buffer, damage_regions_buffer  + i_old_border_diffs);
+            get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_inline_last_used_in_any_buffer    , damage_regions_wayland + i_old_border_diffs);
+            get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_inline_last_used_in_current_buffer, damage_regions_buffer  + i_old_border_diffs);
 
             _draw_and_damage_background(selection_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, 8);
 
@@ -485,7 +352,7 @@ draw_selection_and_damage_buffer(
         {
             BLRectI damage_regions[4];
 
-            _get_box_symdiff_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
+            get_box_symdiff_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
 
             _draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
         }
