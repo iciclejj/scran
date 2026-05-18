@@ -85,8 +85,8 @@ handle_image_copy_capture_frame_ready__video_capture(
 ) {
     ext_image_copy_capture_frame_v1_destroy(frame);
 
-    struct capture_frame_context *frame_ctx = data;
-
+    struct capture_frame_context *frame_ctx  = data;
+    struct ffmpeg_context        *ffmpeg_ctx = &frame_ctx->ffmpeg_ctx;
 
     // Crop and convert
 
@@ -94,30 +94,30 @@ handle_image_copy_capture_frame_ready__video_capture(
     // XXX: Can we make this const so area_start_addr can be const? It should
     // not change for the lifetime of this function (well, at least until the
     // next frame's dispatch at the end).
-    frame_ctx->av_frame_captured->data[0] = area_start_addr;
-    frame_ctx->av_frame_captured->pts = frame_ctx->presentation_time_nsec;
+    ffmpeg_ctx->av_frame_captured->data[0] = area_start_addr;
+    ffmpeg_ctx->av_frame_captured->pts = frame_ctx->presentation_time_nsec;
     int _ret_filter = av_buffersrc_write_frame(
-            frame_ctx->av_filter_buffersrc_ctx,
-            frame_ctx->av_frame_captured
+            ffmpeg_ctx->av_filter_buffersrc_ctx,
+            ffmpeg_ctx->av_frame_captured
     );
     assert(0 <= _ret_filter);
 
     _ret_filter = av_buffersink_get_frame(
-            frame_ctx->av_filter_buffersink_ctx,
-            frame_ctx->av_frame_to_encode
+            ffmpeg_ctx->av_filter_buffersink_ctx,
+            ffmpeg_ctx->av_frame_to_encode
     );
     assert(0 <= _ret_filter);
 
 
     // Encode
 
-    assert(av_frame_is_writable(frame_ctx->av_frame_to_encode));
-    int _ret_enc = avcodec_send_frame(frame_ctx->av_codec_ctx, frame_ctx->av_frame_to_encode);
+    assert(av_frame_is_writable(ffmpeg_ctx->av_frame_to_encode));
+    int _ret_enc = avcodec_send_frame(ffmpeg_ctx->av_codec_ctx, ffmpeg_ctx->av_frame_to_encode);
     assert(_ret_enc != AVERROR(EINVAL));
-    av_frame_unref(frame_ctx->av_frame_to_encode);
+    av_frame_unref(ffmpeg_ctx->av_frame_to_encode);
 
     while (_ret_enc >= 0) {
-        _ret_enc = avcodec_receive_packet(frame_ctx->av_codec_ctx, frame_ctx->av_packet);
+        _ret_enc = avcodec_receive_packet(ffmpeg_ctx->av_codec_ctx, ffmpeg_ctx->av_packet);
         assert(_ret_enc != AVERROR(EINVAL));
 
         if (_ret_enc == AVERROR_EOF || _ret_enc == AVERROR(EAGAIN)) {
@@ -127,12 +127,12 @@ handle_image_copy_capture_frame_ready__video_capture(
             return; // TODO: goto err
         }
 
-        write_video_frame(frame_ctx, frame_ctx->av_packet);
+        write_video_frame(frame_ctx, ffmpeg_ctx->av_packet);
 
         // INFO: packet gets unreferenced at start of loop by avcodec_receive_packet
     }
 
-    av_packet_unref(frame_ctx->av_packet);
+    av_packet_unref(ffmpeg_ctx->av_packet);
 
     // NOTE: We do this check *after* writing the incoming frame. This ensures
     // that the video will not be cut short at the end if we're only capturing

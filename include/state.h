@@ -259,21 +259,8 @@ struct scran_capture_buffer {
     void *data;
 };
 
-// TODO: More consistent naming?
-// TODO: Separate video/image capture context
-struct capture_frame_context {
-    struct ext_image_copy_capture_frame_v1 *frame;
-
-    struct scran_capture_buffer st_buffer;
-    // Extra buffer for copying/intermediate operations
-    // TODO: Rename this
-    void *img_data_2;
-
-    struct ext_image_copy_capture_session_v1 *wl_capture_session;
-
-    //
+struct ffmpeg_context {
     // Video
-    //
     AVFormatContext *av_format_ctx;
     AVCodecContext  *av_codec_ctx;
     AVFrame         *av_frame_captured;
@@ -286,13 +273,27 @@ struct capture_frame_context {
     // graph's refcouning?
     AVFilterContext *av_filter_transpose_ctx;
     AVFilterContext *av_filter_buffersink_ctx;
-    //
+
     // Audio
-    //
     AVCodecContext  *av_codec_ctx_audio;
     AVFrame         *av_frame_captured_audio;
     AVPacket        *av_packet_audio;
     AVAudioFifo     *av_audio_fifo;
+};
+
+// TODO: More consistent naming?
+// TODO: Separate video/image capture context
+struct capture_frame_context {
+    struct ext_image_copy_capture_frame_v1 *frame;
+
+    struct scran_capture_buffer st_buffer;
+    // Extra buffer for copying/intermediate operations
+    // TODO: Rename this
+    void *img_data_2;
+
+    struct ext_image_copy_capture_session_v1 *wl_capture_session;
+
+    struct ffmpeg_context ffmpeg_ctx;
 
     BLImageCore bl_img_captured;
     BLImageCodecCore bl_imgcodec;

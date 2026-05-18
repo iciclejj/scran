@@ -41,7 +41,8 @@ static struct {
 static void
 on_process(void *data)
 {
-    struct capture_frame_context *frame_ctx = data;
+    struct capture_frame_context *frame_ctx  = data;
+    struct ffmpeg_context        *ffmpeg_ctx = &frame_ctx->ffmpeg_ctx;
 
     if (!frame_ctx->capturing_video) {
         // We need exit here, differently to our video frame handler, since
@@ -66,7 +67,7 @@ on_process(void *data)
     uint32_t bytes_per_sample   = sizeof(float);
     uint32_t n_samples          = spa_buf->datas[0].chunk->size / bytes_per_sample;
     // NOTE: n_samples_leftover must be adjusted if moved to after av_audio_fifo_write()
-    int      n_samples_leftover = av_audio_fifo_size(frame_ctx->av_audio_fifo);
+    int      n_samples_leftover = av_audio_fifo_size(ffmpeg_ctx->av_audio_fifo);
     // XXX TODO: FR/FL should be mapped to 0/1 dynamically.
     void    *spa_buf_planes[SCRAN_PIPEWIRE_N_CHANNELS];
 
@@ -77,35 +78,35 @@ on_process(void *data)
         }
         spa_buf_planes[i] = samples;
     }
-    av_audio_fifo_write(frame_ctx->av_audio_fifo, spa_buf_planes, n_samples);
+    av_audio_fifo_write(ffmpeg_ctx->av_audio_fifo, spa_buf_planes, n_samples);
 
 
     int64_t pts_incoming    = (meta_header != NULL) ? meta_header->pts : pw_buf->time;
     int64_t pts_fifo_start  = pts_incoming
                               - frame_ctx->presentation_time_nsec_start
                               - av_rescale(n_samples_leftover, NSEC_PER_SEC, SCRAN_PIPEWIRE_SAMPLE_RATE);
-    int      frame_size     = frame_ctx->av_codec_ctx_audio->frame_size;
+    int      frame_size     = ffmpeg_ctx->av_codec_ctx_audio->frame_size;
 
-    assert(frame_size == frame_ctx->av_frame_captured_audio->nb_samples);
+    assert(frame_size == ffmpeg_ctx->av_frame_captured_audio->nb_samples);
 
     int64_t pts_curr = pts_fifo_start;
-    while (av_audio_fifo_size(frame_ctx->av_audio_fifo) >= frame_size) {
+    while (av_audio_fifo_size(ffmpeg_ctx->av_audio_fifo) >= frame_size) {
         av_audio_fifo_read(
-            frame_ctx->av_audio_fifo,
-            (void **)frame_ctx->av_frame_captured_audio->data,
+            ffmpeg_ctx->av_audio_fifo,
+            (void **)ffmpeg_ctx->av_frame_captured_audio->data,
             frame_size
         );
 
-        frame_ctx->av_frame_captured_audio->pts = pts_curr;
+        ffmpeg_ctx->av_frame_captured_audio->pts = pts_curr;
 
-        int ret_enc = avcodec_send_frame(frame_ctx->av_codec_ctx_audio, frame_ctx->av_frame_captured_audio);
+        int ret_enc = avcodec_send_frame(ffmpeg_ctx->av_codec_ctx_audio, ffmpeg_ctx->av_frame_captured_audio);
         if (ret_enc < 0) {
             eprintf("Error while sending audio frame\n");
             goto cont; // TODO: goto err?
         }
 
         while (ret_enc >= 0) {
-            ret_enc = avcodec_receive_packet(frame_ctx->av_codec_ctx_audio, frame_ctx->av_packet_audio);
+            ret_enc = avcodec_receive_packet(ffmpeg_ctx->av_codec_ctx_audio, ffmpeg_ctx->av_packet_audio);
 
             if (ret_enc == AVERROR_EOF || ret_enc == AVERROR(EAGAIN)) {
                 break;
@@ -114,13 +115,13 @@ on_process(void *data)
                 goto cont; // TODO: goto err?
             }
 
-            write_audio_packet(frame_ctx, frame_ctx->av_packet_audio);
+            write_audio_packet(frame_ctx, ffmpeg_ctx->av_packet_audio);
         }
 
         pts_curr += av_rescale(frame_size, NSEC_PER_SEC, SCRAN_PIPEWIRE_SAMPLE_RATE);
     }
 
-    av_packet_unref(frame_ctx->av_packet_audio);
+    av_packet_unref(ffmpeg_ctx->av_packet_audio);
 
 cont:
     pw_stream_queue_buffer(m_state.stream, pw_buf);
