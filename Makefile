@@ -128,7 +128,13 @@ $(build_dir_debug)/%.o: %.c    protocols_srcs
 
 # TODO: Separate Makefile for scranrot
 # TODO: Handle changed header files
-_srcdirs := src src/event-handlers src/init src/util scranrot/src
+_srcdirs := src                                         \
+			src/init                                    \
+			src/util                                    \
+			src/event-handlers                          \
+			src/event-handlers/image-copy-capture-frame \
+			src/event-handlers/surface                  \
+			scranrot/src
 srcs := $(foreach dir,$(_srcdirs),$(wildcard $(dir)/*.c))
 
 prog_release := $(build_dir_release)/$(PROG)

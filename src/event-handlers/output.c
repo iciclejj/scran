@@ -97,7 +97,7 @@ handle_output_name(
     DEBUG("handle_output_name()\n");
 
     // Store the name so we can match it later with a zwlr_output_head
-    //     See 'event-handlers/wlr_output.c'.
+    //     See 'event-handlers/wlr-output.c'.
     size_t name_strlen = strlcpy(st_output->name, name, sizeof(st_output->name));
 
     if (name_strlen >= sizeof(st_output->name)) {
