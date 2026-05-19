@@ -5,10 +5,10 @@
 void
 scranrot_transform_framebuffer(
     const void *src,
-    void *dst,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
+    void *dst,
     // Reorder src pixel byte-order before moving to dst
     // 8-bit-valued mask representing new order
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)
@@ -31,11 +31,8 @@ scranrot_transform_framebuffer(
     }
 
     selected_function(
-        src,
+        src, src_width_px, src_height_px, src_stride_bytes,
         dst,
-        src_width_px,
-        src_height_px,
-        src_stride_bytes,
         rgba_shuffle, transform,
         // OUT:
         dst_stride

@@ -215,10 +215,10 @@ transform_framebuffer__fallback__rotate_0(
 bool
 scranrot_transform_framebuffer_fallback(
     const void *src,
-    void *dst,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
+    void *dst,
     // Reorders dst's pixel byte-order relative to src.
     //   8-bit-valued mask representing new order
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)
@@ -259,17 +259,10 @@ scranrot_transform_framebuffer_fallback(
 
     SCRANROT_ASSERT(transform_fn != NULL);
     return transform_framebuffer__generic_dispatcher(
-        src,
-        src_width_px,
-        src_height_px,
-        src_stride_bytes,
-        dst,
-        dst_stride_bytes,
-
+        src, src_width_px, src_height_px, src_stride_bytes,
+        dst, dst_stride_bytes,
         transform_fn,
-        transform,
-        &rgba_shift_mask,
-        SCRANROT_FALLBACK_STRIDE_PX,
-        SCRANROT_FALLBACK_STRIDE_PX
+        transform, &rgba_shift_mask,
+        SCRANROT_FALLBACK_STRIDE_PX, SCRANROT_FALLBACK_STRIDE_PX
     );
 }

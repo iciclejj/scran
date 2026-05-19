@@ -44,10 +44,10 @@ enum scranrot_transform {
 
 typedef bool scranrot_transform_framebuffer_fn(
     const void *src,
-    void *dst,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
+    void *dst,
     // Reorders dst's pixel byte-order relative to src.
     //   8-bit-valued mask representing new order
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)
@@ -62,8 +62,11 @@ typedef bool scranrot_transform_framebuffer_fn(
 // (or fallback) at runtime, based on cpuid.
 void
 scranrot_transform_framebuffer(
-    const void *src, void *dst,
-    int src_width_px, int src_height_px, int src_stride_bytes,
+    const void *src,
+    int src_width_px,
+    int src_height_px,
+    int src_stride_bytes,
+    void *dst,
     // Reorder src pixel byte-order before moving to dst
     // 8-bit-valued mask representing new order
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)

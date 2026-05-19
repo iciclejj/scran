@@ -342,10 +342,10 @@ transform_framebuffer__ssse3_unaligned__rotate_0(
 bool
 scranrot_transform_framebuffer_ssse3__unaligned(
     const void *src,
-    void *dst,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
+    void *dst,
     // Reorders dst's pixel byte-order relative to src.
     //   8-bit-valued mask representing new order
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)
@@ -355,8 +355,8 @@ scranrot_transform_framebuffer_ssse3__unaligned(
 ) {
     if (src_width_px < SSSE3_TILE_WIDTH || src_height_px < SSSE3_TILE_HEIGHT) {
         return scranrot_transform_framebuffer_fallback(
-                src, dst,
-                src_width_px, src_height_px, src_stride_bytes,
+                src, src_width_px, src_height_px, src_stride_bytes,
+                dst,
                 rgba_shuffle_mask, transform,
                 dst_stride
         );
@@ -387,8 +387,8 @@ scranrot_transform_framebuffer_ssse3__unaligned(
     default:
         // XXX TODO: Implement flipped
         return scranrot_transform_framebuffer_fallback(
-                src, dst,
-                src_width_px, src_height_px, src_stride_bytes,
+                src, src_width_px, src_height_px, src_stride_bytes,
+                dst,
                 rgba_shuffle_mask, transform,
                 dst_stride
         );

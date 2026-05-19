@@ -111,11 +111,8 @@ handle_image_copy_capture_frame_ready__image_capture(
     //    TODO: Assert we have available padding.
     //    TODO: More asserts before & after this
     scranrot_transform_framebuffer(
-        area_start_addr,
+        area_start_addr, capture_area_px_w, capture_area_px_h, source_row_bytes,
         buf_cropped_converted,
-        capture_area_px_w,
-        capture_area_px_h,
-        source_row_bytes,
         rgba32_shuffle,
         // TODO: add lib-interop.h function for this cast?
         (enum scranrot_transform)st_output->transform,
