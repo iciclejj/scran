@@ -8,6 +8,7 @@
 #include "../include/scranrot.h"
 #include "../include/scranrot-util.h"
 #include "./generic.h"
+#include "./sse2.h"
 
 
 #define SSSE3_TILE_WIDTH  PIXELS_PER_M128I
@@ -18,11 +19,6 @@
 //           Initial testing did not show a significant difference for simple
 //           image capture, on a 5600h CPU.
 
-
-
-// TODO: Check stride performance on other systems (tested on 5600h)
-_Static_assert(sizeof(__m128i) % RGBA32_PIXEL_STRIDE == 0, "sizeof(__m128i) is not divisible by RGBA32_PIXEL_STRIDE");
-#define PIXELS_PER_M128I ((int)sizeof(__m128i) / RGBA32_PIXEL_STRIDE)
 
 typedef void (*_scranrot_transform_framebuffer_fn__ssse3)(
     const void *const restrict src,
@@ -112,14 +108,6 @@ _ssse3_rotate_270(
     dst_rows[2] = _mm_unpackhi_epi64(dst_row_3lo_2lo, dst_row_3hi_2hi);
     dst_rows[1] = _mm_unpacklo_epi64(dst_row_1lo_0lo, dst_row_1hi_0hi);
     dst_rows[0] = _mm_unpackhi_epi64(dst_row_1lo_0lo, dst_row_1hi_0hi);
-}
-
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline __m128i
-_ssse3_rotate_180_get_modified_rgba_shuffle(
-    const __m128i original_rgba_shuffle_mask
-) {
-    return _mm_shuffle_epi32(original_rgba_shuffle_mask, _MM_SHUFFLE(0,1,2,3));
 }
 
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
@@ -222,7 +210,7 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
     __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
     // NOTE: Rotation-specific:
-    rgba32_shuffle_mask_128 = _ssse3_rotate_180_get_modified_rgba_shuffle(rgba32_shuffle_mask_128);
+    rgba32_shuffle_mask_128 = scranrot_sse2_rotate_180_get_modified_rgba_shuffle(rgba32_shuffle_mask_128);
 
     char *const dst_last_row = (char *)dst + (src_height_px - 1) * dst_stride_bytes;
 
@@ -363,10 +351,7 @@ scranrot_transform_framebuffer_ssse3__unaligned(
     }
     SCRANROT_ASSERT(src_width_px * RGBA32_PIXEL_STRIDE <= src_stride_bytes);
 
-    // TODO: Assert rgba_shuffle is valid (and let (0 => 0,1,2,3) ?)
-    const __m128i _rgba_shuffle_mask_128_offsets = _mm_setr_epi8(0,0,0,0, 4,4,4,4, 8,8,8,8, 12,12,12,12);
-    const __m128i _rgba_shuffle_mask_128 = _mm_set1_epi32(rgba_shuffle_mask);
-    const __m128i rgba_shuffle_mask_128 = _mm_add_epi8(_rgba_shuffle_mask_128_offsets, _rgba_shuffle_mask_128);
+    const __m128i rgba_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba_shuffle_mask);
 
     const int _dst_stride_px = scranrot_get_transformed_width(src_width_px, src_height_px, transform);
     // XXX: This is not needed for unaligned
