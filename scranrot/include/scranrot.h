@@ -54,7 +54,6 @@ typedef bool scranrot_transform_framebuffer_fn(
     uint32_t rgba_shuffle,
     enum scranrot_transform transform,
     // OUT:
-    void **dst_with_offset,
     uintptr_t *dst_stride
 );
 
@@ -71,7 +70,6 @@ scranrot_transform_framebuffer(
     uint32_t rgba_shuffle,
     enum scranrot_transform transform,
     // OUT:
-    void **dst_with_offset,
     uintptr_t *dst_stride
 );
 

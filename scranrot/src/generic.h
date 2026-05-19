@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "scranrot.h"
+#include "../include/scranrot.h"
 
 
 typedef void (*scranrot_transform_framebuffer_impl_fn)(
@@ -41,15 +41,15 @@ SCRANROT_ALWAYS_INLINE
 static inline bool
 transform_framebuffer__generic_dispatcher(
     const void *const restrict src,
-    const int src_width_px, // Stride of the entire capture source
+    const int src_width_px,
     const int src_height_px,
-    const int src_stride_bytes,
+    const int src_stride_bytes, // Stride of the entire capture source
     void *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
 
     scranrot_transform_framebuffer_impl_fn rotation_impl_fn,
-    // rotation_impl_fn-defined format, e.g. __m128i or uint32_t.
     enum scranrot_transform transform,
+    // rotation_impl_fn-defined format, e.g. __m128i or uint32_t.
     const void *rgba32_shuffle,
     int tile_width_px,
     int tile_height_px

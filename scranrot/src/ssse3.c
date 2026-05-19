@@ -10,6 +10,10 @@
 #include "./generic.h"
 
 
+#define SSSE3_TILE_WIDTH  PIXELS_PER_M128I
+#define SSSE3_TILE_HEIGHT SCRANROT_SSE_ROW_STRIDE
+
+
 // TODO: Consider adding aligned and/or streamed versions of the sse functions
 //           Initial testing did not show a significant difference for simple
 //           image capture, on a 5600h CPU.
@@ -347,32 +351,27 @@ scranrot_transform_framebuffer_ssse3__unaligned(
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)
     uint32_t rgba_shuffle_mask,
     enum scranrot_transform transform,
-    void **dst_with_offset,
     uintptr_t *dst_stride
 ) {
-
-    bool dimensions_supported = src_width_px >= PIXELS_PER_M128I && src_height_px >= SCRANROT_SSE_ROW_STRIDE;
-    if (!dimensions_supported) {
+    if (src_width_px < SSSE3_TILE_WIDTH || src_height_px < SSSE3_TILE_HEIGHT) {
         return scranrot_transform_framebuffer_fallback(
                 src, dst,
                 src_width_px, src_height_px, src_stride_bytes,
                 rgba_shuffle_mask, transform,
-                dst_with_offset, dst_stride
+                dst_stride
         );
     }
-
+    SCRANROT_ASSERT(src_width_px * RGBA32_PIXEL_STRIDE <= src_stride_bytes);
 
     // TODO: Assert rgba_shuffle is valid (and let (0 => 0,1,2,3) ?)
     const __m128i _rgba_shuffle_mask_128_offsets = _mm_setr_epi8(0,0,0,0, 4,4,4,4, 8,8,8,8, 12,12,12,12);
     const __m128i _rgba_shuffle_mask_128 = _mm_set1_epi32(rgba_shuffle_mask);
     const __m128i rgba_shuffle_mask_128 = _mm_add_epi8(_rgba_shuffle_mask_128_offsets, _rgba_shuffle_mask_128);
 
-    SCRANROT_ASSERT(src_width_px * RGBA32_PIXEL_STRIDE <= src_stride_bytes);
     const int _dst_stride_px = scranrot_get_transformed_width(src_width_px, src_height_px, transform);
     // XXX: This is not needed for unaligned
     const int dst_stride_bytes = RGBA32_PIXEL_STRIDE * _dst_stride_px;
     *dst_stride = dst_stride_bytes;
-    *dst_with_offset = dst;
 
     scranrot_transform_framebuffer_impl_fn transform_fn = NULL;
 
@@ -391,25 +390,19 @@ scranrot_transform_framebuffer_ssse3__unaligned(
                 src, dst,
                 src_width_px, src_height_px, src_stride_bytes,
                 rgba_shuffle_mask, transform,
-                dst_with_offset, dst_stride
+                dst_stride
         );
-        assert(false);
+        SCRANROT_ASSERT(false);
     }
 
     SCRANROT_ASSERT(transform_fn != NULL);
     return transform_framebuffer__generic_dispatcher(
-        src,
-        src_width_px,
-        src_height_px,
-        src_stride_bytes,
-        dst,
-        dst_stride_bytes,
+        src, src_width_px, src_height_px, src_stride_bytes,
+        dst, dst_stride_bytes,
 
         transform_fn,
-        transform,
-        &rgba_shuffle_mask_128,
-        PIXELS_PER_M128I,
-        SCRANROT_SSE_ROW_STRIDE
+        transform, &rgba_shuffle_mask_128,
+        SSSE3_TILE_WIDTH, SSSE3_TILE_HEIGHT
     );
 }
 

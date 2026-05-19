@@ -224,7 +224,6 @@ scranrot_transform_framebuffer_fallback(
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)
     uint32_t _rgba_shuffle_mask,
     enum scranrot_transform transform,
-    void **dst_with_offset,
     uintptr_t *dst_stride
 ) {
     // XXX TODO(!!): IMPLEMENT THIS!!
@@ -233,20 +232,17 @@ scranrot_transform_framebuffer_fallback(
         return false;
     }
 
-
     // TODO: Assert rgba_shuffle is valid (and let (0 => 0,1,2,3) ?)
 
     SCRANROT_ASSERT(src_width_px * RGBA32_PIXEL_STRIDE <= src_stride_bytes);
     const int _dst_stride_px = scranrot_get_transformed_width(src_width_px, src_height_px, transform);
     const int dst_stride_bytes = RGBA32_PIXEL_STRIDE * _dst_stride_px;
     *dst_stride = dst_stride_bytes;
-    *dst_with_offset = dst;
 
     const uint32_t rgba_shift_mask = _rgba_shuffle_mask * 8;
 
     scranrot_transform_framebuffer_impl_fn transform_fn = NULL;
 
-    // XXX TODO: Implement flipped
     switch (transform) {
     case SCRANROT_TRANSFORM_270:
         transform_fn = transform_framebuffer__fallback__rotate_270; break;

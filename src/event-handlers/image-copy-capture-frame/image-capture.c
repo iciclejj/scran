@@ -98,7 +98,6 @@ handle_image_copy_capture_frame_ready__image_capture(
     //    capture source pixel buffer.
     void *const buf_cropped_converted = frame_ctx->img_data_2;
 
-    void     *buf_cropped_converted_with_offset = NULL;
     uintptr_t buf_cropped_converted_row_bytes = 0;
     uint32_t  rgba32_shuffle = wl_shm_format_to_blend2d_scran_rgba32_shuffle(st_output->capture.shm_format);
     if (rgba32_shuffle == RGBA32_SHUFFLE_ERROR) {
@@ -120,7 +119,6 @@ handle_image_copy_capture_frame_ready__image_capture(
         rgba32_shuffle,
         // TODO: add lib-interop.h function for this cast?
         (enum scranrot_transform)st_output->transform,
-        &buf_cropped_converted_with_offset,
         &buf_cropped_converted_row_bytes
     );
     const int capture_area_px_w_transformed = get_transformed_width(capture_area_px_w, capture_area_px_h, st_output->transform);
@@ -137,7 +135,7 @@ handle_image_copy_capture_frame_ready__image_capture(
         capture_area_px_w_transformed,
         capture_area_px_h_transformed,
         CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT,
-        buf_cropped_converted_with_offset,
+        buf_cropped_converted,
         buf_cropped_converted_row_bytes,
         // XXX: Read-only access causes blend2d to make a copy if modified.
         //      TODO: Probably just change to RW.
