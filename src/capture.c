@@ -22,7 +22,6 @@
 #include "event-handlers.h"
 #include "capture.h"
 #include "print.h"
-#include "init.h"
 #include "selection.h"
 #include "options.h"
 #include "clipboard.h"
@@ -244,15 +243,11 @@ init_ffmpeg(struct scran_output *st_output)
     // divisible by 2. TODO: Also update selection area visuals to this width.
     const int width_px_captured = blboxi_width_abs_unsafe(frame_ctx->capture_area_px) & ~0b1;
     const int height_px_captured = blboxi_height_abs_unsafe(frame_ctx->capture_area_px) & ~0b1;
-    const enum AVPixelFormat av_pixel_format_captured = wl_shm_format_to_ffmpeg(st_output->capture.shm_format);
     // TODO: Is output::mode framerate_mhz same as the capture framerate?
     const AVRational av_framerate_captured = { st_output->mode.refresh_rate_mHz, MILLIHZ_PER_HZ };
     // INFO: Using 1/NSEC_PER_SEC due to (wayland's) frame::presentation_time()
     // giving time with nanosecond precision.
     const AVRational av_time_base_captured = { 1, NSEC_PER_SEC };
-
-    enum ScranAVTransposeDir av_transpose_direction =
-        wl_output_transform_to_ffmpeg_transpose_dir__inverse(st_output->transform);
 
     const int width_px_to_encode = get_transformed_width(width_px_captured, height_px_captured, st_output->transform);
     const int height_px_to_encode = get_transformed_height(width_px_captured, height_px_captured, st_output->transform);
@@ -261,91 +256,13 @@ init_ffmpeg(struct scran_output *st_output)
     const enum AVPixelFormat av_pixel_format_to_encode = AV_PIX_FMT_YUV420P;
 
 
-    // AVFrame (captured)
-    ffmpeg_ctx->av_frame_captured              = av_frame_alloc();
-    ffmpeg_ctx->av_frame_captured->width       = width_px_captured;
-    ffmpeg_ctx->av_frame_captured->height      = height_px_captured;
-    ffmpeg_ctx->av_frame_captured->format      = av_pixel_format_captured;
-    // XXX: We won't ever get planar src frame buffers, right..?
-    ffmpeg_ctx->av_frame_captured->linesize[0] = get_capture_stride(st_output);
-    assert(ffmpeg_ctx->av_frame_captured->linesize[0] == frame_ctx->pixel_stride * frame_ctx->source_width_px);
-
-
-    // AVFilter
-    ffmpeg_ctx->av_filter_graph = avfilter_graph_alloc();
-
-    // AVFilter: Source (receives av_frame_captured)
-    ffmpeg_ctx->av_filter_buffersrc_ctx = avfilter_graph_alloc_filter(
-            ffmpeg_ctx->av_filter_graph, avfilter_get_by_name("buffer"), "in"
-    );
-    av_opt_set_image_size(ffmpeg_ctx->av_filter_buffersrc_ctx,
-            "video_size", width_px_captured, height_px_captured, AV_OPT_SEARCH_CHILDREN);
-    av_opt_set_pixel_fmt(ffmpeg_ctx->av_filter_buffersrc_ctx,
-            "pix_fmt", av_pixel_format_captured, AV_OPT_SEARCH_CHILDREN);
-    av_opt_set_q(ffmpeg_ctx->av_filter_buffersrc_ctx,
-            "time_base", av_time_base_captured, AV_OPT_SEARCH_CHILDREN);
-    av_opt_set_q(ffmpeg_ctx->av_filter_buffersrc_ctx,
-            "pixel_aspect", (AVRational){1,4}, AV_OPT_SEARCH_CHILDREN);
-    avfilter_init_dict(ffmpeg_ctx->av_filter_buffersrc_ctx, NULL);
-
-    AVFilterContext *_sink_input_filter;
-    if (av_transpose_direction == SCRAN_AV_TRANSPOSE_DIR_NORMAL
-        || av_transpose_direction == SCRAN_AV_TRANSPOSE_DIR_UNSUPPORTED
-           // XXX: libavfilter can't transpose by 180, unless with two
-           // sequential transposes, or with a "rotate" filter.
-           // SCRAN_AV_TRANSPOSE_DIR_180 is not actually a 180 transform.
-           // We set file metadata instead.
-           // TODO: Implement yuv conversion in our simd code so that we can
-           // transpose there for video as well. Should end up significantly
-           // more efficient than libavfilter, even for 90-degree transforms
-           // TODO: Also reconsider simply doing metadata-based rotation by
-           // default for video.
-        || av_transpose_direction == SCRAN_AV_TRANSPOSE_DIR_180
-    ) {
-        _sink_input_filter = ffmpeg_ctx->av_filter_buffersrc_ctx;
-    } else {
-        // AVFilter: Transpose
-        ffmpeg_ctx->av_filter_transpose_ctx = avfilter_graph_alloc_filter(
-                ffmpeg_ctx->av_filter_graph, avfilter_get_by_name("transpose"), "transpose"
-        );
-        av_opt_set_int(ffmpeg_ctx->av_filter_transpose_ctx,
-                "dir", av_transpose_direction, AV_OPT_SEARCH_CHILDREN);
-        avfilter_init_dict(ffmpeg_ctx->av_filter_transpose_ctx, NULL);
-
-        avfilter_link(ffmpeg_ctx->av_filter_buffersrc_ctx, 0,
-                      ffmpeg_ctx->av_filter_transpose_ctx, 0);
-
-        _sink_input_filter = ffmpeg_ctx->av_filter_transpose_ctx;
-    }
-
-    // AVFilter: Sink (writes into av_frame_to_encode)
-    ffmpeg_ctx->av_filter_buffersink_ctx = avfilter_graph_alloc_filter(
-            ffmpeg_ctx->av_filter_graph, avfilter_get_by_name("buffersink"), "out"
-    );
-#if !defined LIBAVUTIL_VERSION_INT || (LIBAVUTIL_VERSION_INT < AV_VERSION_INT(59,36,100))
-    enum AVPixelFormat _pix_fmts[] = { av_pixel_format_to_encode, AV_PIX_FMT_NONE };
-    av_opt_set_int_list( ffmpeg_ctx->av_filter_buffersink_ctx,
-            "pix_fmts", _pix_fmts, AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN
-    );
-#else
-    av_opt_set_array( ffmpeg_ctx->av_filter_buffersink_ctx,
-            "pixel_formats", AV_OPT_SEARCH_CHILDREN,
-            0, 1, AV_OPT_TYPE_PIXEL_FMT, &av_pixel_format_to_encode
-    );
-#endif /* LIBAVUTIL_VERSION_INT */
-    avfilter_init_dict(ffmpeg_ctx->av_filter_buffersink_ctx, NULL);
-
-    avfilter_link(_sink_input_filter, 0,
-                  ffmpeg_ctx->av_filter_buffersink_ctx, 0);
-
-    avfilter_graph_config(ffmpeg_ctx->av_filter_graph, NULL);
-
-
     // AVFrame (converted, ready to be fed to encoder)
-    ffmpeg_ctx->av_frame_to_encode         = av_frame_alloc();
-    ffmpeg_ctx->av_frame_to_encode->width  = width_px_to_encode;
-    ffmpeg_ctx->av_frame_to_encode->height = height_px_to_encode;
-    ffmpeg_ctx->av_frame_to_encode->format = av_pixel_format_to_encode;
+    ffmpeg_ctx->av_frame_to_encode              = av_frame_alloc();
+    ffmpeg_ctx->av_frame_to_encode->width       = width_px_to_encode;
+    ffmpeg_ctx->av_frame_to_encode->height      = height_px_to_encode;
+    ffmpeg_ctx->av_frame_to_encode->format      = av_pixel_format_to_encode;
+    // NOTE: Color range must be set according to scranrot's color range!
+    ffmpeg_ctx->av_frame_to_encode->color_range = AVCOL_RANGE_JPEG; // XXX TODO: Don't hardcode this value. Make a #define in scranrot.
 
 
     // AVCodec
@@ -405,11 +322,12 @@ init_ffmpeg(struct scran_output *st_output)
         ffmpeg_ctx->av_codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
     }
     // -- Values tied to encoder input/environment --
-    ffmpeg_ctx->av_codec_ctx->width     = ffmpeg_ctx->av_frame_to_encode->width;
-    ffmpeg_ctx->av_codec_ctx->height    = ffmpeg_ctx->av_frame_to_encode->height;
-    ffmpeg_ctx->av_codec_ctx->pix_fmt   = ffmpeg_ctx->av_frame_to_encode->format;
-    ffmpeg_ctx->av_codec_ctx->framerate = av_framerate_captured;
-    ffmpeg_ctx->av_codec_ctx->time_base = av_time_base_captured;
+    ffmpeg_ctx->av_codec_ctx->width       = ffmpeg_ctx->av_frame_to_encode->width;
+    ffmpeg_ctx->av_codec_ctx->height      = ffmpeg_ctx->av_frame_to_encode->height;
+    ffmpeg_ctx->av_codec_ctx->pix_fmt     = ffmpeg_ctx->av_frame_to_encode->format;
+    ffmpeg_ctx->av_codec_ctx->color_range = ffmpeg_ctx->av_frame_to_encode->color_range;
+    ffmpeg_ctx->av_codec_ctx->framerate   = av_framerate_captured;
+    ffmpeg_ctx->av_codec_ctx->time_base   = av_time_base_captured;
     // -- Values to be tweaked (may depend on encoder/format) --
     // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
     ffmpeg_ctx->av_codec_ctx->max_b_frames = 2;
@@ -438,19 +356,6 @@ init_ffmpeg(struct scran_output *st_output)
     assert(ffmpeg_ctx->av_codec_ctx->framerate.den != 0);
     _av_stream->time_base = av_inv_q(ffmpeg_ctx->av_codec_ctx->framerate);
     avcodec_parameters_from_context(_av_stream->codecpar, ffmpeg_ctx->av_codec_ctx);
-
-    // XXX: Hotfix for ffmpeg's lack of 180 rotation. See comment above in the
-    // avfilter init section.
-    if (av_transpose_direction == SCRAN_AV_TRANSPOSE_DIR_180) {
-        AVPacketSideData *_side_data = av_packet_side_data_new(
-            &_av_stream->codecpar->coded_side_data,
-            &_av_stream->codecpar->nb_coded_side_data,
-            AV_PKT_DATA_DISPLAYMATRIX,
-            sizeof(int32_t) * 9,
-            0
-        );
-        av_display_rotation_set((int32_t *)_side_data->data, 180.0);
-    }
 
 
     if (!g_state.options.disable_audio_capture && !frame_ctx->audio_disable_modifier_active) {
@@ -499,9 +404,6 @@ destroy_ffmpeg(struct scran_output *st_output)
     // Freeing the format context frees the linked stream for us.
     avformat_free_context(ffmpeg_ctx->av_format_ctx);
     av_frame_free(&ffmpeg_ctx->av_frame_to_encode);
-    // Freeing the graph frees any linked filter contexts for us.
-    avfilter_graph_free(&ffmpeg_ctx->av_filter_graph);
-    av_frame_free(&ffmpeg_ctx->av_frame_captured);
 }
 
 

@@ -104,6 +104,12 @@ handle_image_copy_capture_frame_ready__image_capture(
         eprintf("WARNING: Output's pixel format is not supported. Attempting anyways...\n");
         rgba32_shuffle = RGBA32_SHUFFLE_NO_CHANGE;
     }
+
+    // XXX: Scranrot does not support flipped transforms yet, so we just
+    // record it flipped for now, rather than blocking capture entirely.
+    bool flipped = (st_output->transform >= 4);
+    enum wl_output_transform transform = flipped ? st_output->transform - 4 : st_output->transform;
+
     // XXX: We convert etc. unconditionally for now.
     //    TODO: Only convert if required
     //            I.e. convert if not natively supported pixel format by blend2d
@@ -115,7 +121,7 @@ handle_image_copy_capture_frame_ready__image_capture(
         buf_cropped_converted,
         rgba32_shuffle,
         // TODO: add lib-interop.h function for this cast?
-        (enum scranrot_transform)st_output->transform,
+        (enum scranrot_transform)transform,
         &buf_cropped_converted_row_bytes
     );
     const int capture_area_px_w_transformed = get_transformed_width(capture_area_px_w, capture_area_px_h, st_output->transform);

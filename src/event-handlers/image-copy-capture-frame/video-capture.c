@@ -8,16 +8,18 @@
 #include <libavcodec/codec.h>
 #include <libavcodec/packet.h>
 #include <libavformat/avformat.h>
-#include <libavfilter/buffersrc.h>
-#include <libavfilter/buffersink.h>
 
 #include "ext-image-copy-capture-v1.h"
+
+#include "scranrot.h"
 
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
 #include "capture.h"
 #include "print.h"
+#include "util/blend2d.h"
+#include "util/lib-interop.h"
 
 
 extern struct scran g_state;
@@ -91,33 +93,49 @@ handle_image_copy_capture_frame_ready__video_capture(
     struct ffmpeg_context        *ffmpeg_ctx = &frame_ctx->ffmpeg_ctx;
 
     // Crop and convert
+    {
+        // XXX TODO: Just pass st_output to this handler.
+        struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
+        struct scran_output         *const st_output  = wl_container_of(st_capture, st_output, capture);
 
-    uint8_t *const area_start_addr = get_capture_area_start_address(frame_ctx);
-    // XXX: Can we make this const so area_start_addr can be const? It should
-    // not change for the lifetime of this function (well, at least until the
-    // next frame's dispatch at the end).
-    ffmpeg_ctx->av_frame_captured->data[0] = area_start_addr;
-    ffmpeg_ctx->av_frame_captured->pts = frame_ctx->presentation_time_nsec;
-    int _ret_filter = av_buffersrc_write_frame(
-            ffmpeg_ctx->av_filter_buffersrc_ctx,
-            ffmpeg_ctx->av_frame_captured
-    );
-    assert(0 <= _ret_filter);
+        uint8_t *const area_start_addr = get_capture_area_start_address(frame_ctx);
+        // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be divisible by 2.
+        // XXX TODO: Collect this bit zeroing logic somehow? (Duplicated in init_ffmpeg.)
+        const int area_w_px = blboxi_width_abs_unsafe( frame_ctx->capture_area_px) & ~0b1;
+        const int area_h_px = blboxi_height_abs_unsafe(frame_ctx->capture_area_px) & ~0b1;
+        const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
 
-    _ret_filter = av_buffersink_get_frame(
-            ffmpeg_ctx->av_filter_buffersink_ctx,
-            ffmpeg_ctx->av_frame_to_encode
-    );
-    assert(0 <= _ret_filter);
+        uint32_t  rgba32_shuffle = wl_shm_format_to_scranrot_yuv_rgba32_shuffle(st_capture->shm_format);
+        if (rgba32_shuffle == RGBA32_SHUFFLE_ERROR) {
+            eprintf("WARNING: Output's pixel format (%x) not recognized. Please report this as a bug. Attempting anyways...\n",
+                    st_capture->shm_format);
+            rgba32_shuffle = RGBA32_SHUFFLE_NO_CHANGE;
+        }
 
+        // XXX: Scranrot does not support flipped transforms yet, so we just
+        // record it flipped for now, rather than blocking capture entirely.
+        bool flipped = (st_output->transform >= 4);
+        enum wl_output_transform transform = flipped ? st_output->transform - 4 : st_output->transform;
+
+        AVFrame *frame = ffmpeg_ctx->av_frame_to_encode;
+        void *const frame_buffer = frame_ctx->img_data_2;
+
+        scranrot_transform_framebuffer_to_yuv420(
+            area_start_addr, area_w_px, area_h_px, source_row_bytes,
+            frame_buffer,
+            rgba32_shuffle,
+            // TODO: add lib-interop.h function for this cast?
+            (enum scranrot_transform)transform,
+            &frame->data[0], &frame->linesize[0],
+            &frame->data[1], &frame->linesize[1],
+            &frame->data[2], &frame->linesize[2]
+        );
+        frame->pts = frame_ctx->presentation_time_nsec;
+    }
 
     // Encode
-
-    assert(av_frame_is_writable(ffmpeg_ctx->av_frame_to_encode));
     int _ret_enc = avcodec_send_frame(ffmpeg_ctx->av_codec_ctx, ffmpeg_ctx->av_frame_to_encode);
     assert(_ret_enc != AVERROR(EINVAL));
-    av_frame_unref(ffmpeg_ctx->av_frame_to_encode);
-
     while (_ret_enc >= 0) {
         _ret_enc = avcodec_receive_packet(ffmpeg_ctx->av_codec_ctx, ffmpeg_ctx->av_packet);
         assert(_ret_enc != AVERROR(EINVAL));
