@@ -1,4 +1,5 @@
 #include "../include/scranrot.h"
+#include "../include/scranrot-util.h"
 
 
 // Rotates frame buffer, shuffles pixel geometry, and stores result to dst
@@ -36,6 +37,52 @@ scranrot_transform_framebuffer(
         rgba_shuffle, transform,
         // OUT:
         dst_stride
+    );
+}
+
+void
+scranrot_transform_framebuffer_to_yuv420(
+    const void *src,
+    int src_width_px,
+    int src_height_px,
+    int src_stride_bytes,
+    void *dst,
+    uint32_t rgba_shuffle,
+    enum scranrot_transform transform,
+    // OUT:
+    uint8_t **dst_y, int *dst_y_stride,
+    uint8_t **dst_u, int *dst_u_stride,
+    uint8_t **dst_v, int *dst_v_stride
+) {
+    scranrot_transform_framebuffer_to_yuv_fn *selected_function;
+
+    // TODO: Probably make a scranrot_ctx and init function to avoid the arch
+    // check and width/height checks on every call?
+
+    if (src_width_px & 1 || src_height_px & 1) {
+        // YUV420 needs height and width divisible by two
+        return false;
+    }
+
+#if defined(__x86_64__) || defined(__i386__)
+    __builtin_cpu_init();
+    if (__builtin_cpu_supports("ssse3")) {
+        selected_function = scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned;
+    } else
+#endif
+    {
+        SCRANROT_ASSERT(false && "Not implemented yet.");
+        // selected_function = scranrot_transform_framebuffer_to_yuv420_fallback;
+    }
+
+    selected_function(
+        src, src_width_px, src_height_px, src_stride_bytes,
+        dst,
+        rgba_shuffle, transform,
+        // OUT:
+        dst_y, dst_y_stride,
+        dst_u, dst_u_stride,
+        dst_v, dst_v_stride
     );
 }
 
