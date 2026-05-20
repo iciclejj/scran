@@ -986,10 +986,13 @@ scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned(
     uint8_t **dst_v, int *dst_v_stride
 ) {
     if (src_width_px < SSE41_YUV_TILE_WIDTH || src_height_px < SSE41_YUV_TILE_HEIGHT) {
-        // XXX TODO!!:
-        //   return scranrot_transform_framebuffer_to_yuv420_fallback(...);
-        SCRANROT_ASSERT(false && "Not implemented yet.");
-        return false;
+        return scranrot_transform_framebuffer_to_yuv420_fallback(
+            src, src_width_px, src_height_px, src_stride_bytes,
+            dst, rgba_shuffle_mask, transform,
+            dst_y, dst_y_stride,
+            dst_u, dst_u_stride,
+            dst_v, dst_v_stride
+        );
     }
 
     const __m128i rgba_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba_shuffle_mask);
@@ -1007,9 +1010,13 @@ scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned(
         transform_fn = transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0  ; break;
     default:
         // XXX TODO: Implement flipped
-        // return scranrot_transform_framebuffer_to_yuv420_fallback(...);
-        SCRANROT_ASSERT(false && "Not implemented yet.");
-        return false;
+        return scranrot_transform_framebuffer_to_yuv420_fallback(
+            src, src_width_px, src_height_px, src_stride_bytes,
+            dst, rgba_shuffle_mask, transform,
+            dst_y, dst_y_stride,
+            dst_u, dst_u_stride,
+            dst_v, dst_v_stride
+        );
     }
 
     SCRANROT_ASSERT(transform_fn != NULL);

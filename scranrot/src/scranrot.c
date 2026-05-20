@@ -1,5 +1,4 @@
 #include "../include/scranrot.h"
-#include "../include/scranrot-util.h"
 
 
 // Rotates frame buffer, shuffles pixel geometry, and stores result to dst
@@ -71,8 +70,7 @@ scranrot_transform_framebuffer_to_yuv420(
     } else
 #endif
     {
-        SCRANROT_ASSERT(false && "Not implemented yet.");
-        // selected_function = scranrot_transform_framebuffer_to_yuv420_fallback;
+        selected_function = scranrot_transform_framebuffer_to_yuv420_fallback;
     }
 
     selected_function(
