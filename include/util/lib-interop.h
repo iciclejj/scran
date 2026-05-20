@@ -39,7 +39,7 @@ enum ScranAVTransposeDir {
 enum BLFormat wl_shm_format_to_blend2d(enum wl_shm_format wl_shm_format);
 struct BLFormatInfo wl_shm_format_to_blend2d_struct(enum wl_shm_format wl_shm_format);
 
-uint32_t wl_shm_format_to_blend2d_scran_rgba32_shuffle(enum wl_shm_format wl_shm_format);
+uint32_t wl_shm_format_to_blend2d_scranrot_rgba32_shuffle(enum wl_shm_format wl_shm_format);
 
 enum AVPixelFormat wl_shm_format_to_ffmpeg(enum wl_shm_format wl_shm_format);
 const char * wl_shm_format_to_ffmpeg_cli_str(enum wl_shm_format wl_shm_format);

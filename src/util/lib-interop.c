@@ -69,7 +69,7 @@ wl_shm_format_to_blend2d_struct(enum wl_shm_format wl_shm_format)
 
 
 uint32_t
-wl_shm_format_to_blend2d_scran_rgba32_shuffle(enum wl_shm_format wl_shm_format)
+wl_shm_format_to_blend2d_scranrot_rgba32_shuffle(enum wl_shm_format wl_shm_format)
 {
     assert(CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT == BL_FORMAT_PRGB32);
 #ifndef NDEBUG
