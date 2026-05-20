@@ -3,6 +3,7 @@
 #include "../include/scranrot.h"
 #include "../include/scranrot-util.h"
 #include "./generic.h"
+#include "./fallback.h"
 
 
 SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
@@ -227,8 +228,7 @@ scranrot_transform_framebuffer_fallback(
     uintptr_t *dst_stride
 ) {
     // XXX TODO(!!): IMPLEMENT THIS!!
-    bool dimensions_supported = src_width_px >= SCRANROT_FALLBACK_STRIDE_PX && src_height_px >= SCRANROT_FALLBACK_STRIDE_PX;
-    if (!dimensions_supported) {
+    if (!scranrot_fallback_dimensions_supported(src_width_px, src_height_px)) {
         return false;
     }
 
