@@ -3,7 +3,15 @@
 #include "../include/scranrot.h"
 #include "../include/scranrot-util.h"
 #include "./generic.h"
-#include "./fallback.h"
+
+
+enum {
+    KERNEL_TILE_WIDTH_PX  = 2,
+    KERNEL_TILE_HEIGHT_PX = 2,
+
+    MIN_TILE_WIDTH_PX  = KERNEL_TILE_WIDTH_PX,
+    MIN_TILE_HEIGHT_PX = KERNEL_TILE_HEIGHT_PX,
+};
 
 
 SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
@@ -52,6 +60,8 @@ transform_framebuffer_to_yuv__fallback__rotate_270(
 ) {
     const uint32_t rgba32_shuffle_mask = *(uint32_t *)_rgba32_shuffle_mask;
 
+    _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "270 kernel assumes 2x2 RGBA32 tile");
+
     for (int y = 0; y < src_height_px; y += 2) {
         for (int x = 0; x < src_width_px; x += 2) {
 
@@ -98,6 +108,8 @@ transform_framebuffer_to_yuv__fallback__rotate_180(
     const void *_rgba32_shuffle_mask
 ) {
     const uint32_t rgba32_shuffle_mask = *(uint32_t *)_rgba32_shuffle_mask;
+
+    _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "180 kernel assumes 2x2 RGBA32 tile");
 
     for (int y = 0; y < src_height_px; y += 2) {
         for (int x = 0; x < src_width_px; x += 2) {
@@ -146,6 +158,8 @@ transform_framebuffer_to_yuv__fallback__rotate_90(
 ) {
     const uint32_t rgba32_shuffle_mask = *(uint32_t *)_rgba32_shuffle_mask;
 
+    _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "90 kernel assumes 2x2 RGBA32 tile");
+
     for (int y = 0; y < src_height_px; y += 2) {
         for (int x = 0; x < src_width_px; x += 2) {
 
@@ -192,6 +206,8 @@ transform_framebuffer_to_yuv__fallback__rotate_0(
     const void *_rgba32_shuffle_mask
 ) {
     const uint32_t rgba32_shuffle_mask = *(uint32_t *)_rgba32_shuffle_mask;
+
+    _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "0 kernel assumes 2x2 RGBA32 tile");
 
     for (int y = 0; y < src_height_px; y += 2) {
         for (int x = 0; x < src_width_px; x += 2) {
@@ -240,7 +256,9 @@ scranrot_transform_framebuffer_to_yuv420_fallback(
     uint8_t **dst_u, int *dst_u_stride,
     uint8_t **dst_v, int *dst_v_stride
 ) {
-    if (!scranrot_fallback_dimensions_supported(src_width_px, src_height_px)) {
+    _Static_assert(MIN_TILE_WIDTH_PX == 2 && MIN_TILE_HEIGHT_PX == 2,
+                   "2x2 is the minimum possible YUV420 size. Our fallback kernels should support this.");
+    if (src_width_px < MIN_TILE_WIDTH_PX || src_height_px < MIN_TILE_HEIGHT_PX) {
         return false;
     }
 
@@ -269,7 +287,7 @@ scranrot_transform_framebuffer_to_yuv420_fallback(
 
         transform_fn,
         transform, &rgba_shuffle_mask,
-        SCRANROT_FALLBACK_STRIDE_PX, SCRANROT_FALLBACK_STRIDE_PX,
+        KERNEL_TILE_WIDTH_PX, KERNEL_TILE_HEIGHT_PX,
 
         // OUT:
         dst_y, dst_y_stride,

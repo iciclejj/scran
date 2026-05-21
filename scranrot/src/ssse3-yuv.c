@@ -10,8 +10,16 @@
 #include "./generic.h"
 
 
-#define SSE41_YUV_TILE_WIDTH  32
-#define SSE41_YUV_TILE_HEIGHT 32
+enum {
+    RGBA32_PIXELS_PER_XMM = 4,
+
+    KERNEL_TILE_WIDTH_PX  = 32,
+    KERNEL_TILE_HEIGHT_PX = 32,
+
+    MIN_TILE_WIDTH_PX  = KERNEL_TILE_WIDTH_PX,
+    MIN_TILE_HEIGHT_PX = KERNEL_TILE_HEIGHT_PX,
+};
+_Static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "This file assumes an XMM register holds 4 RGBA32 pixels.");
 
 
 // Y coefficients are split across a and b coefficient arrays, since we cannot
@@ -384,6 +392,8 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 ) {
     const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
+    _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "270 kernel assumes 32x32 RGBA32 tiles.");
+
     const int dst_height_px = src_width_px;
 
     const __m128i y_coefficients_a = _get_yuv_y_coefficients_a();
@@ -394,9 +404,6 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
 
-
-    SCRANROT_ASSERT(SSE41_YUV_TILE_WIDTH  == 32);
-    SCRANROT_ASSERT(SSE41_YUV_TILE_HEIGHT == 32);
 
     for (int y = 0; y <= src_height_px - 32; y += 32) {
         for (int x = 0; x <= src_width_px - 32; x += 32) {
@@ -420,7 +427,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
-                        const __m128i rgba_32bpp[2][4] = { // 4 == 16/PIXELS_PER_M128I
+                        const __m128i rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
                             {
                                 _mm_shuffle_epi8(
                                     _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  0) * RGBA32_PIXEL_STRIDE),
@@ -537,6 +544,8 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
         *(__m128i *)_rgba32_shuffle_mask_128
     );
 
+    _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "180 kernel assumes 32x32 RGBA32 tiles.");
+
     const __m128i y_coefficients_a = _get_yuv_y_coefficients_a();
     const __m128i y_coefficients_b = _get_yuv_y_coefficients_b();
     const __m128i u_coefficients   = _get_yuv_u_coefficients();
@@ -550,8 +559,6 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
     uint8_t *u_line_ = u_line + (src_height_px-1)/2 * u_linesize + (src_width_px/2 - sizeof(__m128i));
     uint8_t *v_line_ = v_line + (src_height_px-1)/2 * v_linesize + (src_width_px/2 - sizeof(__m128i));
 
-    SCRANROT_ASSERT(SSE41_YUV_TILE_WIDTH  == 32);
-    SCRANROT_ASSERT(SSE41_YUV_TILE_HEIGHT == 32);
 
     for (int y = 0; y < src_height_px; y += 32) {
         for (int x = 0; x < src_width_px; x += 32) {
@@ -578,7 +585,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
                         // NOTE: 180 uses reversed load order here compared to the other rotations
-                        const __m128i rgba_32bpp[2][4] = { // 4 == 16/PIXELS_PER_M128I
+                        const __m128i rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
                             {
                                 _mm_shuffle_epi8(
                                     _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x + 12) * RGBA32_PIXEL_STRIDE),
@@ -687,6 +694,8 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 ) {
     const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
+    _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "90 kernel assumes 32x32 RGBA32 tiles.");
+
     const int dst_width_px = src_height_px;
 
     const __m128i y_coefficients_a = _get_yuv_y_coefficients_a();
@@ -697,8 +706,6 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
 
-    SCRANROT_ASSERT(SSE41_YUV_TILE_WIDTH  == 32);
-    SCRANROT_ASSERT(SSE41_YUV_TILE_HEIGHT == 32);
 
     for (int y = 0; y <= src_height_px - 32; y += 32) {
         for (int x = 0; x <= src_width_px - 32; x += 32) {
@@ -722,7 +729,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
-                        const __m128i rgba_32bpp[2][4] = { // 4 == 16/PIXELS_PER_M128I
+                        const __m128i rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
                             {
                                 _mm_shuffle_epi8(
                                     _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  0) * RGBA32_PIXEL_STRIDE),
@@ -843,6 +850,8 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 ) {
     const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
+    _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "0 kernel assumes 32x32 RGBA32 tiles.");
+
     const __m128i y_coefficients_a = _get_yuv_y_coefficients_a();
     const __m128i y_coefficients_b = _get_yuv_y_coefficients_b();
     const __m128i u_coefficients   = _get_yuv_u_coefficients();
@@ -851,9 +860,6 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
 
-
-    SCRANROT_ASSERT(SSE41_YUV_TILE_WIDTH  == 32);
-    SCRANROT_ASSERT(SSE41_YUV_TILE_HEIGHT == 32);
 
     for (int y = 0; y < src_height_px; y += 32) {
         for (int x = 0; x < src_width_px; x += 32) {
@@ -877,7 +883,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
-                        const __m128i rgba_32bpp[2][4] = { // 4 == 16/PIXELS_PER_M128I
+                        const __m128i rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
                             {
                                 _mm_shuffle_epi8(
                                     _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  0) * RGBA32_PIXEL_STRIDE),
@@ -985,7 +991,7 @@ scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned(
     uint8_t **dst_u, int *dst_u_stride,
     uint8_t **dst_v, int *dst_v_stride
 ) {
-    if (src_width_px < SSE41_YUV_TILE_WIDTH || src_height_px < SSE41_YUV_TILE_HEIGHT) {
+    if (src_width_px < MIN_TILE_WIDTH_PX || src_height_px < MIN_TILE_HEIGHT_PX) {
         return scranrot_transform_framebuffer_to_yuv420_fallback(
             src, src_width_px, src_height_px, src_stride_bytes,
             dst, rgba_shuffle_mask, transform,
@@ -1026,7 +1032,7 @@ scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned(
 
         transform_fn,
         transform, &rgba_shuffle_mask_128,
-        SSE41_YUV_TILE_WIDTH, SSE41_YUV_TILE_HEIGHT,
+        KERNEL_TILE_WIDTH_PX, KERNEL_TILE_HEIGHT_PX,
 
         // OUT:
         dst_y, dst_y_stride,

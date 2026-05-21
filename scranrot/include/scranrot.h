@@ -25,8 +25,6 @@
     __attribute__((target("no-sse")))
 
 #define RGBA32_PIXEL_STRIDE 4
-#define SCRANROT_SSE_ROW_STRIDE 4 // Number of rows we will process at a time
-#define SCRANROT_FALLBACK_STRIDE_PX 4
 
 
 // This is enum is equivalent to Wayland's `enum wl_output_transform`.

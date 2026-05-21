@@ -196,7 +196,7 @@ transform_framebuffer_to_yuv420__generic_dispatcher(
     const int dst_width_px  = scranrot_get_transformed_width( src_width_px, src_height_px, transform);
     const int dst_height_px = scranrot_get_transformed_height(src_width_px, src_height_px, transform);
 
-    // TODO: Release build error handling?
+    // XXX TODO: Release build error handling of this
     SCRANROT_ASSERT(dst_width_px % 2 == 0 && dst_height_px % 2 == 0 && "scranrot: YUV420 requires width and height to be divisible by 2");
 
     const int dst_y_stride = dst_width_px;

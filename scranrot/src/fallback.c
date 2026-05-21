@@ -3,7 +3,15 @@
 #include "../include/scranrot.h"
 #include "../include/scranrot-util.h"
 #include "./generic.h"
-#include "./fallback.h"
+
+
+enum {
+    KERNEL_TILE_WIDTH_PX  = 1, // Optimal seems to be 1 (on a 5600h, both with and without auto-vectorization)
+    KERNEL_TILE_HEIGHT_PX = 4,
+
+    MIN_TILE_WIDTH_PX  = KERNEL_TILE_WIDTH_PX,
+    MIN_TILE_HEIGHT_PX = KERNEL_TILE_HEIGHT_PX,
+};
 
 
 SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
@@ -36,12 +44,12 @@ transform_framebuffer__fallback__rotate_270(
 ) {
     uint32_t rgba32_shift_mask = *(uint32_t *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
 
+    _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "270 kernel assumes 4-row RGBA32 tile");
+
     const int dst_y_px_max = src_width_px - 1;
 
-    static const int tile_height = SCRANROT_FALLBACK_STRIDE_PX;
-    // XXX: Keeping tile_width for testing despite optimal seems to be 1
-    //      (on a 5600h, both with and without auto-vectorization)
-    static const int tile_width = 1;
+    static const int tile_height = 4;
+    static const int tile_width  = KERNEL_TILE_WIDTH_PX;
 
     for (int y = 0; y < src_height_px; y += tile_height) {
         for (int x = 0; x < src_width_px; x += tile_width) {
@@ -67,8 +75,6 @@ transform_framebuffer__fallback__rotate_270(
 
         }
     }
-
-
 }
 
 
@@ -85,12 +91,11 @@ transform_framebuffer__fallback__rotate_180(
 ) {
     uint32_t rgba32_shift_mask = *(uint32_t *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
 
-    static const int tile_height = SCRANROT_FALLBACK_STRIDE_PX;
-    // XXX: Keeping tile_width for testing despite optimal seems to be 1
-    //      (on a 5600h, both with and without auto-vectorization)
-    static const int tile_width = 1;
+    _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "180 kernel assumes 4-row RGBA32 tile");
 
-    // XXX: This assumes a tile_width of 1 (doesn't ensure padding/alignment)
+    static const int tile_height = 4;
+    static const int tile_width  = KERNEL_TILE_WIDTH_PX;
+
     char *const dst_last_pixel_address =
         (char *)dst
         + (src_height_px - 1) * dst_stride_bytes
@@ -136,12 +141,12 @@ transform_framebuffer__fallback__rotate_90(
 ) {
     uint32_t rgba32_shift_mask = *(uint32_t *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
 
+    _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "90 kernel assumes 4-row RGBA32 tile");
+
     const int dst_x_px_max = src_height_px - 1;
 
-    static const int tile_height = SCRANROT_FALLBACK_STRIDE_PX;
-    // XXX: Keeping tile_width for testing despite optimal seems to be 1
-    //      (on a 5600h, both with and without auto-vectorization)
-    static const int tile_width = 1;
+    static const int tile_height = 4;
+    static const int tile_width  = KERNEL_TILE_WIDTH_PX;
 
     for (int y = 0; y < src_height_px; y += tile_height) {
         for (int x = 0; x < src_width_px; x += tile_width) {
@@ -182,10 +187,10 @@ transform_framebuffer__fallback__rotate_0(
 ) {
     uint32_t rgba32_shift_mask = *(uint32_t *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
 
-    static const int tile_height = SCRANROT_FALLBACK_STRIDE_PX;
-    // XXX: Keeping tile_width for testing despite optimal seems to be 1
-    //      (on a 5600h, both with and without auto-vectorization)
-    static const int tile_width = 1;
+    _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "0 kernel assumes 4-row RGBA32 tile");
+
+    static const int tile_height = 4;
+    static const int tile_width  = KERNEL_TILE_WIDTH_PX;
 
     for (int y = 0; y < src_height_px; y += tile_height) {
         for (int x = 0; x < src_width_px; x += tile_width) {
@@ -228,7 +233,7 @@ scranrot_transform_framebuffer_fallback(
     uintptr_t *dst_stride
 ) {
     // XXX TODO(!!): IMPLEMENT THIS!!
-    if (!scranrot_fallback_dimensions_supported(src_width_px, src_height_px)) {
+    if (src_width_px < MIN_TILE_WIDTH_PX || src_height_px < MIN_TILE_HEIGHT_PX) {
         return false;
     }
 
@@ -263,6 +268,6 @@ scranrot_transform_framebuffer_fallback(
         dst, dst_stride_bytes,
         transform_fn,
         transform, &rgba_shift_mask,
-        SCRANROT_FALLBACK_STRIDE_PX, SCRANROT_FALLBACK_STRIDE_PX
+        KERNEL_TILE_WIDTH_PX, KERNEL_TILE_HEIGHT_PX
     );
 }

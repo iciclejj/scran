@@ -7,10 +7,6 @@
 #include "../include/scranrot.h"
 
 
-_Static_assert(sizeof(__m128i) % RGBA32_PIXEL_STRIDE == 0, "sizeof(__m128i) is not divisible by RGBA32_PIXEL_STRIDE");
-#define PIXELS_PER_M128I ((int)sizeof(__m128i) / RGBA32_PIXEL_STRIDE)
-
-
 static inline __m128i
 scranrot_sse2_rgba_shuffle_to_m128i(uint32_t rgba_shuffle_mask) {
     // TODO: Assert rgba_shuffle is valid (and let (0 => 0,1,2,3) ?)

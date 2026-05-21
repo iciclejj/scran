@@ -11,8 +11,16 @@
 #include "./sse2.h"
 
 
-#define SSSE3_TILE_WIDTH  PIXELS_PER_M128I
-#define SSSE3_TILE_HEIGHT SCRANROT_SSE_ROW_STRIDE
+enum {
+    RGBA32_PIXELS_PER_XMM = 4,
+
+    KERNEL_TILE_WIDTH_PX  = RGBA32_PIXELS_PER_XMM,
+    KERNEL_TILE_HEIGHT_PX = 4,
+
+    MIN_TILE_WIDTH_PX  = KERNEL_TILE_WIDTH_PX,
+    MIN_TILE_HEIGHT_PX = KERNEL_TILE_HEIGHT_PX,
+};
+_Static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "This file assumes an XMM register holds 4 RGBA32 pixels.");
 
 
 // TODO: Consider adding aligned and/or streamed versions of the sse functions
@@ -31,12 +39,12 @@ typedef void (*_scranrot_transform_framebuffer_fn__ssse3)(
 );
 
 
-// TODO: Use SSE_ROW_STRIDE for an unrolled loop in these for easier tweaking
+// TODO: Use KERNEL_TILE_HEIGHT_PX for an unrolled loop in these for easier tweaking
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
 _ssse3_load_rows_unaligned(
-    __m128i rows[SCRANROT_SSE_ROW_STRIDE],
-    const __m128i *row_addrs[SCRANROT_SSE_ROW_STRIDE]
+    __m128i rows[static KERNEL_TILE_HEIGHT_PX],
+    const __m128i *row_addrs[static KERNEL_TILE_HEIGHT_PX]
 ) {
     rows[0] = _mm_loadu_si128(row_addrs[0]);
     rows[1] = _mm_loadu_si128(row_addrs[1]);
@@ -47,8 +55,8 @@ _ssse3_load_rows_unaligned(
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
 _ssse3_store_rows_unaligned(
-    __m128i rows[SCRANROT_SSE_ROW_STRIDE],
-    __m128i *row_addrs[SCRANROT_SSE_ROW_STRIDE]
+    __m128i rows[static KERNEL_TILE_HEIGHT_PX],
+    __m128i *row_addrs[static KERNEL_TILE_HEIGHT_PX]
 ) {
     _mm_storeu_si128(row_addrs[0], rows[0]);
     _mm_storeu_si128(row_addrs[1], rows[1]);
@@ -59,7 +67,7 @@ _ssse3_store_rows_unaligned(
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
 _ssse3_get_src_row_addresses(
-    const __m128i *row_addrs[SCRANROT_SSE_ROW_STRIDE],
+    const __m128i *row_addrs[static KERNEL_TILE_HEIGHT_PX],
     const char *row_addr_0,
     int src_stride_bytes
 ) {
@@ -72,7 +80,7 @@ _ssse3_get_src_row_addresses(
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
 _ssse3_get_dst_row_addresses(
-    __m128i *row_addrs[SCRANROT_SSE_ROW_STRIDE],
+    __m128i *row_addrs[static KERNEL_TILE_HEIGHT_PX],
     const char *row_addr_0,
     int dst_stride_bytes
 ) {
@@ -85,7 +93,7 @@ _ssse3_get_dst_row_addresses(
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
 _ssse3_convert_pixel_format(
-    __m128i rows[SCRANROT_SSE_ROW_STRIDE],
+    __m128i rows[static KERNEL_TILE_HEIGHT_PX],
     __m128i shuffle_mask
 ) {
     rows[0] = _mm_shuffle_epi8(rows[0], shuffle_mask);
@@ -97,8 +105,8 @@ _ssse3_convert_pixel_format(
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
 _ssse3_rotate_270(
-    __m128i src_rows[SCRANROT_SSE_ROW_STRIDE],
-    __m128i dst_rows[SCRANROT_SSE_ROW_STRIDE]
+    __m128i src_rows[static KERNEL_TILE_HEIGHT_PX],
+    __m128i dst_rows[static KERNEL_TILE_HEIGHT_PX]
 ) {
     const __m128i dst_row_3lo_2lo = _mm_unpacklo_epi32(src_rows[0], src_rows[1]);
     const __m128i dst_row_3hi_2hi = _mm_unpacklo_epi32(src_rows[2], src_rows[3]);
@@ -113,8 +121,8 @@ _ssse3_rotate_270(
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
 _ssse3_rotate_90(
-    __m128i src_rows[SCRANROT_SSE_ROW_STRIDE],
-    __m128i dst_rows[SCRANROT_SSE_ROW_STRIDE]
+    __m128i src_rows[static KERNEL_TILE_HEIGHT_PX],
+    __m128i dst_rows[static KERNEL_TILE_HEIGHT_PX]
 ) {
     const __m128i dst_row_0hi_1hi = _mm_unpacklo_epi32(src_rows[1], src_rows[0]);
     const __m128i dst_row_0lo_1lo = _mm_unpacklo_epi32(src_rows[3], src_rows[2]);
@@ -130,7 +138,6 @@ _ssse3_rotate_90(
 // ssse3 TODOs:
 // - Prefetch? More specific tiling?
 // - assert() our boundaries within the loops.
-// - Create SCRANOT_SSE_COL_STRIDE macro.
 // - Assert src and dst are already aligned
 // - Handle the of the loop directionality such that we can do aligned stores
 //   and reads for the main part, and only fallback to unaligned during edge/
@@ -151,14 +158,16 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
 ) {
     __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
-    __m128i src_block_rows[SCRANROT_SSE_ROW_STRIDE];
-    const __m128i *src_block_row_addrs[SCRANROT_SSE_ROW_STRIDE];
+    _Static_assert(KERNEL_TILE_WIDTH_PX == 4 && KERNEL_TILE_HEIGHT_PX == 4, "270 kernel assumes 4x4 RGBA32 tiles.");
 
-    __m128i dst_block_rows[SCRANROT_SSE_ROW_STRIDE];
-    __m128i *dst_block_row_addrs[SCRANROT_SSE_ROW_STRIDE];
+    __m128i src_block_rows[KERNEL_TILE_HEIGHT_PX];
+    const __m128i *src_block_row_addrs[KERNEL_TILE_HEIGHT_PX];
+
+    __m128i dst_block_rows[KERNEL_TILE_HEIGHT_PX];
+    __m128i *dst_block_row_addrs[KERNEL_TILE_HEIGHT_PX];
 
 
-    for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += SCRANROT_SSE_ROW_STRIDE) {
+    for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += KERNEL_TILE_HEIGHT_PX) {
 
         const int dst_col_px = src_row_px; // NOTE: Rotation-speicific
         const int dst_col_offset_bytes = dst_col_px * RGBA32_PIXEL_STRIDE;
@@ -166,15 +175,15 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
         // NOTE: Rotation-specific:
         // TODO: We can factor this even farther out
         char *dst_block_row_addr_0 = (char *)dst
-                                     // src_width_px - PIXELS_PER_M128I because we're loading
+                                     // src_width_px - KERNEL_TILE_WIDTH_PX because we're loading
                                      // rows 0,+1,+2,+3 on every loop (note: This also accounts
                                      // accounts for the -1 for len->index)
-                                     + (src_width_px - PIXELS_PER_M128I) * dst_stride_bytes
+                                     + (src_width_px - KERNEL_TILE_WIDTH_PX) * dst_stride_bytes
                                      + dst_col_offset_bytes;
 
         const char *const src_block_row_addrs_base = (char *)src + src_row_px * src_stride_bytes;
 
-        for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += PIXELS_PER_M128I) {
+        for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += KERNEL_TILE_WIDTH_PX) {
 
             const char *const _src_block_row_addr_0 = src_block_row_addrs_base + src_col_px * RGBA32_PIXEL_STRIDE;
 
@@ -186,7 +195,7 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
                 _ssse3_rotate_270(src_block_rows, dst_block_rows); // NOTE: Rotation-specific
 
                 _ssse3_get_dst_row_addresses(dst_block_row_addrs, dst_block_row_addr_0, dst_stride_bytes);
-                dst_block_row_addr_0 -= dst_stride_bytes * PIXELS_PER_M128I; // NOTE: Rotation-specific
+                dst_block_row_addr_0 -= dst_stride_bytes * KERNEL_TILE_WIDTH_PX; // NOTE: Rotation-specific
             }
 
             _ssse3_store_rows_unaligned(dst_block_rows, dst_block_row_addrs);
@@ -209,14 +218,16 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
 ) {
     __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
+    _Static_assert(KERNEL_TILE_WIDTH_PX == 4, "180 kernel assumes 4-width RGBA32 tile");
+
     // NOTE: Rotation-specific:
     rgba32_shuffle_mask_128 = scranrot_sse2_rotate_180_get_modified_rgba_shuffle(rgba32_shuffle_mask_128);
 
     char *const dst_last_row = (char *)dst + (src_height_px - 1) * dst_stride_bytes;
 
-    char *dst_start = (src_width_px % PIXELS_PER_M128I) == 0
-                    ? dst_last_row + RGBA32_PIXEL_STRIDE * (src_width_px - PIXELS_PER_M128I)
-                    : dst_last_row + RGBA32_PIXEL_STRIDE * ((src_width_px / PIXELS_PER_M128I) * PIXELS_PER_M128I);
+    char *dst_start = (src_width_px % KERNEL_TILE_WIDTH_PX) == 0
+                    ? dst_last_row + RGBA32_PIXEL_STRIDE * (src_width_px - KERNEL_TILE_WIDTH_PX)
+                    : dst_last_row + RGBA32_PIXEL_STRIDE * ((src_width_px / KERNEL_TILE_WIDTH_PX) * KERNEL_TILE_WIDTH_PX);
 
     __m128i *dst_curr = (__m128i *)dst_start;
     const __m128i *src_curr = src;
@@ -225,7 +236,7 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
         const __m128i *dst_row_base = dst_curr;
         const __m128i *src_row_base = src_curr;
 
-        for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += PIXELS_PER_M128I) {
+        for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += KERNEL_TILE_WIDTH_PX) {
             __m128i src_curr_value = _mm_loadu_si128(src_curr);
             src_curr_value = _mm_shuffle_epi8(src_curr_value, rgba32_shuffle_mask_128);
             _mm_storeu_si128(dst_curr, src_curr_value);
@@ -253,24 +264,25 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
 ) {
     __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
-    __m128i src_block_rows[SCRANROT_SSE_ROW_STRIDE];
-    const __m128i *src_block_row_addrs[SCRANROT_SSE_ROW_STRIDE];
+    _Static_assert(KERNEL_TILE_WIDTH_PX == 4 && KERNEL_TILE_HEIGHT_PX == 4, "90 kernel assumes 4x4 RGBA32 tiles.");
 
-    __m128i dst_block_rows[SCRANROT_SSE_ROW_STRIDE];
-    __m128i *dst_block_row_addrs[SCRANROT_SSE_ROW_STRIDE];
+    __m128i src_block_rows[KERNEL_TILE_HEIGHT_PX];
+    const __m128i *src_block_row_addrs[KERNEL_TILE_HEIGHT_PX];
+
+    __m128i dst_block_rows[KERNEL_TILE_HEIGHT_PX];
+    __m128i *dst_block_row_addrs[KERNEL_TILE_HEIGHT_PX];
 
 
-    for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += SCRANROT_SSE_ROW_STRIDE) {
+    for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += KERNEL_TILE_HEIGHT_PX) {
         // NOTE: Rotation-specific code:
-        const int dst_col_px = (src_height_px - PIXELS_PER_M128I) - src_row_px; // -4 => len -> __m128i (4 pixels) index
-        SCRANROT_ASSERT(RGBA32_PIXEL_STRIDE * (dst_col_px + PIXELS_PER_M128I) <= dst_stride_bytes); // Stay within padded bounds
+        const int dst_col_px = (src_height_px - KERNEL_TILE_HEIGHT_PX) - src_row_px; // -KERNEL_TILE_HEIGHT => len -> tile index
+        SCRANROT_ASSERT(RGBA32_PIXEL_STRIDE * (dst_col_px + KERNEL_TILE_HEIGHT_PX) <= dst_stride_bytes); // Stay within padded bounds
         const int dst_col_offset_bytes = dst_col_px * RGBA32_PIXEL_STRIDE;
-        char *dst_block_row_addr_0 = (char *)dst
-                                     + dst_col_offset_bytes;
+        char *dst_block_row_addr_0 = (char *)dst + dst_col_offset_bytes;
 
         const char *const src_block_row_addrs_base = (char *)src + src_row_px * src_stride_bytes;
 
-        for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += PIXELS_PER_M128I) {
+        for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += KERNEL_TILE_WIDTH_PX) {
 
             const char *const _src_block_row_addr_0 = src_block_row_addrs_base + src_col_px * RGBA32_PIXEL_STRIDE;
 
@@ -282,7 +294,7 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
                 // NOTE: Rotation-specific code
                 _ssse3_rotate_90(src_block_rows, dst_block_rows);
                 _ssse3_get_dst_row_addresses(dst_block_row_addrs, dst_block_row_addr_0, dst_stride_bytes);
-                dst_block_row_addr_0 += dst_stride_bytes * PIXELS_PER_M128I;
+                dst_block_row_addr_0 += dst_stride_bytes * KERNEL_TILE_WIDTH_PX;
             }
 
             _ssse3_store_rows_unaligned(dst_block_rows, dst_block_row_addrs);
@@ -304,6 +316,8 @@ transform_framebuffer__ssse3_unaligned__rotate_0(
 ) {
     __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
+    _Static_assert(KERNEL_TILE_WIDTH_PX == 4, "0 kernel assumes 4-width RGBA32 tile");
+
     __m128i *dst_curr = (__m128i *)dst;
     const __m128i *src_curr = src;
 
@@ -311,7 +325,7 @@ transform_framebuffer__ssse3_unaligned__rotate_0(
         const __m128i *const dst_row_base = dst_curr;
         const __m128i *const src_row_base = src_curr;
 
-        for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += PIXELS_PER_M128I) {
+        for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += KERNEL_TILE_WIDTH_PX) {
 
             __m128i src_curr_value = _mm_loadu_si128(src_curr);
             src_curr_value = _mm_shuffle_epi8(src_curr_value, rgba32_shuffle_mask_128);
@@ -341,7 +355,7 @@ scranrot_transform_framebuffer_ssse3__unaligned(
     enum scranrot_transform transform,
     uintptr_t *dst_stride
 ) {
-    if (src_width_px < SSSE3_TILE_WIDTH || src_height_px < SSSE3_TILE_HEIGHT) {
+    if (src_width_px < MIN_TILE_WIDTH_PX || src_height_px < MIN_TILE_HEIGHT_PX) {
         return scranrot_transform_framebuffer_fallback(
                 src, src_width_px, src_height_px, src_stride_bytes,
                 dst,
@@ -387,7 +401,7 @@ scranrot_transform_framebuffer_ssse3__unaligned(
 
         transform_fn,
         transform, &rgba_shuffle_mask_128,
-        SSSE3_TILE_WIDTH, SSSE3_TILE_HEIGHT
+        KERNEL_TILE_WIDTH_PX, KERNEL_TILE_HEIGHT_PX
     );
 }
 
