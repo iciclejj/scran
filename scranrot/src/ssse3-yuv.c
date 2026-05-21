@@ -580,7 +580,6 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
                     // const uint8_t _xi          = _x >> 4; // divide by 16
                     // NOTE: 180 uses reversed _x index order here compared to the other rotations
                     const uint8_t _xi_reversed = (16 - _x) >> 4;
-                    __m128i y_8bpp_final[16];
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
@@ -623,8 +622,13 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
                             },
                         };
 
-                        y_8bpp_final[j+0] = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
-                        y_8bpp_final[j+1] = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                        // Store Y
+                        {
+                            const __m128i y_8bpp_final_0 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                            const __m128i y_8bpp_final_1 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                            _mm_storeu_si128((__m128i*)(y_line_ - (y+_y+(j  ))*y_linesize - (x+_x)), y_8bpp_final_0);
+                            _mm_storeu_si128((__m128i*)(y_line_ - (y+_y+(j+1))*y_linesize - (x+_x)), y_8bpp_final_1);
+                        }
 
                         // We average the two rows before converting, to reduce required calculation
                         const __m128i rgba_32bpp_rows_avg[4] = {
@@ -643,11 +647,6 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
                         v_i16_8bpp_xyavg[j_yavg][_xi_reversed] = _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                                                             rgba_32bpp_rows_avg, &v_coefficients, &hadam_ident_epi16, 8
                                                         );
-                    }
-
-                    // Store Y
-                    for (int j = 0; j < 16; ++j) {
-                        _mm_storeu_si128((__m128i*)(y_line_ - ((y+_y+j)*y_linesize) - (x+_x)), y_8bpp_final[j]);
                     }
                 }
 
@@ -879,7 +878,6 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
                 for (int _x = 0; _x < 32; _x += 16) {
 
                     const uint8_t _xi = _x >> 4; // divide by 16
-                    __m128i y_8bpp_final[16];
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
@@ -922,8 +920,13 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
                             },
                         };
 
-                        y_8bpp_final[j+0] = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
-                        y_8bpp_final[j+1] = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                        // Store Y
+                        {
+                            const __m128i y_8bpp_final_0 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                            const __m128i y_8bpp_final_1 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                            _mm_storeu_si128((__m128i*)(y_line + (y+_y+(j  ))*y_linesize + x+_x), y_8bpp_final_0);
+                            _mm_storeu_si128((__m128i*)(y_line + (y+_y+(j+1))*y_linesize + x+_x), y_8bpp_final_1);
+                        }
 
                         // We average the two rows before converting, to reduce required calculation
                         const __m128i rgba_32bpp_rows_avg[4] = {
@@ -940,11 +943,6 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
                         v_i16_8bpp_xyavg[j_yavg][_xi] = _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                                                             rgba_32bpp_rows_avg, &v_coefficients, &hadam_ident_epi16, 8
                                                         );
-                    }
-
-                    // Store YUV:  Y
-                    for (int j = 0; j < 16; ++j) {
-                        _mm_storeu_si128((__m128i*)(y_line + (y+_y+j)*y_linesize + x+_x), y_8bpp_final[j]);
                     }
                 }
 
