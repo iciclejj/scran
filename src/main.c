@@ -335,12 +335,6 @@ init_meminit(
             return false;
         }
 
-        // TODO: Don't add padding for buffers we don't need it for
-        //          - Makes things especially difficult and/or useless for
-        //            buffers like the capture "source" buffers, provided by
-        //            wayland, because we don't have control over the
-        //            padding/stride/etc.
-
         for (int i_buffer = 0; i_buffer < SELECTION_SURFACE_BUF_COUNT; i_buffer++) {
             const size_t _surface_buf_size = get_surface_buf_size_padded(&st_output->selection_surface.surface);
             _arena_add_block(
@@ -349,13 +343,13 @@ init_meminit(
             );
         };
 
-        const size_t _capture_buf_size = get_capture_buf_size_padded(st_output);
+        const size_t _capture_buf_size = get_capture_buf_size(st_output);
         _arena_add_block(
             shm_arena,
             _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.st_buffer.data
         );
 
-        const size_t _capture_buf_2_size = get_capture_buf_size_padded(st_output);
+        const size_t _capture_buf_2_size = get_capture_buf_size(st_output);
         _arena_add_block(
             private_arena,
             _capture_buf_2_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.img_data_2

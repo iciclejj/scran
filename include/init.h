@@ -6,7 +6,6 @@
 #include <wayland-client.h>
 
 #include "state.h"
-#include "scranrot.h"
 
 
 // ARGB8888 and XRGB8888 are always supported (wayland spec)
@@ -15,10 +14,7 @@
 #define SURFACE_PIXEL_STRIDE 4 // Bytes per pixel. Depends on SURFACE_SHM_FORMAT.
 #define SURFACE_BLCONTEXT_ORIGIN ((BLPoint){0,0})
 
-#define SSE_ALIGNMENT_BYTES 16
 #define FRAMEBUFFER_ALIGNMENT_BYTES 64 // 64 should cover most bases (cache, simd)
-#define FRAMEBUFFER_RIGHT_ALIGNMENT_BYTES  SSE_ALIGNMENT_BYTES
-#define FRAMEBUFFER_BOTTOM_ALIGNMENT_PX    SCRANROT_SSE_ROW_STRIDE
 
 static inline size_t
 get_units_until_alignment(
@@ -37,13 +33,9 @@ get_surface_stride(struct scran_output_mode *mode) {
 }
 
 static inline size_t
-_get_framebuffer_size_padded(int32_t width_px, int32_t height_px, uint8_t pixel_stride) {
+_get_framebuffer_size(int32_t width_px, int32_t height_px, uint8_t pixel_stride) {
     size_t width_bytes = pixel_stride * width_px;
-    size_t right_padding_bytes = get_units_until_alignment(width_bytes, FRAMEBUFFER_RIGHT_ALIGNMENT_BYTES);
-    size_t bottom_padding_pixels = get_units_until_alignment(height_px, FRAMEBUFFER_BOTTOM_ALIGNMENT_PX);
-
-    return   (width_bytes + right_padding_bytes)
-           * (height_px + bottom_padding_pixels);
+    return width_bytes * height_px;
 }
 
 // TODO: Make get_output_surface_buf_size_padded for "fullscreen" surfaces
@@ -71,14 +63,14 @@ get_surface_buf_size_padded(struct scran_output_surface *st_surface) {
     // assert(get_transformed_output_height(st_output) - 1 <= height_px && height_px  <= get_transformed_output_height(st_output) + 1);
     width_px += 2;
     height_px += 2;
-    return _get_framebuffer_size_padded(width_px, height_px, SURFACE_PIXEL_STRIDE);
+    return _get_framebuffer_size(width_px, height_px, SURFACE_PIXEL_STRIDE);
 }
 
 static inline size_t
-get_capture_buf_size_padded(struct scran_output *st_output) {
+get_capture_buf_size(struct scran_output *st_output) {
     int32_t width_px = st_output->mode.width_px;
     int32_t height_px = st_output->mode.height_px;
-    return _get_framebuffer_size_padded(width_px, height_px, st_output->capture.frame_ctx.pixel_stride);
+    return _get_framebuffer_size(width_px, height_px, st_output->capture.frame_ctx.pixel_stride);
 }
 
 static inline size_t
