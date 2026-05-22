@@ -114,16 +114,18 @@ handle_image_copy_capture_frame_ready__image_capture(
     //    TODO: Only convert if required
     //            I.e. convert if not natively supported pixel format by blend2d
     //            encoder and/or needs transform
-    //    TODO: Assert we have available padding.
-    //    TODO: More asserts before & after this
-    scranrot_transform_framebuffer(
-        area_start_addr, capture_area_px_w, capture_area_px_h, source_row_bytes,
-        buf_cropped_converted,
-        rgba32_shuffle,
-        // TODO: add lib-interop.h function for this cast?
-        (enum scranrot_transform)transform,
-        &buf_cropped_converted_row_bytes
-    );
+    if (!scranrot_transform_framebuffer(
+            area_start_addr, capture_area_px_w, capture_area_px_h, source_row_bytes,
+            buf_cropped_converted,
+            rgba32_shuffle,
+            // TODO: add lib-interop.h function for this cast?
+            (enum scranrot_transform)transform,
+            &buf_cropped_converted_row_bytes
+        )
+    ) {
+        eprintf("Error: scranrot failed to convert framebuffer\n");
+        goto end_capture;
+    }
     const int capture_area_px_w_transformed = get_transformed_width(capture_area_px_w, capture_area_px_h, st_output->transform);
     const int capture_area_px_h_transformed = get_transformed_height(capture_area_px_w, capture_area_px_h, st_output->transform);
 
@@ -210,6 +212,7 @@ handle_image_copy_capture_frame_ready__image_capture(
 
     bl_array_destroy(&bl_array_img_encoded);
 
+end_capture:
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 }
 

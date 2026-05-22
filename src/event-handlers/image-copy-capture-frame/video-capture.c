@@ -120,16 +120,20 @@ handle_image_copy_capture_frame_ready__video_capture(
         AVFrame *frame = ffmpeg_ctx->av_frame_to_encode;
         void *const frame_buffer = frame_ctx->img_data_2;
 
-        scranrot_transform_framebuffer_to_yuv420(
-            area_start_addr, area_w_px, area_h_px, source_row_bytes,
-            frame_buffer,
-            rgba32_shuffle,
-            // TODO: add lib-interop.h function for this cast?
-            (enum scranrot_transform)transform,
-            &frame->data[0], &frame->linesize[0],
-            &frame->data[1], &frame->linesize[1],
-            &frame->data[2], &frame->linesize[2]
-        );
+        if (!scranrot_transform_framebuffer_to_yuv420(
+                area_start_addr, area_w_px, area_h_px, source_row_bytes,
+                frame_buffer,
+                rgba32_shuffle,
+                // TODO: add lib-interop.h function for this cast?
+                (enum scranrot_transform)transform,
+                &frame->data[0], &frame->linesize[0],
+                &frame->data[1], &frame->linesize[1],
+                &frame->data[2], &frame->linesize[2]
+            )
+        ) {
+            eprintf("Error: scranrot failed to convert framebuffer to yuv\n");
+            goto end_capture;
+        }
         frame->pts = frame_ctx->presentation_time_nsec;
     }
 
@@ -163,10 +167,7 @@ handle_image_copy_capture_frame_ready__video_capture(
     //
     // TODO: Go through uses of capturing_video to check for redundancy now
     // that we have a global state, with e.g. `.exit_requested`.
-    if (!frame_ctx->capturing_video) {
-        goto end_capture;
-    } else if (g_state.exit_requested) {
-        frame_ctx->capturing_video = false;
+    if (!frame_ctx->capturing_video || g_state.exit_requested) {
         goto end_capture;
     }
 
@@ -183,6 +184,8 @@ handle_image_copy_capture_frame_ready__video_capture(
     return;
 
 end_capture:
+    frame_ctx->capturing_video = false;
+
     {
         struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
         struct scran_output *const st_output = wl_container_of(st_capture, st_output, capture);
