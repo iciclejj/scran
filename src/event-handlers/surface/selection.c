@@ -64,13 +64,13 @@ selection_surface_frame_callback_handler(
     const struct BLBoxI capture_area = get_blboxi_deinverted(st_output->selection_ctx.box_px);
     assert(capture_area.x1 <= get_transformed_output_width(st_output));
     assert(capture_area.y1 <= get_transformed_output_height(st_output));
-    const struct BLBoxI capture_area_previous_surface_commit = st_output->selection_surface.box_last_drawn;
 
     // XXX TODO: Does this even make any sense to have anymore, after the
     // on-demand redraw changes from ~a month ago? (Commented out due to the
     // check being too strict now with the new keymap ui. But check the above
     // before remaking it for ui keymap)
     //
+    // const struct BLBoxI capture_area_previous_surface_commit = st_output->selection_surface.box_last_drawn;
     // if (!st_buffer->force_redraw && blboxi_are_equal(capture_area, capture_area_previous_surface_commit)) {
     //     goto done;
     // }

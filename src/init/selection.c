@@ -97,6 +97,7 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
     struct scran_output_selectionContext *selection_ctx     = &st_output->selection_ctx;
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
     struct scran_output_surface          *st_surface        = &st_output->selection_surface.surface;
+    (void)selection_ctx;
 
     // Sanity check...
     assert(st_output->xdg_geometry.w_logical == st_surface->width_logical);
@@ -169,7 +170,7 @@ init_postmem__selection__destroy(struct scran_output *st_output)
 {
     struct scran_output_selectionContext *selection_ctx     = &st_output->selection_ctx;
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
-    struct scran_output_surface          *st_surface        = &st_output->selection_surface.surface;
+    (void)selection_ctx;
 
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
         struct scran_output_selectionSurface_buffer *st_buffer = &selection_surface->double_buffer[i];

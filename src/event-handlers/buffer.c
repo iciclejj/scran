@@ -22,6 +22,7 @@ static void
 handle_capture_buffer_release(void *data, struct wl_buffer *buffer)
 {
     struct scran_capture_buffer *st_capture_buffer = data;
+    (void)st_capture_buffer;
 
     // Don't need to do anything at the moment...
 }

@@ -30,6 +30,7 @@ handle_image_copy_capture_frame_transform__video_capture(
     uint32_t transform
 ) {
     struct capture_frame_context *frame_ctx = data;
+    (void)frame_ctx;
 
     // TODO: What is this transform representing?
     //           It is separate from output::geometry's transform.
@@ -46,6 +47,7 @@ handle_image_copy_capture_frame_damage__video_capture(
     int32_t height
 ) {
     struct capture_frame_context *frame_ctx = data;
+    (void)frame_ctx;
 
     // XXX TODO IMPORTANT: Implement this and add flag to enable damage-based capture
 }

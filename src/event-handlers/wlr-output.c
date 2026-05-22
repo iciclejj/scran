@@ -189,6 +189,7 @@ void handle_wlr_output_manager_done(
     uint32_t serial
 ) {
     struct scran *state = data;
+    (void)state;
 
     for (int i = 0; i < m_n_pending_heads; ++i) {
         struct _pending_head *pending_head = &m_pending_heads[i];
