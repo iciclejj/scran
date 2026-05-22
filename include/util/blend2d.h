@@ -36,10 +36,12 @@
         switch (transform) {
         case WL_OUTPUT_TRANSFORM_FLIPPED:
             _flip_horizontally(&box, source_width);
+            __attribute__((fallthrough));
         case WL_OUTPUT_TRANSFORM_NORMAL:
             return box;
         case WL_OUTPUT_TRANSFORM_FLIPPED_90:
             _flip_horizontally(&box, source_width);
+            __attribute__((fallthrough));
         case WL_OUTPUT_TRANSFORM_90:
             tmp = box.x0;
             box.x0 = box.y0;
@@ -49,6 +51,7 @@
             return box;
         case WL_OUTPUT_TRANSFORM_FLIPPED_180:
             _flip_horizontally(&box, source_width);
+            __attribute__((fallthrough));
         case WL_OUTPUT_TRANSFORM_180:
             tmp = box.y0;
             box.y0 = source_height - box.y1;
@@ -59,6 +62,7 @@
             return box;
         case WL_OUTPUT_TRANSFORM_FLIPPED_270:
             _flip_horizontally(&box, source_width);
+            __attribute__((fallthrough));
         case WL_OUTPUT_TRANSFORM_270:
             tmp = box.x0;
             tmp2 = box.x1;
