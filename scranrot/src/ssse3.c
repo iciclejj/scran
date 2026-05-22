@@ -18,7 +18,7 @@
 
 // TODO: Check stride performance on other systems (tested on 5600h)
 _Static_assert(sizeof(__m128i) % RGBA32_PIXEL_STRIDE == 0, "sizeof(__m128i) is not divisible by RGBA32_PIXEL_STRIDE");
-#define PIXELS_PER_M128I (sizeof(__m128i) / RGBA32_PIXEL_STRIDE)
+#define PIXELS_PER_M128I ((int)sizeof(__m128i) / RGBA32_PIXEL_STRIDE)
 
 typedef void (*_scranrot_transform_framebuffer_fn__ssse3)(
     const void *const restrict src,
