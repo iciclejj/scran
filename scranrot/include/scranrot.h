@@ -75,7 +75,7 @@ typedef bool scranrot_transform_framebuffer_fn(
 
 // Main dispatcher function. Selects appropriate simd instruction set
 // (or fallback) at runtime, based on cpuid.
-void
+bool
 scranrot_transform_framebuffer(
     const void *src,
     int src_width_px,
@@ -91,7 +91,7 @@ scranrot_transform_framebuffer(
     uintptr_t *dst_stride
 );
 
-void
+bool
 scranrot_transform_framebuffer_to_yuv420(
     const void *src,
     int src_width_px,

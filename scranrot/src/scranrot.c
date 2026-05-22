@@ -2,7 +2,7 @@
 
 
 // Rotates frame buffer, shuffles pixel geometry, and stores result to dst
-void
+bool
 scranrot_transform_framebuffer(
     const void *src,
     int src_width_px,
@@ -30,7 +30,7 @@ scranrot_transform_framebuffer(
         selected_function = scranrot_transform_framebuffer_fallback;
     }
 
-    selected_function(
+    return selected_function(
         src, src_width_px, src_height_px, src_stride_bytes,
         dst,
         rgba_shuffle, transform,
@@ -39,7 +39,7 @@ scranrot_transform_framebuffer(
     );
 }
 
-void
+bool
 scranrot_transform_framebuffer_to_yuv420(
     const void *src,
     int src_width_px,
@@ -73,7 +73,7 @@ scranrot_transform_framebuffer_to_yuv420(
         selected_function = scranrot_transform_framebuffer_to_yuv420_fallback;
     }
 
-    selected_function(
+    return selected_function(
         src, src_width_px, src_height_px, src_stride_bytes,
         dst,
         rgba_shuffle, transform,
