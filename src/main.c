@@ -330,7 +330,7 @@ init_meminit(
     //
     FOR_EACH_OUTPUT(i, st_output) {
         // XXX: Handle this gracefully (and maybe in a nicer location?)
-        if (st_output->capture.shm_format == -1) {
+        if (st_output->capture.shm_format == SCRAN_SHM_FORMAT_UNSET) {
             DEBUG("Failed to select shm_buffer format.\n");
             return false;
         }

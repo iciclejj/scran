@@ -38,7 +38,7 @@ handle_image_copy_capture_session_shm_format(
 
     // List of formats we want to support.
     // TODO: Add more formats and logic for handling them
-    if (st_output->capture.shm_format == -1
+    if (st_output->capture.shm_format == SCRAN_SHM_FORMAT_UNSET
         &&
         (shm_format == WL_SHM_FORMAT_ARGB8888
          || shm_format == WL_SHM_FORMAT_XRGB8888

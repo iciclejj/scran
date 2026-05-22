@@ -49,6 +49,8 @@
 
 #define SCRAN_MIME_TYPE_SIZE_MAX 256
 
+#define SCRAN_SHM_FORMAT_UNSET ((uint32_t)-1)
+
 // NOTE: Output names are not actually guaranteed per spec to have this max
 // length (nor for actual name to be equal to the underlying DRM name).
 #define SCRAN_STATE_OUTPUT_NAME_SIZE DRM_CONNECTOR_NAME_LEN

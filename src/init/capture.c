@@ -36,7 +36,7 @@ init_premem__capture(
 
     // XXX: Maybe there's a nicer way to do this or to properly assert this
     //      initialization in the listener somewhere?
-    st_output->capture.shm_format = -1;
+    st_output->capture.shm_format = SCRAN_SHM_FORMAT_UNSET;
     ext_image_copy_capture_session_v1_add_listener(
         st_output->capture.frame_ctx.wl_capture_session,
         &image_copy_capture_session_listener,
