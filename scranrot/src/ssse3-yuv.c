@@ -394,8 +394,6 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "270 kernel assumes 32x32 RGBA32 tiles.");
 
-    const int dst_height_px = src_width_px;
-
     const __m128i y_coefficients_a = _get_yuv_y_coefficients_a();
     const __m128i y_coefficients_b = _get_yuv_y_coefficients_b();
     const __m128i u_coefficients   = _get_yuv_u_coefficients();
@@ -404,19 +402,25 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
 
+    const int dst_height_px = src_width_px;
+    uint8_t *y_line_ = y_line + (dst_height_px   - 1)*y_linesize;
+    uint8_t *u_line_ = u_line + (dst_height_px/2 - 1)*u_linesize;
+    uint8_t *v_line_ = v_line + (dst_height_px/2 - 1)*v_linesize;
+
 
     for (int y = 0; y <= src_height_px - 32; y += 32) {
         for (int x = 0; x <= src_width_px - 32; x += 32) {
 
             // y (yuv) is 2x bpp, so we transpose and store already in inner loop
             // NOTE: bpp here is for u/v-plane pixels, which are at half res for yuv420
-            // TODO: Probably store row pairs for u/v in inner loop, and
-            //       unpackhi/lo into full rows, to reduce cache usage.
             __m128i u_i8_4bpp_final[16];
             __m128i v_i8_4bpp_final[16];
 
             for (int _y = 0; _y < 32; _y += 16) {
 
+                // NOTE: Storing row pairs for u/v in inner loop, and unpackhi/lo into full rows, in
+                //       order to only need to sit on 8 of these at a time (since righthand sub-tile
+                //       will be combining into _final already), seems to give worse performance.
                 __m128i u_i16_8bpp_xyavg[8][2];
                 __m128i v_i16_8bpp_xyavg[8][2];
 
@@ -424,44 +428,21 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 
                     const uint8_t _xi = _x >> 4; // divide by 16
                     __m128i y_8bpp_final[16];
+                    const uint8_t *const src_subtile = (uint8_t *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
                         const __m128i rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
                             {
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  0) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  4) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  8) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x + 12) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
                             }, {
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x +  0) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x +  4) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x +  8) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x + 12) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
                             },
                         };
 
@@ -491,9 +472,14 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
                     // Store Y
                     //   (Inner tile)
                     _16x16_8bpp_transpose_inplace(y_8bpp_final);
-                    for (int j = 0; j < 16; ++j) {
-                        _mm_storeu_si128((__m128i*)(y_line + (y+_y) + ((dst_height_px-1-(j))-(x+_x))*y_linesize), y_8bpp_final[j]);
+                    {
+                        uint8_t *curr_y_line = y_line_ + (y+_y) - (x+_x)*y_linesize;
+                        for (int j = 0; j < 16; ++j) {
+                            _mm_storeu_si128((__m128i*)curr_y_line, y_8bpp_final[j]);
+                            curr_y_line -= y_linesize;
+                        }
                     }
+
                 }
 
                 // Finalize U,V for entire outer tile row
@@ -514,14 +500,22 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 
             // Store U
             _16x16_8bpp_transpose_inplace(u_i8_4bpp_final);
-            for (int j = 0; j < 16; ++j) {
-                _mm_storeu_si128((__m128i*)(u_line + (y/2) + ( ((dst_height_px-x)/2)-1-(j))*u_linesize), u_i8_4bpp_final[j]);
+            {
+                uint8_t *curr_u_line = u_line_ + (y/2) - (x/2)*u_linesize;
+                for (int j = 0; j < 16; ++j) {
+                    _mm_storeu_si128((__m128i*)curr_u_line, u_i8_4bpp_final[j]);
+                    curr_u_line -= u_linesize;
+                }
             }
 
             // Store V
             _16x16_8bpp_transpose_inplace(v_i8_4bpp_final);
-            for (int j = 0; j < 16; ++j) {
-                _mm_storeu_si128((__m128i*)(v_line + (y/2) + ( ((dst_height_px-x)/2)-1-(j))*v_linesize), v_i8_4bpp_final[j]);
+            {
+                uint8_t *curr_v_line = v_line_ + (y/2) - (x/2)*v_linesize;
+                for (int j = 0; j < 16; ++j) {
+                    _mm_storeu_si128((__m128i*)curr_v_line, v_i8_4bpp_final[j]);
+                    curr_v_line -= v_linesize;
+                }
             }
         }
     }
@@ -554,7 +548,6 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
 
-    // TODO: Do this sizeof(__m128i) pre-calculation thing elsewhere too, instead of -16 everywhere?
     uint8_t *y_line_ = y_line + (src_height_px-1)   * y_linesize + (src_width_px   - sizeof(__m128i));
     uint8_t *u_line_ = u_line + (src_height_px-1)/2 * u_linesize + (src_width_px/2 - sizeof(__m128i));
     uint8_t *v_line_ = v_line + (src_height_px-1)/2 * v_linesize + (src_width_px/2 - sizeof(__m128i));
@@ -565,13 +558,12 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
 
             // y (yuv) is 2x bpp, so we transpose and store already in inner loop
             // NOTE: bpp here is for u/v-plane pixels, which are at half res for yuv420
-            // TODO: Probably store row pairs for u/v in inner loop, and
-            //       unpackhi/lo into full rows, to reduce cache usage.
             __m128i u_i8_4bpp_final[16];
             __m128i v_i8_4bpp_final[16];
 
             for (int _y = 0; _y < 32; _y += 16) {
 
+                // NOTE: See comment in 270/90 handlers at this location. Though not actually tested for 0 or 180.
                 __m128i u_i16_8bpp_xyavg[8][2];
                 __m128i v_i16_8bpp_xyavg[8][2];
 
@@ -580,45 +572,23 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
                     // const uint8_t _xi          = _x >> 4; // divide by 16
                     // NOTE: 180 uses reversed _x index order here compared to the other rotations
                     const uint8_t _xi_reversed = (16 - _x) >> 4;
+                    const uint8_t *const src_subtile = (uint8_t *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
+                    uint8_t *curr_y_line = y_line_ - (y+_y)*y_linesize - (x+_x);
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
                         // NOTE: 180 uses reversed load order here compared to the other rotations
                         const __m128i rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
                             {
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x + 12) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  8) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  4) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  0) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
                             }, {
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x + 12) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x +  8) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x +  4) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x +  0) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
                             },
                         };
 
@@ -626,8 +596,11 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
                         {
                             const __m128i y_8bpp_final_0 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
                             const __m128i y_8bpp_final_1 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
-                            _mm_storeu_si128((__m128i*)(y_line_ - (y+_y+(j  ))*y_linesize - (x+_x)), y_8bpp_final_0);
-                            _mm_storeu_si128((__m128i*)(y_line_ - (y+_y+(j+1))*y_linesize - (x+_x)), y_8bpp_final_1);
+
+                            _mm_storeu_si128((__m128i*)curr_y_line, y_8bpp_final_0);
+                            curr_y_line -= y_linesize;
+                            _mm_storeu_si128((__m128i*)curr_y_line, y_8bpp_final_1);
+                            curr_y_line -= y_linesize;
                         }
 
                         // We average the two rows before converting, to reduce required calculation
@@ -641,12 +614,12 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
                         // U
                         const uint8_t j_yavg = j/2;
                         u_i16_8bpp_xyavg[j_yavg][_xi_reversed] = _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba_32bpp_rows_avg, &u_coefficients, &hadam_ident_epi16, 8
-                                                        );
+                                                                     rgba_32bpp_rows_avg, &u_coefficients, &hadam_ident_epi16, 8
+                                                                 );
                         // V
                         v_i16_8bpp_xyavg[j_yavg][_xi_reversed] = _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba_32bpp_rows_avg, &v_coefficients, &hadam_ident_epi16, 8
-                                                        );
+                                                                     rgba_32bpp_rows_avg, &v_coefficients, &hadam_ident_epi16, 8
+                                                                 );
                     }
                 }
 
@@ -665,13 +638,17 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
             }
 
             SCRANROT_ASSERT((y==0||x==0) || (y%16==0 && x%16==0));
-            const int uv_y = y/2;
-            const int uv_x = x/2;
 
             // Store U,V
-            for (int l = 0; l < 16; ++l) {
-                _mm_storeu_si128((__m128i*)(u_line_ - ((uv_y+l)*u_linesize) - (uv_x)), u_i8_4bpp_final[l]);
-                _mm_storeu_si128((__m128i*)(v_line_ - ((uv_y+l)*v_linesize) - (uv_x)), v_i8_4bpp_final[l]);
+            {
+                uint8_t *curr_u_line = u_line_ - ((y/2)*u_linesize) - (x/2);
+                uint8_t *curr_v_line = v_line_ - ((y/2)*v_linesize) - (x/2);
+                for (int l = 0; l < 16; ++l) {
+                    _mm_storeu_si128((__m128i*)curr_u_line, u_i8_4bpp_final[l]);
+                    _mm_storeu_si128((__m128i*)curr_v_line, v_i8_4bpp_final[l]);
+                    curr_u_line -= u_linesize;
+                    curr_v_line -= v_linesize;
+                }
             }
 
         }
@@ -695,8 +672,6 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "90 kernel assumes 32x32 RGBA32 tiles.");
 
-    const int dst_width_px = src_height_px;
-
     const __m128i y_coefficients_a = _get_yuv_y_coefficients_a();
     const __m128i y_coefficients_b = _get_yuv_y_coefficients_b();
     const __m128i u_coefficients   = _get_yuv_u_coefficients();
@@ -705,19 +680,27 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
 
+    // 90-rotation dst starts at the right edge and moves backwards, so the current (sub-)tile
+    // is always positioned "behind" us.
+    static const int dst_col_offset = -16;
+    const int dst_width_px = src_height_px;
+    uint8_t *y_line_ = y_line + dst_width_px   + dst_col_offset;
+    uint8_t *u_line_ = u_line + dst_width_px/2 + dst_col_offset;
+    uint8_t *v_line_ = v_line + dst_width_px/2 + dst_col_offset;
 
     for (int y = 0; y <= src_height_px - 32; y += 32) {
         for (int x = 0; x <= src_width_px - 32; x += 32) {
 
             // y (yuv) is 2x bpp, so we transpose and store already in inner loop
             // NOTE: bpp here is for u/v-plane pixels, which are at half res for yuv420
-            // TODO: Probably store row pairs for u/v in inner loop, and
-            //       unpackhi/lo into full rows, to reduce cache usage.
             __m128i u_i8_4bpp_final[16];
             __m128i v_i8_4bpp_final[16];
 
             for (int _y = 0; _y < 32; _y += 16) {
 
+                // NOTE: Storing row pairs for u/v in inner loop, and unpackhi/lo into full rows, in
+                //       order to only need to sit on 8 of these at a time (since righthand sub-tile
+                //       will be combining into _final already), seems to give worse performance.
                 __m128i u_i16_8bpp_xyavg[8][2];
                 __m128i v_i16_8bpp_xyavg[8][2];
 
@@ -725,44 +708,21 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 
                     const uint8_t _xi = _x >> 4; // divide by 16
                     __m128i y_8bpp_final[16];
+                    const uint8_t *const src_subtile = (uint8_t *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
                         const __m128i rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
                             {
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  0) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  4) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  8) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x + 12) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
                             }, {
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x +  0) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x +  4) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x +  8) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x + 12) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
                             },
                         };
 
@@ -789,17 +749,18 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
                                                         );
                     }
 
-
-                    // Store Y
-                    //   (Inner tile)
-                    _16x16_8bpp_rotate_90_inplace(y_8bpp_final);
-                    for (int j = 0; j < 16; ++j) {
-                        // 90-rotation dst starts at the right edge and moves backwards, so the current tile
-                        // is always positioined "behind" us.
-                        static const int dst_col_offset = -16;
-                        _mm_storeu_si128((__m128i*)(y_line + (dst_width_px + dst_col_offset - (y+_y)) + (x+_x+j)*y_linesize), y_8bpp_final[j]);
+                    // Store Y (Inner tile)
+                    {
+                        uint8_t *curr_y_line = y_line_ - (y+_y) + (x+_x)*y_linesize;
+                        _16x16_8bpp_rotate_90_inplace(y_8bpp_final);
+                        for (int j = 0; j < 16; ++j) {
+                            _mm_storeu_si128((__m128i*)curr_y_line, y_8bpp_final[j]);
+                            curr_y_line += y_linesize;
+                        }
                     }
+
                 }
+
 
                 // Finalize U,V for entire outer tile row
                 for (int k = 0; k < 8; ++k) {
@@ -812,24 +773,31 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
                                                      v_i16_8bpp_xyavg[k][1]
                                                 );
                 }
-
             }
+
 
             SCRANROT_ASSERT((y==0||x==0) || (y%16==0 && x%16==0));
 
             // Store U
             _16x16_8bpp_rotate_90_inplace(u_i8_4bpp_final);
-            for (int j = 0; j < 16; ++j) {
-                static const int dst_col_offset = -16; // See comment at first usage
-                _mm_storeu_si128((__m128i*)(u_line + (dst_width_px/2 - y/2 + dst_col_offset) + (x/2+j)*u_linesize), u_i8_4bpp_final[j]);
+            {
+                uint8_t *curr_u_line = u_line_ - (y/2) + (x/2)*u_linesize;
+                for (int j = 0; j < 16; ++j) {
+                    _mm_storeu_si128((__m128i*)curr_u_line, u_i8_4bpp_final[j]);
+                    curr_u_line += u_linesize;
+                }
             }
 
             // Store V
             _16x16_8bpp_rotate_90_inplace(v_i8_4bpp_final);
-            for (int j = 0; j < 16; ++j) {
-                static const int dst_col_offset = -16; // See comment at first usage
-                _mm_storeu_si128((__m128i*)(v_line + (dst_width_px/2 - y/2 + dst_col_offset) + (x/2+j)*v_linesize), v_i8_4bpp_final[j]);
+            {
+                uint8_t *curr_v_line = v_line_ - (y/2) + (x/2)*v_linesize;
+                for (int j = 0; j < 16; ++j) {
+                    _mm_storeu_si128((__m128i*)curr_v_line, v_i8_4bpp_final[j]);
+                    curr_v_line += v_linesize;
+                }
             }
+
         }
     }
 }
@@ -865,58 +833,34 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 
             // y (yuv) is 2x bpp, so we transpose and store already in inner loop
             // NOTE: bpp here is for u/v-plane pixels, which are at half res for yuv420
-            // TODO: Probably store row pairs for u/v in inner loop, and
-            //       unpackhi/lo into full rows, to reduce cache usage.
             __m128i u_i8_4bpp_final[16];
             __m128i v_i8_4bpp_final[16];
 
             for (int _y = 0; _y < 32; _y += 16) {
 
+                // NOTE: See comment in 270/90 handlers at this location. Though not actually tested for 0 or 180.
                 __m128i u_i16_8bpp_xyavg[8][2];
                 __m128i v_i16_8bpp_xyavg[8][2];
 
                 for (int _x = 0; _x < 32; _x += 16) {
 
                     const uint8_t _xi = _x >> 4; // divide by 16
+                    const uint8_t *const src_subtile = (uint8_t *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
+                    uint8_t *curr_y_line = y_line + (y+_y)*y_linesize + (x+_x);
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
                         const __m128i rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
                             {
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  0) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  4) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x +  8) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+0) * src_stride_bytes) + (x + _x + 12) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                            },
-                            {
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x +  0) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x +  4) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x +  8) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
-                                _mm_shuffle_epi8(
-                                    _mm_loadu_si128(src + ((y + _y + j+1) * src_stride_bytes) + (x + _x + 12) * RGBA32_PIXEL_STRIDE),
-                                    rgba32_shuffle_mask_128
-                                ),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                            }, {
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
                             },
                         };
 
@@ -924,8 +868,10 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
                         {
                             const __m128i y_8bpp_final_0 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
                             const __m128i y_8bpp_final_1 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
-                            _mm_storeu_si128((__m128i*)(y_line + (y+_y+(j  ))*y_linesize + x+_x), y_8bpp_final_0);
-                            _mm_storeu_si128((__m128i*)(y_line + (y+_y+(j+1))*y_linesize + x+_x), y_8bpp_final_1);
+                            _mm_storeu_si128((__m128i*)curr_y_line, y_8bpp_final_0);
+                            curr_y_line += y_linesize;
+                            _mm_storeu_si128((__m128i*)curr_y_line, y_8bpp_final_1);
+                            curr_y_line += y_linesize;
                         }
 
                         // We average the two rows before converting, to reduce required calculation
@@ -961,13 +907,17 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
             }
 
             SCRANROT_ASSERT((y==0||x==0) || (y%16==0 && x%16==0));
-            const int uv_y = y/2;
-            const int uv_x = x/2;
 
             // Store U,V
-            for (int l = 0; l < 16; ++l) {
-                _mm_storeu_si128((__m128i*)(u_line + (uv_y+l)*u_linesize + uv_x), u_i8_4bpp_final[l]);
-                _mm_storeu_si128((__m128i*)(v_line + (uv_y+l)*v_linesize + uv_x), v_i8_4bpp_final[l]);
+            {
+                uint8_t *curr_u_line = u_line + (y/2)*u_linesize + (x/2);
+                uint8_t *curr_v_line = v_line + (y/2)*v_linesize + (x/2);
+                for (int l = 0; l < 16; ++l) {
+                    _mm_storeu_si128((__m128i*)curr_u_line, u_i8_4bpp_final[l]);
+                    _mm_storeu_si128((__m128i*)curr_v_line, v_i8_4bpp_final[l]);
+                    curr_u_line += u_linesize;
+                    curr_v_line += v_linesize;
+                }
             }
 
         }
