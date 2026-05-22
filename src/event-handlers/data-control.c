@@ -8,6 +8,7 @@
 #include "event-handlers.h"
 #include "print.h"
 #include "clipboard.h"
+#include "util/util.h"
 
 // void 
 // handle_data_control_device_selection(
@@ -48,7 +49,7 @@ handle_data_control_source_send(
 
         const void *const data = bl_array_get_data(bl_array);
         const size_t data_size = bl_array_get_size(bl_array);
-        if (data_size != write(fd, data, data_size)) {
+        if (!scran_full_write(fd, data, data_size)) {
             goto failed;
         }
     } else if (
@@ -57,26 +58,26 @@ handle_data_control_source_send(
     ) {
         static const char prefix[] = "file://";
         static const size_t prefix_strlen = sizeof(prefix) - 1;
-        if (prefix_strlen != write(fd, prefix, prefix_strlen)) {
+        if (!scran_full_write(fd, prefix, prefix_strlen)) {
             goto failed;
         }
 
         // TODO: Make sure this is an absolute path. Either here or
         // normalize passed path to absolute during option init.
-        if (filepath_strlen != write(fd, filepath, filepath_strlen)) {
+        if (!scran_full_write(fd, filepath, filepath_strlen)) {
             goto failed;
         }
 
         static const char suffix[] = "\r\n";
         static const size_t suffix_strlen = sizeof(suffix) - 1;
-        if (suffix_strlen != write(fd, suffix, suffix_strlen)) {
+        if (!scran_full_write(fd, suffix, suffix_strlen)) {
             goto failed;
         }
     } else if (
         st_datacontrol->should_offer_filepath
         && 0 == strcmp(requested_mime, SCRAN_MIME_TYPE_FILEPATH_PLAIN)
     ) {
-        if (filepath_strlen != write(fd, filepath, filepath_strlen)) {
+        if (!scran_full_write(fd, filepath, filepath_strlen)) {
             goto failed;
         }
     } else {

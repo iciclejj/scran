@@ -8,6 +8,7 @@
 #include "portals.h"
 #include "state.h"
 #include "state-util.h" // TODO: Move this into util/ ?
+#include "util/util.h"
 #include "util/blend2d.h"
 #include "util/lib-interop.h"
 #include "capture.h"
@@ -171,11 +172,8 @@ handle_image_copy_capture_frame_ready__image_capture(
 
     if (st_options->output_to_stdout) {
         // TODO: Assert nothing else was written to stdout?
-        ssize_t bytes_written = write(STDOUT_FILENO, bl_array_img_encoded_data, bytes_to_write);
-
-        if (bytes_written != bytes_to_write) {
-            eprintf("Failed to write image to stdout. Bytes written: %zd/%zu\n",
-                     bytes_written, bytes_to_write);
+        if (!scran_full_write(STDOUT_FILENO, bl_array_img_encoded_data, bytes_to_write)) {
+            eprintf("Failed to write image to stdout.\n");
         }
     } else {
         static const char default_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] =
