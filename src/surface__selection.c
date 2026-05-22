@@ -213,7 +213,7 @@ _draw_and_damage_keymap(
         }
 
         // XXX TODO: See comment above near bl_context_set_comp_op().
-        bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_OVER);
+        bl_context_set_comp_op(&st_buffer->bl_ctx, comp_op);
         // Restore fill style
         uint32_t prev_fill_style_rgba32;
         bl_var_to_rgba32(&prev_fill_style, &prev_fill_style_rgba32);
