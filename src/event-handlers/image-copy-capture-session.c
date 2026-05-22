@@ -19,8 +19,8 @@ handle_image_copy_capture_session_buffer_size(
     struct scran_output *st_output = data;
 
     // This seemingly always hold true, so use output::mode w/h only.
-    assert(width == st_output->mode.width_px);
-    assert(height == st_output->mode.height_px);
+    assert(width == (uint32_t)st_output->mode.width_px);
+    assert(height == (uint32_t)st_output->mode.height_px);
     st_output->capture.frame_ctx.source_width_px = width;
     st_output->capture.frame_ctx.source_height_px = height;
 }

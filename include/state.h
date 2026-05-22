@@ -88,8 +88,8 @@ struct scran_output_surface {
     // detached from the main state struct
 
     // Surface-local coordinates
-    int32_t width_logical;
-    int32_t height_logical;
+    uint32_t width_logical;
+    uint32_t height_logical;
     // Should (usually?) be equivalent to output_mode +/- 1, if fractional
     // scaling is used. If no scaling, then simply equivalent to output_mode.
     //
@@ -98,7 +98,7 @@ struct scran_output_surface {
     //   See wp_viewport and wp_fractional_scale xmls for more information
     int32_t width_px_buffer;
     int32_t height_px_buffer;
-    int32_t fractional_scale_wp_120; // wp_fractional_scale
+    uint32_t fractional_scale_wp_120; // wp_fractional_scale
 
     struct zwlr_layer_surface_v1 *layer_surface;
     struct wp_fractional_scale_v1 *fractional_scale;
@@ -361,7 +361,7 @@ struct scran_output {
 
     // NOTE: Must be initialized to 1, since this is our fallback if no
     // fractional scale is present
-    uint32_t scale;
+    int32_t scale;
     int32_t fractional_scale_cosmic_1000;   // zcosmic_output_head
     wl_fixed_t fractional_scale_wlr;        // zwlr_output_head
 

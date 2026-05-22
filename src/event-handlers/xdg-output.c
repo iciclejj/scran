@@ -23,8 +23,8 @@ static void
 handle_xdg_output_logical_size(
     void *data,
     struct zxdg_output_v1 *xdg_output,
-    int width_px,
-    int height_px
+    int32_t width_px,
+    int32_t height_px
 ) {
     struct scran_output *st_output = data;
 

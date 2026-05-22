@@ -100,8 +100,8 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
     (void)selection_ctx;
 
     // Sanity check...
-    assert(st_output->xdg_geometry.w_logical == st_surface->width_logical);
-    assert(st_output->xdg_geometry.h_logical == st_surface->height_logical);
+    assert((uint32_t)st_output->xdg_geometry.w_logical == st_surface->width_logical);
+    assert((uint32_t)st_output->xdg_geometry.h_logical == st_surface->height_logical);
 
     // Update here in addition to within the ::scale handlers, since they may
     // have fired before the viewport was initialized.

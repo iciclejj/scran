@@ -288,7 +288,7 @@ static inline void
 _arena_hand_out_pointers_to_recipients(struct _arena_context *arena) {
     assert(arena->addr != NULL);
 
-    for (int i = 0; i < arena->block_count; ++i) {
+    for (size_t i = 0; i < arena->block_count; ++i) {
         *arena->block_recipients[i] = arena->addr + arena->block_offsets[i];
     }
 }

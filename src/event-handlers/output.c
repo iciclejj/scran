@@ -36,7 +36,7 @@ handle_output_scale(
 ) {
     struct scran_output *st_output = data;
 
-    DEBUG("handle_output_scale(): %u\n", st_output->scale);
+    DEBUG("handle_output_scale(): %d\n", st_output->scale);
 
     if (st_output->scale != factor) {
         st_output->scale = factor;

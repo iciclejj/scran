@@ -81,7 +81,8 @@ on_process(void *data)
     av_audio_fifo_write(ffmpeg_ctx->av_audio_fifo, spa_buf_planes, n_samples);
 
 
-    int64_t pts_incoming    = (meta_header != NULL) ? meta_header->pts : pw_buf->time;
+    // XXX: Cast overflows at ~292 years uptime.
+    int64_t pts_incoming    = (meta_header != NULL) ? meta_header->pts : (int64_t)pw_buf->time;
     int64_t pts_fifo_start  = pts_incoming
                               - frame_ctx->presentation_time_nsec_start
                               - av_rescale(n_samples_leftover, NSEC_PER_SEC, SCRAN_PIPEWIRE_SAMPLE_RATE);
