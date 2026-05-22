@@ -151,6 +151,8 @@ $(obj_font): $(FONT)
 		--input-target binary \
 		--output-target elf64-x86-64 \
 		--binary-architecture i386:x86-64 \
+		--add-section .note.GNU-stack=/dev/null \
+		--set-section-flags .note.GNU-stack=contents,readonly \
 		$< $@
 
 $(prog_release): $(objs_release) $(obj_font)
