@@ -242,9 +242,6 @@ scranrot_transform_framebuffer_fallback(
     *dst_stride = dst_stride_bytes;
     *dst_with_offset = dst;
 
-    const int dst_height_px = scranrot_get_transformed_height(src_width_px, src_height_px, transform);
-    const int dst_width_px = scranrot_get_transformed_width(src_width_px, src_height_px, transform);
-
     const uint32_t rgba_shift_mask = _rgba_shuffle_mask * 8;
 
     scranrot_transform_framebuffer_impl_fn transform_fn = NULL;
