@@ -153,6 +153,7 @@ wl_output_transform_to_ffmpeg_transpose_dir__inverse(enum wl_output_transform tr
         case WL_OUTPUT_TRANSFORM_FLIPPED:     return SCRAN_AV_TRANSPOSE_DIR_FLIPPED;
         case WL_OUTPUT_TRANSFORM_FLIPPED_90:  return SCRAN_AV_TRANSPOSE_DIR_FLIPPED_270;
         case WL_OUTPUT_TRANSFORM_FLIPPED_270: return SCRAN_AV_TRANSPOSE_DIR_FLIPPED_90;
+        default: return SCRAN_AV_TRANSPOSE_DIR_UNSUPPORTED;
     }
 }
 

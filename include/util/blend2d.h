@@ -68,6 +68,8 @@
             box.y1 = tmp2;
             return box;
         }
+
+        __builtin_unreachable();
     }
 #endif /* __has_include(<wayland-client.h>) */
 
