@@ -1,4 +1,3 @@
-#include <blend2d/core/api.h>
 #include <uchar.h>
 #include <assert.h>
 #include <stddef.h>
