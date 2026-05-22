@@ -26,7 +26,7 @@ INCDIRS := include/ scranrot/include
 INCDIRS += $(WL_PROTOCOLS_DIR_LOCAL)
 
 # TODO: CPPFLAGS?
-_CFLAGS := $(addprefix -I, $(INCDIRS))
+_CFLAGS := $(addprefix -I, $(INCDIRS)) -Wall
 _CFLAGS += $(shell $(PKG_CONFIG) --cflags $(PKGCONF_LIBS))
 ifeq ($(SD_BUS_LIB),libsystemd)
 	_CFLAGS += -DSCRAN_LIBSYSTEMD_SD_BUS
