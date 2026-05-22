@@ -384,10 +384,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    // TODO: Rename to be consistent with dst_y_stride naming scheme (or rename elsewhere)
-    uint8_t *restrict y_line, int y_linesize,
-    uint8_t *restrict u_line, int u_linesize,
-    uint8_t *restrict v_line, int v_linesize,
+    uint8_t *restrict y_plane, int y_stride,
+    uint8_t *restrict u_plane, int u_stride,
+    uint8_t *restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
@@ -403,9 +402,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
 
     const int dst_height_px = src_width_px;
-    uint8_t *y_line_ = y_line + (dst_height_px   - 1)*y_linesize;
-    uint8_t *u_line_ = u_line + (dst_height_px/2 - 1)*u_linesize;
-    uint8_t *v_line_ = v_line + (dst_height_px/2 - 1)*v_linesize;
+    uint8_t *dst_y_start = y_plane + (dst_height_px   - 1)*y_stride;
+    uint8_t *dst_u_start = u_plane + (dst_height_px/2 - 1)*u_stride;
+    uint8_t *dst_v_start = v_plane + (dst_height_px/2 - 1)*v_stride;
 
 
     for (int y = 0; y <= src_height_px - 32; y += 32) {
@@ -473,10 +472,10 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
                     //   (Inner tile)
                     _16x16_8bpp_transpose_inplace(y_8bpp_final);
                     {
-                        uint8_t *curr_y_line = y_line_ + (y+_y) - (x+_x)*y_linesize;
+                        uint8_t *dst_y = dst_y_start + (y+_y) - (x+_x)*y_stride;
                         for (int j = 0; j < 16; ++j) {
-                            _mm_storeu_si128((__m128i*)curr_y_line, y_8bpp_final[j]);
-                            curr_y_line -= y_linesize;
+                            _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final[j]);
+                            dst_y -= y_stride;
                         }
                     }
 
@@ -501,20 +500,20 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
             // Store U
             _16x16_8bpp_transpose_inplace(u_i8_4bpp_final);
             {
-                uint8_t *curr_u_line = u_line_ + (y/2) - (x/2)*u_linesize;
+                uint8_t *dst_u = dst_u_start + (y/2) - (x/2)*u_stride;
                 for (int j = 0; j < 16; ++j) {
-                    _mm_storeu_si128((__m128i*)curr_u_line, u_i8_4bpp_final[j]);
-                    curr_u_line -= u_linesize;
+                    _mm_storeu_si128((__m128i*)dst_u, u_i8_4bpp_final[j]);
+                    dst_u -= u_stride;
                 }
             }
 
             // Store V
             _16x16_8bpp_transpose_inplace(v_i8_4bpp_final);
             {
-                uint8_t *curr_v_line = v_line_ + (y/2) - (x/2)*v_linesize;
+                uint8_t *dst_v = dst_v_start + (y/2) - (x/2)*v_stride;
                 for (int j = 0; j < 16; ++j) {
-                    _mm_storeu_si128((__m128i*)curr_v_line, v_i8_4bpp_final[j]);
-                    curr_v_line -= v_linesize;
+                    _mm_storeu_si128((__m128i*)dst_v, v_i8_4bpp_final[j]);
+                    dst_v -= v_stride;
                 }
             }
         }
@@ -528,10 +527,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    // TODO: Rename to be consistent with dst_y_stride naming scheme (or rename elsewhere)
-    uint8_t *restrict y_line, int y_linesize,
-    uint8_t *restrict u_line, int u_linesize,
-    uint8_t *restrict v_line, int v_linesize,
+    uint8_t *restrict y_plane, int y_stride,
+    uint8_t *restrict u_plane, int u_stride,
+    uint8_t *restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rotate_180_get_modified_rgba_shuffle(
@@ -548,9 +546,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
 
-    uint8_t *y_line_ = y_line + (src_height_px-1)   * y_linesize + (src_width_px   - sizeof(__m128i));
-    uint8_t *u_line_ = u_line + (src_height_px-1)/2 * u_linesize + (src_width_px/2 - sizeof(__m128i));
-    uint8_t *v_line_ = v_line + (src_height_px-1)/2 * v_linesize + (src_width_px/2 - sizeof(__m128i));
+    uint8_t *dst_y_start = y_plane + (src_height_px-1)   * y_stride + (src_width_px   - sizeof(__m128i));
+    uint8_t *dst_u_start = u_plane + (src_height_px-1)/2 * u_stride + (src_width_px/2 - sizeof(__m128i));
+    uint8_t *dst_v_start = v_plane + (src_height_px-1)/2 * v_stride + (src_width_px/2 - sizeof(__m128i));
 
 
     for (int y = 0; y < src_height_px; y += 32) {
@@ -573,7 +571,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
                     // NOTE: 180 uses reversed _x index order here compared to the other rotations
                     const uint8_t _xi_reversed = (16 - _x) >> 4;
                     const uint8_t *const src_subtile = (uint8_t *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
-                    uint8_t *curr_y_line = y_line_ - (y+_y)*y_linesize - (x+_x);
+                    uint8_t *dst_y = dst_y_start - (y+_y)*y_stride - (x+_x);
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
@@ -597,10 +595,10 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
                             const __m128i y_8bpp_final_0 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
                             const __m128i y_8bpp_final_1 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
 
-                            _mm_storeu_si128((__m128i*)curr_y_line, y_8bpp_final_0);
-                            curr_y_line -= y_linesize;
-                            _mm_storeu_si128((__m128i*)curr_y_line, y_8bpp_final_1);
-                            curr_y_line -= y_linesize;
+                            _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final_0);
+                            dst_y -= y_stride;
+                            _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final_1);
+                            dst_y -= y_stride;
                         }
 
                         // We average the two rows before converting, to reduce required calculation
@@ -641,13 +639,13 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
 
             // Store U,V
             {
-                uint8_t *curr_u_line = u_line_ - ((y/2)*u_linesize) - (x/2);
-                uint8_t *curr_v_line = v_line_ - ((y/2)*v_linesize) - (x/2);
+                uint8_t *dst_u = dst_u_start - ((y/2)*u_stride) - (x/2);
+                uint8_t *dst_v = dst_v_start - ((y/2)*v_stride) - (x/2);
                 for (int l = 0; l < 16; ++l) {
-                    _mm_storeu_si128((__m128i*)curr_u_line, u_i8_4bpp_final[l]);
-                    _mm_storeu_si128((__m128i*)curr_v_line, v_i8_4bpp_final[l]);
-                    curr_u_line -= u_linesize;
-                    curr_v_line -= v_linesize;
+                    _mm_storeu_si128((__m128i*)dst_u, u_i8_4bpp_final[l]);
+                    _mm_storeu_si128((__m128i*)dst_v, v_i8_4bpp_final[l]);
+                    dst_u -= u_stride;
+                    dst_v -= v_stride;
                 }
             }
 
@@ -662,10 +660,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    // TODO: Rename to be consistent with dst_y_stride naming scheme (or rename elsewhere)
-    uint8_t *restrict y_line, int y_linesize,
-    uint8_t *restrict u_line, int u_linesize,
-    uint8_t *restrict v_line, int v_linesize,
+    uint8_t *restrict y_plane, int y_stride,
+    uint8_t *restrict u_plane, int u_stride,
+    uint8_t *restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
@@ -684,9 +681,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
     // is always positioned "behind" us.
     static const int dst_col_offset = -16;
     const int dst_width_px = src_height_px;
-    uint8_t *y_line_ = y_line + dst_width_px   + dst_col_offset;
-    uint8_t *u_line_ = u_line + dst_width_px/2 + dst_col_offset;
-    uint8_t *v_line_ = v_line + dst_width_px/2 + dst_col_offset;
+    uint8_t *dst_y_start = y_plane + dst_width_px   + dst_col_offset;
+    uint8_t *dst_u_start = u_plane + dst_width_px/2 + dst_col_offset;
+    uint8_t *dst_v_start = v_plane + dst_width_px/2 + dst_col_offset;
 
     for (int y = 0; y <= src_height_px - 32; y += 32) {
         for (int x = 0; x <= src_width_px - 32; x += 32) {
@@ -751,11 +748,11 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 
                     // Store Y (Inner tile)
                     {
-                        uint8_t *curr_y_line = y_line_ - (y+_y) + (x+_x)*y_linesize;
+                        uint8_t *dst_y = dst_y_start - (y+_y) + (x+_x)*y_stride;
                         _16x16_8bpp_rotate_90_inplace(y_8bpp_final);
                         for (int j = 0; j < 16; ++j) {
-                            _mm_storeu_si128((__m128i*)curr_y_line, y_8bpp_final[j]);
-                            curr_y_line += y_linesize;
+                            _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final[j]);
+                            dst_y += y_stride;
                         }
                     }
 
@@ -781,20 +778,20 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
             // Store U
             _16x16_8bpp_rotate_90_inplace(u_i8_4bpp_final);
             {
-                uint8_t *curr_u_line = u_line_ - (y/2) + (x/2)*u_linesize;
+                uint8_t *dst_u = dst_u_start - (y/2) + (x/2)*u_stride;
                 for (int j = 0; j < 16; ++j) {
-                    _mm_storeu_si128((__m128i*)curr_u_line, u_i8_4bpp_final[j]);
-                    curr_u_line += u_linesize;
+                    _mm_storeu_si128((__m128i*)dst_u, u_i8_4bpp_final[j]);
+                    dst_u += u_stride;
                 }
             }
 
             // Store V
             _16x16_8bpp_rotate_90_inplace(v_i8_4bpp_final);
             {
-                uint8_t *curr_v_line = v_line_ - (y/2) + (x/2)*v_linesize;
+                uint8_t *dst_v = dst_v_start - (y/2) + (x/2)*v_stride;
                 for (int j = 0; j < 16; ++j) {
-                    _mm_storeu_si128((__m128i*)curr_v_line, v_i8_4bpp_final[j]);
-                    curr_v_line += v_linesize;
+                    _mm_storeu_si128((__m128i*)dst_v, v_i8_4bpp_final[j]);
+                    dst_v += v_stride;
                 }
             }
 
@@ -809,10 +806,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    // TODO: Rename to be consistent with dst_y_stride naming scheme (or rename elsewhere)
-    uint8_t *restrict y_line, int y_linesize,
-    uint8_t *restrict u_line, int u_linesize,
-    uint8_t *restrict v_line, int v_linesize,
+    uint8_t *restrict y_plane, int y_stride,
+    uint8_t *restrict u_plane, int u_stride,
+    uint8_t *restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
@@ -846,7 +842,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 
                     const uint8_t _xi = _x >> 4; // divide by 16
                     const uint8_t *const src_subtile = (uint8_t *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
-                    uint8_t *curr_y_line = y_line + (y+_y)*y_linesize + (x+_x);
+                    uint8_t *dst_y = y_plane + (y+_y)*y_stride + (x+_x);
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
@@ -868,10 +864,10 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
                         {
                             const __m128i y_8bpp_final_0 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
                             const __m128i y_8bpp_final_1 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
-                            _mm_storeu_si128((__m128i*)curr_y_line, y_8bpp_final_0);
-                            curr_y_line += y_linesize;
-                            _mm_storeu_si128((__m128i*)curr_y_line, y_8bpp_final_1);
-                            curr_y_line += y_linesize;
+                            _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final_0);
+                            dst_y += y_stride;
+                            _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final_1);
+                            dst_y += y_stride;
                         }
 
                         // We average the two rows before converting, to reduce required calculation
@@ -910,13 +906,13 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 
             // Store U,V
             {
-                uint8_t *curr_u_line = u_line + (y/2)*u_linesize + (x/2);
-                uint8_t *curr_v_line = v_line + (y/2)*v_linesize + (x/2);
+                uint8_t *dst_u = u_plane + (y/2)*u_stride + (x/2);
+                uint8_t *dst_v = v_plane + (y/2)*v_stride + (x/2);
                 for (int l = 0; l < 16; ++l) {
-                    _mm_storeu_si128((__m128i*)curr_u_line, u_i8_4bpp_final[l]);
-                    _mm_storeu_si128((__m128i*)curr_v_line, v_i8_4bpp_final[l]);
-                    curr_u_line += u_linesize;
-                    curr_v_line += v_linesize;
+                    _mm_storeu_si128((__m128i*)dst_u, u_i8_4bpp_final[l]);
+                    _mm_storeu_si128((__m128i*)dst_v, v_i8_4bpp_final[l]);
+                    dst_u += u_stride;
+                    dst_v += v_stride;
                 }
             }
 
