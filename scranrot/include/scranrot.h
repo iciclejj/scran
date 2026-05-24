@@ -20,9 +20,7 @@
     __attribute__((target("ssse3")))
 // TODO: Make TARGET_FALLBACK more robust against vectorization etc?
 #define SCRANROT_TARGET_FALLBACK \
-    __attribute__((optimize("O3"))) \
-    __attribute__((optimize("no-tree-vectorize"))) \
-    __attribute__((target("no-sse")))
+    __attribute__((optimize("O3")))
 
 #define RGBA32_PIXEL_STRIDE 4
 
