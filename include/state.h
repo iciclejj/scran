@@ -168,6 +168,7 @@ struct scran_output_freezeframe {
     // wp_single_pixel_buffer also has damage-related bugs on some compositors,
     // at least on Sway.
     struct scran_output_freezeframe_buffer capture_buffer;
+    struct scran_output_freezeframe_buffer surface_buffer;
     struct scran_output_freezeframe_buffer transparent_single_pixel_buffer;
 };
 

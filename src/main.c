@@ -369,11 +369,17 @@ init_meminit(
             // has not caused issues yet, since we're effectively guaranteed
             // multiple frames between each freezeframe refresh
 
-            // We capture directly into the buffer
+            // XXX: We use a separate capture buffer and surface buffer due to
+            // wl_surface::set_buffer_transform not working as expected in
+            // Hyprland (#14441).
             const size_t _capture_buf_size = get_capture_buf_size(st_output);
             _arena_add_block(
                 shm_arena,
                 _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.capture_buffer.data
+            );
+            _arena_add_block(
+                shm_arena,
+                _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.data
             );
 
             // single-pixel buffer
@@ -469,9 +475,20 @@ init_meminit(
             _capture_buffer->wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
                 _capture_buffer_offset,
+                st_output->mode.width_px,
+                st_output->mode.height_px,
+                get_capture_stride(st_output),
+                _freezeframe_surface->shm_format
+            );
+
+            struct scran_output_freezeframe_buffer *_surface_buffer = &_freezeframe_surface->surface_buffer;
+            const ptrdiff_t _surface_buffer_offset = _surface_buffer->data - shm_arena->addr;
+            _surface_buffer->wl_buffer = wl_shm_pool_create_buffer(
+                global_pool_wl,
+                _surface_buffer_offset,
                 _freezeframe_surface->surface.width_px_buffer,
                 _freezeframe_surface->surface.height_px_buffer,
-                get_capture_stride(st_output),
+                _freezeframe_surface->surface.width_px_buffer * SURFACE_PIXEL_STRIDE,
                 _freezeframe_surface->shm_format
             );
 
@@ -533,6 +550,7 @@ init_meminit__destroy(
 
         if (g_state.options.freezeframe) {
             wl_buffer_destroy(st_output->freezeframe.capture_buffer.wl_buffer);
+            wl_buffer_destroy(st_output->freezeframe.surface_buffer.wl_buffer);
             wl_buffer_destroy(st_output->freezeframe.transparent_single_pixel_buffer.wl_buffer);
         }
     }

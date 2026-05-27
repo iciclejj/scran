@@ -141,7 +141,6 @@ void
 update_freezeframe_scale_size_viewport(
     struct scran_output *st_output
 ) {
-    struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
     struct scran_output_surface     *surface     = &st_output->freezeframe.surface;
 
     DEBUG("  update_freezeframe_scale_size_viewport()\n");
@@ -149,8 +148,8 @@ update_freezeframe_scale_size_viewport(
     // We "hardcode" these for freezeframe, since it should equal to the capture
     // buffer size.
     //   NOTE: These cannot simply be set during init_premem, since output::mode()
-    int32_t width_px_buffer  = st_output->mode.width_px;
-    int32_t height_px_buffer = st_output->mode.height_px;
+    int32_t width_px_buffer  = get_transformed_output_width(st_output);
+    int32_t height_px_buffer = get_transformed_output_height(st_output);
 
     if ( !(width_px_buffer && height_px_buffer)) {
         DEBUG("    Invalid buffer dimensions; skipping. output::mode() probably did not fire yet.\n");
@@ -165,37 +164,41 @@ update_freezeframe_scale_size_viewport(
         //
         // TODO: Make shared helper function for all our logical -> buffer
         // scaling logic
-        int32_t width_px_buffer_transformed_scalesafe  = round(surface->width_logical  * scale);
-        int32_t height_px_buffer_transformed_scalesafe = round(surface->height_logical * scale);
+        int32_t width_px_buffer_scalesafe  = round(surface->width_logical  * scale);
+        int32_t height_px_buffer_scalesafe = round(surface->height_logical * scale);
 
         // Clamp them to output width, in case the compositor is trying to
         // downscale rather than pixel-perfect scaling
-        // NOTE: We allow +1, since this seems to be within the permitted range,
-        // at least for compositors that prefer oversized scaled buffers vs
-        // undersized buffers. Hyprland, for example, allows +1px.
         //
-        // We clamp against transformed buffer dimensions, since that's what
-        // the viewporter expects (and what we got during the conversion above).
-        int32_t width_px_buffer_transformed  = get_reverse_transformed_width( width_px_buffer, height_px_buffer, st_output->transform);
-        int32_t height_px_buffer_transformed = get_reverse_transformed_height(width_px_buffer, height_px_buffer, st_output->transform);
-        if (width_px_buffer_transformed_scalesafe  > width_px_buffer_transformed  + 1) {
-            width_px_buffer_transformed_scalesafe  = width_px_buffer_transformed;
+        // Some compositors allow +1 (and/or expect their scaling to reach
+        // within +1 of the actually expected buffer size), but not all. Either
+        // way, results seem to be the same if clamping fully down, so we just
+        // clamp all the way down in all cases.
+        //
+        // NOTE: Remember to apply transform before clamping, if using
+        // set_buffer_transform, since the viewport will expect transformed
+        // width/height (and logical coordinates from above will be in that
+        // orientation as well). See also comments referencing #14441.
+        if (width_px_buffer_scalesafe  > width_px_buffer) {
+            width_px_buffer_scalesafe  = width_px_buffer;
         }
-        if (height_px_buffer_transformed_scalesafe > height_px_buffer_transformed + 1) {
-            height_px_buffer_transformed_scalesafe = height_px_buffer_transformed;
+        if (height_px_buffer_scalesafe > height_px_buffer) {
+            height_px_buffer_scalesafe = height_px_buffer;
         }
 
         // TODO: Maybe just set all of this inside of capture_frame::ready() instead?
-        wl_surface_set_buffer_transform(
-            freezeframe->surface.wl_surface,
-            st_output->transform
-        );
+        //
+        // XXX: We rotate with scranrot instead of set_buffer_transform, for now. See Hyprland #14441
+        // wl_surface_set_buffer_transform(
+        //     freezeframe->surface.wl_surface,
+        //     st_output->transform
+        // );
         wp_viewport_set_source(
             surface->viewport,
             wl_fixed_from_int(0),
             wl_fixed_from_int(0),
-            wl_fixed_from_int(width_px_buffer_transformed_scalesafe),
-            wl_fixed_from_int(height_px_buffer_transformed_scalesafe)
+            wl_fixed_from_int(width_px_buffer_scalesafe),
+            wl_fixed_from_int(height_px_buffer_scalesafe)
         );
         wp_viewport_set_destination(
             surface->viewport,
