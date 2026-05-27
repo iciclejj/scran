@@ -49,8 +49,8 @@ void
 refresh_freezeframe(
     struct scran_output *st_output
 ) {
-    struct scran_output_freezeframe      *freezeframe       = &st_output->freezeframe;
-    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+    struct scran_output_freezeframe *freezeframe    = &st_output->freezeframe;
+    struct scran_output_surface     *parent_surface = &st_output->selection_surface.surface;
 
     // TODO: Less specific check, without _PENDING_REFOCUS ?
     if (freezeframe->state == SCRAN_FREEZEFRAME_REFRESH_REQUESTED_PENDING_REFOCUS) {
@@ -64,26 +64,26 @@ refresh_freezeframe(
 
     assert(SURFACE_SHM_FORMAT == WL_SHM_FORMAT_ARGB8888); // Alpha channel must not be ignored.
     wl_surface_attach(
-        selection_surface->surface.wl_surface,
+        parent_surface->wl_surface,
         freezeframe->transparent_single_pixel_buffer.wl_buffer, 0, 0
     );
     wp_viewport_set_source(
-        selection_surface->surface.viewport,
+        parent_surface->viewport,
         wl_fixed_from_int(0), wl_fixed_from_int(0), wl_fixed_from_int(1), wl_fixed_from_int(1)
     );
     wl_surface_damage_buffer(
-        selection_surface->surface.wl_surface,
+        parent_surface->wl_surface,
         0, 0, 1, 1
     );
 
     // Once the ::presented event has verified that the transparent selection
     // surface was presented, we start the capture from within there.
     wp_presentation_feedback_add_listener(
-        wp_presentation_feedback(g_state.globals.presentation, selection_surface->surface.wl_surface),
+        wp_presentation_feedback(g_state.globals.presentation, parent_surface->wl_surface),
         &presentation_feedback_listener__selection_transparent_for_freezeframe,
         st_output
     );
-    wl_surface_commit(selection_surface->surface.wl_surface);
+    wl_surface_commit(parent_surface->wl_surface);
 
     freezeframe->state = SCRAN_FREEZEFRAME_REFRESH_REQUESTED_PENDING_REFOCUS;
 }
@@ -141,7 +141,8 @@ void
 update_freezeframe_scale_size_viewport(
     struct scran_output *st_output
 ) {
-    struct scran_output_surface     *surface     = &st_output->freezeframe.surface;
+    struct scran_output_freezeframe *freezeframe    = &st_output->freezeframe;
+    struct scran_output_surface     *parent_surface = &st_output->selection_surface.surface;
 
     DEBUG("  update_freezeframe_scale_size_viewport()\n");
 
@@ -156,16 +157,16 @@ update_freezeframe_scale_size_viewport(
         return;
     }
 
-    double scale = get_surface_scale_factor_normalized(surface);
+    double scale = get_surface_scale_factor_normalized(parent_surface);
 
-    if (surface->width_logical && surface->height_logical) {
+    if (parent_surface->width_logical && parent_surface->height_logical) {
         // We neeed to base the source dimensions on the logical
         // dimensions for fractional scaling to stay sharp.
         //
         // TODO: Make shared helper function for all our logical -> buffer
         // scaling logic
-        int32_t width_px_buffer_scalesafe  = round(surface->width_logical  * scale);
-        int32_t height_px_buffer_scalesafe = round(surface->height_logical * scale);
+        int32_t width_px_buffer_scalesafe  = round(parent_surface->width_logical  * scale);
+        int32_t height_px_buffer_scalesafe = round(parent_surface->height_logical * scale);
 
         // Clamp them to output width, in case the compositor is trying to
         // downscale rather than pixel-perfect scaling
@@ -194,22 +195,24 @@ update_freezeframe_scale_size_viewport(
         //     st_output->transform
         // );
         wp_viewport_set_source(
-            surface->viewport,
+            freezeframe->subsurface.viewport,
             wl_fixed_from_int(0),
             wl_fixed_from_int(0),
             wl_fixed_from_int(width_px_buffer_scalesafe),
             wl_fixed_from_int(height_px_buffer_scalesafe)
         );
         wp_viewport_set_destination(
-            surface->viewport,
-            surface->width_logical,
-            surface->height_logical
+            freezeframe->subsurface.viewport,
+            parent_surface->width_logical,
+            parent_surface->height_logical
+        );
+        wl_surface_commit(
+            freezeframe->subsurface.wl_surface
         );
     }
 
-    surface->final_scale_factor_normalized = scale;
-    surface->width_px_buffer  = width_px_buffer;
-    surface->height_px_buffer = height_px_buffer;
+    freezeframe->subsurface.width_px_buffer  = width_px_buffer;
+    freezeframe->subsurface.height_px_buffer = height_px_buffer;
 }
 
 void
@@ -223,23 +226,15 @@ hide_freezeframe_surfaces()
         // buffer causes some compositors (e.g. Sway) to not properly
         // damage/redraw what was underneath, resulting in a black screen
         // until something actually needs damage. I assume this is a bug.
+        wl_surface_attach(freezeframe->subsurface.wl_surface, NULL, 0, 0);
 
-        // NOTE(1/2): This unmaps the surface!
-        wl_surface_attach(freezeframe->surface.wl_surface, NULL, 0, 0);
-
+        // FIXME: Is this still needed? Remove this if possible, after testing on all compositors.
         wl_surface_damage_buffer(
-            freezeframe->surface.wl_surface,
-            0, 0, freezeframe->surface.width_px_buffer, freezeframe->surface.height_px_buffer
+            freezeframe->subsurface.wl_surface,
+            0, 0, freezeframe->subsurface.width_px_buffer, freezeframe->subsurface.height_px_buffer
         );
-        wl_surface_commit(freezeframe->surface.wl_surface);
 
-        if (g_state.globals.cosmic_output_manager) {
-            // COSMIC for some reason resets the entire layer surface on unmap...
-            reinit_freezeframe_layer_surface(st_output);
-        }
-
-        // NOTE(2/2): Immediately trigger a new ::configure event to remap it.
-        wl_surface_commit(freezeframe->surface.wl_surface);
+        wl_surface_commit(freezeframe->subsurface.wl_surface);
 
         // XXX: This should optimally be set only once the unmap has actually taken effect.
         freezeframe->state = SCRAN_FREEZEFRAME_HIDDEN;

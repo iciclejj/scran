@@ -7,6 +7,7 @@
 #include <sys/uio.h>
 #include <drm/drm_mode.h>
 
+#include <wayland-client-protocol.h>
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 #include <xkbcommon/xkbcommon.h>
@@ -58,6 +59,7 @@ struct scran_globals {
     struct wl_display *display;
     struct wl_registry *registry;
     struct wl_compositor *compositor;
+    struct wl_subcompositor *subcompositor;
     struct wl_seat *seat;
     struct wl_shm *shm;
     struct zxdg_output_manager_v1 *xdg_output_manager;
@@ -74,6 +76,17 @@ struct scran_globals {
     struct hyprland_surface_manager_v1 *hypr_surface_manager;
 };
 
+struct scran_output_subsurface {
+    struct wl_surface *wl_surface;
+    struct wl_subsurface *wl_subsurface;
+    struct wp_viewport *viewport;
+
+    int32_t width_px_buffer;
+    int32_t height_px_buffer;
+};
+
+// TODO: Rename this to scran_output_layer_surface, and the _subsurface struct
+// to _surface, and include it in the _layer_surface struct?
 struct scran_output_surface {
     struct wl_surface *wl_surface;
 
@@ -154,19 +167,19 @@ enum scran_freezeframe_state {
 };
 
 struct scran_output_freezeframe {
-    struct scran_output_surface surface;
+    struct scran_output_subsurface subsurface;
 
     struct ext_image_copy_capture_session_v1 *wl_capture_session;
     enum wl_shm_format shm_format;
 
     enum scran_freezeframe_state state;
 
-    // We have multiple buffers because we use a separate buffer for making it
-    // transparent... Calling e.g. wl_surface_attach with a NULL buffer would
-    // unmap the entire layer surface, and would need to wait for new configure
-    // events. Behavior is also not consistent across compositors. Using
-    // wp_single_pixel_buffer also has damage-related bugs on some compositors,
-    // at least on Sway.
+    // We have multiple buffers because we use a separate buffer for making the
+    // parent *selection* surface transparent. Calling e.g. wl_surface_attach
+    // with a NULL buffer would unmap the entire layer surface, and would need
+    // to wait for new configure events. Behavior is also not consistent across
+    // compositors. Using wp_single_pixel_buffer also has damage-related bugs on
+    // some compositors, at least on Sway.
     struct scran_output_freezeframe_buffer capture_buffer;
     struct scran_output_freezeframe_buffer surface_buffer;
     struct scran_output_freezeframe_buffer transparent_single_pixel_buffer;

@@ -2,6 +2,7 @@
 
 #include "state.h"
 #include "state-util.h"
+#include "freezeframe.h"
 #include "print.h"
 
 
@@ -157,4 +158,8 @@ update_surface_scale_bufsize_viewport(
         st_surface->width_logical,
         st_surface->height_logical
     );
+
+    if (g_state.options.freezeframe) {
+        update_freezeframe_scale_size_viewport(st_output);
+    }
 }

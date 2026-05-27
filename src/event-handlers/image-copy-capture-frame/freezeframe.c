@@ -110,20 +110,20 @@ handle_image_copy_capture_frame_ready__freezeframe(
     }
 
     wl_surface_attach(
-        freezeframe->surface.wl_surface,
+        freezeframe->subsurface.wl_surface,
         buffer_to_display->wl_buffer,
         0, 0
     );
-    wl_surface_set_buffer_transform(freezeframe->surface.wl_surface, buffer_transform);
+    wl_surface_set_buffer_transform(freezeframe->subsurface.wl_surface, buffer_transform);
 
     wl_surface_damage_buffer(
-        freezeframe->surface.wl_surface,
+        freezeframe->subsurface.wl_surface,
         0, 0,
         // XXX TODO(2/2):
-        get_transformed_width( freezeframe->surface.width_px_buffer, freezeframe->surface.height_px_buffer, buffer_transform),
-        get_transformed_height(freezeframe->surface.width_px_buffer, freezeframe->surface.height_px_buffer, buffer_transform)
+        get_transformed_width( freezeframe->subsurface.width_px_buffer, freezeframe->subsurface.height_px_buffer, buffer_transform),
+        get_transformed_height(freezeframe->subsurface.width_px_buffer, freezeframe->subsurface.height_px_buffer, buffer_transform)
     );
-    wl_surface_commit(freezeframe->surface.wl_surface);
+    wl_surface_commit(freezeframe->subsurface.wl_surface);
     freezeframe->state = SCRAN_FREEZEFRAME_SHOWING;
 
     _continue_after_showing_freezeframe(st_output, prev_state);

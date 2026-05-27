@@ -106,16 +106,14 @@ init_premem()
             return false;
         }
 
-        // NOTE: Must initialized be prior to selection, since they're both on
-        // the same layer-shell layer.
+        if (!init_premem__selection(st_output, &g_state.globals)) {
+            return false;
+        }
+
         if (g_state.options.freezeframe) {
             if (!init_premem__freezeframe(st_output)) {
                 return false;
             }
-        }
-
-        if (!init_premem__selection(st_output, &g_state.globals)) {
-            return false;
         }
 
         st_output->xdg_output = zxdg_output_manager_v1_get_xdg_output(
@@ -239,11 +237,11 @@ init_premem__destroy()
     registry_listener__destroy(&g_state);
 
     FOR_EACH_OUTPUT(i, st_output) {
-        init_premem__selection__destroy(st_output);
-        init_premem__capture__destroy(st_output);
         if (g_state.options.freezeframe) {
             init_premem__freezeframe__destroy(st_output);
         }
+        init_premem__selection__destroy(st_output);
+        init_premem__capture__destroy(st_output);
 
         // XXX: This could be probably be destroyed within output::done if we
         //      we won't support live updating. Keeping it here for now.
@@ -486,9 +484,9 @@ init_meminit(
             _surface_buffer->wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
                 _surface_buffer_offset,
-                _freezeframe_surface->surface.width_px_buffer,
-                _freezeframe_surface->surface.height_px_buffer,
-                _freezeframe_surface->surface.width_px_buffer * SURFACE_PIXEL_STRIDE,
+                _freezeframe_surface->subsurface.width_px_buffer,
+                _freezeframe_surface->subsurface.height_px_buffer,
+                _freezeframe_surface->subsurface.width_px_buffer * SURFACE_PIXEL_STRIDE,
                 _freezeframe_surface->shm_format
             );
 
@@ -590,12 +588,6 @@ init_postmem()
             (st_output == custom_initial_selection_output)
             ? &custom_initial_selection : NULL;
 
-        if (g_state.options.freezeframe) {
-            if (!init_postmem__freezeframe(st_output)) {
-                return false;
-            }
-        }
-
         if (!init_postmem__selection(st_output, _p_custom_initial_selection)) {
             return false;
         }
@@ -609,10 +601,6 @@ init_postmem__destroy()
 {
     FOR_EACH_OUTPUT(i, st_output) {
         init_postmem__selection__destroy(st_output);
-
-        if (g_state.options.freezeframe) {
-            init_postmem__freezeframe__destroy(st_output);
-        }
     }
 }
 
