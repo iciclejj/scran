@@ -18,7 +18,7 @@
 
 #include "state.h"
 #include "state-util.h"
-#include "surface__selection.h"
+#include "selection-surface.h"
 #include "print.h"
 
 
@@ -204,11 +204,8 @@ void handle_wlr_output_manager_done(
         st_output->fractional_scale_cosmic_1000 = pending_head->fractional_scale_cosmic_1000;
         st_output->fractional_scale_wlr = pending_head->fractional_scale_wlr;
 
-        // XXX TODO(!!): Make for_all_fullscreen_surfaces() function/macro, once we
-        // add more surfaces
         struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
-        update_surface_scale_and_size(&selection_surface->surface);
-        update_surface_viewport(&selection_surface->surface);
+        update_surface_scale_bufsize_viewport(st_output);
         reinit_scran_ui(&selection_surface->ui_ctx, selection_surface->surface.final_scale_factor_normalized);
         request_selection_surface_frame_callback(st_output);
     }

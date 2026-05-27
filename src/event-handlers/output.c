@@ -3,7 +3,7 @@
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
-#include "surface__selection.h"
+#include "selection-surface.h"
 #include "print.h"
 
 
@@ -35,17 +35,14 @@ handle_output_scale(
     int32_t factor
 ) {
     struct scran_output *st_output = data;
+    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
 
     DEBUG("handle_output_scale(): %d\n", st_output->scale);
 
     if (st_output->scale != factor) {
         st_output->scale = factor;
 
-        // XXX TODO(!!): Make for_all_fullscreen_surfaces() function/macro, once
-        // we add more surfaces
-        struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
-        update_surface_scale_and_size(&selection_surface->surface);
-        update_surface_viewport(&selection_surface->surface);
+        update_surface_scale_bufsize_viewport(st_output);
         reinit_scran_ui(&selection_surface->ui_ctx, selection_surface->surface.final_scale_factor_normalized);
         request_selection_surface_frame_callback(st_output);
     }

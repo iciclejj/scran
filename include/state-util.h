@@ -257,11 +257,8 @@ get_surface_scale_factor_normalized(
     return st_output->scale;
 }
 
-// TODO: Merge this with update_surface_viewport? Doesn't really make
-// sense to call them separately other than during init, and we already have a
-// bunch of safeguards in _viewport.
 static inline void
-update_surface_scale_and_size(
+_update_surface_scale_and_size(
     struct scran_output_surface *st_surface
 ) {
     DEBUG("update_selection_surface_scale_and_size()\n");
@@ -279,9 +276,13 @@ update_surface_scale_and_size(
 // handling, beyond getting/calculating recommended size, is not part of
 // scran_output_surface.
 static inline void
-update_surface_viewport(
-    struct scran_output_surface *st_surface
+update_surface_scale_bufsize_viewport(
+    struct scran_output *st_output
 ) {
+    struct scran_output_surface *st_surface = &st_output->selection_surface.surface;
+
+    _update_surface_scale_and_size(st_surface);
+
     // TODO: Maybe move this responsibility into output::scale etc, so we're
     // not forced to do this check every time we update
     if (st_surface->viewport == NULL) {

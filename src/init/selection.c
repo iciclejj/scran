@@ -9,7 +9,7 @@
 #include "state-util.h"
 #include "event-handlers.h"
 #include "selection.h"
-#include "surface__selection.h"
+#include "selection-surface.h"
 #include "ui.h"
 
 
@@ -49,7 +49,7 @@ init_premem__selection(
         SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED
     );
 
-    zwlr_layer_surface_v1_add_listener(st_surface->layer_surface, &layer_surface_listener__selection, &st_output->selection_surface);
+    zwlr_layer_surface_v1_add_listener(st_surface->layer_surface, &layer_surface_listener__selection, st_output);
     // Initial bufferless commit to trigger configure event
     wl_surface_commit(st_surface->wl_surface);
 
@@ -62,7 +62,7 @@ init_premem__selection(
     st_surface->fractional_scale = wp_fractional_scale_manager_v1_get_fractional_scale(
         st_globals->fractional_scale_manager, st_surface->wl_surface
     );
-    wp_fractional_scale_v1_add_listener(st_surface->fractional_scale, &fractional_scale_listener__selection, &st_output->selection_surface);
+    wp_fractional_scale_v1_add_listener(st_surface->fractional_scale, &fractional_scale_listener__selection, st_output);
 
     init_scran_ui_pre_selection(&selection_surface->ui_ctx, selection_surface->surface.final_scale_factor_normalized);
 
@@ -105,8 +105,7 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
 
     // Update here in addition to within the ::scale handlers, since they may
     // have fired before the viewport was initialized.
-    update_surface_scale_and_size(st_surface);
-    update_surface_viewport(st_surface);
+    update_surface_scale_bufsize_viewport(st_output);
 
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
         struct scran_output_selectionSurface_buffer *st_buffer = &selection_surface->double_buffer[i];

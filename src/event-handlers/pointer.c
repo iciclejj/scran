@@ -5,7 +5,7 @@
 
 #include "state.h"
 #include "state-util.h"
-#include "surface__selection.h"
+#include "selection-surface.h"
 #include "util/blend2d.h"
 #include "event-handlers.h"
 #include "selection.h"

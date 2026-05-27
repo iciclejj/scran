@@ -10,7 +10,7 @@
 #include "selection.h"
 #include "print.h"
 #include "capture.h"
-#include "surface__selection.h"
+#include "selection-surface.h"
 #include "ui.h"
 
 

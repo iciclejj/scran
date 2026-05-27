@@ -15,7 +15,7 @@
 
 #include "state.h"
 #include "state-util.h"
-#include "surface__selection.h"
+#include "selection-surface.h"
 #include "ui.h"
 #include "util/blend2d.h"
 #include "util/lib-interop.h"

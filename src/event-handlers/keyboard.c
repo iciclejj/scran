@@ -10,7 +10,7 @@
 #include "capture.h"
 #include "print.h"
 #include "selection.h"
-#include "surface__selection.h"
+#include "selection-surface.h"
 #include "ui.h"
 #include "util/blend2d.h"
 

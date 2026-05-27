@@ -9,7 +9,7 @@
 #include "state.h"
 #include "event-handlers.h"
 #include "util/blend2d.h"
-#include "surface__selection.h"
+#include "selection-surface.h"
 #include "capture.h"
 #include "print.h"
 

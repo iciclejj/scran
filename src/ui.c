@@ -6,7 +6,7 @@
 
 #include "init.h"
 #include "ui.h"
-#include "surface__selection.h"
+#include "selection-surface.h"
 #include "util/blend2d.h"
 #include "util/lib-interop.h"
 

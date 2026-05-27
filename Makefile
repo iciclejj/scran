@@ -134,6 +134,8 @@ _srcdirs := src                                         \
 			src/event-handlers                          \
 			src/event-handlers/image-copy-capture-frame \
 			src/event-handlers/surface                  \
+			src/event-handlers/layer-surface	        \
+			src/event-handlers/fractional-scale		    \
 			scranrot/src
 srcs := $(foreach dir,$(_srcdirs),$(wildcard $(dir)/*.c))
 
