@@ -118,8 +118,7 @@ handle_image_copy_capture_frame_ready__image_capture(
             area_start_addr, capture_area_px_w, capture_area_px_h, source_row_bytes,
             buf_cropped_converted,
             rgba32_shuffle,
-            // TODO: add lib-interop.h function for this cast?
-            (enum scranrot_transform)transform,
+            wl_output_transform_to_scranrot(transform),
             &buf_cropped_converted_row_bytes
         )
     ) {

@@ -124,8 +124,7 @@ handle_image_copy_capture_frame_ready__video_capture(
                 area_start_addr, area_w_px, area_h_px, source_row_bytes,
                 frame_buffer,
                 rgba32_shuffle,
-                // TODO: add lib-interop.h function for this cast?
-                (enum scranrot_transform)transform,
+                wl_output_transform_to_scranrot(transform),
                 &frame->data[0], &frame->linesize[0],
                 &frame->data[1], &frame->linesize[1],
                 &frame->data[2], &frame->linesize[2]
