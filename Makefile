@@ -153,6 +153,7 @@ $(obj_font): $(FONT)
 		--input-target binary \
 		--output-target elf64-x86-64 \
 		--binary-architecture i386:x86-64 \
+		--rename-section .data=.rodata,alloc,load,readonly,data,contents \
 		--add-section .note.GNU-stack=/dev/null \
 		--set-section-flags .note.GNU-stack=contents,readonly \
 		$< $@
