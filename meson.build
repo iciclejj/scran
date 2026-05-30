@@ -19,10 +19,11 @@ elif sd_bus_opt == 'libsystemd'
   sd_bus_dep = dependency('libsystemd')
   add_project_arguments('-DSCRAN_LIBSYSTEMD_SD_BUS', language: 'c')
 else
-  sd_bus_dep = dependency('basu', required: false)
-  if not sd_bus_dep.found()
-    sd_bus_dep = dependency('libsystemd')
+  sd_bus_dep = dependency('libsystemd', required: false)
+  if sd_bus_dep.found()
     add_project_arguments('-DSCRAN_LIBSYSTEMD_SD_BUS', language: 'c')
+  else
+    sd_bus_dep = dependency('basu')
   endif
 endif
 
