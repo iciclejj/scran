@@ -1,5 +1,12 @@
+#include <stdatomic.h>
+#include <stddef.h>
+
 #include "../include/scranrot.h"
 #include "../include/scranrot-util.h"
+
+
+static _Atomic(scranrot_transform_framebuffer_fn *)        m_rgba_fn   = NULL;
+static _Atomic(scranrot_transform_framebuffer_to_yuv_fn *) m_yuv420_fn = NULL;
 
 
 // Rotates frame buffer, shuffles pixel geometry, and stores result to dst
@@ -18,20 +25,10 @@ scranrot_transform_framebuffer(
     // OUT:
     uintptr_t *dst_stride
 ) {
-    scranrot_transform_framebuffer_fn *selected_function;
+    scranrot_transform_framebuffer_fn *fn = atomic_load_explicit(&m_rgba_fn, memory_order_relaxed);
+    SCRANROT_ASSERT(fn != NULL);
 
-
-#if defined(__x86_64__) || defined(__i386__)
-    __builtin_cpu_init();
-    if (__builtin_cpu_supports("ssse3")) {
-        selected_function = scranrot_transform_framebuffer_ssse3__unaligned;
-    } else
-#endif
-    {
-        selected_function = scranrot_transform_framebuffer_fallback;
-    }
-
-    return selected_function(
+    return fn(
         src, src_width_px, src_height_px, src_stride_bytes,
         dst,
         rgba_shuffle, transform,
@@ -54,27 +51,15 @@ scranrot_transform_framebuffer_to_yuv420(
     uint8_t **dst_u, int *dst_u_stride,
     uint8_t **dst_v, int *dst_v_stride
 ) {
-    scranrot_transform_framebuffer_to_yuv_fn *selected_function;
-
-    // TODO: Probably make a scranrot_ctx and init function to avoid the arch
-    // check and width/height checks on every call?
-
     if (SCRANROT_UNLIKELY(src_width_px & 1 || src_height_px & 1)) {
         // YUV420 needs height and width divisible by two
         return false;
     }
 
-#if defined(__x86_64__) || defined(__i386__)
-    __builtin_cpu_init();
-    if (__builtin_cpu_supports("ssse3")) {
-        selected_function = scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned;
-    } else
-#endif
-    {
-        selected_function = scranrot_transform_framebuffer_to_yuv420_fallback;
-    }
+    scranrot_transform_framebuffer_to_yuv_fn *fn = atomic_load_explicit(&m_yuv420_fn, memory_order_relaxed);
+    SCRANROT_ASSERT(fn != NULL);
 
-    return selected_function(
+    return fn(
         src, src_width_px, src_height_px, src_stride_bytes,
         dst,
         rgba_shuffle, transform,
@@ -83,5 +68,40 @@ scranrot_transform_framebuffer_to_yuv420(
         dst_u, dst_u_stride,
         dst_v, dst_v_stride
     );
+}
+
+static inline scranrot_transform_framebuffer_fn *
+get_rgba_fn()
+{
+#if defined(__x86_64__) || defined(__i386__)
+    __builtin_cpu_init();
+    if (__builtin_cpu_supports("ssse3")) {
+        return scranrot_transform_framebuffer_ssse3__unaligned;
+    } else
+#endif
+    {
+        return scranrot_transform_framebuffer_fallback;
+    }
+}
+
+static inline scranrot_transform_framebuffer_to_yuv_fn *
+get_yuv420_fn()
+{
+#if defined(__x86_64__) || defined(__i386__)
+    __builtin_cpu_init();
+    if (__builtin_cpu_supports("ssse3")) {
+        return scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned;
+    } else
+#endif
+    {
+        return scranrot_transform_framebuffer_to_yuv420_fallback;
+    }
+}
+
+void
+scranrot_init()
+{
+    atomic_store_explicit(&m_rgba_fn, get_rgba_fn(), memory_order_relaxed);
+    atomic_store_explicit(&m_yuv420_fn, get_yuv420_fn(), memory_order_relaxed);
 }
 

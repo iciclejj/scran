@@ -71,8 +71,7 @@ typedef bool scranrot_transform_framebuffer_fn(
 );
 
 
-// Main dispatcher function. Selects appropriate simd instruction set
-// (or fallback) at runtime, based on cpuid.
+// scranrot_init() must be called before using this function.
 bool
 scranrot_transform_framebuffer(
     const uint8_t *restrict src,
@@ -89,6 +88,7 @@ scranrot_transform_framebuffer(
     uintptr_t *dst_stride
 );
 
+// scranrot_init() must be called before using this function.
 bool
 scranrot_transform_framebuffer_to_yuv420(
     const uint8_t *restrict src,
@@ -106,6 +106,11 @@ scranrot_transform_framebuffer_to_yuv420(
     uint8_t **dst_u, int *dst_u_stride,
     uint8_t **dst_v, int *dst_v_stride
 );
+
+// Selects appropriate implementation for the running CPU.
+// Must be called once before any scranrot_transform_* function can be used.
+void
+scranrot_init(void);
 
 scranrot_transform_framebuffer_fn scranrot_transform_framebuffer_ssse3__unaligned;
 scranrot_transform_framebuffer_fn scranrot_transform_framebuffer_fallback;

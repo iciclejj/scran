@@ -23,6 +23,8 @@
 #include "wlr-output-management-unstable-v1.h"
 #include "xdg-output-unstable-v1.h"
 
+#include "scranrot.h"
+
 #include "selection.h"
 #include "state.h"
 #include "state-util.h"
@@ -697,6 +699,8 @@ int main(int argc, char *argv[])
         eprintf("Failed post-memory allocation initialization.\n");
         return EXIT_FAILURE;
     }
+
+    scranrot_init();
 
     struct _scran_signal_masks signal_masks;
     if (!init_signals(&signal_masks)) {
