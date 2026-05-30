@@ -20,6 +20,7 @@
 #include "print.h"
 #include "util/blend2d.h"
 #include "util/lib-interop.h"
+#include "util/util.h"
 
 
 extern struct scran g_state;
@@ -114,8 +115,7 @@ handle_image_copy_capture_frame_ready__video_capture(
 
         // XXX: Scranrot does not support flipped transforms yet, so we just
         // record it flipped for now, rather than blocking capture entirely.
-        bool flipped = (st_output->transform >= 4);
-        enum wl_output_transform transform = flipped ? st_output->transform - 4 : st_output->transform;
+        enum wl_output_transform transform = wl_output_transform_without_flip(st_output->transform);
 
         AVFrame *frame = ffmpeg_ctx->av_frame_to_encode;
         void *const frame_buffer = frame_ctx->img_data_2;

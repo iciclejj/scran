@@ -107,8 +107,7 @@ handle_image_copy_capture_frame_ready__image_capture(
 
     // XXX: Scranrot does not support flipped transforms yet, so we just
     // record it flipped for now, rather than blocking capture entirely.
-    bool flipped = (st_output->transform >= 4);
-    enum wl_output_transform transform = flipped ? st_output->transform - 4 : st_output->transform;
+    enum wl_output_transform transform = wl_output_transform_without_flip(st_output->transform);
 
     // XXX: We convert etc. unconditionally for now.
     //    TODO: Only convert if required
