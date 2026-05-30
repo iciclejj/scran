@@ -233,7 +233,7 @@ scranrot_transform_framebuffer_fallback(
     uintptr_t *dst_stride
 ) {
     // XXX TODO(!!): IMPLEMENT THIS!!
-    if (src_width_px < MIN_TILE_WIDTH_PX || src_height_px < MIN_TILE_HEIGHT_PX) {
+    if (SCRANROT_UNLIKELY(src_width_px < MIN_TILE_WIDTH_PX || src_height_px < MIN_TILE_HEIGHT_PX)) {
         return false;
     }
 

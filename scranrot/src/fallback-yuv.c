@@ -258,7 +258,7 @@ scranrot_transform_framebuffer_to_yuv420_fallback(
 ) {
     _Static_assert(MIN_TILE_WIDTH_PX == 2 && MIN_TILE_HEIGHT_PX == 2,
                    "2x2 is the minimum possible YUV420 size. Our fallback kernels should support this.");
-    if (src_width_px < MIN_TILE_WIDTH_PX || src_height_px < MIN_TILE_HEIGHT_PX) {
+    if (SCRANROT_UNLIKELY(src_width_px < MIN_TILE_WIDTH_PX || src_height_px < MIN_TILE_HEIGHT_PX)) {
         return false;
     }
 

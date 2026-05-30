@@ -1,4 +1,5 @@
 #include "../include/scranrot.h"
+#include "../include/scranrot-util.h"
 
 
 // Rotates frame buffer, shuffles pixel geometry, and stores result to dst
@@ -58,7 +59,7 @@ scranrot_transform_framebuffer_to_yuv420(
     // TODO: Probably make a scranrot_ctx and init function to avoid the arch
     // check and width/height checks on every call?
 
-    if (src_width_px & 1 || src_height_px & 1) {
+    if (SCRANROT_UNLIKELY(src_width_px & 1 || src_height_px & 1)) {
         // YUV420 needs height and width divisible by two
         return false;
     }

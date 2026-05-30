@@ -10,6 +10,9 @@
 #define SCRANROT_ASSERT assert
 #endif
 
+#define SCRANROT_LIKELY(x)   __builtin_expect(!!(x), 1)
+#define SCRANROT_UNLIKELY(x) __builtin_expect(!!(x), 0)
+
 
 static inline int
 scranrot_get_transformed_height(int src_width, int src_height, enum scranrot_transform transform)
