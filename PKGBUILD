@@ -8,7 +8,7 @@ pkgdesc='Image and video capture for Wayland'
 arch=('x86_64')
 url='https://github.com/iciclejj/scran'
 license=('MIT AND OFL-1.1')
-makedepends=('wayland-protocols')
+makedepends=('wayland-protocols' 'meson')
 depends=(
     'wayland>=1.14.91'
     'libxkbcommon'
@@ -22,17 +22,14 @@ source=("$pkgname-$pkgver.tar.gz::https://github.com/iciclejj/$pkgname/archive/r
 sha256sums=('b7d3e266c2084ee1457e011c8d7e6162d99c19d5d7e7ee1a066f15fc2bc80134')
 
 build() {
-    cd "$srcdir/$pkgname-$pkgver"
-
-    make release SD_BUS_LIB=libsystemd
+    arch-meson "$pkgname-$pkgver" build -D sd-bus-provider=libsystemd -D b_ndebug=true
+    meson compile -C build
 }
 
 package() {
-    cd "$srcdir/$pkgname-$pkgver"
+    meson install -C build --destdir "$pkgdir"
 
-    install -D -m 755 "./build/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
-
-    install -D -m 644 "./LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-    install -D -m 644 "./assets/Iosevka.license" "$pkgdir/usr/share/licenses/$pkgname/Iosevka.license"
-    install -D -m 644 "./assets/NerdFontsSymbolsOnly.license" "$pkgdir/usr/share/licenses/$pkgname/NerdFontsSymbolsOnly.license"
+    install -D -m 644 "$srcdir/$pkgname-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -D -m 644 "$srcdir/$pkgname-$pkgver/assets/Iosevka.license" "$pkgdir/usr/share/licenses/$pkgname/Iosevka.license"
+    install -D -m 644 "$srcdir/$pkgname-$pkgver/assets/NerdFontsSymbolsOnly.license" "$pkgdir/usr/share/licenses/$pkgname/NerdFontsSymbolsOnly.license"
 }

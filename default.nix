@@ -13,6 +13,8 @@
   basu, # libsystemd's sd-bus library
   copyDesktopItems,
   makeDesktopItem,
+  meson,
+  ninja,
 
   # src overridable to ease installation from outside of nixpkgs, among other
   # things
@@ -32,6 +34,8 @@ stdenv.mkDerivation {
     wayland-protocols
     pkg-config
     bintools
+    meson
+    ninja
     copyDesktopItems
   ];
 
@@ -45,13 +49,7 @@ stdenv.mkDerivation {
   ];
 
   inherit hardeningDisable;
-  buildFlags = [ _target ];
-
-  installPhase = ''
-    runHook preInstall
-    install -D build/${_target}/scran $out/bin/scran
-    runHook postInstall
-  '';
+  mesonBuildType = _target;
 
   desktopItems = [
     # TODO: Change this
