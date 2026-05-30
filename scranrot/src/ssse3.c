@@ -29,11 +29,11 @@ _Static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "
 
 
 typedef void (*_scranrot_transform_framebuffer_fn__ssse3)(
-    const void *const restrict src,
+    const uint8_t *restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    void *const restrict dst,
+    uint8_t *restrict dst,
     const int dst_stride_bytes,
     __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 );
@@ -148,11 +148,11 @@ _ssse3_rotate_90(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer__ssse3_unaligned__rotate_270(
-    const void *const restrict src,
+    const uint8_t *restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    void *const restrict dst,
+    uint8_t *restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
@@ -208,11 +208,11 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer__ssse3_unaligned__rotate_180(
-    const void *const restrict src,
+    const uint8_t *restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    void *const restrict dst,
+    uint8_t *restrict dst,
     const int dst_stride_bytes,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
@@ -229,8 +229,8 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
                     ? dst_last_row + RGBA32_PIXEL_STRIDE * (src_width_px - KERNEL_TILE_WIDTH_PX)
                     : dst_last_row + RGBA32_PIXEL_STRIDE * ((src_width_px / KERNEL_TILE_WIDTH_PX) * KERNEL_TILE_WIDTH_PX);
 
-    __m128i *dst_curr = (__m128i *)dst_start;
-    const __m128i *src_curr = src;
+    __m128i       *dst_curr = (__m128i *)dst_start;
+    __m128i const *src_curr = (__m128i *)src;
 
     for (int src_row_px = 0; src_row_px < src_height_px; ++src_row_px) {
         const __m128i *dst_row_base = dst_curr;
@@ -254,11 +254,11 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer__ssse3_unaligned__rotate_90(
-    const void *const restrict src,
+    const uint8_t *restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    void *const restrict dst,
+    uint8_t *restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
@@ -306,11 +306,11 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer__ssse3_unaligned__rotate_0(
-    const void *const restrict src,
+    const uint8_t *restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    void *const restrict dst,
+    uint8_t *restrict dst,
     const int dst_stride_bytes,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
@@ -318,8 +318,8 @@ transform_framebuffer__ssse3_unaligned__rotate_0(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 4, "0 kernel assumes 4-width RGBA32 tile");
 
-    __m128i *dst_curr = (__m128i *)dst;
-    const __m128i *src_curr = src;
+    __m128i       *dst_curr = (__m128i *)dst;
+    __m128i const *src_curr = (__m128i *)src;
 
     for (int src_row_px = 0; src_row_px < src_height_px; ++src_row_px) {
         const __m128i *const dst_row_base = dst_curr;
@@ -343,11 +343,11 @@ transform_framebuffer__ssse3_unaligned__rotate_0(
 
 bool
 scranrot_transform_framebuffer_ssse3__unaligned(
-    const void *src,
+    const uint8_t *restrict src,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
-    void *dst,
+    uint8_t *restrict dst,
     // Reorders dst's pixel byte-order relative to src.
     //   8-bit-valued mask representing new order
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)

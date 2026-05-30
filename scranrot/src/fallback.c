@@ -34,11 +34,11 @@ _fallback_convert_pixel_format(
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer__fallback__rotate_270(
-    const void *const restrict src,
+    const uint8_t *const restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    void *const restrict dst,
+    uint8_t *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
@@ -81,11 +81,11 @@ transform_framebuffer__fallback__rotate_270(
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer__fallback__rotate_180(
-    const void *const restrict src,
+    const uint8_t *const restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    void *const restrict dst,
+    uint8_t *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
@@ -131,11 +131,11 @@ transform_framebuffer__fallback__rotate_180(
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer__fallback__rotate_90(
-    const void *const restrict src,
+    const uint8_t *const restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    void *const restrict dst,
+    uint8_t *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
@@ -177,11 +177,11 @@ transform_framebuffer__fallback__rotate_90(
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer__fallback__rotate_0(
-    const void *const restrict src,
+    const uint8_t *const restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    void *const restrict dst,
+    uint8_t *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
@@ -220,11 +220,11 @@ transform_framebuffer__fallback__rotate_0(
 
 bool
 scranrot_transform_framebuffer_fallback(
-    const void *src,
+    const uint8_t *src,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
-    void *dst,
+    uint8_t *dst,
     // Reorders dst's pixel byte-order relative to src.
     //   8-bit-valued mask representing new order
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)

@@ -380,7 +380,7 @@ _16px_rgba32_to_yuv_8bpp(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
-    const void *restrict src,
+    const uint8_t *restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
@@ -523,7 +523,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
-    const void *restrict src,
+    const uint8_t *restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
@@ -656,7 +656,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
-    const void *restrict src,
+    const uint8_t *restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
@@ -802,7 +802,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
-    const void *restrict src,
+    const uint8_t *restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
@@ -923,11 +923,11 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 
 bool
 scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned(
-    const void *src,
+    const uint8_t *restrict src,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
-    void *dst,
+    uint8_t *restrict dst,
     uint32_t rgba_shuffle_mask,
     enum scranrot_transform transform,
     // OUT:

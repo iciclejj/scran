@@ -39,11 +39,11 @@ enum scranrot_transform {
 };
 
 typedef bool scranrot_transform_framebuffer_to_yuv_fn(
-    const void *src,
+    const uint8_t *restrict src,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
-    void *dst,
+    uint8_t *restrict dst,
     // Reorders dst's pixel byte-order relative to src.
     //   8-bit-valued mask representing new order
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)
@@ -56,11 +56,11 @@ typedef bool scranrot_transform_framebuffer_to_yuv_fn(
 );
 
 typedef bool scranrot_transform_framebuffer_fn(
-    const void *src,
+    const uint8_t *restrict src,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
-    void *dst,
+    uint8_t *restrict dst,
     // Reorders dst's pixel byte-order relative to src.
     //   8-bit-valued mask representing new order
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)
@@ -75,11 +75,11 @@ typedef bool scranrot_transform_framebuffer_fn(
 // (or fallback) at runtime, based on cpuid.
 bool
 scranrot_transform_framebuffer(
-    const void *src,
+    const uint8_t *restrict src,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
-    void *dst,
+    uint8_t *restrict dst,
     // Reorder src pixel byte-order before moving to dst
     // 8-bit-valued mask representing new order
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)
@@ -91,11 +91,11 @@ scranrot_transform_framebuffer(
 
 bool
 scranrot_transform_framebuffer_to_yuv420(
-    const void *src,
+    const uint8_t *restrict src,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
-    void *dst,
+    uint8_t *restrict dst,
     // Reorder src pixel byte-order before moving to dst
     // 8-bit-valued mask representing new order
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)
