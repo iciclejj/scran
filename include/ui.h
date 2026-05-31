@@ -23,64 +23,62 @@ enum scran_ui_keymap_item_index {
     SCRAN_UI_KEYMAP_N_ITEMS,
 };
 
-enum scran_ui_keymap_color {
-    SCRAN_UI_KEYMAP_COLOR_DEFAULT,
-    SCRAN_UI_KEYMAP_COLOR_MOD,
-    SCRAN_UI_KEYMAP_COLOR_ALT,
-    SCRAN_UI_KEYMAP_COLOR_VIDEO_CAPTURE,
-    SCRAN_UI_KEYMAP_N_COLORS,
+enum scran_ui_color {
+    SCRAN_UI_COLOR_DEFAULT,
+    SCRAN_UI_COLOR_KEYMAP_MOD,
+    SCRAN_UI_COLOR_KEYMAP_ALT,
+    SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE,
+    SCRAN_UI_N_COLORS,
 };
 
-enum scran_ui_keymap_text {
-    SCRAN_UI_KEYMAP_TEXT_EXTRA_PRE_INIT_DEFAULT,
+enum scran_ui_text {
+    SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT,
 
+    SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT,
+    SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD,
 
-    SCRAN_UI_KEYMAP_TEXT_IMAGE_DEFAULT,
-    SCRAN_UI_KEYMAP_TEXT_IMAGE_MOD,
+    SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT,
+    SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD,
 
-    SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT,
-    SCRAN_UI_KEYMAP_TEXT_VIDEO_MOD,
+    SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT,
+    SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY,
+    SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP,
 
-    SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT,
-    SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED_TRAY,
-    SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED_HELP,
-
-
-    SCRAN_UI_KEYMAP_TEXT_EMPTY,
-
-
-    SCRAN_UI_KEYMAP_N_TEXTS,
+    SCRAN_UI_TEXT_EMPTY,
+    SCRAN_UI_N_TEXTS,
 };
 
-struct scran_ui_keymap_item_lockable_state {
+struct scran_ui_textline_metadata {
+    int height_px;
+    uint32_t pressed_items_mask;
+};
+struct scran_ui_textline_item_lockable_state {
     uint8_t text;
     uint8_t color;
 };
-
-struct scran_ui_keymap_item {
+struct scran_ui_textline_item {
     BLImageCore bl_img;
-    int width_px; // width of currently displayed text. height_px is in parent.
+    int width_px; // width of currently displayed text. height_px is shared for entire textline.
 
-    struct scran_ui_keymap_item_lockable_state live_state;
-    struct scran_ui_keymap_item_lockable_state locked_state;
+    struct scran_ui_textline_item_lockable_state live_state;
+    struct scran_ui_textline_item_lockable_state locked_state;
 
     uint8_t disable_reason_mask;
     bool locked;
 };
-static_assert( sizeof((struct scran_ui_keymap_item){}.disable_reason_mask) * CHAR_BIT >= SCRAN_UI_N_DISABLE_REASONS,
-               ".disable_reason_mask must fit all possible disable reasons.");
+static_assert(sizeof((struct scran_ui_textline_item){}.disable_reason_mask) * CHAR_BIT >= SCRAN_UI_N_DISABLE_REASONS,
+              ".disable_reason_mask must fit all possible disable reasons.");
 
-struct scran_ui_keymap {
-    struct scran_ui_keymap_item items[SCRAN_UI_KEYMAP_N_ITEMS];
-    int height_px;
-    // Must be cached per output in case of different scale factors.
-    int cached_text_widths_px[SCRAN_UI_KEYMAP_N_TEXTS];
-
-    uint32_t pressed_items_mask;
+struct scran_ui_textline {
+    struct scran_ui_textline_metadata meta;
+    struct scran_ui_textline_item     items[SCRAN_UI_KEYMAP_N_ITEMS];
 };
 
 struct scran_ui_context {
-    struct scran_ui_keymap ui_keymap;
+    struct scran_ui_textline ui_keymap;
+
+    // Must be cached per output in case of different scale factors.
+    int cached_text_widths_px[SCRAN_UI_N_TEXTS];
 
     BLContextCore bl_ctx;
     BLFontCore font;
@@ -101,86 +99,91 @@ void redraw_keymap(struct scran_ui_context *ui_ctx);
 
 
 static inline void
-scran_ui_keymap_item_set_color(
+scran_ui_textline_item_set_color(
     struct scran_ui_context *ui_ctx,
-    enum scran_ui_keymap_item_index item_index,
-    enum scran_ui_keymap_color color
+    struct scran_ui_textline *textline,
+    int item_index,
+    enum scran_ui_color color
 ) {
-    struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[item_index];
+    struct scran_ui_textline_item *item = &textline->items[item_index];
 
-    keymap_item->live_state.color = color;
+    item->live_state.color = color;
 
-    if (!keymap_item->locked) {
+    if (!item->locked) {
         ui_ctx->dirty = true;
     }
 }
 
 static inline void
-scran_ui_keymap_item_set_text(
+scran_ui_textline_item_set_text(
     struct scran_ui_context *ui_ctx,
-    enum scran_ui_keymap_item_index item_index,
-    enum scran_ui_keymap_text text
+    struct scran_ui_textline *textline,
+    int item_index,
+    enum scran_ui_text text
 ) {
-    struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[item_index];
+    struct scran_ui_textline_item *item = &textline->items[item_index];
 
-    keymap_item->live_state.text = text;
+    item->live_state.text = text;
 
-    if (!keymap_item->locked) {
+    if (!item->locked) {
         ui_ctx->dirty = true;
     }
 }
 
 static inline void
-scran_ui_keymap_item_set_pressed(
+scran_ui_textline_item_set_pressed(
     struct scran_ui_context *ui_ctx,
-    enum scran_ui_keymap_item_index item_index,
+    struct scran_ui_textline *textline,
+    int item_index,
     bool pressed
 ) {
-    typeof(ui_ctx->ui_keymap.pressed_items_mask) bit = 1U << item_index;
+    typeof(textline->meta.pressed_items_mask) bit = 1U << item_index;
 
     if (pressed) {
-        ui_ctx->ui_keymap.pressed_items_mask |=  bit;
+        textline->meta.pressed_items_mask |=  bit;
     } else {
-        ui_ctx->ui_keymap.pressed_items_mask &= ~bit;
+        textline->meta.pressed_items_mask &= ~bit;
     }
 
     ui_ctx->dirty = true;
 }
 
 static inline void
-scran_ui_keymap_item_set_disabled(
+scran_ui_textline_item_set_disabled(
     struct scran_ui_context *ui_ctx,
-    enum scran_ui_keymap_item_index item_index,
+    struct scran_ui_textline *textline,
+    int item_index,
     enum scran_ui_disable_reason reason,
     bool disabled
 ) {
-    struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[item_index];
+    struct scran_ui_textline_item *item = &textline->items[item_index];
 
-    typeof(keymap_item->disable_reason_mask) bit = 1U << reason;
+    typeof(item->disable_reason_mask) bit = 1U << reason;
 
     if (disabled) {
-        keymap_item->disable_reason_mask |=  bit;
+        item->disable_reason_mask |=  bit;
     } else {
-        keymap_item->disable_reason_mask &= ~bit;
+        item->disable_reason_mask &= ~bit;
     }
 
     ui_ctx->dirty = true;
 }
 
 static inline void
-scran_ui_keymap_item_set_locked(
+scran_ui_textline_item_set_locked(
     struct scran_ui_context *ui_ctx,
-    enum scran_ui_keymap_item_index item_index,
+    struct scran_ui_textline *textline,
+    int item_index,
     bool locked
 ) {
-    struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[item_index];
+    struct scran_ui_textline_item *item = &textline->items[item_index];
 
-    if (locked && keymap_item->locked) {
+    if (locked && item->locked) {
         eprintf("ERROR: Tried to lock already-locked key state. THIS IS A BUG, please open an issue.\n");
     }
 
-    keymap_item->locked_state = keymap_item->live_state;
-    keymap_item->locked = locked;
+    item->locked_state = item->live_state;
+    item->locked = locked;
 
     ui_ctx->dirty = true;
 }

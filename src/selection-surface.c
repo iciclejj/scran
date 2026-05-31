@@ -100,16 +100,17 @@ draw_and_damage_background(
 
 
 static inline int
-get_total_keymap_width_px(
-    struct scran_ui_keymap *keymap,
+get_total_textline_width_px(
+    struct scran_ui_textline *textline,
+    int n_textline_items,
     int item_spacing_px
 ) {
     int total_width_px = 0;
 
-    for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        struct scran_ui_keymap_item *keymap_item = &keymap->items[i];
-        if (keymap_item->width_px != 0) {
-            total_width_px += keymap_item->width_px + item_spacing_px;
+    for (int i = 0; i < n_textline_items; ++i) {
+        struct scran_ui_textline_item *item = &textline->items[i];
+        if (item->width_px != 0) {
+            total_width_px += item->width_px + item_spacing_px;
         }
     }
 
@@ -126,8 +127,8 @@ draw_and_damage_keymap(
     struct scran_output_selectionSurface_buffer *st_buffer,
     BLBoxI capture_area_border_outline
 ) {
-    struct scran_ui_context *ui_ctx = &selection_surface->ui_ctx;
-    struct scran_ui_keymap  *keymap = &selection_surface->ui_ctx.ui_keymap;
+    struct scran_ui_context  *ui_ctx = &selection_surface->ui_ctx;
+    struct scran_ui_textline *keymap = &selection_surface->ui_ctx.ui_keymap;
 
     bool ui_was_dirty = ui_ctx->dirty;
 
@@ -137,11 +138,11 @@ draw_and_damage_keymap(
     }
 
     const int item_spacing_px = 3 * ui_ctx->fixed_width_font_glyph_width_px;
-    const int total_width_px = get_total_keymap_width_px(keymap, item_spacing_px);
+    const int total_width_px = get_total_textline_width_px(keymap, SCRAN_UI_KEYMAP_N_ITEMS, item_spacing_px);
 
-    struct scran_ui_keymap_surface_state *state_prev            = &st_buffer->ui_keymap_state_currently_drawn;
-    struct scran_ui_keymap_surface_state *state_prev_any_buffer = &selection_surface->ui_keymap_state_last_drawn;
-    struct scran_ui_keymap_surface_state  state_new = {
+    struct scran_ui_textline_surface_state *state_prev            = &st_buffer->ui_keymap_state_currently_drawn;
+    struct scran_ui_textline_surface_state *state_prev_any_buffer = &selection_surface->ui_keymap_state_last_drawn;
+    struct scran_ui_textline_surface_state  state_new = {
         .origin         = {
             .x = capture_area_border_outline.x0,
             .y = capture_area_border_outline.y1,
@@ -180,14 +181,14 @@ draw_and_damage_keymap(
             .x = state_prev->origin.x,
             .y = state_prev->origin.y,
             .w = state_prev->total_width_px,
-            .h = keymap->height_px,
+            .h = keymap->meta.height_px,
         };
 
         BLRectI text_rect_prev_any_buffer = {
             .x = state_prev_any_buffer->origin.x,
             .y = state_prev_any_buffer->origin.y,
             .w = state_prev_any_buffer->total_width_px,
-            .h = keymap->height_px,
+            .h = keymap->meta.height_px,
         };
 
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, SCRAN_SELECTION_BACKGROUND_COLOR.value);
@@ -226,7 +227,7 @@ draw_and_damage_keymap(
     // Blit new ui
     BLPointI _origin_new_curr_item = state_new.origin;
     for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        struct scran_ui_keymap_item *keymap_item = &keymap->items[i];
+        struct scran_ui_textline_item *keymap_item = &keymap->items[i];
 
         const int width_px  = keymap_item->width_px;
         const int height_px = ui_ctx->font_height_px;
@@ -244,7 +245,7 @@ draw_and_damage_keymap(
         }
     }
 
-    // See _get_total_keymap_width_px()
+    // See get_total_textline_width_px()
     assert(_origin_new_curr_item.x != 0);
     assert((_origin_new_curr_item.x - state_new.origin.x) - item_spacing_px == total_width_px);
 
@@ -253,7 +254,7 @@ draw_and_damage_keymap(
         state_new.origin.x,
         state_new.origin.y,
         state_new.total_width_px,
-        keymap->height_px
+        keymap->meta.height_px
     );
 
     selection_surface->ui_keymap_state_last_drawn = state_new;

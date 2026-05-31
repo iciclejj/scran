@@ -25,57 +25,56 @@ static inline const void * get_font_data() {
     return scran_font_ttf_start;
 }
 
-static const BLRgba32 keymap_colors[] = {
-    [SCRAN_UI_KEYMAP_COLOR_DEFAULT]       = { 0xFFDDDDDD },
-    [SCRAN_UI_KEYMAP_COLOR_MOD]           = { 0xFFFFFFAA },
-    [SCRAN_UI_KEYMAP_COLOR_ALT]           = { 0xFF888888 },
-    [SCRAN_UI_KEYMAP_COLOR_VIDEO_CAPTURE] = SCRAN_SELECTION_BORDER_COLOR_VIDEO_CAPTURE,
+static const BLRgba32 ui_colors[] = {
+    [SCRAN_UI_COLOR_DEFAULT]              = { 0xFFDDDDDD },
+    [SCRAN_UI_COLOR_KEYMAP_MOD]           = { 0xFFFFFFAA },
+    [SCRAN_UI_COLOR_KEYMAP_ALT]           = { 0xFF888888 },
+    [SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE] = SCRAN_SELECTION_BORDER_COLOR_VIDEO_CAPTURE,
 };
-static_assert( sizeof(keymap_colors) / sizeof(keymap_colors[0]) == SCRAN_UI_KEYMAP_N_COLORS,
-               "keymap_colors[] length must exactly cover all color enum values." );
+static_assert(sizeof(ui_colors) / sizeof(ui_colors[0]) == SCRAN_UI_N_COLORS,
+              "ui_colors[] length must exactly cover all color enum values.");
 
-struct keymap_string {
+struct ui_string {
     const char16_t *str;
     const size_t strlen;
 };
-#define INIT_KEYMAP_STRING(s) { .str = (s), .strlen = CHAR16_STRLEN(s) }
-static struct keymap_string keymap_image_texts[] = {
+#define INIT_UI_STRING(s) { .str = (s), .strlen = CHAR16_STRLEN(s) }
+
+static const struct ui_string ui_texts[] = {
     // XXX: Leading space so it doesn't hug the edge when drawn at x=0,y=0.
     //      The top margin is fine already.
     //      Somewhat of a HACK, but shouldn't cause any issues unless we change
     //      the font or origin point.
-    [SCRAN_UI_KEYMAP_TEXT_EXTRA_PRE_INIT_DEFAULT] = INIT_KEYMAP_STRING(u" Click and drag to make selection"),
+    [SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT] = INIT_UI_STRING(u" Click and drag to make selection"),
 
-    [SCRAN_UI_KEYMAP_TEXT_IMAGE_DEFAULT]          = INIT_KEYMAP_STRING(u"[↵] Image & Exit"),
-    [SCRAN_UI_KEYMAP_TEXT_IMAGE_MOD]              = INIT_KEYMAP_STRING(u"[↵] Image       "),
+    [SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT]          = INIT_UI_STRING(u"[↵] Image & Exit"),
+    [SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD]              = INIT_UI_STRING(u"[↵] Image       "),
 
-    [SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT]          = INIT_KEYMAP_STRING(u"[␣] Video \uf028"),
-    [SCRAN_UI_KEYMAP_TEXT_VIDEO_MOD]              = INIT_KEYMAP_STRING(u"[␣] Video \uf026"),
+    [SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT]          = INIT_UI_STRING(u"[␣] Video \uf028"),
+    [SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD]              = INIT_UI_STRING(u"[␣] Video \uf026"),
 
-    [SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT]          = INIT_KEYMAP_STRING(u"[⇥] Release focus"),
-    [SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED_TRAY]    = INIT_KEYMAP_STRING(u"[⇥] Click tray icon to retake focus."),
-    [SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED_HELP]    = INIT_KEYMAP_STRING(u"[⇥] Focus released. 'scran -h' for help."),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT]          = INIT_UI_STRING(u"[⇥] Release focus"),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY]    = INIT_UI_STRING(u"[⇥] Click tray icon to retake focus."),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP]    = INIT_UI_STRING(u"[⇥] Focus released. 'scran -h' for help."),
 
-
-    [SCRAN_UI_KEYMAP_TEXT_EMPTY]                  = INIT_KEYMAP_STRING(u""),
+    [SCRAN_UI_TEXT_EMPTY]                         = INIT_UI_STRING(u""),
 };
-static_assert( (sizeof(keymap_image_texts) / sizeof(keymap_image_texts[0])) == SCRAN_UI_KEYMAP_N_TEXTS,
-               "keymap_image_texts[] length must exactly cover all text enum values.");
+static_assert(sizeof(ui_texts) / sizeof(ui_texts[0]) == SCRAN_UI_N_TEXTS,
+              "ui_texts[] length must exactly cover all text enum values.");
 
 
 static inline void
-redraw_keymap_image(
-    struct scran_ui_context     *ui_ctx,
-    struct scran_ui_keymap_item *keymap_item,
-    bool            pressed,
-    int             height_px
+redraw_textline_item_image(
+    struct scran_ui_context *ui_ctx,
+    struct scran_ui_textline_item *item,
+    bool pressed
 ) {
-    const struct scran_ui_keymap_item_lockable_state lockable_state =
-        keymap_item->locked ? keymap_item->locked_state : keymap_item->live_state;
+    const struct scran_ui_textline_item_lockable_state lockable_state =
+        item->locked ? item->locked_state : item->live_state;
 
-    const struct keymap_string *string = &keymap_image_texts[lockable_state.text];
+    const struct ui_string *string = &ui_texts[lockable_state.text];
 
-    bl_context_begin(&ui_ctx->bl_ctx, &keymap_item->bl_img, NULL);
+    bl_context_begin(&ui_ctx->bl_ctx, &item->bl_img, NULL);
 
     BLPointI origin = {
         .x = 0,
@@ -86,10 +85,10 @@ redraw_keymap_image(
         .y = ui_ctx->ascent_px + SCRAN_SELECTION_SHADOW_OFFSET_PX,
     };
 
-    BLRgba32 color = keymap_colors[lockable_state.color];
+    BLRgba32 color = ui_colors[lockable_state.color];
     bl_context_clear_all(&ui_ctx->bl_ctx);
 
-    if (keymap_item->disable_reason_mask != 0U) {
+    if (item->disable_reason_mask != 0U) {
         BLRgba32 _color = color;
         blrgba32_scale_colors(&_color, 0.64f); // dim the color
         bl_context_fill_utf16_text_i_rgba32(
@@ -113,26 +112,29 @@ redraw_keymap_image(
 
     bl_context_end(&ui_ctx->bl_ctx);
 
-    keymap_item->width_px = ui_ctx->ui_keymap.cached_text_widths_px[lockable_state.text];
+    item->width_px = ui_ctx->cached_text_widths_px[lockable_state.text];
+}
+
+
+static inline void
+redraw_textline(
+    struct scran_ui_context *ui_ctx,
+    struct scran_ui_textline_metadata *meta,
+    struct scran_ui_textline_item *items,
+    int n_items
+) {
+    for (int i = 0; i < n_items; ++i) {
+        bool pressed = meta->pressed_items_mask & (1U << i);
+        redraw_textline_item_image(ui_ctx, &items[i], pressed);
+    }
 }
 
 void
 redraw_keymap(
     struct scran_ui_context *ui_ctx
 ) {
-    // TODO: dirty marker per item
-    for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[i];
-
-        bool pressed  = ui_ctx->ui_keymap.pressed_items_mask  & (1 << i);
-
-        redraw_keymap_image(
-            ui_ctx,
-            keymap_item,
-            pressed,
-            ui_ctx->ui_keymap.height_px
-        );
-    }
+    struct scran_ui_textline *keymap = &ui_ctx->ui_keymap;
+    redraw_textline(ui_ctx, &keymap->meta, keymap->items, SCRAN_UI_KEYMAP_N_ITEMS);
 }
 
 
@@ -165,6 +167,21 @@ calculate_bl_text_width_px(
     int           width_px     = ceil(width) + (!!width * SCRAN_SELECTION_SHADOW_OFFSET_PX);
 
     return width_px;
+}
+
+static inline void
+reinit_textline(
+    struct scran_ui_textline *textline,
+    int n_items,
+    int w_px, int h_px
+) {
+    for (int i = 0; i < n_items; ++i) {
+        struct scran_ui_textline_item *item = &textline->items[i];
+        bl_image_reset(&item->bl_img);
+        bl_image_create(&item->bl_img, w_px, h_px, wl_shm_format_to_blend2d(SURFACE_SHM_FORMAT));
+    }
+
+    textline->meta.height_px = h_px;
 }
 
 // Should be called on scale changes to resize fonts etc.
@@ -218,36 +235,25 @@ reinit_scran_ui(
     ui_ctx->ascent_px = ascent_px;
     ui_ctx->font_height_px = font_height_px;
     ui_ctx->fixed_width_font_glyph_width_px = fixed_width_font_glyph_width_px;
-    ui_ctx->ui_keymap.height_px = font_height_px;
 
-    // - Allocate a buffer that fits the largest possible string for all keymap images
+    // - Allocate a buffer that fits the largest possible string for all text images
     // - Pre-calculate the pixel-widths of each text
     {
         int width_px_max   = 0;
 
         // Some of this could be done at compile-time, but would require some ugly macros...
-        for (size_t i = 0; i < SCRAN_UI_KEYMAP_N_TEXTS; ++i) {
-            struct keymap_string *string = &keymap_image_texts[i];
+        for (enum scran_ui_text i = 0; i < SCRAN_UI_N_TEXTS; ++i) {
+            const struct ui_string *string = &ui_texts[i];
             int width_px = calculate_bl_text_width_px(font, string->str, string->strlen);
             if (width_px_max < width_px) {
                 width_px_max = width_px;
             }
-            ui_ctx->ui_keymap.cached_text_widths_px[i] = width_px;
+            ui_ctx->cached_text_widths_px[i] = width_px;
         }
 
         assert(width_px_max != 0);
 
-        for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-            struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[i];
-
-            bl_image_reset(&keymap_item->bl_img);
-            bl_image_create(
-                &keymap_item->bl_img,
-                width_px_max,
-                font_height_px,
-                wl_shm_format_to_blend2d(SURFACE_SHM_FORMAT)
-            );
-        }
+        reinit_textline(&ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_N_ITEMS, width_px_max, font_height_px);
     }
 
     redraw_keymap(ui_ctx);
@@ -256,23 +262,23 @@ reinit_scran_ui(
 }
 
 static const struct {
-    enum scran_ui_keymap_text  text;
-    enum scran_ui_keymap_color color;
-} m_pre_selection_items[] = {
-    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE] = { SCRAN_UI_KEYMAP_TEXT_EMPTY                 , SCRAN_UI_KEYMAP_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO] = { SCRAN_UI_KEYMAP_TEXT_EMPTY                 , SCRAN_UI_KEYMAP_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS] = { SCRAN_UI_KEYMAP_TEXT_EMPTY                 , SCRAN_UI_KEYMAP_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA] = { SCRAN_UI_KEYMAP_TEXT_EXTRA_PRE_INIT_DEFAULT, SCRAN_UI_KEYMAP_COLOR_DEFAULT },
+    enum scran_ui_text text;
+    enum scran_ui_color color;
+} m_pre_selection_keymap_items[] = {
+    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE] = { SCRAN_UI_TEXT_EMPTY                 , SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO] = { SCRAN_UI_TEXT_EMPTY                 , SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS] = { SCRAN_UI_TEXT_EMPTY                 , SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA] = { SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT, SCRAN_UI_COLOR_DEFAULT },
 };
 
 static const struct {
-    enum scran_ui_keymap_text  text;
-    enum scran_ui_keymap_color color;
-} m_post_selection_items[] = {
-    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE] = { SCRAN_UI_KEYMAP_TEXT_IMAGE_DEFAULT, SCRAN_UI_KEYMAP_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO] = { SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT, SCRAN_UI_KEYMAP_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS] = { SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT, SCRAN_UI_KEYMAP_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA] = { SCRAN_UI_KEYMAP_TEXT_EMPTY        , SCRAN_UI_KEYMAP_COLOR_DEFAULT },
+    enum scran_ui_text text;
+    enum scran_ui_color color;
+} m_post_selection_keymap_items[] = {
+    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE] = { SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT, SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO] = { SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT, SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS] = { SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT, SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA] = { SCRAN_UI_TEXT_EMPTY        , SCRAN_UI_COLOR_DEFAULT },
 };
 
 bool
@@ -284,13 +290,13 @@ init_scran_ui_pre_selection(
     bl_context_init(&ui_ctx->bl_ctx);
 
     for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[i];
+        struct scran_ui_textline_item *keymap_item = &ui_ctx->ui_keymap.items[i];
 
         bl_image_init(&keymap_item->bl_img);
 
         assert(keymap_item->locked == false);
-        keymap_item->live_state.text  = m_pre_selection_items[i].text;
-        keymap_item->live_state.color = m_pre_selection_items[i].color;
+        keymap_item->live_state.text  = m_pre_selection_keymap_items[i].text;
+        keymap_item->live_state.color = m_pre_selection_keymap_items[i].color;
     }
 
     reinit_scran_ui(ui_ctx, scale);
@@ -303,11 +309,11 @@ scran_ui_set_selection_stage_defaults(
     struct scran_ui_context *ui_ctx
 ) {
     for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[i];
+        struct scran_ui_textline_item *keymap_item = &ui_ctx->ui_keymap.items[i];
 
         keymap_item->locked = false;
-        keymap_item->live_state.text  = m_post_selection_items[i].text;
-        keymap_item->live_state.color = m_post_selection_items[i].color;
+        keymap_item->live_state.text  = m_post_selection_keymap_items[i].text;
+        keymap_item->live_state.color = m_post_selection_keymap_items[i].color;
     }
 
     ui_ctx->dirty = true;

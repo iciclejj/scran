@@ -117,7 +117,7 @@ struct scran_output_surface {
     struct wp_viewport *viewport;
 };
 
-struct scran_ui_keymap_surface_state {
+struct scran_ui_textline_surface_state {
     BLPointI origin;
     int total_width_px;
 };
@@ -132,7 +132,7 @@ struct scran_output_selectionSurface_buffer {
     // now that we have more things going on in the selection surface (like ui_keymap)?
     BLBoxI box_currently_drawn;
 
-    struct scran_ui_keymap_surface_state ui_keymap_state_currently_drawn;
+    struct scran_ui_textline_surface_state ui_keymap_state_currently_drawn;
 
     bool busy;
     bool force_redraw;
@@ -148,7 +148,7 @@ struct scran_output_selectionSurface {
     // XXX TODO: Turn this into a pointer once we remove the ugly redraw hack
     // in set_selection_surface_theme(). TODO: Redraw hack is gone now.
     BLBoxI box_last_drawn;
-    struct scran_ui_keymap_surface_state ui_keymap_state_last_drawn;
+    struct scran_ui_textline_surface_state ui_keymap_state_last_drawn;
 
     bool awaiting_frame_callback;
     bool frame_callbacks_disabled;
