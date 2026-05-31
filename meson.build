@@ -10,7 +10,13 @@ project(
 )
 
 cc = meson.get_compiler('c')
-add_project_arguments('-Wno-unused-parameter', language: 'c')
+add_project_arguments(
+  [
+    '-Wno-unused-parameter',
+    '-Wmissing-prototypes',
+  ],
+  language: 'c'
+)
 
 sd_bus_opt = get_option('sd-bus-provider')
 if sd_bus_opt == 'basu'
