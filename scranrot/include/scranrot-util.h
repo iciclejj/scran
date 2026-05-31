@@ -2,13 +2,16 @@
 #define SCRANROT_UTIL_H
 
 
-#include "scranrot.h"
+#include "./scranrot.h"
 
 
 #ifndef SCRANROT_ASSERT
 #include <assert.h>
 #define SCRANROT_ASSERT assert
 #endif
+
+#define SCRANROT_LIKELY(x)   __builtin_expect(!!(x), 1)
+#define SCRANROT_UNLIKELY(x) __builtin_expect(!!(x), 0)
 
 
 static inline int

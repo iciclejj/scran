@@ -12,7 +12,6 @@
 #include <xkbcommon/xkbcommon.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <libavfilter/avfilter.h>
 #include <libavutil/audio_fifo.h>
 
 #include "wlr-layer-shell-unstable-v1.h"
@@ -265,16 +264,8 @@ struct ffmpeg_context {
     // Video
     AVFormatContext *av_format_ctx;
     AVCodecContext  *av_codec_ctx;
-    AVFrame         *av_frame_captured;
     AVFrame         *av_frame_to_encode;
     AVPacket        *av_packet; // encoded frame
-    AVFilterGraph   *av_filter_graph;
-    AVFilterContext *av_filter_buffersrc_ctx;
-    // TODO: Do we need to keep non-endpoint filters (like transpose) around
-    // for freeing them, or are they automatically freed through the parent
-    // graph's refcouning?
-    AVFilterContext *av_filter_transpose_ctx;
-    AVFilterContext *av_filter_buffersink_ctx;
 
     // Audio
     AVCodecContext  *av_codec_ctx_audio;

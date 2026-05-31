@@ -98,31 +98,32 @@ handle_image_copy_capture_frame_ready__image_capture(
     //    capture source pixel buffer.
     void *const buf_cropped_converted = frame_ctx->img_data_2;
 
-    void     *buf_cropped_converted_with_offset = NULL;
     uintptr_t buf_cropped_converted_row_bytes = 0;
-    uint32_t  rgba32_shuffle = wl_shm_format_to_blend2d_scran_rgba32_shuffle(st_output->capture.shm_format);
+    uint32_t  rgba32_shuffle = wl_shm_format_to_blend2d_scranrot_rgba32_shuffle(st_output->capture.shm_format);
     if (rgba32_shuffle == RGBA32_SHUFFLE_ERROR) {
         eprintf("WARNING: Output's pixel format is not supported. Attempting anyways...\n");
         rgba32_shuffle = RGBA32_SHUFFLE_NO_CHANGE;
     }
+
+    // XXX: Scranrot does not support flipped transforms yet, so we just
+    // record it flipped for now, rather than blocking capture entirely.
+    enum wl_output_transform transform = wl_output_transform_without_flip(st_output->transform);
+
     // XXX: We convert etc. unconditionally for now.
     //    TODO: Only convert if required
     //            I.e. convert if not natively supported pixel format by blend2d
     //            encoder and/or needs transform
-    //    TODO: Assert we have available padding.
-    //    TODO: More asserts before & after this
-    scranrot_transform_framebuffer(
-        area_start_addr,
-        buf_cropped_converted,
-        capture_area_px_w,
-        capture_area_px_h,
-        source_row_bytes,
-        rgba32_shuffle,
-        // TODO: add lib-interop.h function for this cast?
-        (enum scranrot_transform)st_output->transform,
-        &buf_cropped_converted_with_offset,
-        &buf_cropped_converted_row_bytes
-    );
+    if (!scranrot_transform_framebuffer(
+            area_start_addr, capture_area_px_w, capture_area_px_h, source_row_bytes,
+            buf_cropped_converted,
+            rgba32_shuffle,
+            wl_output_transform_to_scranrot(transform),
+            &buf_cropped_converted_row_bytes
+        )
+    ) {
+        eprintf("Error: scranrot failed to convert framebuffer\n");
+        goto end_capture;
+    }
     const int capture_area_px_w_transformed = get_transformed_width(capture_area_px_w, capture_area_px_h, st_output->transform);
     const int capture_area_px_h_transformed = get_transformed_height(capture_area_px_w, capture_area_px_h, st_output->transform);
 
@@ -137,7 +138,7 @@ handle_image_copy_capture_frame_ready__image_capture(
         capture_area_px_w_transformed,
         capture_area_px_h_transformed,
         CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT,
-        buf_cropped_converted_with_offset,
+        buf_cropped_converted,
         buf_cropped_converted_row_bytes,
         // XXX: Read-only access causes blend2d to make a copy if modified.
         //      TODO: Probably just change to RW.
@@ -209,6 +210,7 @@ handle_image_copy_capture_frame_ready__image_capture(
 
     bl_array_destroy(&bl_array_img_encoded);
 
+end_capture:
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 }
 

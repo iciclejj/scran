@@ -4,7 +4,6 @@
 #include <blend2d/blend2d.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/pixdesc.h>
-#include <libavfilter/avfilter.h>
 
 #include "util/lib-interop.h"
 #include "capture.h"
@@ -68,8 +67,30 @@ wl_shm_format_to_blend2d_struct(enum wl_shm_format wl_shm_format)
 }
 
 
+// Scranrot expects a specific pixel layout for its yuv pipeline.
+// This creates the shuffle that needs to happen to conform to that layout.
+// XXX TODO: Make this clearer or move responsibility for this into scranrot
 uint32_t
-wl_shm_format_to_blend2d_scran_rgba32_shuffle(enum wl_shm_format wl_shm_format)
+wl_shm_format_to_scranrot_yuv_rgba32_shuffle(enum wl_shm_format wl_shm_format)
+{
+    // TODO: Double-check all of these
+    switch (wl_shm_format) {
+        case WL_SHM_FORMAT_ARGB8888: return 0x03000102;
+        case WL_SHM_FORMAT_XRGB8888: return 0x03000102;
+
+        case WL_SHM_FORMAT_ABGR8888: return RGBA32_SHUFFLE_NO_CHANGE;
+        case WL_SHM_FORMAT_XBGR8888: return RGBA32_SHUFFLE_NO_CHANGE;
+
+        case WL_SHM_FORMAT_RGBX8888: return 0x00010203;
+        case WL_SHM_FORMAT_RGBA8888: return 0x00010203;
+
+        default: return RGBA32_SHUFFLE_ERROR;
+    }
+}
+
+
+uint32_t
+wl_shm_format_to_blend2d_scranrot_rgba32_shuffle(enum wl_shm_format wl_shm_format)
 {
     assert(CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT == BL_FORMAT_PRGB32);
 #ifndef NDEBUG
@@ -117,45 +138,6 @@ wl_shm_format_to_ffmpeg_cli_str(enum wl_shm_format wl_shm_format)
     return av_get_pix_fmt_name(wl_shm_format_to_ffmpeg(wl_shm_format));
 }
 
-
-// enum ScranAVTransposeDir
-// wl_output_transform_to_ffmpeg_transpose_dir(enum wl_output_transform transform)
-// {
-//     switch (transform) {
-//         case WL_OUTPUT_TRANSFORM_NORMAL: return SCRAN_AV_TRANSPOSE_DIR_NORMAL;
-//         // XXX: This is seemingly not supported..?
-//         //          TODO: I guess allow two filter passes to correctly flip this,
-//         //                if we don't end up switching to our own conversion code
-//         case WL_OUTPUT_TRANSFORM_FLIPPED_180: return SCRAN_AV_TRANSPOSE_DIR_UNSUPPORTED;
-//
-//         case WL_OUTPUT_TRANSFORM_90:     return SCRAN_AV_TRANSPOSE_DIR_90;
-//         case WL_OUTPUT_TRANSFORM_180:    return SCRAN_AV_TRANSPOSE_DIR_180;
-//         case WL_OUTPUT_TRANSFORM_270:    return SCRAN_AV_TRANSPOSE_DIR_270;
-//         case WL_OUTPUT_TRANSFORM_FLIPPED:     return SCRAN_AV_TRANSPOSE_DIR_FLIPPED;
-//         case WL_OUTPUT_TRANSFORM_FLIPPED_90:  return SCRAN_AV_TRANSPOSE_DIR_FLIPPED_90;
-//         case WL_OUTPUT_TRANSFORM_FLIPPED_270: return SCRAN_AV_TRANSPOSE_DIR_FLIPPED_270;
-//     }
-// }
-enum ScranAVTransposeDir
-wl_output_transform_to_ffmpeg_transpose_dir__inverse(enum wl_output_transform transform)
-{
-    switch (transform) {
-        case WL_OUTPUT_TRANSFORM_NORMAL: return SCRAN_AV_TRANSPOSE_DIR_NORMAL;
-        // XXX: This is seemingly not supported..?
-        //          TODO: I guess allow two filter passes to correctly flip this,
-        //                if we don't end up switching to our own simd conversion
-        //                code (would have to implement rgb->yuv conversion)
-        case WL_OUTPUT_TRANSFORM_FLIPPED_180: return SCRAN_AV_TRANSPOSE_DIR_UNSUPPORTED;
-
-        case WL_OUTPUT_TRANSFORM_90:     return SCRAN_AV_TRANSPOSE_DIR_270;
-        case WL_OUTPUT_TRANSFORM_180:    return SCRAN_AV_TRANSPOSE_DIR_180;
-        case WL_OUTPUT_TRANSFORM_270:    return SCRAN_AV_TRANSPOSE_DIR_90;
-        case WL_OUTPUT_TRANSFORM_FLIPPED:     return SCRAN_AV_TRANSPOSE_DIR_FLIPPED;
-        case WL_OUTPUT_TRANSFORM_FLIPPED_90:  return SCRAN_AV_TRANSPOSE_DIR_FLIPPED_270;
-        case WL_OUTPUT_TRANSFORM_FLIPPED_270: return SCRAN_AV_TRANSPOSE_DIR_FLIPPED_90;
-        default: return SCRAN_AV_TRANSPOSE_DIR_UNSUPPORTED;
-    }
-}
 
 enum spa_audio_format
 ffmpeg_sample_format_to_pipewire(enum AVSampleFormat format)

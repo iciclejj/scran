@@ -136,7 +136,7 @@ in
    <details> <summary><ins>Ubuntu</ins></summary>
 
    ```bash
-   apt install make gcc pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libsystemd libpipewire-0.3-dev libavcodec-dev libavutil-dev libavformat-dev libavfilter-dev
+   apt install make gcc pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libsystemd libpipewire-0.3-dev libavcodec-dev libavutil-dev libavformat-dev
    ```
    </details>
    <details> <summary><ins>Fedora</ins></summary>
@@ -148,7 +148,7 @@ in
             Your mileage may vary.
 
    ```bash
-   dnf install make gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel systemd-devel pipewire-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel libavfilter-free-devel blend2d-devel
+   dnf install make gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel systemd-devel pipewire-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel blend2d-devel
    ```
    </details>
 

@@ -5,6 +5,15 @@
 #include "./generic.h"
 
 
+enum {
+    KERNEL_TILE_WIDTH_PX  = 1, // Optimal seems to be 1 (on a 5600h, both with and without auto-vectorization)
+    KERNEL_TILE_HEIGHT_PX = 4,
+
+    MIN_TILE_WIDTH_PX  = KERNEL_TILE_WIDTH_PX,
+    MIN_TILE_HEIGHT_PX = KERNEL_TILE_HEIGHT_PX,
+};
+
+
 SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 static inline uint32_t
 _fallback_convert_pixel_format(
@@ -25,22 +34,22 @@ _fallback_convert_pixel_format(
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer__fallback__rotate_270(
-    const void *const restrict src,
+    const uint8_t *const restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    void *const restrict dst,
+    uint8_t *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
     uint32_t rgba32_shift_mask = *(uint32_t *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
 
+    _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "270 kernel assumes 4-row RGBA32 tile");
+
     const int dst_y_px_max = src_width_px - 1;
 
-    static const int tile_height = SCRANROT_FALLBACK_STRIDE_PX;
-    // XXX: Keeping tile_width for testing despite optimal seems to be 1
-    //      (on a 5600h, both with and without auto-vectorization)
-    static const int tile_width = 1;
+    static const int tile_height = 4;
+    static const int tile_width  = KERNEL_TILE_WIDTH_PX;
 
     for (int y = 0; y < src_height_px; y += tile_height) {
         for (int x = 0; x < src_width_px; x += tile_width) {
@@ -66,30 +75,27 @@ transform_framebuffer__fallback__rotate_270(
 
         }
     }
-
-
 }
 
 
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer__fallback__rotate_180(
-    const void *const restrict src,
+    const uint8_t *const restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    void *const restrict dst,
+    uint8_t *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
     uint32_t rgba32_shift_mask = *(uint32_t *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
 
-    static const int tile_height = SCRANROT_FALLBACK_STRIDE_PX;
-    // XXX: Keeping tile_width for testing despite optimal seems to be 1
-    //      (on a 5600h, both with and without auto-vectorization)
-    static const int tile_width = 1;
+    _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "180 kernel assumes 4-row RGBA32 tile");
 
-    // XXX: This assumes a tile_width of 1 (doesn't ensure padding/alignment)
+    static const int tile_height = 4;
+    static const int tile_width  = KERNEL_TILE_WIDTH_PX;
+
     char *const dst_last_pixel_address =
         (char *)dst
         + (src_height_px - 1) * dst_stride_bytes
@@ -125,22 +131,22 @@ transform_framebuffer__fallback__rotate_180(
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer__fallback__rotate_90(
-    const void *const restrict src,
+    const uint8_t *const restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    void *const restrict dst,
+    uint8_t *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
     uint32_t rgba32_shift_mask = *(uint32_t *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
 
+    _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "90 kernel assumes 4-row RGBA32 tile");
+
     const int dst_x_px_max = src_height_px - 1;
 
-    static const int tile_height = SCRANROT_FALLBACK_STRIDE_PX;
-    // XXX: Keeping tile_width for testing despite optimal seems to be 1
-    //      (on a 5600h, both with and without auto-vectorization)
-    static const int tile_width = 1;
+    static const int tile_height = 4;
+    static const int tile_width  = KERNEL_TILE_WIDTH_PX;
 
     for (int y = 0; y < src_height_px; y += tile_height) {
         for (int x = 0; x < src_width_px; x += tile_width) {
@@ -171,20 +177,20 @@ transform_framebuffer__fallback__rotate_90(
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer__fallback__rotate_0(
-    const void *const restrict src,
+    const uint8_t *const restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    void *const restrict dst,
+    uint8_t *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
     uint32_t rgba32_shift_mask = *(uint32_t *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
 
-    static const int tile_height = SCRANROT_FALLBACK_STRIDE_PX;
-    // XXX: Keeping tile_width for testing despite optimal seems to be 1
-    //      (on a 5600h, both with and without auto-vectorization)
-    static const int tile_width = 1;
+    _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "0 kernel assumes 4-row RGBA32 tile");
+
+    static const int tile_height = 4;
+    static const int tile_width  = KERNEL_TILE_WIDTH_PX;
 
     for (int y = 0; y < src_height_px; y += tile_height) {
         for (int x = 0; x < src_width_px; x += tile_width) {
@@ -214,25 +220,22 @@ transform_framebuffer__fallback__rotate_0(
 
 bool
 scranrot_transform_framebuffer_fallback(
-    const void *src,
-    void *dst,
+    const uint8_t *src,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
+    uint8_t *dst,
     // Reorders dst's pixel byte-order relative to src.
     //   8-bit-valued mask representing new order
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)
     uint32_t _rgba_shuffle_mask,
     enum scranrot_transform transform,
-    void **dst_with_offset,
     uintptr_t *dst_stride
 ) {
     // XXX TODO(!!): IMPLEMENT THIS!!
-    bool dimensions_supported = src_width_px >= SCRANROT_FALLBACK_STRIDE_PX && src_height_px >= SCRANROT_FALLBACK_STRIDE_PX;
-    if (!dimensions_supported) {
+    if (SCRANROT_UNLIKELY(src_width_px < MIN_TILE_WIDTH_PX || src_height_px < MIN_TILE_HEIGHT_PX)) {
         return false;
     }
-
 
     // TODO: Assert rgba_shuffle is valid (and let (0 => 0,1,2,3) ?)
 
@@ -240,13 +243,11 @@ scranrot_transform_framebuffer_fallback(
     const int _dst_stride_px = scranrot_get_transformed_width(src_width_px, src_height_px, transform);
     const int dst_stride_bytes = RGBA32_PIXEL_STRIDE * _dst_stride_px;
     *dst_stride = dst_stride_bytes;
-    *dst_with_offset = dst;
 
     const uint32_t rgba_shift_mask = _rgba_shuffle_mask * 8;
 
     scranrot_transform_framebuffer_impl_fn transform_fn = NULL;
 
-    // XXX TODO: Implement flipped
     switch (transform) {
     case SCRANROT_TRANSFORM_270:
         transform_fn = transform_framebuffer__fallback__rotate_270; break;
@@ -263,17 +264,10 @@ scranrot_transform_framebuffer_fallback(
 
     SCRANROT_ASSERT(transform_fn != NULL);
     return transform_framebuffer__generic_dispatcher(
-        src,
-        src_width_px,
-        src_height_px,
-        src_stride_bytes,
-        dst,
-        dst_stride_bytes,
-
+        src, src_width_px, src_height_px, src_stride_bytes,
+        dst, dst_stride_bytes,
         transform_fn,
-        transform,
-        &rgba_shift_mask,
-        SCRANROT_FALLBACK_STRIDE_PX,
-        SCRANROT_FALLBACK_STRIDE_PX
+        transform, &rgba_shift_mask,
+        KERNEL_TILE_WIDTH_PX, KERNEL_TILE_HEIGHT_PX
     );
 }
