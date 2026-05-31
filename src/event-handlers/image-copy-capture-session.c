@@ -65,7 +65,7 @@ handle_image_copy_capture_session_stopped(
 }
 
 
-void
+static void
 handle_image_copy_capture_session_dmabuf_device(
     void *data,
     struct ext_image_copy_capture_session_v1 *ext_image_copy_capture_session_v1,
@@ -75,7 +75,7 @@ handle_image_copy_capture_session_dmabuf_device(
 }
 
 
-void
+static void
 handle_image_copy_capture_session_dmabuf_format(
     void *data,
     struct ext_image_copy_capture_session_v1 *ext_image_copy_capture_session_v1,
@@ -86,7 +86,7 @@ handle_image_copy_capture_session_dmabuf_format(
 }
 
 
-void
+static void
 handle_image_copy_capture_session_done(
     void *data,
     struct ext_image_copy_capture_session_v1 *ext_image_copy_capture_session_v1

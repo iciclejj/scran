@@ -38,7 +38,7 @@ static struct _pending_head m_pending_heads[MAX_OUTPUTS] = { };
 
 
 // See comment in our `handle_fractional_scale_preferred_scale` for more info,
-static inline void
+static void
 handle_wlr_output_head_scale(
     void *data,
     struct zwlr_output_head_v1 *output_head,
@@ -50,7 +50,8 @@ handle_wlr_output_head_scale(
     DEBUG("handle_wlr_output_head_scale(): %f\n", get_normalized_scaler(scale, 256));
 }
 
-void handle_wlr_output_head_name(
+static void
+handle_wlr_output_head_name(
     void *data,
     struct zwlr_output_head_v1 *wlr_output_head,
     const char *name
@@ -69,7 +70,8 @@ void handle_wlr_output_head_name(
     }
 }
 
-void handle_wlr_output_head_finished(
+static void
+handle_wlr_output_head_finished(
     void *data,
     struct zwlr_output_head_v1 *head
 ) {
@@ -79,17 +81,17 @@ void handle_wlr_output_head_finished(
     zcosmic_output_head_v1_release(pending_head->cosmic_head);
 }
 
-void handle_wlr_output_head_description( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, const char *description)           { /* No-op. */ }
-void handle_wlr_output_head_physical_size( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, int32_t width, int32_t height)   { /* No-op. */ }
-void handle_wlr_output_head_mode( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, struct zwlr_output_mode_v1 *mode)         { /* No-op. */ }
-void handle_wlr_output_head_enabled( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, int32_t enabled)                       { /* No-op. */ }
-void handle_wlr_output_head_current_mode( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, struct zwlr_output_mode_v1 *mode) { /* No-op. */ }
-void handle_wlr_output_head_position( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, int32_t x, int32_t y)                 { /* No-op. */ }
-void handle_wlr_output_head_transform( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, int32_t transform)                   { /* No-op. */ }
-void handle_wlr_output_head_make( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, const char *make)                         { /* No-op. */ }
-void handle_wlr_output_head_model( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, const char *model)                       { /* No-op. */ }
-void handle_wlr_output_head_serial_number( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, const char *serial_number)       { /* No-op. */ }
-void handle_wlr_output_head_adaptive_sync( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, uint32_t state)                  { /* No-op. */ }
+static void handle_wlr_output_head_description( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, const char *description)           { /* No-op. */ }
+static void handle_wlr_output_head_physical_size( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, int32_t width, int32_t height)   { /* No-op. */ }
+static void handle_wlr_output_head_mode( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, struct zwlr_output_mode_v1 *mode)         { /* No-op. */ }
+static void handle_wlr_output_head_enabled( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, int32_t enabled)                       { /* No-op. */ }
+static void handle_wlr_output_head_current_mode( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, struct zwlr_output_mode_v1 *mode) { /* No-op. */ }
+static void handle_wlr_output_head_position( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, int32_t x, int32_t y)                 { /* No-op. */ }
+static void handle_wlr_output_head_transform( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, int32_t transform)                   { /* No-op. */ }
+static void handle_wlr_output_head_make( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, const char *make)                         { /* No-op. */ }
+static void handle_wlr_output_head_model( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, const char *model)                       { /* No-op. */ }
+static void handle_wlr_output_head_serial_number( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, const char *serial_number)       { /* No-op. */ }
+static void handle_wlr_output_head_adaptive_sync( void *data, struct zwlr_output_head_v1 *zwlr_output_head_v1, uint32_t state)                  { /* No-op. */ }
 
 struct zwlr_output_head_v1_listener wlr_output_head_listener = {
     .name = handle_wlr_output_head_name,
@@ -110,7 +112,8 @@ struct zwlr_output_head_v1_listener wlr_output_head_listener = {
 
 
 // See comment in our `handle_fractional_scale_preferred_scale` for more info,
-void handle_cosmic_output_head_scale_1000(
+static void
+handle_cosmic_output_head_scale_1000(
     void *data,
     struct zcosmic_output_head_v1 *zcosmic_output_head_v1,
     int32_t scale_1000
@@ -121,10 +124,10 @@ void handle_cosmic_output_head_scale_1000(
     DEBUG("handle_cosmic_output_head_scale_1000(): %f\n", get_normalized_scaler(scale_1000, 1000));
 }
 
-void handle_cosmic_output_head_mirroring( void *data, struct zcosmic_output_head_v1 *zcosmic_output_head_v1, const char *name) { /* No-op. */ }
-void handle_cosmic_output_head_adaptive_sync_available( void *data, struct zcosmic_output_head_v1 *zcosmic_output_head_v1, uint32_t available) { /* No-op. */ }
-void handle_cosmic_output_head_adaptive_sync_ext( void *data, struct zcosmic_output_head_v1 *zcosmic_output_head_v1, uint32_t state) { /* No-op. */ }
-void handle_cosmic_output_head_xwayland_primary( void *data, struct zcosmic_output_head_v1 *zcosmic_output_head_v1, uint32_t state) { /* No-op. */ }
+static void handle_cosmic_output_head_mirroring( void *data, struct zcosmic_output_head_v1 *zcosmic_output_head_v1, const char *name) { /* No-op. */ }
+static void handle_cosmic_output_head_adaptive_sync_available( void *data, struct zcosmic_output_head_v1 *zcosmic_output_head_v1, uint32_t available) { /* No-op. */ }
+static void handle_cosmic_output_head_adaptive_sync_ext( void *data, struct zcosmic_output_head_v1 *zcosmic_output_head_v1, uint32_t state) { /* No-op. */ }
+static void handle_cosmic_output_head_xwayland_primary( void *data, struct zcosmic_output_head_v1 *zcosmic_output_head_v1, uint32_t state) { /* No-op. */ }
 
 struct zcosmic_output_head_v1_listener cosmic_output_head_listener = {
     .scale_1000 = handle_cosmic_output_head_scale_1000,
@@ -135,7 +138,8 @@ struct zcosmic_output_head_v1_listener cosmic_output_head_listener = {
 };
 
 
-void handle_wlr_output_manager_head(
+static void
+handle_wlr_output_manager_head(
     void *data,
     struct zwlr_output_manager_v1 *zwlr_output_manager_v1,
     struct zwlr_output_head_v1 *head
@@ -183,7 +187,8 @@ void handle_wlr_output_manager_head(
     ++m_n_pending_heads;
 }
 
-void handle_wlr_output_manager_done(
+static void
+handle_wlr_output_manager_done(
     void *data,
     struct zwlr_output_manager_v1 *zwlr_output_manager_v1,
     uint32_t serial
@@ -211,7 +216,8 @@ void handle_wlr_output_manager_done(
     }
 }
 
-void handle_wlr_output_manager_finished(
+static void
+handle_wlr_output_manager_finished(
     void *data,
     struct zwlr_output_manager_v1 *manager
 ) {

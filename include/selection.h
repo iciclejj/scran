@@ -25,8 +25,8 @@ void set_selection_initialized(struct scran_output *st_output);
 bool set_selection_freeze_size(struct scran_output *st_output);
  void unset_selection_freeze_size(struct scran_output *st_output);
 
-void start_grabbing_focus();
-void stop_grabbing_focus();
+void start_grabbing_focus(void);
+void stop_grabbing_focus(void);
 
 
 #endif

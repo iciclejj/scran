@@ -9,6 +9,7 @@
 #include "ext-image-copy-capture-v1.h"
 
 #include "state.h"
+#include "init.h"
 #include "event-handlers.h"
 
 

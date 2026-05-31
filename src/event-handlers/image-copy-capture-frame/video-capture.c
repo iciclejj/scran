@@ -196,7 +196,7 @@ end_capture:
 }
 
 
-void
+static void
 handle_image_copy_capture_frame_failed__video_capture(
     void *data,
     struct ext_image_copy_capture_frame_v1 *frame,

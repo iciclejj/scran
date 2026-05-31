@@ -4,7 +4,6 @@
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 
-#include "init.h"
 #include "state.h"
 #include "state-util.h"
 #include "selection.h"

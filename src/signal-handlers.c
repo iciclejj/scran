@@ -4,6 +4,7 @@
 #include <stdatomic.h>
 
 #include "state.h"
+#include "signal-handlers.h"
 
 
 // TODO: Maybe a separate signal struct to keep this more sanitary, at least if

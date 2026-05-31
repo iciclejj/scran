@@ -297,7 +297,7 @@ _arena_hand_out_pointers_to_recipients(struct _arena_context *arena) {
 
 // Open shm file, get fd, unlink file, return fd.
 // The underlying file survives unlinking.
-int
+static inline int
 _shm_open_anon(void)
 {
     static const char *shm_tmp_filename = "/icicle-wayland-client-jfkdsalfj";

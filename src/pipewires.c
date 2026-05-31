@@ -10,8 +10,6 @@
 #include <libavcodec/avcodec.h>
 #include <libavutil/audio_fifo.h>
 
-#include "pipewire/context.h"
-#include "pipewire/loop.h"
 #include "state.h"
 #include "pipewires.h"
 #include "capture.h"

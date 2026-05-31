@@ -26,7 +26,7 @@
 //     .selection = handle_data_control_device_selection,
 // };
 
-void
+static void
 handle_data_control_source_send(
     void *data_,
     struct ext_data_control_source_v1 *source,
@@ -96,7 +96,7 @@ failed:
 }
 
 
-void
+static void
 handle_data_control_source_cancelled(
     void *data,
     struct ext_data_control_source_v1 *source
