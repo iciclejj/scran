@@ -62,6 +62,10 @@ refresh_freezeframe(
     // we don't also capture/"freeze" our selection surface. The freezeframe
     // capture_frame::ready handler calls the regular surface init function.
 
+    // Old freezeframe is not necessarily already hidden, since this function
+    // can be triggered without releasing focus first.
+    hide_freezeframe_surface(st_output);
+
     assert(SURFACE_SHM_FORMAT == WL_SHM_FORMAT_ARGB8888); // Alpha channel must not be ignored.
     wl_surface_attach(
         parent_surface->wl_surface,
@@ -216,27 +220,25 @@ update_freezeframe_scale_size_viewport(
 }
 
 void
-hide_freezeframe_surfaces()
+hide_freezeframe_surface(struct scran_output *st_output)
 {
-    FOR_EACH_OUTPUT(i, st_output) {
-        struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
+    struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
 
-        // NOTE(!!): We need to actually unmap this surface, and not just
-        // attach a transparent buffer, since attaching a transparent
-        // buffer causes some compositors (e.g. Sway) to not properly
-        // damage/redraw what was underneath, resulting in a black screen
-        // until something actually needs damage. I assume this is a bug.
-        wl_surface_attach(freezeframe->subsurface.wl_surface, NULL, 0, 0);
+    // NOTE(!!): We need to actually unmap this surface, and not just
+    // attach a transparent buffer, since attaching a transparent
+    // buffer causes some compositors (e.g. Sway) to not properly
+    // damage/redraw what was underneath, resulting in a black screen
+    // until something actually needs damage. I assume this is a bug.
+    wl_surface_attach(freezeframe->subsurface.wl_surface, NULL, 0, 0);
 
-        // FIXME: Is this still needed? Remove this if possible, after testing on all compositors.
-        wl_surface_damage_buffer(
-            freezeframe->subsurface.wl_surface,
-            0, 0, freezeframe->subsurface.width_px_buffer, freezeframe->subsurface.height_px_buffer
-        );
+    // FIXME: Is this still needed? Remove this if possible, after testing on all compositors.
+    wl_surface_damage_buffer(
+        freezeframe->subsurface.wl_surface,
+        0, 0, freezeframe->subsurface.width_px_buffer, freezeframe->subsurface.height_px_buffer
+    );
 
-        wl_surface_commit(freezeframe->subsurface.wl_surface);
+    wl_surface_commit(freezeframe->subsurface.wl_surface);
 
-        // XXX: This should optimally be set only once the unmap has actually taken effect.
-        freezeframe->state = SCRAN_FREEZEFRAME_HIDDEN;
-    }
+    // XXX: This should optimally be set only once the unmap has actually taken effect.
+    freezeframe->state = SCRAN_FREEZEFRAME_HIDDEN;
 }

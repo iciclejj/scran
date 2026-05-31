@@ -172,7 +172,9 @@ stop_grabbing_focus()
     DEBUG("Releasing focus\n");
 
     if (g_state.options.freezeframe) {
-        hide_freezeframe_surfaces();
+        FOR_EACH_OUTPUT(i, st_output) {
+            hide_freezeframe_surface(st_output);
+        }
     }
 
     FOR_EACH_OUTPUT(i, st_output) {
