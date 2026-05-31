@@ -22,9 +22,14 @@ request_freezeframe(struct scran_output *st_output)
         ext_image_copy_capture_session_v1_create_frame(
             st_output->freezeframe.wl_capture_session
         );
+
     ext_image_copy_capture_frame_v1_attach_buffer(
         frame,
         st_output->freezeframe.capture_buffer.wl_buffer
+    );
+    ext_image_copy_capture_frame_v1_damage_buffer(
+        frame,
+        0, 0, st_output->mode.width_px, st_output->mode.height_px
     );
     ext_image_copy_capture_frame_v1_add_listener(
         frame,
