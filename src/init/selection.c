@@ -152,8 +152,7 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
     if (g_state.options.freezeframe) {
         // This commits the surface in the capture-frame::ready handler, handing
         // over the wl_buffer containing the captured freezeframe.
-        assert(st_output->freezeframe.state == SCRAN_FREEZEFRAME_UNINITIALIZED);
-        request_freezeframe(st_output);
+        request_freezeframe(st_output, init_selection_surface_content);
     }
     else {
         // We need to pre-render here if we want the UI to be displayed already

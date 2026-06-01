@@ -8,8 +8,6 @@
 #include "state-util.h"
 #include "freezeframe.h"
 #include "event-handlers.h"
-#include "selection-surface.h"
-#include "selection.h"
 #include "print.h"
 #include "util/lib-interop.h"
 
@@ -37,26 +35,19 @@ static void handle_image_copy_capture_frame_presentation_time__image_capture_fre
 
 static inline void
 _continue_after_showing_freezeframe(
-    struct scran_output *st_output,
-    enum scran_freezeframe_state state_at_handler_entry
+    struct scran_output *st_output
 ) {
+    struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
 
-    // Show the selection again
-    // NOTE: Freezeframe takes over responsibility for initial selection
-    //       draw when freezeframe is enabled!
-    //       - See comment in init_postmem__selection() for more details.
-    //       Similar with focus retake.
-    switch (state_at_handler_entry) {
-    case SCRAN_FREEZEFRAME_UNINITIALIZED:
-        init_selection_surface_content(st_output);
-        break;
-    case SCRAN_FREEZEFRAME_REFRESH_REQUESTED_PENDING_REFOCUS:
-        refresh_freezeframe__finally(st_output);
-        start_grabbing_focus_for_output(st_output);
-        break;
-    default:
-        assert(0 && "Unexpected freezeframe state in freezeframe frame::ready() handler");
+    if (freezeframe->unhide_after_capture) {
+        freezeframe_unhide_selection_surface(st_output);
+        freezeframe->unhide_after_capture = false;
     }
+
+    freezeframe_callback callback = freezeframe->callback;
+    assert(callback != NULL);
+    freezeframe->callback = NULL;
+    callback(st_output);
 }
 
 static void
@@ -69,8 +60,6 @@ handle_image_copy_capture_frame_ready__freezeframe(
 
     struct scran_output             *st_output   = data;
     struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
-
-    enum scran_freezeframe_state prev_state = freezeframe->state;
 
     struct scran_output_freezeframe_buffer *buffer_to_display;
     enum wl_output_transform buffer_transform = -1;
@@ -124,9 +113,8 @@ handle_image_copy_capture_frame_ready__freezeframe(
         get_transformed_height(freezeframe->subsurface.width_px_buffer, freezeframe->subsurface.height_px_buffer, buffer_transform)
     );
     wl_surface_commit(freezeframe->subsurface.wl_surface);
-    freezeframe->state = SCRAN_FREEZEFRAME_SHOWING;
 
-    _continue_after_showing_freezeframe(st_output, prev_state);
+    _continue_after_showing_freezeframe(st_output);
 }
 
 static void
@@ -139,15 +127,10 @@ handle_image_copy_capture_frame_failed__freezeframe(
 
     eprintf("ERROR: freezeframe capture failed (%d)\n", reason);
 
-    struct scran_output             *st_output   = data;
-    struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
+    struct scran_output *st_output = data;
 
-    // FIXME: Handle this better
-
-    enum scran_freezeframe_state prev_state = freezeframe->state;
-    freezeframe->state = SCRAN_FREEZEFRAME_SHOWING;
-
-    _continue_after_showing_freezeframe(st_output, prev_state);
+    // FIXME: Handle this better?
+    _continue_after_showing_freezeframe(st_output);
 }
 
 struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener__freezeframe = {

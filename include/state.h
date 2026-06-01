@@ -159,12 +159,8 @@ struct scran_output_freezeframe_buffer {
     void *data;
 };
 
-enum scran_freezeframe_state {
-    SCRAN_FREEZEFRAME_UNINITIALIZED,
-    SCRAN_FREEZEFRAME_HIDDEN,
-    SCRAN_FREEZEFRAME_REFRESH_REQUESTED_PENDING_REFOCUS,
-    SCRAN_FREEZEFRAME_SHOWING,
-};
+struct scran_output;
+typedef void (*freezeframe_callback)(struct scran_output *) ;
 
 struct scran_output_freezeframe {
     struct scran_output_subsurface subsurface;
@@ -172,7 +168,8 @@ struct scran_output_freezeframe {
     struct ext_image_copy_capture_session_v1 *wl_capture_session;
     enum wl_shm_format shm_format;
 
-    enum scran_freezeframe_state state;
+    bool unhide_after_capture;
+    freezeframe_callback callback;
 
     // We have multiple buffers because we use a separate buffer for making the
     // parent *selection* surface transparent. Calling e.g. wl_surface_attach

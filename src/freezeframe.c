@@ -16,8 +16,9 @@ extern struct scran g_state;
 
 
 void
-request_freezeframe(struct scran_output *st_output)
-{
+request_freezeframe_assume_callback_set(struct scran_output *st_output) {
+    assert(st_output->freezeframe.callback != NULL);
+
     struct ext_image_copy_capture_frame_v1 *frame =
         ext_image_copy_capture_session_v1_create_frame(
             st_output->freezeframe.wl_capture_session
@@ -39,6 +40,19 @@ request_freezeframe(struct scran_output *st_output)
     ext_image_copy_capture_frame_v1_capture(frame);
 }
 
+// Use refresh_freezeframe post-init/during normal runtime
+void
+request_freezeframe(
+    struct scran_output *st_output,
+    freezeframe_callback callback
+) {
+    assert(callback != NULL);
+    assert(st_output->freezeframe.callback == NULL);
+
+    st_output->freezeframe.callback = callback;
+    request_freezeframe_assume_callback_set(st_output);
+}
+
 // NOTE: This function starts a chain of wayland events that must happen
 // strictly sequentially (which is why it is in the form of a chain of events).
 // Follow the listeners to see where each step takes you...
@@ -52,16 +66,18 @@ request_freezeframe(struct scran_output *st_output)
 //          Must be done after 3.1, since they both use the same layer/z-index
 void
 refresh_freezeframe(
-    struct scran_output *st_output
+    struct scran_output *st_output,
+    freezeframe_callback callback
 ) {
-    struct scran_output_freezeframe *freezeframe    = &st_output->freezeframe;
-    struct scran_output_surface     *parent_surface = &st_output->selection_surface.surface;
+    struct scran_output_freezeframe      *freezeframe       = &st_output->freezeframe;
+    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
 
-    // TODO: Less specific check, without _PENDING_REFOCUS ?
-    if (freezeframe->state == SCRAN_FREEZEFRAME_REFRESH_REQUESTED_PENDING_REFOCUS) {
-        eprintf("Freezeframe refresh already in progress.\n");
+    if (freezeframe->callback != NULL) {
+        eprintf("Freezeframe already in progress.\n");
         return;
     }
+    assert(callback != NULL);
+    freezeframe->callback = callback;
 
     // We will have to empty out, and then re-initialize our selection, so that
     // we don't also capture/"freeze" our selection surface. The freezeframe
@@ -69,43 +85,71 @@ refresh_freezeframe(
 
     // Old freezeframe is not necessarily already hidden, since this function
     // can be triggered without releasing focus first.
-    hide_freezeframe_surface(st_output);
-
-    assert(SURFACE_SHM_FORMAT == WL_SHM_FORMAT_ARGB8888); // Alpha channel must not be ignored.
-    wl_surface_attach(
-        parent_surface->wl_surface,
-        freezeframe->transparent_single_pixel_buffer.wl_buffer, 0, 0
-    );
-    wp_viewport_set_source(
-        parent_surface->viewport,
-        wl_fixed_from_int(0), wl_fixed_from_int(0), wl_fixed_from_int(1), wl_fixed_from_int(1)
-    );
-    wl_surface_damage_buffer(
-        parent_surface->wl_surface,
-        0, 0, 1, 1
-    );
-
-    // Once the ::presented event has verified that the transparent selection
-    // surface was presented, we start the capture from within there.
+    freezeframe_hide_surface(st_output);
+    // Once the ::presented event has verified that the selection surface was
+    // hidden, we start the capture from within there.
     wp_presentation_feedback_add_listener(
-        wp_presentation_feedback(g_state.globals.presentation, parent_surface->wl_surface),
+        wp_presentation_feedback(g_state.globals.presentation, selection_surface->surface.wl_surface),
         &presentation_feedback_listener__selection_transparent_for_freezeframe,
         st_output
     );
-    wl_surface_commit(parent_surface->wl_surface);
-
-    freezeframe->state = SCRAN_FREEZEFRAME_REFRESH_REQUESTED_PENDING_REFOCUS;
+    freezeframe_hide_selection_surface(st_output);
+    freezeframe->unhide_after_capture = true;
 }
 
 void
-refresh_freezeframe__finally(
+freezeframe_hide_surface(struct scran_output *st_output)
+{
+    struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
+
+    // NOTE(!!): We need to actually unmap this surface, and not just
+    // attach a transparent buffer, since attaching a transparent
+    // buffer causes some compositors (e.g. Sway) to not properly
+    // damage/redraw what was underneath, resulting in a black screen
+    // until something actually needs damage. I assume this is a bug.
+    wl_surface_attach(freezeframe->subsurface.wl_surface, NULL, 0, 0);
+
+    // FIXME: Is this still needed? Remove this if possible, after testing on all compositors.
+    wl_surface_damage_buffer(
+        freezeframe->subsurface.wl_surface,
+        0, 0, freezeframe->subsurface.width_px_buffer, freezeframe->subsurface.height_px_buffer
+    );
+
+    wl_surface_commit(freezeframe->subsurface.wl_surface);
+}
+
+void
+freezeframe_hide_selection_surface(struct scran_output *st_output)
+{
+    struct scran_output_surface     *st_surface  = &st_output->selection_surface.surface;
+    struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
+
+    assert(SURFACE_SHM_FORMAT == WL_SHM_FORMAT_ARGB8888); // Alpha channel must not be ignored.
+    wl_surface_attach(
+        st_surface->wl_surface,
+        freezeframe->transparent_single_pixel_buffer.wl_buffer, 0, 0
+    );
+    wp_viewport_set_source(
+        st_surface->viewport,
+        wl_fixed_from_int(0), wl_fixed_from_int(0), wl_fixed_from_int(1), wl_fixed_from_int(1)
+    );
+    wl_surface_damage_buffer(
+        st_surface->wl_surface,
+        0, 0, 1, 1
+    );
+    wl_surface_commit(
+        st_surface->wl_surface
+    );
+}
+
+void
+freezeframe_unhide_selection_surface(
     struct scran_output *st_output
 ) {
     struct scran_output_freezeframe      *freezeframe       = &st_output->freezeframe;
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
     (void)freezeframe;
 
-    assert(freezeframe->state == SCRAN_FREEZEFRAME_SHOWING);
 
     // TODO: Get a free buffer instead, and handle the case where can't?
     struct scran_output_selectionSurface_buffer *selection_buffer = &selection_surface->double_buffer[0];
@@ -222,28 +266,4 @@ update_freezeframe_scale_size_viewport(
 
     freezeframe->subsurface.width_px_buffer  = width_px_buffer;
     freezeframe->subsurface.height_px_buffer = height_px_buffer;
-}
-
-void
-hide_freezeframe_surface(struct scran_output *st_output)
-{
-    struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
-
-    // NOTE(!!): We need to actually unmap this surface, and not just
-    // attach a transparent buffer, since attaching a transparent
-    // buffer causes some compositors (e.g. Sway) to not properly
-    // damage/redraw what was underneath, resulting in a black screen
-    // until something actually needs damage. I assume this is a bug.
-    wl_surface_attach(freezeframe->subsurface.wl_surface, NULL, 0, 0);
-
-    // FIXME: Is this still needed? Remove this if possible, after testing on all compositors.
-    wl_surface_damage_buffer(
-        freezeframe->subsurface.wl_surface,
-        0, 0, freezeframe->subsurface.width_px_buffer, freezeframe->subsurface.height_px_buffer
-    );
-
-    wl_surface_commit(freezeframe->subsurface.wl_surface);
-
-    // XXX: This should optimally be set only once the unmap has actually taken effect.
-    freezeframe->state = SCRAN_FREEZEFRAME_HIDDEN;
 }

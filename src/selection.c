@@ -158,8 +158,8 @@ start_grabbing_focus()
 
     FOR_EACH_OUTPUT(i, st_output) {
         if (g_state.options.freezeframe) {
-            refresh_freezeframe(st_output);
-            continue; // freezeframe will call start_grabbing_focus_for_output once it's done
+            refresh_freezeframe(st_output, start_grabbing_focus_for_output);
+            continue;
         }
 
         start_grabbing_focus_for_output(st_output);
@@ -173,7 +173,7 @@ stop_grabbing_focus()
 
     if (g_state.options.freezeframe) {
         FOR_EACH_OUTPUT(i, st_output) {
-            hide_freezeframe_surface(st_output);
+            freezeframe_hide_surface(st_output);
         }
     }
 
