@@ -24,6 +24,15 @@ handle_presentation_feedback_presented__selection_transparent_for_freezeframe(
     struct scran_output *st_output = data;
 
     request_freezeframe_assume_callback_set(st_output);
+
+    // HACK: Force some output damage, since some compositors (like Hyprland on
+    // rapid consecutive freezeframe refreshes) may wait indefinitely for the
+    // next capture frame if no damage is detected.
+    //
+    // Simply doing an empty commit, without damage, seems enough for Hyprland,
+    // but we'll explicitly damage it just for good measure...
+    wl_surface_damage_buffer(st_output->selection_surface.surface.wl_surface, 0, 0, 1, 1);
+    wl_surface_commit(st_output->selection_surface.surface.wl_surface);
 }
 
 static inline void
