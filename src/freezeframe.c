@@ -5,6 +5,7 @@
 
 #include "state.h"
 #include "state-util.h"
+#include "capture.h"
 #include "init.h"
 #include "freezeframe.h"
 #include "event-handlers.h"
@@ -38,6 +39,11 @@ request_freezeframe_assume_callback_set(struct scran_output *st_output) {
         st_output
     );
     ext_image_copy_capture_frame_v1_capture(frame);
+
+    // Force some output damage, since some compositors (like Hyprland on rapid
+    // consecutive freezeframe refreshes) may wait indefinitely for the next
+    // capture frame if no damage is detected.
+    force_compositor_output_damage_for_capture(st_output);
 }
 
 // Use refresh_freezeframe post-init/during normal runtime

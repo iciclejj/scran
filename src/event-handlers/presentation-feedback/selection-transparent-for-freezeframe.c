@@ -25,11 +25,6 @@ handle_presentation_feedback_presented__selection_transparent_for_freezeframe(
     struct scran_output *st_output = data;
 
     request_freezeframe_assume_callback_set(st_output);
-
-    // Force some output damage, since some compositors (like Hyprland on rapid
-    // consecutive freezeframe refreshes) may wait indefinitely for the next
-    // capture frame if no damage is detected.
-    force_compositor_output_damage_for_capture(st_output);
 }
 
 static inline void
