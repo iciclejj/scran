@@ -151,6 +151,7 @@ struct scran_output_selectionSurface {
     struct scran_ui_keymap_surface_state ui_keymap_state_last_drawn;
 
     bool awaiting_frame_callback;
+    bool skip_handling_frame_callback;
 };
 
 

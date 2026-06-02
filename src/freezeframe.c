@@ -101,6 +101,9 @@ refresh_freezeframe(
     );
     freezeframe_hide_selection_surface(st_output);
     freezeframe->unhide_after_capture = true;
+    // Need to prevent any new or in-flight frame callbacks from cancelling out
+    // our surface hiding
+    selection_surface->skip_handling_frame_callback = true;
 }
 
 void
