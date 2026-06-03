@@ -235,7 +235,7 @@ scran_update_output_filepath(
     bool success = _create_filename_current_time(
         st_options->filename_format, file_extension, st_options->output_path_filename_pointer
     );
-
+    (void)success;
     // We verified the format string during init
     assert(success);
 

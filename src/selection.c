@@ -38,6 +38,9 @@ set_selection_surface_theme(
     case SURFACE_THEME_VIDEO_CAPTURE:
         fill_style = SCRAN_SELECTION_BORDER_COLOR_VIDEO_CAPTURE;
         break;
+    default:
+        fill_style = SCRAN_SELECTION_BORDER_COLOR_DEFAULT;
+        break;
     }
 
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
