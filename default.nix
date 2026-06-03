@@ -16,9 +16,9 @@
   meson,
   ninja,
 
-  # src overridable to ease installation from outside of nixpkgs, among other
-  # things
+  # overridable to ease installation from outside of nixpkgs, among other things
   _src ? ./.,
+  _version ? lib.removeSuffix "\n" (builtins.readFile ./VERSION),
 
   _target ? "release",
   hardeningDisable ? if _target == "debug" then [ "all" ] else [ ],
@@ -26,7 +26,7 @@
 
 stdenv.mkDerivation {
   pname = "scran";
-  version = "v0.9.2";
+  version = _version;
   src = _src;
 
   nativeBuildInputs = [

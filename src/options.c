@@ -422,7 +422,6 @@ _handle_cli_arg_output_directory(
 }
 
 #define SCRAN_USAGE    "Usage: scran [options...] [output_directory]"
-#define VERSION_STRING "v0.9.2"
 
 static const char help_string[] =
     SCRAN_USAGE "\n"
@@ -509,7 +508,7 @@ static const char help_string[] =
     "  - Example:            `pkill -SIGUSR1 scran`\n"
     "  - As sway keybinding: `bindsym Shift+Alt+Tab exec 'pkill -SIGUSR1 scran'`\n"
     "\n"
-    VERSION_STRING"\n"
+    SCRAN_VERSION_STRING"\n"
 ;
 
 bool
@@ -557,7 +556,7 @@ scran_handle_args(int argc, char *const *argv)
             break;
         case 'N': g_state.options.no_notifications                      = true;   break;
         case 'v':
-            printf("%s\n", VERSION_STRING);
+            printf("%s\n", SCRAN_VERSION_STRING);
             exit(EXIT_SUCCESS);
         case 'h':
             printf("%s", help_string);

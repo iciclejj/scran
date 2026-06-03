@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := debug
 
 PROG := scran
+VERSION := $(strip $(file <VERSION))
 
 FONT := assets/font.ttf
 
@@ -28,6 +29,7 @@ INCDIRS += $(WL_PROTOCOLS_DIR_LOCAL)
 # TODO: CPPFLAGS?
 _CFLAGS := $(addprefix -I, $(INCDIRS)) -Wall -Wextra -Wno-unused-parameter
 _CFLAGS += $(shell $(PKG_CONFIG) --cflags $(PKGCONF_LIBS))
+_CFLAGS += -DSCRAN_VERSION_STRING=\"v$(VERSION)\"
 ifeq ($(SD_BUS_LIB),libsystemd)
 	_CFLAGS += -DSCRAN_LIBSYSTEMD_SD_BUS
 endif
@@ -118,6 +120,10 @@ protocols_srcs: $(wayland_protocols_srcs)
 
 build_dir_release := $(BUILD_DIR)/release
 build_dir_debug :=   $(BUILD_DIR)/debug
+
+$(build_dir_release)/src/options.o \
+$(build_dir_debug)/src/options.o \
+: VERSION
 
 $(build_dir_release)/%.o: %.c  protocols_srcs
 	@mkdir -p $(dir $@)

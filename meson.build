@@ -1,6 +1,6 @@
 project(
   'scran', 'c',
-  version: '0.9.2',
+  version: files('VERSION'),
   meson_version: '>=1.1.0',
   default_options: [
     'warning_level=2', # -Wall -Wextra
@@ -14,6 +14,7 @@ add_project_arguments(
   [
     '-Wno-unused-parameter',
     '-Wmissing-prototypes',
+    '-DSCRAN_VERSION_STRING="v@0@"'.format(meson.project_version()),
   ],
   language: 'c'
 )
