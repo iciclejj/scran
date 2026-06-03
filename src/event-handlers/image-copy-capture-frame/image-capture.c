@@ -58,6 +58,11 @@ handle_image_copy_capture_frame_presentation_time__image_capture(
     // No-op
 }
 
+static inline void
+_end_capture() {
+    atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
+}
+
 
 // TODO:
 // - Maybe see the top TODO in the __video_capture handler
@@ -211,7 +216,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     bl_array_destroy(&bl_array_img_encoded);
 
 end_capture:
-    atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
+    _end_capture();
 }
 
 
@@ -222,6 +227,8 @@ handle_image_copy_capture_frame_failed__image_capture(
     uint32_t reason
 ) {
     ext_image_copy_capture_frame_v1_destroy(frame);
+
+    _end_capture();
 }
 
 
