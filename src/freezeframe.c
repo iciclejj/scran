@@ -20,6 +20,13 @@ void
 request_freezeframe_assume_callback_set(struct scran_output *st_output) {
     assert(st_output->freezeframe.callback != NULL);
 
+    struct scran_freezeframe_buffer *capture_buffer = &st_output->freezeframe.capture_buffer;
+
+    if (capture_buffer->busy) { // XXX: Not thread-safe.
+        capture_buffer->release_callback = request_freezeframe_assume_callback_set;
+        return;
+    }
+
     struct ext_image_copy_capture_frame_v1 *frame =
         ext_image_copy_capture_session_v1_create_frame(
             st_output->freezeframe.wl_capture_session
@@ -27,7 +34,7 @@ request_freezeframe_assume_callback_set(struct scran_output *st_output) {
 
     ext_image_copy_capture_frame_v1_attach_buffer(
         frame,
-        st_output->freezeframe.capture_buffer.wl_buffer
+        capture_buffer->wl_buffer
     );
     ext_image_copy_capture_frame_v1_damage_buffer(
         frame,
@@ -161,6 +168,7 @@ freezeframe_unhide_selection_surface(
 
 
     // TODO: Get a free buffer instead, and handle the case where can't?
+    //         See wl_surface::get_release() (as of wayland 1.25.0, 2026-03-19).
     struct scran_output_selectionSurface_buffer *selection_buffer = &selection_surface->double_buffer[0];
 
     // Need to attach a correctly-sized buffer back again before re-setting

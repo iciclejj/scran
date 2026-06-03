@@ -154,14 +154,15 @@ struct scran_output_selectionSurface {
     bool skip_handling_frame_callback;
 };
 
-
-struct scran_output_freezeframe_buffer {
-    struct wl_buffer *wl_buffer;
-    void *data;
-};
-
 struct scran_output;
 typedef void (*freezeframe_callback)(struct scran_output *) ;
+
+struct scran_freezeframe_buffer {
+    struct wl_buffer *wl_buffer;
+    void *data;
+    freezeframe_callback release_callback;
+    bool busy;
+};
 
 struct scran_output_freezeframe {
     struct scran_output_subsurface subsurface;
@@ -178,9 +179,9 @@ struct scran_output_freezeframe {
     // to wait for new configure events. Behavior is also not consistent across
     // compositors. Using wp_single_pixel_buffer also has damage-related bugs on
     // some compositors, at least on Sway.
-    struct scran_output_freezeframe_buffer capture_buffer;
-    struct scran_output_freezeframe_buffer surface_buffer;
-    struct scran_output_freezeframe_buffer transparent_single_pixel_buffer;
+    struct scran_freezeframe_buffer capture_buffer;
+    struct scran_freezeframe_buffer surface_buffer;
+    struct scran_freezeframe_buffer transparent_single_pixel_buffer;
 };
 
 struct scran_seat_pointerContext {

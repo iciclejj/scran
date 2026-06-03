@@ -363,10 +363,6 @@ init_meminit(
                 return false;
             }
 
-            // TODO: Maybe do proper ::released handling for these buffers, but
-            // has not caused issues yet, since we're effectively guaranteed
-            // multiple frames between each freezeframe refresh
-
             // XXX: We use a separate capture buffer and surface buffer due to
             // wl_surface::set_buffer_transform not working as expected in
             // Hyprland (#14441).
@@ -468,7 +464,7 @@ init_meminit(
         if (g_state.options.freezeframe) {
             struct scran_output_freezeframe *_freezeframe_surface = &st_output->freezeframe;
 
-            struct scran_output_freezeframe_buffer *_capture_buffer = &_freezeframe_surface->capture_buffer;
+            struct scran_freezeframe_buffer *_capture_buffer = &_freezeframe_surface->capture_buffer;
             const ptrdiff_t _capture_buffer_offset = _capture_buffer->data - shm_arena->addr;
             _capture_buffer->wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
@@ -478,8 +474,13 @@ init_meminit(
                 get_capture_stride(st_output),
                 _freezeframe_surface->shm_format
             );
+            wl_buffer_add_listener(
+                _capture_buffer->wl_buffer,
+                &freezeframe_buffer_listener,
+                _capture_buffer
+            );
 
-            struct scran_output_freezeframe_buffer *_surface_buffer = &_freezeframe_surface->surface_buffer;
+            struct scran_freezeframe_buffer *_surface_buffer = &_freezeframe_surface->surface_buffer;
             const ptrdiff_t _surface_buffer_offset = _surface_buffer->data - shm_arena->addr;
             _surface_buffer->wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
@@ -489,8 +490,13 @@ init_meminit(
                 _freezeframe_surface->subsurface.width_px_buffer * SURFACE_PIXEL_STRIDE,
                 _freezeframe_surface->shm_format
             );
+            wl_buffer_add_listener(
+                _surface_buffer->wl_buffer,
+                &freezeframe_buffer_listener,
+                _surface_buffer
+            );
 
-            struct scran_output_freezeframe_buffer *_transparent_buffer = &_freezeframe_surface->transparent_single_pixel_buffer;
+            struct scran_freezeframe_buffer *_transparent_buffer = &_freezeframe_surface->transparent_single_pixel_buffer;
             const ptrdiff_t _transparent_buffer_offset = _transparent_buffer->data - shm_arena->addr;
             _transparent_buffer->wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
@@ -501,6 +507,8 @@ init_meminit(
                 // problems if that ever fails...
                 SURFACE_SHM_FORMAT
             );
+            // Don't need listener for this, since it's effectively a const buffer.
+            //   TODO: Make the data pointer const?
         }
 
         assert(st_output->capture.frame_ctx.st_buffer.data != NULL);
