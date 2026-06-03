@@ -128,7 +128,7 @@ in
    <details open> <summary><ins>Arch</ins></summary>
 
    ```bash
-   pacman -S   base-devel wayland wayland-protocols libxkbcommon libsystemd libpipewire ffmpeg
+   pacman -S base-devel meson ninja wayland wayland-protocols libxkbcommon libsystemd libpipewire ffmpeg
    # Install Blend2D through the AUR (See below if you prefer to build Blend2D manually.)
    yay -S blend2d
    ```
@@ -136,19 +136,13 @@ in
    <details> <summary><ins>Ubuntu</ins></summary>
 
    ```bash
-   apt install make gcc pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libsystemd libpipewire-0.3-dev libavcodec-dev libavutil-dev libavformat-dev
+   apt install meson ninja-build gcc pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libsystemd-dev libpipewire-0.3-dev libavcodec-dev libavutil-dev libavformat-dev
    ```
    </details>
    <details> <summary><ins>Fedora</ins></summary>
 
-   #### Fedora:
-   Warning: Personally tested Fedora builds are failing to video correctly, at the moment. The bug
-            can likely be worked around by using a different ffmpeg build than the
-            one I was linking against (installed through the below command).
-            Your mileage may vary.
-
    ```bash
-   dnf install make gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel systemd-devel pipewire-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel blend2d-devel
+   dnf install meson ninja gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel systemd-devel pipewire-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel blend2d-devel
    ```
    </details>
 
@@ -157,20 +151,19 @@ in
    -->
    [See instructions below](#blend2d) if Blend2D is not packaged for your distribution.
 
-3. **Build**
+2. **Build**
    ```bash
    git clone "https://github.com/iciclejj/scran"
    cd scran
-   make -j release
+   meson setup build --buildtype=release
+   meson compile -C build
    ```
 
-4. **Install**
+3. **Install**
    ```bash
-   # scran should now be at ./build/release/scran.
-
+   # scran should now be at ./build/scran.
    # To install it system-wide (may require sudo):
-   # Assuming your distro expects installs to /usr/local/bin/:
-   install -m 755 ./build/release/scran -D /usr/local/bin/scran
+   meson install -C build
    ```
 
 #### Blend2d
