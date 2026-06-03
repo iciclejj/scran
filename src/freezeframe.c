@@ -124,14 +124,14 @@ freezeframe_hide_surface(struct scran_output *st_output)
     // damage/redraw what was underneath, resulting in a black screen
     // until something actually needs damage. I assume this is a bug.
     wl_surface_attach(freezeframe->subsurface.wl_surface, NULL, 0, 0);
-
     // FIXME: Is this still needed? Remove this if possible, after testing on all compositors.
     wl_surface_damage_buffer(
         freezeframe->subsurface.wl_surface,
         0, 0, freezeframe->subsurface.width_px_buffer, freezeframe->subsurface.height_px_buffer
     );
-
     wl_surface_commit(freezeframe->subsurface.wl_surface);
+
+    freezeframe->showing = false;
 }
 
 void

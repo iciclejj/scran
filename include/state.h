@@ -171,6 +171,7 @@ struct scran_output_freezeframe {
     enum wl_shm_format shm_format;
 
     bool unhide_after_capture;
+    bool showing;
     freezeframe_callback callback;
 
     // We have multiple buffers because we use a separate buffer for making the

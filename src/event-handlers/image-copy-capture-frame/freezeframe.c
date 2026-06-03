@@ -117,6 +117,7 @@ _display_freezeframe(
         get_transformed_height(freezeframe->subsurface.width_px_buffer, freezeframe->subsurface.height_px_buffer, buffer_transform)
     );
     wl_surface_commit(freezeframe->subsurface.wl_surface);
+    freezeframe->showing = true;
 
     _continue_after_showing_freezeframe(st_output);
 }
