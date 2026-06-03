@@ -128,14 +128,16 @@ $(build_dir_debug)/%.o: %.c    protocols_srcs
 
 # TODO: Separate Makefile for scranrot
 # TODO: Handle changed header files
-_srcdirs := src                                         \
-			src/init                                    \
-			src/util                                    \
-			src/event-handlers                          \
-			src/event-handlers/image-copy-capture-frame \
-			src/event-handlers/surface                  \
-			src/event-handlers/layer-surface	        \
-			src/event-handlers/fractional-scale		    \
+_srcdirs := src                                           \
+			src/init                                      \
+			src/util                                      \
+			src/event-handlers                            \
+			src/event-handlers/image-copy-capture-frame   \
+			src/event-handlers/image-copy-capture-session \
+			src/event-handlers/surface                    \
+			src/event-handlers/layer-surface	          \
+			src/event-handlers/fractional-scale		      \
+			src/event-handlers/presentation-feedback      \
 			scranrot/src
 srcs := $(foreach dir,$(_srcdirs),$(wildcard $(dir)/*.c))
 

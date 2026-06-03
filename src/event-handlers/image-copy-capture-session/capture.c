@@ -34,7 +34,8 @@ handle_image_copy_capture_session_shm_format(
 ) {
     struct scran_output *st_output = data;
 
-    DEBUG("session::shm_format received: %x\n", shm_format);
+    DEBUG("capture_session::shm_format():\n");
+    DEBUG("  format: %x\n", shm_format);
 
     // List of formats we want to support.
     // TODO: Add more formats and logic for handling them

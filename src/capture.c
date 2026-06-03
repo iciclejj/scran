@@ -478,27 +478,13 @@ request_end_video_capture(struct scran_output *st_output)
     // timestamp. This also lets the frame listener finalize the
     // recording and clean up as soon as possible.
     ext_image_copy_capture_frame_v1_destroy(st_output->capture.frame_ctx.frame);
-
-    // XXX TODO: Client-requested damage does *not* necessarily trigger a new
-    // ::ready from the compositor, if no actual damage has occurred. Sway, for
-    // example, ignores it, and forces us to wait for an indefinite amount of
-    // time for the capture to end, if no movement has happened on screen.
-    //
-    // The optimal solution might be to handle this internally anyways, either
-    // manually duplicating it or changing the frame duration retroactively.
-    //
-    // HACK: For now, just force a surface redraw to effectively force the
-    // compositor to send us another capture frame... (May not work if only
-    // the transparent part of the selection surface is visible, e.g. with
-    // "fullscreen" capture, but seems effective even then on my local
-    // Sway (v1.11).)
-    set_force_redraw_selection_surface_buffers(st_output);
-    request_selection_surface_frame_callback(st_output);
-
     request_video_capture_frame(
         &st_output->capture.frame_ctx,
         0, 0, st_output->mode.width_px, st_output->mode.height_px
     );
+
+    force_compositor_output_damage_for_capture(st_output);
+
     st_output->capture.frame_ctx.capturing_video = false;
 }
 
@@ -566,12 +552,22 @@ dispatch_image_capture_event(struct scran_output *st_output)
         ext_image_copy_capture_session_v1_create_frame(
             st_output->capture.frame_ctx.wl_capture_session
         );
-    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__image_capture, st_output);
+
     ext_image_copy_capture_frame_v1_attach_buffer(
         frame,
         st_output->capture.frame_ctx.st_buffer.wl_buffer
     );
-    ext_image_copy_capture_frame_v1_capture(frame);
+    ext_image_copy_capture_frame_v1_damage_buffer(
+        frame,
+        0, 0, st_output->mode.width_px, st_output->mode.height_px
+    );
+    ext_image_copy_capture_frame_v1_add_listener(
+        frame,
+        &image_copy_capture_frame_listener__image_capture, st_output
+    );
+    ext_image_copy_capture_frame_v1_capture(
+        frame
+    );
 }
 
 

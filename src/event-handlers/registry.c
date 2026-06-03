@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include <wayland-client-protocol.h>
 #include <wayland-client.h>
 
 #include "wlr-layer-shell-unstable-v1.h"
@@ -42,6 +43,8 @@ registry_handle_global(
     if (_INTERFACE_IS(wl_compositor_interface)) {
         // v4 => wl_surface v4 => wl_surface::damage_buffer
         globals->compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 4);
+    } else if (_INTERFACE_IS(wl_subcompositor_interface)) {
+        globals->subcompositor = wl_registry_bind(registry, name, &wl_subcompositor_interface, 1);
     } else if (_INTERFACE_IS(wl_seat_interface)) {
         if (globals->seat != NULL) {
             // TODO: wl_list of seats
@@ -156,6 +159,7 @@ registry_listener__destroy(struct scran *state)
     // TODO: Is a roundtrip necessary?
 
     wl_compositor_destroy(globals->compositor);
+    wl_subcompositor_destroy(globals->subcompositor);
     wl_seat_destroy(globals->seat);
     wl_shm_destroy(globals->shm);
     zwlr_layer_shell_v1_destroy(globals->layer_shell);

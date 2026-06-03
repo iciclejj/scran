@@ -13,6 +13,7 @@
  */
 
 #include <wayland-client.h>
+#include "freezeframe.h"
 #include "wlr-output-management-unstable-v1.h"
 #include "cosmic-output-management-unstable-v1.h"
 

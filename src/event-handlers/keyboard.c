@@ -6,6 +6,8 @@
 #include <xkbcommon/xkbcommon.h>
 
 #include "state.h"
+#include "state-util.h"
+#include "freezeframe.h"
 #include "event-handlers.h"
 #include "capture.h"
 #include "print.h"
@@ -148,6 +150,40 @@ handle_keyboard_key(
         break;
     case XKB_KEY_Tab:
         stop_grabbing_focus();
+        break;
+    case XKB_KEY_z:
+    case XKB_KEY_Z:
+        if (!state->options.freezeframe) {
+            break;
+        }
+
+        bool pretend_all_hidden = true;
+        FOR_EACH_OUTPUT(i, st_output) {
+            if (st_output->freezeframe.callback != NULL) {
+                eprintf("Freezeframe refresh already in progress; ignoring toggle.\n");
+                goto z_done;
+            }
+            if (st_output->freezeframe.showing) {
+                pretend_all_hidden = false;
+            }
+        }
+
+        // XXX TODO: Make this a bit cleaner responsibility-wise.
+        //             See also refactor-TODO in freezeframe_unhide_selection_surface().
+        //           Also, maybe make this the only (default) way to toggle freezeframe,
+        //           and don't let refocus automatically re-freeze?
+        if (pretend_all_hidden) {
+            FOR_EACH_OUTPUT(i, st_output) {
+                refresh_freezeframe(st_output, start_grabbing_focus_for_output);
+            }
+        } else {
+            FOR_EACH_OUTPUT(i, st_output) {
+                freezeframe_hide_surface(st_output);
+                wl_surface_commit(st_output->selection_surface.surface.wl_surface);
+            }
+        }
+
+z_done:
         break;
     case XKB_KEY_Escape:
         eprintf("Got escape key...");

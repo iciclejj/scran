@@ -45,11 +45,12 @@ selection_surface_frame_callback_handler(
     struct scran_output                  *st_output         = data;
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
 
-    if (!selection_surface->awaiting_frame_callback) {
+    bool skip = selection_surface->skip_handling_frame_callback || !selection_surface->awaiting_frame_callback;
+    selection_surface->awaiting_frame_callback = false;
+
+    if (skip) {
         return;
     }
-
-    selection_surface->awaiting_frame_callback = false;
 
     struct scran_output_selectionSurface_buffer *st_buffer = get_free_double_buffer(&st_output->selection_surface);
 
