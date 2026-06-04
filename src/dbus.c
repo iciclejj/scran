@@ -14,6 +14,7 @@
 
 #include "state.h"
 #include "dbus.h"
+#include "selection.h"
 #include "print.h"
 
 
@@ -23,6 +24,10 @@ extern struct scran g_state;
 static struct {
     sd_bus *bus;
     int fd;
+
+    bool         StatusNotifierItem_name_registered;
+    sd_bus_slot *StatusNotifierItem_vtable_slot;
+    sd_bus_slot *StatusNotifierItem_current_callback_slot;
 } m_dbus = { .fd = -1 };
 
 
@@ -309,6 +314,246 @@ Dbus_AddMatch_callback(
     return 0;
 }
 
+static inline void
+advance_itoa_7(
+    int integer,
+    char *restrict ascii,
+    ssize_t *restrict i_ascii
+) {
+    assert(integer <= 9999999);
+
+    int lo4     = integer % 10000;
+    int hi3     = integer / 10000;
+
+    int lo4_lo2 = lo4 % 100;
+    int lo4_hi2 = lo4 / 100;
+
+    int hi3_lo2 = hi3 % 100;
+    int hi3_hi1 = hi3 / 100;
+
+    ascii[(*i_ascii)++] = '0' + hi3_hi1;
+    ascii[(*i_ascii)++] = '0' + hi3_lo2 / 10;
+    ascii[(*i_ascii)++] = '0' + hi3_lo2 % 10;
+    ascii[(*i_ascii)++] = '0' + lo4_hi2 / 10;
+    ascii[(*i_ascii)++] = '0' + lo4_hi2 % 10;
+    ascii[(*i_ascii)++] = '0' + lo4_lo2 / 10;
+    ascii[(*i_ascii)++] = '0' + lo4_lo2 % 10;
+}
+
+#define STATUS_NOTIFIER_ITEM_NAME_BASE "org.kde.StatusNotifierItem-"
+static char m_StatusNotifierItem_name[64] = STATUS_NOTIFIER_ITEM_NAME_BASE;
+
+struct StatusNotifierItem_data {
+    const char    *Category;
+    const char    *Id;
+    const char    *Title;
+    const char    *Status;
+    const uint32_t WindowId;
+    const int      ItemIsMenu;
+} m_StatusNotifierItem_data = {
+    .Category   = "ApplicationStatus",
+    .Id         = "scran",
+    .Title      = "Scran",
+    .Status     = "Active",
+    .WindowId   = 0, // TODO: Can we target scran's layer shell?
+
+    // TODO: Menu
+    .ItemIsMenu = (int)false,
+    // .Menu = "",
+
+    // TODO: Make icons
+    // .IconName   = "",
+    // .IconPixmap = "",
+    // .ToolTip    = "",
+};
+
+static int
+StatusNotifierWatcher_RegisterStatusNotifierItem_callback(
+    struct sd_bus_message *message,
+    void *userdata,
+    sd_bus_error *error
+) {
+    assert(m_dbus.StatusNotifierItem_name_registered);
+
+    const char *error_name = NULL;
+    if (sd_bus_message_is_method_error(message, error_name)) {
+        log_sd_bus_error(sd_bus_message_get_error(message), "StatusNotifierWatcher::RegisterStatusNotifierItem");
+        goto fail;
+    }
+
+    DEBUG("RegisterStatusNotifierItem reply without error.\n");
+    return 0;
+fail:
+    scran_dbus_destroy_StatusNotifierItem();
+    return 0;
+}
+
+static int
+Dbus_RequestName_callback__StatusNotifierItem(
+    struct sd_bus_message *message,
+    void *userdata,
+    sd_bus_error *error
+) {
+    const char *error_name = NULL;
+    if (sd_bus_message_is_method_error(message, error_name)) {
+        log_sd_bus_error(sd_bus_message_get_error(message), "Could not register well-known name for StatusNotifierItem.");
+        goto fail;
+    }
+
+    int ret;
+
+    uint32_t request_result;
+    ret = sd_bus_message_read(message, "u", &request_result);
+    if (ret < 0) {
+        log_sd_bus_ret_error(ret, "Failed to read RequestName reply for binding StatusNotifierItem");
+        goto fail;
+    }
+
+    enum {
+        REPLY_PRIMARY_OWNER = 1,
+        REPLY_IN_QUEUE = 2,
+        REPLY_EXISTS = 3,
+        REPLY_ALREADY_OWNER = 4,
+    };
+    if (request_result != REPLY_PRIMARY_OWNER && request_result != REPLY_ALREADY_OWNER) {
+        eprintf("Couldn't bind desired StatusNotifierItem name\n");
+        goto fail;
+    }
+
+    m_dbus.StatusNotifierItem_name_registered = true;
+
+    m_dbus.StatusNotifierItem_current_callback_slot = sd_bus_slot_unref(m_dbus.StatusNotifierItem_current_callback_slot);
+    ret = sd_bus_call_method_async(
+        m_dbus.bus, &m_dbus.StatusNotifierItem_current_callback_slot,
+        "org.kde.StatusNotifierWatcher", "/StatusNotifierWatcher",
+        "org.kde.StatusNotifierWatcher", "RegisterStatusNotifierItem",
+        StatusNotifierWatcher_RegisterStatusNotifierItem_callback, NULL,
+        "s",
+          m_StatusNotifierItem_name
+    );
+    if (ret < 0) {
+        log_sd_bus_ret_error(ret, "Failed to call RegisterStatusNotifierItem");
+        goto fail;
+    }
+
+    DEBUG("RegisterStatusNotifierItem reply without error.\n");
+    return 0;
+fail:
+    scran_dbus_destroy_StatusNotifierItem();
+    return 0;
+}
+
+static int
+StatusNotifierItem_ContextMenu(
+    struct sd_bus_message *message,
+    void *userdata,
+    sd_bus_error *error
+) {
+    // TODO
+    return sd_bus_reply_method_return(message, "");
+}
+
+static int
+StatusNotifierItem_Activate(
+    struct sd_bus_message *message,
+    void *userdata,
+    sd_bus_error *error
+) {
+    start_grabbing_focus();
+    return sd_bus_reply_method_return(message, "");
+}
+
+static int
+StatusNotifierItem_SecondaryActivate(
+    struct sd_bus_message *message,
+    void *userdata,
+    sd_bus_error *error
+) {
+    return sd_bus_reply_method_return(message, "");
+}
+
+static int
+StatusNotifierItem_Scroll(
+    struct sd_bus_message *message,
+    void *userdata,
+    sd_bus_error *error
+) {
+    return sd_bus_reply_method_return(message, "");
+}
+
+static const sd_bus_vtable m_StatusNotifierItem_vtable[] = {
+    SD_BUS_VTABLE_START(0),
+
+    SD_BUS_PROPERTY("Category",   "s", NULL, offsetof(struct StatusNotifierItem_data, Category),   SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("Id",         "s", NULL, offsetof(struct StatusNotifierItem_data, Id),         SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("Title",      "s", NULL, offsetof(struct StatusNotifierItem_data, Title),      SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("Status",     "s", NULL, offsetof(struct StatusNotifierItem_data, Status),     SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("WindowId",   "u", NULL, offsetof(struct StatusNotifierItem_data, WindowId),   SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("ItemIsMenu", "b", NULL, offsetof(struct StatusNotifierItem_data, ItemIsMenu), SD_BUS_VTABLE_PROPERTY_CONST),
+    // TODO:
+    // SD_BUS_PROPERTY("Menu",                "o",            NULL, 0, SD_BUS_VTABLE_PROPERTY_CONST),
+    // SD_BUS_PROPERTY("IconName",            "s",            NULL, 0, 0),
+    // SD_BUS_PROPERTY("IconPixmap",          "a(iiay)",      NULL, 0, 0),
+    // SD_BUS_PROPERTY("ToolTip",             "(sa(iiay)ss)", NULL, 0, 0),
+    SD_BUS_METHOD("ContextMenu",       "ii", "", StatusNotifierItem_ContextMenu,       SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("Activate",          "ii", "", StatusNotifierItem_Activate,          SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("SecondaryActivate", "ii", "", StatusNotifierItem_SecondaryActivate, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("Scroll",            "is", "", StatusNotifierItem_Scroll,            SD_BUS_VTABLE_UNPRIVILEGED),
+
+    SD_BUS_SIGNAL("NewTitle",         "",  0),
+    SD_BUS_SIGNAL("NewIcon",          "",  0),
+    SD_BUS_SIGNAL("NewAttentionIcon", "",  0),
+    SD_BUS_SIGNAL("NewOverlayIcon",   "",  0),
+    SD_BUS_SIGNAL("NewToolTip",       "",  0),
+    SD_BUS_SIGNAL("NewStatus",        "s", 0),
+
+    SD_BUS_VTABLE_END
+};
+
+static bool
+register_StatusNotifierItem()
+{
+    int ret;
+    assert(m_dbus.bus != NULL);
+
+    ret = sd_bus_add_object_vtable(
+        m_dbus.bus, &m_dbus.StatusNotifierItem_vtable_slot,
+        "/StatusNotifierItem", "org.kde.StatusNotifierItem",
+        m_StatusNotifierItem_vtable, &m_StatusNotifierItem_data
+    );
+    if (ret < 0) {
+        log_sd_bus_ret_error(ret, "Failed to add sd-bus vtable for StatusNotifierItem");
+        goto fail;
+    }
+
+    {
+        int pid = getpid();
+        ssize_t i = sizeof(STATUS_NOTIFIER_ITEM_NAME_BASE) - 1;
+        assert(m_StatusNotifierItem_name[i-1] == '-');
+        advance_itoa_7(pid, m_StatusNotifierItem_name, &i);
+        m_StatusNotifierItem_name[i++] = '-';
+        m_StatusNotifierItem_name[i++] = '1';
+        m_StatusNotifierItem_name[i++] = '\0';
+    }
+    m_dbus.StatusNotifierItem_current_callback_slot = sd_bus_slot_unref(m_dbus.StatusNotifierItem_current_callback_slot);
+    ret = sd_bus_request_name_async(
+        m_dbus.bus, &m_dbus.StatusNotifierItem_current_callback_slot,
+        m_StatusNotifierItem_name,
+        SD_BUS_NAME_ALLOW_REPLACEMENT | SD_BUS_NAME_REPLACE_EXISTING,
+        Dbus_RequestName_callback__StatusNotifierItem, NULL
+    );
+    if (ret < 0) {
+        log_sd_bus_ret_error(ret, "Failed to request well-known service name for StatusNotifierItem");
+        goto fail;
+    }
+
+    return true;
+
+fail:
+    scran_dbus_destroy_StatusNotifierItem();
+    return false;
+}
+
 bool
 scran_dbus_init(int epoll_fd, int *timeout_ms)
 {
@@ -329,6 +574,10 @@ scran_dbus_init(int epoll_fd, int *timeout_ms)
     );
     if (ret < 0) {
         log_sd_bus_ret_error(ret, "Failed to register listener for Notification::ActionInvoked");
+    }
+
+    if (!register_StatusNotifierItem()) {
+        eprintf("Warning: Failed to create tray icon\n.");
     }
 
     int dbus_fd = sd_bus_get_fd(m_dbus.bus);
@@ -354,8 +603,32 @@ fail_before_open:
 }
 
 void
+scran_dbus_destroy_StatusNotifierItem()
+{
+    if (m_dbus.StatusNotifierItem_vtable_slot != NULL) {
+        m_dbus.StatusNotifierItem_vtable_slot = sd_bus_slot_unref(m_dbus.StatusNotifierItem_vtable_slot);
+    }
+
+    if (m_dbus.StatusNotifierItem_current_callback_slot != NULL) {
+        m_dbus.StatusNotifierItem_current_callback_slot = sd_bus_slot_unref(m_dbus.StatusNotifierItem_current_callback_slot);
+    }
+
+    if (m_dbus.bus != NULL) {
+        if (m_dbus.StatusNotifierItem_name_registered) {
+            sd_bus_release_name_async(
+                m_dbus.bus, NULL, m_StatusNotifierItem_name,
+                NULL, NULL // TODO: Should we care about handling this callback, other than maybe logging?
+            );
+            m_dbus.StatusNotifierItem_name_registered = false;
+        }
+    }
+}
+
+void
 scran_dbus_destroy(int epoll_fd)
 {
+    scran_dbus_destroy_StatusNotifierItem();
+
     if (m_dbus.bus != NULL) {
         sd_bus_flush_close_unref(m_dbus.bus);
         m_dbus.bus = NULL;

@@ -177,6 +177,7 @@ stay_alive_while_clipboard_active()
 
     int wl_display_fd = wl_display_get_fd(g_state.globals.display);
     int scran_portal_timeout_ms;
+    scran_dbus_destroy_StatusNotifierItem();
     scran_dbus_update(m_epoll_fd, &scran_portal_timeout_ms);
 
     while (*clipboard_refcount > 0) {

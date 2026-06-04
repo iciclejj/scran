@@ -13,5 +13,7 @@ void scran_dbus_update(int epoll_fd, int *timeout_ms);
 bool scran_dbus_init(int epoll_fd, int *timeout_ms);
   void scran_dbus_destroy(int epoll_fd);
 
+void scran_dbus_destroy_StatusNotifierItem(void);
+
 
 #endif
