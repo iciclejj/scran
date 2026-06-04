@@ -25,7 +25,7 @@
 #include "selection.h"
 #include "options.h"
 #include "clipboard.h"
-#include "portals.h"
+#include "dbus.h"
 #include "pipewires.h"
 
 

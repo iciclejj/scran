@@ -13,7 +13,7 @@
 #endif
 
 #include "state.h"
-#include "portals.h"
+#include "dbus.h"
 #include "print.h"
 
 
@@ -169,7 +169,7 @@ scran_portal_notify_file_saved(const char *saved_file_path)
 
 
 static inline int
-scran_portal_get_timeout_ms()
+_get_sd_bus_timeout_ms()
 {
     uint64_t timeout_abs_usec = UINT64_MAX;
     sd_bus_get_timeout(m_dbus.bus, &timeout_abs_usec);
@@ -205,7 +205,7 @@ scran_portal_get_timeout_ms()
 // This function is still safe to call if dbus was not successfully initialized,
 // and will simply set timeout_ms to -1.
 void
-scran_portal_update(int epoll_fd, int *timeout_ms)
+scran_dbus_update(int epoll_fd, int *timeout_ms)
 {
     if (m_dbus.bus == NULL) {
         assert(m_dbus.fd == -1);
@@ -227,25 +227,25 @@ scran_portal_update(int epoll_fd, int *timeout_ms)
     }
 
     // sd_bus_get_events manpage implies we should always check for a new fd
-    int portal_fd = sd_bus_get_fd(m_dbus.bus);
-    int _portal_events = sd_bus_get_events(m_dbus.bus);
+    int dbus_fd = sd_bus_get_fd(m_dbus.bus);
+    int _dbus_events = sd_bus_get_events(m_dbus.bus);
     struct epoll_event epoll_event = {
-        .events = _portal_events,
-        .data.fd = portal_fd,
+        .events = _dbus_events,
+        .data.fd = dbus_fd,
     };
-    if (portal_fd == m_dbus.fd) {
+    if (dbus_fd == m_dbus.fd) {
         epoll_ctl(epoll_fd, EPOLL_CTL_MOD, m_dbus.fd, &epoll_event);
     } else {
         epoll_ctl(epoll_fd, EPOLL_CTL_DEL, m_dbus.fd, NULL);
-        epoll_ctl(epoll_fd, EPOLL_CTL_ADD, portal_fd, &epoll_event);
-        m_dbus.fd = portal_fd;
+        epoll_ctl(epoll_fd, EPOLL_CTL_ADD, dbus_fd, &epoll_event);
+        m_dbus.fd = dbus_fd;
     }
 
-    *timeout_ms = scran_portal_get_timeout_ms();
+    *timeout_ms = _get_sd_bus_timeout_ms();
     return;
 
 fail:
-    scran_portal_destroy(epoll_fd);
+    scran_dbus_destroy(epoll_fd);
     *timeout_ms = -1;
     return;
 }
@@ -310,7 +310,7 @@ Dbus_AddMatch_callback(
 }
 
 bool
-scran_portal_init(int epoll_fd, int *timeout_ms)
+scran_dbus_init(int epoll_fd, int *timeout_ms)
 {
     if (0 > sd_bus_default_user(&m_dbus.bus)) {
         eprintf("Failed to open D-Bus connection.\n");
@@ -331,30 +331,30 @@ scran_portal_init(int epoll_fd, int *timeout_ms)
         log_sd_bus_ret_error(ret, "Failed to register listener for Notification::ActionInvoked");
     }
 
-    int portal_fd = sd_bus_get_fd(m_dbus.bus);
-    int _portal_events = sd_bus_get_events(m_dbus.bus);
+    int dbus_fd = sd_bus_get_fd(m_dbus.bus);
+    int _dbus_events = sd_bus_get_events(m_dbus.bus);
     struct epoll_event epoll_event = {
-        .events = _portal_events,
-        .data.fd = portal_fd,
+        .events = _dbus_events,
+        .data.fd = dbus_fd,
     };
-    if (-1 == epoll_ctl(epoll_fd, EPOLL_CTL_ADD, portal_fd, &epoll_event)) {
+    if (-1 == epoll_ctl(epoll_fd, EPOLL_CTL_ADD, dbus_fd, &epoll_event)) {
         eprintf("Failed to add D-Bus connection to epoll.\n");
         goto fail;
     }
-    m_dbus.fd = portal_fd;
+    m_dbus.fd = dbus_fd;
 
-    *timeout_ms = scran_portal_get_timeout_ms();
+    *timeout_ms = _get_sd_bus_timeout_ms();
     return true;
 
 fail:
-    scran_portal_destroy(epoll_fd);
+    scran_dbus_destroy(epoll_fd);
 fail_before_open:
     *timeout_ms = -1;
     return false;
 }
 
 void
-scran_portal_destroy(int epoll_fd)
+scran_dbus_destroy(int epoll_fd)
 {
     if (m_dbus.bus != NULL) {
         sd_bus_flush_close_unref(m_dbus.bus);
@@ -365,7 +365,7 @@ scran_portal_destroy(int epoll_fd)
     if (m_dbus.fd != -1) {
         epoll_ctl(epoll_fd, EPOLL_CTL_DEL, m_dbus.fd, NULL);
         m_dbus.fd = -1;
-        DEBUG("Deleted portal fd from epoll\n");
+        DEBUG("Deleted D-Bus fd from epoll\n");
     }
 }
 

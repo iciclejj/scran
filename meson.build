@@ -54,7 +54,7 @@ scran_sources = files(
   'src/freezeframe.c',
   'src/options.c',
   'src/pipewires.c',
-  'src/portals.c',
+  'src/dbus.c',
   'src/selection.c',
   'src/selection-surface.c',
   'src/signal-handlers.c',

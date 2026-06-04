@@ -5,7 +5,7 @@
 
 #include <ext-image-copy-capture-v1.h>
 
-#include "portals.h"
+#include "dbus.h"
 #include "state.h"
 #include "state-util.h" // TODO: Move this into util/ ?
 #include "util/util.h"

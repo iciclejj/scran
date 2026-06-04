@@ -34,7 +34,7 @@
 #include "options.h"
 #include "signal-handlers.h"
 #include "util/blend2d.h"
-#include "portals.h"
+#include "dbus.h"
 #include "pipewires.h"
 #include "scranrot.h"
 
@@ -177,7 +177,7 @@ stay_alive_while_clipboard_active()
 
     int wl_display_fd = wl_display_get_fd(g_state.globals.display);
     int scran_portal_timeout_ms;
-    scran_portal_update(m_epoll_fd, &scran_portal_timeout_ms);
+    scran_dbus_update(m_epoll_fd, &scran_portal_timeout_ms);
 
     while (*clipboard_refcount > 0) {
         while (wl_display_prepare_read(g_state.globals.display) != 0) {
@@ -225,7 +225,7 @@ stay_alive_while_clipboard_active()
         // TODO: Can we somehow find out whether a notification has been
         // dismissed by the user, so we can stop polling this, now that no new
         // notifications can be launched anymore (during clipboard keepalive)?
-        scran_portal_update(m_epoll_fd, &scran_portal_timeout_ms);
+        scran_dbus_update(m_epoll_fd, &scran_portal_timeout_ms);
     }
 
     eprintf("Clipboard selection stolen! Continuing exit.\n");
@@ -685,7 +685,7 @@ run_main_loop(struct scran_signal_masks *signal_masks)
 
     // Only our portal fd actually cares about max timeout atm
     int scran_portal_timeout_ms = -1;
-    if (!scran_portal_init(m_epoll_fd, &scran_portal_timeout_ms)) {
+    if (!scran_dbus_init(m_epoll_fd, &scran_portal_timeout_ms)) {
         eprintf("WARNING: Failed to initialize XDG Desktop Portals\n");
         assert(scran_portal_timeout_ms == -1);
     }
@@ -757,7 +757,7 @@ run_main_loop(struct scran_signal_masks *signal_masks)
         }
 
         // Fire this unconditionally after every poll (details in function description)
-        scran_portal_update(m_epoll_fd, &scran_portal_timeout_ms);
+        scran_dbus_update(m_epoll_fd, &scran_portal_timeout_ms);
 
         if (g_state.sig_focus_requested == true) {
             start_grabbing_focus();
@@ -829,7 +829,7 @@ int main(int argc, char *argv[])
 
     // TODO: Implement scran_portal_drain() to call here? Shouldn't really be
     // necessary in practice, at the moment.
-    scran_portal_destroy(m_epoll_fd);
+    scran_dbus_destroy(m_epoll_fd);
     close(m_epoll_fd);
 
     wl_display_disconnect(g_state.globals.display);
