@@ -22,7 +22,7 @@ source=("$pkgname-$pkgver.tar.gz::https://github.com/iciclejj/$pkgname/archive/r
 sha256sums=('b7d3e266c2084ee1457e011c8d7e6162d99c19d5d7e7ee1a066f15fc2bc80134')
 
 build() {
-    arch-meson "$pkgname-$pkgver" build -D sd-bus-provider=libsystemd -D b_ndebug=true
+    arch-meson "$pkgname-$pkgver" build -D sd-bus-provider=libsystemd
     meson compile -C build
 }
 
