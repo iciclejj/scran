@@ -343,6 +343,15 @@ advance_itoa_7(
 #define STATUS_NOTIFIER_ITEM_NAME_BASE "org.kde.StatusNotifierItem-"
 static char m_StatusNotifierItem_name[64] = STATUS_NOTIFIER_ITEM_NAME_BASE;
 
+#define STATUS_NOTIFIER_ITEM_ICON_NAME "camera-photo"
+
+struct StatusNotifierItem_icon_pixmap {
+    int  width;
+    int  height;
+    size_t _data_size;
+    const uint8_t *data;
+};
+
 struct StatusNotifierItem_data {
     const char    *Category;
     const char    *Id;
@@ -350,6 +359,16 @@ struct StatusNotifierItem_data {
     const char    *Status;
     const uint32_t WindowId;
     const int      ItemIsMenu;
+    const char    *IconName;
+
+    // For getters
+    const struct {
+        const char *icon_name;
+        const struct StatusNotifierItem_icon_pixmap *icon_pixmaps;
+        size_t _icon_pixmaps_len;
+        const char *title;
+        const char *description; // Supports subset of html
+    } ToolTip;
 } m_StatusNotifierItem_data = {
     .Category   = "ApplicationStatus",
     .Id         = "scran",
@@ -361,11 +380,97 @@ struct StatusNotifierItem_data {
     .ItemIsMenu = (int)false,
     // .Menu = "",
 
-    // TODO: Make icons
-    // .IconName   = "",
-    // .IconPixmap = "",
-    // .ToolTip    = "",
+    .IconName   = STATUS_NOTIFIER_ITEM_ICON_NAME,
+    .ToolTip = {
+        // TODO: What does icon_name actually do? Seems unused on swaybar and Waybar.
+        .icon_name         = STATUS_NOTIFIER_ITEM_ICON_NAME,
+        .icon_pixmaps      = NULL,
+        ._icon_pixmaps_len = 0,
+        .title             = "Scran",
+        .description       = "Grab focus",
+    },
 };
+
+static inline int
+append_StatusNotifierItem_icon_pixmaps(
+    sd_bus_message *message,
+    const struct StatusNotifierItem_icon_pixmap *pixmaps,
+    size_t n_pixmaps
+) {
+    assert(pixmaps != NULL || n_pixmaps == 0);
+    int ret = 0;
+
+    for (size_t i = 0; i < n_pixmaps; ++i) {
+        if (0 > (ret = sd_bus_message_open_container(message, SD_BUS_TYPE_STRUCT, "iiay"))) {
+            return ret;
+        }
+        {
+            if (0 > (ret = sd_bus_message_append(message, "i", pixmaps[i].width))) {
+                return ret;
+            }
+            if (0 > (ret = sd_bus_message_append(message, "i", pixmaps[i].height))) {
+                return ret;
+            }
+            if (0 > (ret = sd_bus_message_append_array(message, 'y',  pixmaps[i].data, pixmaps[i]._data_size))) {
+                return ret;
+            }
+        }
+        if (0 > (ret = sd_bus_message_close_container(message))) {
+            return ret;
+        }
+    }
+
+    return ret;
+}
+
+#define STATUS_NOTIFIER_ITEM_TOOL_TIP_TYPE "(sa(iiay)ss)"
+static int
+StatusNotifierItem_ToolTip_get_property(
+    sd_bus *bus,
+    const char *path,
+    const char *interface,
+    const char *property,
+    sd_bus_message *reply,
+    void *userdata,
+    sd_bus_error *error
+) {
+    int ret;
+
+    if (0 > (ret = sd_bus_message_open_container(reply, SD_BUS_TYPE_STRUCT, "sa(iiay)ss"))) {
+        return ret;
+    }
+    {
+        if (0 > (ret = sd_bus_message_append(reply, "s", m_StatusNotifierItem_data.ToolTip.icon_name))) {
+            return ret;
+        }
+        if (0 > (ret = sd_bus_message_open_container(reply, SD_BUS_TYPE_ARRAY, "(iiay)"))) {
+            return ret;
+        }
+        {
+            if (0 > (ret = append_StatusNotifierItem_icon_pixmaps(
+                                reply, m_StatusNotifierItem_data.ToolTip.icon_pixmaps,
+                                m_StatusNotifierItem_data.ToolTip._icon_pixmaps_len))
+            ) {
+                return ret;
+            }
+        }
+        if (0 > (ret = sd_bus_message_close_container(reply))) {
+            return ret;
+        }
+        if (0 > (ret = sd_bus_message_append(reply, "s", m_StatusNotifierItem_data.ToolTip.title))) {
+            return ret;
+        }
+        if (0 > (ret = sd_bus_message_append(reply, "s", m_StatusNotifierItem_data.ToolTip.description))) {
+            return ret;
+        }
+    }
+    if (0 > (ret = sd_bus_message_close_container(reply))) {
+        return ret;
+    }
+
+    return ret;
+}
+
 
 static int
 StatusNotifierWatcher_RegisterStatusNotifierItem_callback(
@@ -490,11 +595,11 @@ static const sd_bus_vtable m_StatusNotifierItem_vtable[] = {
     SD_BUS_PROPERTY("Status",     "s", NULL, offsetof(struct StatusNotifierItem_data, Status),     SD_BUS_VTABLE_PROPERTY_CONST),
     SD_BUS_PROPERTY("WindowId",   "u", NULL, offsetof(struct StatusNotifierItem_data, WindowId),   SD_BUS_VTABLE_PROPERTY_CONST),
     SD_BUS_PROPERTY("ItemIsMenu", "b", NULL, offsetof(struct StatusNotifierItem_data, ItemIsMenu), SD_BUS_VTABLE_PROPERTY_CONST),
-    // TODO:
-    // SD_BUS_PROPERTY("Menu",                "o",            NULL, 0, SD_BUS_VTABLE_PROPERTY_CONST),
-    // SD_BUS_PROPERTY("IconName",            "s",            NULL, 0, 0),
-    // SD_BUS_PROPERTY("IconPixmap",          "a(iiay)",      NULL, 0, 0),
-    // SD_BUS_PROPERTY("ToolTip",             "(sa(iiay)ss)", NULL, 0, 0),
+    // TODO: SD_BUS_PROPERTY("Menu",                "o",            NULL, 0, SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("IconName",   "s", NULL, offsetof(struct StatusNotifierItem_data, IconName),   SD_BUS_VTABLE_PROPERTY_CONST),
+    // TODO: SD_BUS_PROPERTY("IconPixmap",          "a(iiay)",      NULL, 0, 0),
+    SD_BUS_PROPERTY("ToolTip", STATUS_NOTIFIER_ITEM_TOOL_TIP_TYPE, StatusNotifierItem_ToolTip_get_property, 0, SD_BUS_VTABLE_PROPERTY_CONST),
+
     SD_BUS_METHOD("ContextMenu",       "ii", "", StatusNotifierItem_ContextMenu,       SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("Activate",          "ii", "", StatusNotifierItem_Activate,          SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("SecondaryActivate", "ii", "", StatusNotifierItem_SecondaryActivate, SD_BUS_VTABLE_UNPRIVILEGED),
