@@ -38,14 +38,14 @@ registry_handle_global(
     struct scran *state = data;
     struct scran_globals *globals = &state->globals;
 
-    #define _INTERFACE_IS(desired) (strcmp(interface, desired.name) == 0)
+    #define INTERFACE_IS(desired) (strcmp(interface, desired.name) == 0)
 
-    if (_INTERFACE_IS(wl_compositor_interface)) {
+    if (INTERFACE_IS(wl_compositor_interface)) {
         // v4 => wl_surface v4 => wl_surface::damage_buffer
         globals->compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 4);
-    } else if (_INTERFACE_IS(wl_subcompositor_interface)) {
+    } else if (INTERFACE_IS(wl_subcompositor_interface)) {
         globals->subcompositor = wl_registry_bind(registry, name, &wl_subcompositor_interface, 1);
-    } else if (_INTERFACE_IS(wl_seat_interface)) {
+    } else if (INTERFACE_IS(wl_seat_interface)) {
         if (globals->seat != NULL) {
             // TODO: wl_list of seats
             DEBUG("Ignoring additional wl_seat global.\n");
@@ -57,16 +57,16 @@ registry_handle_global(
             wl_seat_add_listener(globals->seat, &seat_listener, state);
             DEBUG("added seat listener.\n");
         }
-    } else if (_INTERFACE_IS(wl_shm_interface)) {
+    } else if (INTERFACE_IS(wl_shm_interface)) {
         globals->shm         = wl_registry_bind(registry, name, &wl_shm_interface, 1);
-    } else if (_INTERFACE_IS(zwlr_layer_shell_v1_interface)) {
+    } else if (INTERFACE_IS(zwlr_layer_shell_v1_interface)) {
         // v3 => ::destroy
         // v4 => keyboard interactivity ondemand
         globals->layer_shell = wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 4);
-    } else if (_INTERFACE_IS(wp_cursor_shape_manager_v1_interface)) {
+    } else if (INTERFACE_IS(wp_cursor_shape_manager_v1_interface)) {
         // sway only has version 1 at the time of writing.
         globals->cursor_shape_manager = wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, 1);
-    } else if (_INTERFACE_IS(wl_output_interface)) {
+    } else if (INTERFACE_IS(wl_output_interface)) {
         // TODO: Handle adding/removing outputs during program runtime?
         if (state->n_outputs >= MAX_OUTPUTS) {
             DEBUG("Maximum output limit reached: %d\n", MAX_OUTPUTS);
@@ -80,19 +80,19 @@ registry_handle_global(
         wl_output_add_listener(curr_output->wl_output, &output_listener, curr_output);
 
         ++state->n_outputs;
-    } else if (_INTERFACE_IS(zxdg_output_manager_v1_interface)) {
+    } else if (INTERFACE_IS(zxdg_output_manager_v1_interface)) {
         globals->xdg_output_manager = wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface, 1);
-    } else if (_INTERFACE_IS(ext_output_image_capture_source_manager_v1_interface)) {
+    } else if (INTERFACE_IS(ext_output_image_capture_source_manager_v1_interface)) {
         globals->output_image_capture_source_manager = wl_registry_bind(registry, name, &ext_output_image_capture_source_manager_v1_interface, 1);
-    } else if (_INTERFACE_IS(ext_image_copy_capture_manager_v1_interface)) {
+    } else if (INTERFACE_IS(ext_image_copy_capture_manager_v1_interface)) {
         globals->image_copy_capture_manager = wl_registry_bind(registry, name, &ext_image_copy_capture_manager_v1_interface, 1);
-    } else if (_INTERFACE_IS(ext_data_control_manager_v1_interface)) {
+    } else if (INTERFACE_IS(ext_data_control_manager_v1_interface)) {
         globals->data_control_manager = wl_registry_bind(registry, name, &ext_data_control_manager_v1_interface, 1);
-    } else if (_INTERFACE_IS(wp_presentation_interface)) {
+    } else if (INTERFACE_IS(wp_presentation_interface)) {
         globals->presentation = wl_registry_bind(registry, name, &wp_presentation_interface, 1);
-    } else if (_INTERFACE_IS(wp_fractional_scale_manager_v1_interface)) {
+    } else if (INTERFACE_IS(wp_fractional_scale_manager_v1_interface)) {
         globals->fractional_scale_manager = wl_registry_bind(registry, name, &wp_fractional_scale_manager_v1_interface, 1);
-    } else if (_INTERFACE_IS(zwlr_output_manager_v1_interface)) {
+    } else if (INTERFACE_IS(zwlr_output_manager_v1_interface)) {
         // v3 => head::release
         //
         // FIXME: For some reason this bind leaks 4800 (50 * 96) bytes of
@@ -101,15 +101,15 @@ registry_handle_global(
         // leaked). Adding the listener immediately on the line after this bind
         // also does not help. Not sure if all of the lost blocks are heads.
         globals->wlr_output_manager = wl_registry_bind(registry, name, &zwlr_output_manager_v1_interface, 3);
-    } else if (_INTERFACE_IS(zcosmic_output_manager_v1_interface)) {
+    } else if (INTERFACE_IS(zcosmic_output_manager_v1_interface)) {
         globals->cosmic_output_manager = wl_registry_bind(registry, name, &zcosmic_output_manager_v1_interface, 1);
-    } else if (_INTERFACE_IS(wp_viewporter_interface)) {
+    } else if (INTERFACE_IS(wp_viewporter_interface)) {
         globals->viewporter = wl_registry_bind(registry, name, &wp_viewporter_interface, 1);
-    } else if (_INTERFACE_IS(hyprland_surface_manager_v1_interface)) {
+    } else if (INTERFACE_IS(hyprland_surface_manager_v1_interface)) {
         globals->hypr_surface_manager = wl_registry_bind(registry, name, &hyprland_surface_manager_v1_interface, 1);
     }
 
-    #undef _INTERFACE_IS
+    #undef INTERFACE_IS
 }
 
 

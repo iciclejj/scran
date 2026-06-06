@@ -34,7 +34,7 @@ static void handle_image_copy_capture_frame_damage__freezeframe(void *data, stru
 static void handle_image_copy_capture_frame_presentation_time__image_capture_freezeframe(void *data, struct ext_image_copy_capture_frame_v1 *frame, uint32_t tv_sec_hi, uint32_t tv_sec_lo, uint32_t tv_nsec) { }
 
 static inline void
-_continue_after_showing_freezeframe(
+continue_after_showing_freezeframe(
     struct scran_output *st_output
 ) {
     struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
@@ -53,7 +53,7 @@ _continue_after_showing_freezeframe(
 }
 
 static void
-_display_freezeframe(
+display_freezeframe(
     struct scran_output *st_output
 ) {
     struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
@@ -77,7 +77,7 @@ _display_freezeframe(
         enum wl_output_transform scranrot_transform = output_is_flipped ? st_output->transform - 4 : st_output->transform;
 
         if (surface_buffer->busy) {
-            surface_buffer->release_callback = _display_freezeframe;
+            surface_buffer->release_callback = display_freezeframe;
             return;
         }
 
@@ -119,7 +119,7 @@ _display_freezeframe(
     wl_surface_commit(freezeframe->subsurface.wl_surface);
     freezeframe->showing = true;
 
-    _continue_after_showing_freezeframe(st_output);
+    continue_after_showing_freezeframe(st_output);
 }
 
 static void
@@ -131,7 +131,7 @@ handle_image_copy_capture_frame_ready__freezeframe(
     DEBUG("handle_image_copy_capture_frame_ready__freezeframe()\n");
 
     struct scran_output *st_output = data;
-    _display_freezeframe(st_output);
+    display_freezeframe(st_output);
 }
 
 static void
@@ -147,7 +147,7 @@ handle_image_copy_capture_frame_failed__freezeframe(
     struct scran_output *st_output = data;
 
     // FIXME: Handle this better?
-    _continue_after_showing_freezeframe(st_output);
+    continue_after_showing_freezeframe(st_output);
 }
 
 struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listener__freezeframe = {

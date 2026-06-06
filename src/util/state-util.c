@@ -10,7 +10,7 @@ extern struct scran g_state;
 
 
 static inline int32_t
-_downscale_cosmic_style(
+downscale_cosmic_style(
     double to_downscale,
     double normalized_scale
 ) {
@@ -20,7 +20,7 @@ _downscale_cosmic_style(
 // See https://github.com/pop-os/cosmic-comp/issues/2240
 //   And comment in `handle_fractional_scale_preferred_scale`
 static inline double
-_guess_cosmic_scale_factor(
+guess_cosmic_scale_factor(
     struct scran_output_surface *st_surface,
     struct scran_output *st_output
 ) {
@@ -52,14 +52,14 @@ _guess_cosmic_scale_factor(
     int32_t w_fullscreen_surface = st_surface->width_logical;
     int32_t h_fullscreen_surface = st_surface->height_logical;
 
-    if (   w_fullscreen_surface == _downscale_cosmic_style(w_mode, normalized_scale_cosmic)
-        && h_fullscreen_surface == _downscale_cosmic_style(h_mode, normalized_scale_cosmic)
+    if (   w_fullscreen_surface == downscale_cosmic_style(w_mode, normalized_scale_cosmic)
+        && h_fullscreen_surface == downscale_cosmic_style(h_mode, normalized_scale_cosmic)
     ) {
         DEBUG("  Guessed COSMIC scaler: %f\n", normalized_scale_cosmic);
         return normalized_scale_cosmic;
     } else if (
-           w_fullscreen_surface == _downscale_cosmic_style(w_mode, normalized_scale_wlr)
-        && h_fullscreen_surface == _downscale_cosmic_style(h_mode, normalized_scale_wlr)
+           w_fullscreen_surface == downscale_cosmic_style(w_mode, normalized_scale_wlr)
+        && h_fullscreen_surface == downscale_cosmic_style(h_mode, normalized_scale_wlr)
     ) {
         DEBUG("  Guessed WLR scaler: %f\n", normalized_scale_wlr);
         return normalized_scale_wlr;
@@ -84,7 +84,7 @@ get_surface_scale_factor_normalized(
 ) {
     struct scran_output *st_output = &g_state.outputs[get_containing_output_array_index(st_surface)];
 
-    const double normalized_scale_cosmic = _guess_cosmic_scale_factor(st_surface, st_output);
+    const double normalized_scale_cosmic = guess_cosmic_scale_factor(st_surface, st_output);
     if (normalized_scale_cosmic) {
         return normalized_scale_cosmic;
     }
@@ -100,7 +100,7 @@ get_surface_scale_factor_normalized(
 }
 
 static inline void
-_update_surface_scale_and_size(
+update_surface_scale_and_size(
     struct scran_output_surface *st_surface
 ) {
     double scale_factor = get_surface_scale_factor_normalized(st_surface);
@@ -123,7 +123,7 @@ update_surface_scale_bufsize_viewport(
     DEBUG("  update_surface_scale_bufsize_viewport()\n");
 
     DEBUG("    Updating scale and size...\n");
-    _update_surface_scale_and_size(st_surface);
+    update_surface_scale_and_size(st_surface);
 
     // TODO: Maybe move this responsibility into output::scale etc, so we're
     // not forced to do this check every time we update

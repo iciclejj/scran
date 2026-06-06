@@ -14,7 +14,7 @@ extern struct scran g_state;
 
 
 static inline bool
-_copy_data_weak(
+copy_data_weak(
     BLArrayCore *dst,
     BLArrayCore *src
 ) {
@@ -27,7 +27,7 @@ _copy_data_weak(
 }
 
 static inline bool
-_copy_mime_type(
+copy_mime_type(
     char dst[static restrict SCRAN_MIME_TYPE_SIZE_MAX],
     const char *restrict src
 ) {
@@ -42,7 +42,7 @@ _copy_mime_type(
 }
 
 static inline bool
-_copy_filepath(
+copy_filepath(
     char dst[static restrict SCRAN_OUTPUT_FILEPATH_SIZE_MAX],
     const char *src,
     size_t *strlen
@@ -78,10 +78,10 @@ update_clipboard(
     datacontrol->should_offer_filepath = false;
 
     if (data != NULL && data_mime_type != NULL) {
-        if (!_copy_data_weak(&datacontrol->data_to_send, data)) {
+        if (!copy_data_weak(&datacontrol->data_to_send, data)) {
             goto err;
         }
-        if (!_copy_mime_type(datacontrol->data_to_send_mime_type, data_mime_type)) {
+        if (!copy_mime_type(datacontrol->data_to_send_mime_type, data_mime_type)) {
             goto err;
         }
 
@@ -93,7 +93,7 @@ update_clipboard(
     }
 
     if (filepath != NULL) {
-        if (!_copy_filepath(datacontrol->data_to_send_saved_file_path,
+        if (!copy_filepath(datacontrol->data_to_send_saved_file_path,
                             filepath,
                             &datacontrol->data_to_send_saved_file_path_strlen
         )) {

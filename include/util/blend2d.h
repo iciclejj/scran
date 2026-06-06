@@ -17,7 +17,7 @@
 
     __attribute__((always_inline))
     static inline void
-    _flip_x_coordinates(struct BLBoxI *box, uint32_t width) {
+    flip_x_coordinates(struct BLBoxI *box, uint32_t width) {
         int x0 = box->x0;
         box->x0 = width - box->x1;
         box->x1 = width - x0;
@@ -36,12 +36,12 @@
 
         switch (transform) {
         case WL_OUTPUT_TRANSFORM_FLIPPED:
-            _flip_x_coordinates(&box, source_width);
+            flip_x_coordinates(&box, source_width);
             __attribute__((fallthrough));
         case WL_OUTPUT_TRANSFORM_NORMAL:
             return box;
         case WL_OUTPUT_TRANSFORM_FLIPPED_90:
-            _flip_x_coordinates(&box, source_height);
+            flip_x_coordinates(&box, source_height);
             __attribute__((fallthrough));
         case WL_OUTPUT_TRANSFORM_90:
             tmp = box.x0;
@@ -51,7 +51,7 @@
             box.y1 = source_height - tmp/*x0*/;
             return box;
         case WL_OUTPUT_TRANSFORM_FLIPPED_180:
-            _flip_x_coordinates(&box, source_width);
+            flip_x_coordinates(&box, source_width);
             __attribute__((fallthrough));
         case WL_OUTPUT_TRANSFORM_180:
             tmp = box.y0;
@@ -62,7 +62,7 @@
             box.x1 = source_width - tmp;
             return box;
         case WL_OUTPUT_TRANSFORM_FLIPPED_270:
-            _flip_x_coordinates(&box, source_height);
+            flip_x_coordinates(&box, source_height);
             __attribute__((fallthrough));
         case WL_OUTPUT_TRANSFORM_270:
             tmp = box.x0;

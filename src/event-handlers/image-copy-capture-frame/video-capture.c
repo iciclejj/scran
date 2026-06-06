@@ -73,7 +73,7 @@ handle_image_copy_capture_frame_presentation_time__video_capture(
 }
 
 static inline void
-_end_capture(
+end_capture(
     struct capture_frame_context *frame_ctx
 ) {
     frame_ctx->capturing_video = false;
@@ -88,7 +88,7 @@ _end_capture(
 }
 
 // TODO:
-//  - Can we fully avoid capturing the overlay (beyond just 
+//  - Can we fully avoid capturing the overlay (beyond just
 //    making sure it's out of frame) ?
 //  - Either assert width/height isn't 0 (and enforce in selection logic)
 //    or handle it properly here
@@ -145,7 +145,7 @@ handle_image_copy_capture_frame_ready__video_capture(
             )
         ) {
             eprintf("Error: scranrot failed to convert framebuffer to yuv\n");
-            _end_capture(frame_ctx);
+            end_capture(frame_ctx);
             return;
         }
         frame->pts = frame_ctx->presentation_time_nsec;
@@ -182,7 +182,7 @@ handle_image_copy_capture_frame_ready__video_capture(
     // TODO: Go through uses of capturing_video to check for redundancy now
     // that we have a global state, with e.g. `.exit_requested`.
     if (!frame_ctx->capturing_video || g_state.exit_requested) {
-        _end_capture(frame_ctx);
+        end_capture(frame_ctx);
         return;
     }
 
@@ -209,7 +209,7 @@ handle_image_copy_capture_frame_failed__video_capture(
     struct capture_frame_context *frame_ctx  = data;
 
     // TODO: Retry a few times?
-    _end_capture(frame_ctx);
+    end_capture(frame_ctx);
 }
 
 

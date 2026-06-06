@@ -77,7 +77,7 @@ handle_pointer_leave(
 // difference to capture area dimensions, which is the range we're mapping
 // when scaling/rounding like we have to do here.
 static inline int
-_selection_surface_logical_coordinate_to_buffer_pixel(
+convert_selection_surface_logical_coordinate_to_buffer_pixel(
     struct scran_output_surface *st_surface,
     wl_fixed_t surface_pixel_fixed
 ) {
@@ -112,8 +112,8 @@ handle_pointer_motion(
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
 
-    int x_px = _selection_surface_logical_coordinate_to_buffer_pixel(&focused_selection_surface->surface, x_surface);
-    int y_px = _selection_surface_logical_coordinate_to_buffer_pixel(&focused_selection_surface->surface, y_surface);
+    int x_px = convert_selection_surface_logical_coordinate_to_buffer_pixel(&focused_selection_surface->surface, x_surface);
+    int y_px = convert_selection_surface_logical_coordinate_to_buffer_pixel(&focused_selection_surface->surface, y_surface);
 
     // TODO: Maybe use a BLPoint to neatly pack this into _selection_surface_logical_coordinate_to_buffer_pixel.
     clamp_to_transformed_output_width(&x_px, st_output);
@@ -371,7 +371,7 @@ handle_pointer_button(
         case SELECTION_RESIZING:
             selection_ctx->selection_state = SELECTION_COMPLETE;
             selection_ctx->selection_resize_direction = SELECTION_RESIZE_NONE;
-            
+
             blboxi_deinvert(&selection_ctx->box_px);
             break;
         default:

@@ -25,7 +25,7 @@
 
 extern struct scran g_state;
 
-struct _pending_head{
+struct pending_head{
     struct scran_output *st_output;
 
     wl_fixed_t fractional_scale_wlr;
@@ -35,7 +35,7 @@ struct _pending_head{
 };
 
 static int m_n_pending_heads = 0;
-static struct _pending_head m_pending_heads[MAX_OUTPUTS] = { };
+static struct pending_head m_pending_heads[MAX_OUTPUTS] = { };
 
 
 // See comment in our `handle_fractional_scale_preferred_scale` for more info,
@@ -45,7 +45,7 @@ handle_wlr_output_head_scale(
     struct zwlr_output_head_v1 *output_head,
     wl_fixed_t scale
 ) {
-    struct _pending_head *pending_head = data;
+    struct pending_head *pending_head = data;
 
     pending_head->fractional_scale_wlr = scale;
     DEBUG("handle_wlr_output_head_scale(): %f\n", get_normalized_scaler(scale, 256));
@@ -57,7 +57,7 @@ handle_wlr_output_head_name(
     struct zwlr_output_head_v1 *wlr_output_head,
     const char *name
 ) {
-    struct _pending_head *pending_head = data;
+    struct pending_head *pending_head = data;
 
     DEBUG("handle_wlr_output_head_name\n");
 
@@ -76,7 +76,7 @@ handle_wlr_output_head_finished(
     void *data,
     struct zwlr_output_head_v1 *head
 ) {
-    struct _pending_head *pending_head = data;
+    struct pending_head *pending_head = data;
 
     zwlr_output_head_v1_release(head);
     zcosmic_output_head_v1_release(pending_head->cosmic_head);
@@ -119,7 +119,7 @@ handle_cosmic_output_head_scale_1000(
     struct zcosmic_output_head_v1 *zcosmic_output_head_v1,
     int32_t scale_1000
 ) {
-    struct _pending_head *pending_head = data;
+    struct pending_head *pending_head = data;
 
     pending_head->fractional_scale_cosmic_1000 = scale_1000;
     DEBUG("handle_cosmic_output_head_scale_1000(): %f\n", get_normalized_scaler(scale_1000, 1000));
@@ -164,7 +164,7 @@ handle_wlr_output_manager_head(
         return;
     }
 
-    struct _pending_head *pending_head = &m_pending_heads[m_n_pending_heads];
+    struct pending_head *pending_head = &m_pending_heads[m_n_pending_heads];
 
     struct zcosmic_output_head_v1 *cosmic_head = zcosmic_output_manager_v1_get_head(
         state->globals.cosmic_output_manager, head
@@ -198,7 +198,7 @@ handle_wlr_output_manager_done(
     (void)state;
 
     for (int i = 0; i < m_n_pending_heads; ++i) {
-        struct _pending_head *pending_head = &m_pending_heads[i];
+        struct pending_head *pending_head = &m_pending_heads[i];
         struct scran_output *st_output = pending_head->st_output;
 
         if (st_output == NULL) {

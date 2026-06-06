@@ -59,7 +59,7 @@ handle_image_copy_capture_frame_presentation_time__image_capture(
 }
 
 static inline void
-_end_capture() {
+end_capture() {
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 }
 
@@ -216,7 +216,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     bl_array_destroy(&bl_array_img_encoded);
 
 end_capture:
-    _end_capture();
+    end_capture();
 }
 
 
@@ -228,7 +228,7 @@ handle_image_copy_capture_frame_failed__image_capture(
 ) {
     ext_image_copy_capture_frame_v1_destroy(frame);
 
-    _end_capture();
+    end_capture();
 }
 
 

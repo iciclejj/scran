@@ -12,7 +12,7 @@
 
 
 static inline void
-_draw_and_damage_region(
+draw_and_damage_region(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
     // Wayland needs to be damaged with difference with the previously drawn box,
@@ -45,7 +45,7 @@ _draw_and_damage_region(
 // I.e. would not make sense to pass a 'damage_region_everything' even here,
 // even as part of a force-redraw.
 static inline void
-_draw_and_damage_selection_border(
+draw_and_damage_selection_border(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
     BLBoxI capture_area,
@@ -59,7 +59,7 @@ _draw_and_damage_selection_border(
     bl_path_add_box_i(&selection_surface->bl_path, &capture_area_border_outline, BL_GEOMETRY_DIRECTION_NONE);
 
     for (int i = 0; i < n_damage_regions; ++i) {
-        _draw_and_damage_region(selection_surface, st_buffer, damage_regions_wayland[i], damage_regions_buffer[i]);
+        draw_and_damage_region(selection_surface, st_buffer, damage_regions_wayland[i], damage_regions_buffer[i]);
     }
 
     bl_path_clear(&selection_surface->bl_path);
@@ -68,7 +68,7 @@ _draw_and_damage_selection_border(
 }
 
 static inline void
-_draw_and_damage_background(
+draw_and_damage_background(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
     BLBoxI capture_area_max_bounds,
@@ -87,7 +87,7 @@ _draw_and_damage_background(
     bl_path_add_box_i(&selection_surface->bl_path, &capture_area_border_outline, BL_GEOMETRY_DIRECTION_NONE);
 
     for (int i = 0; i < n_damage_regions; ++i) {
-        _draw_and_damage_region(selection_surface, st_buffer, damage_regions_wayland[i], damage_regions_buffer[i]);
+        draw_and_damage_region(selection_surface, st_buffer, damage_regions_wayland[i], damage_regions_buffer[i]);
     }
 
     uint32_t prev_fill_style_rgba32;
@@ -99,7 +99,7 @@ _draw_and_damage_background(
 
 
 static inline int
-_get_total_keymap_width_px(
+get_total_keymap_width_px(
     struct scran_ui_keymap *keymap,
     int item_spacing_px
 ) {
@@ -120,7 +120,7 @@ _get_total_keymap_width_px(
 }
 
 static inline void
-_draw_and_damage_keymap(
+draw_and_damage_keymap(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
     BLBoxI capture_area_border_outline
@@ -136,7 +136,7 @@ _draw_and_damage_keymap(
     }
 
     const int item_spacing_px = 3 * ui_ctx->fixed_width_font_glyph_width_px;
-    const int total_width_px = _get_total_keymap_width_px(keymap, item_spacing_px);
+    const int total_width_px = get_total_keymap_width_px(keymap, item_spacing_px);
 
     struct scran_ui_keymap_surface_state *state_prev            = &st_buffer->ui_keymap_state_currently_drawn;
     struct scran_ui_keymap_surface_state *state_prev_any_buffer = &selection_surface->ui_keymap_state_last_drawn;
@@ -264,7 +264,7 @@ _draw_and_damage_keymap(
 // This does make our frame not always pixel-perfect with fractional scaling,
 // but should not affect non-scaled displays.
 static inline BLBoxI
-_get_scalesafe_border_inline(
+get_scalesafe_border_inline(
     BLBoxI border_inline,
     double normalized_scale_factor
 ) {
@@ -304,9 +304,9 @@ draw_selection_and_damage_buffer(
 
     // TODO: Maybe make this all more readable and not 200 columns wide...
 
-    const BLBoxI capture_area_border_inline                             = _get_scalesafe_border_inline(capture_area                            , scale);
-    const BLBoxI capture_area_border_inline_last_used_in_any_buffer     = _get_scalesafe_border_inline(capture_area_last_used_in_any_buffer    , scale);
-    const BLBoxI capture_area_border_inline_last_used_in_current_buffer = _get_scalesafe_border_inline(capture_area_last_used_in_current_buffer, scale);
+    const BLBoxI capture_area_border_inline                             = get_scalesafe_border_inline(capture_area                            , scale);
+    const BLBoxI capture_area_border_inline_last_used_in_any_buffer     = get_scalesafe_border_inline(capture_area_last_used_in_any_buffer    , scale);
+    const BLBoxI capture_area_border_inline_last_used_in_current_buffer = get_scalesafe_border_inline(capture_area_last_used_in_current_buffer, scale);
 
     // XXX: Remake the "stroke width" macros
     const BLBoxI capture_area_border_outline                             = get_blboxi_inflated(capture_area_border_inline                            , SCRAN_SELECTION_BORDER_THICKNESS_PX);
@@ -318,15 +318,15 @@ draw_selection_and_damage_buffer(
     if (st_buffer->force_redraw) { // TODO: unlikely()
         // Draw background dim
         const BLRectI damage_region_everything = blboxi_to_blrecti(capture_area_bounds);
-        _draw_and_damage_background(      selection_surface, st_buffer, capture_area_bounds        , capture_area_border_outline, &damage_region_everything,       &damage_region_everything,       1);
+        draw_and_damage_background(      selection_surface, st_buffer, capture_area_bounds        , capture_area_border_outline, &damage_region_everything,       &damage_region_everything,       1);
 
         // Draw keymap
-        _draw_and_damage_keymap(selection_surface, st_buffer, capture_area_border_outline);
+        draw_and_damage_keymap(selection_surface, st_buffer, capture_area_border_outline);
 
         // Draw selection border
         BLRectI damage_regions_selection_border[4];
         get_box_symdiff_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions_selection_border);
-        _draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline , damage_regions_selection_border, damage_regions_selection_border, 4);
+        draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline , damage_regions_selection_border, damage_regions_selection_border, 4);
 
         st_buffer->force_redraw = false;
     } else {
@@ -343,10 +343,10 @@ draw_selection_and_damage_buffer(
             get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_inline_last_used_in_any_buffer    , damage_regions_wayland + i_old_border_diffs);
             get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_inline_last_used_in_current_buffer, damage_regions_buffer  + i_old_border_diffs);
 
-            _draw_and_damage_background(selection_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, 8);
+            draw_and_damage_background(selection_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, 8);
 
             // Draw keymap
-            _draw_and_damage_keymap(selection_surface, st_buffer, capture_area_border_outline);
+            draw_and_damage_keymap(selection_surface, st_buffer, capture_area_border_outline);
         }
 
         // Draw selection border
@@ -355,7 +355,7 @@ draw_selection_and_damage_buffer(
 
             get_box_symdiff_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
 
-            _draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
+            draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
         }
     }
 
@@ -366,7 +366,7 @@ draw_selection_and_damage_buffer(
 }
 
 static inline void
-_arm_selection_surface_frame_callback(
+arm_selection_surface_frame_callback(
     struct scran_output *st_output,
     bool commit_if_armed // used as template specialization (if passing a literal)
 ) {
@@ -390,7 +390,7 @@ void
 request_selection_surface_frame_callback(
     struct scran_output *st_output
 ) {
-    _arm_selection_surface_frame_callback(st_output, true);
+    arm_selection_surface_frame_callback(st_output, true);
 }
 
 
@@ -438,7 +438,7 @@ init_selection_surface_content(
         selection_surface->surface.height_px_buffer
     );
 
-    _arm_selection_surface_frame_callback(st_output, false);
+    arm_selection_surface_frame_callback(st_output, false);
     set_force_redraw_selection_surface_buffers(st_output);
     wl_surface_commit(selection_surface->surface.wl_surface);
 }

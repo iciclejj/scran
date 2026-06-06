@@ -29,11 +29,10 @@
 #include "pipewires.h"
 
 
-#define _FORMAT_MP4_FILE_EXTENSION ".mp4"
 // XXX: Seems like the underlying FFOutputFormat structs aren't exposed in the
 // public API (e.g. ff_mp4_muxer etc.), so we must let libavformat run its
 // "guessing"/scoring algorithm using a format-name string.
-#define _FORMAT_MP4_NAME "mp4"
+#define FFMPEG_FORMAT_MP4_NAME "mp4"
 
 
 extern struct scran g_state;
@@ -308,12 +307,10 @@ init_ffmpeg(struct scran_output *st_output)
     if (g_state.options.output_to_stdout) {
         output_filepath = "pipe:1";
     } else {
-        static const char _ext_mp4[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] =
-            _FORMAT_MP4_FILE_EXTENSION;
-        output_filepath =
-            scran_update_output_filepath(&g_state.options, _ext_mp4);
+        static const char mp4_file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] = ".mp4";
+        output_filepath = scran_update_output_filepath(&g_state.options, mp4_file_extension);
     }
-    avformat_alloc_output_context2(&ffmpeg_ctx->av_format_ctx, NULL, _FORMAT_MP4_NAME, output_filepath);
+    avformat_alloc_output_context2(&ffmpeg_ctx->av_format_ctx, NULL, FFMPEG_FORMAT_MP4_NAME, output_filepath);
 
 
     // AVCodecContext (encoder)
@@ -572,7 +569,7 @@ dispatch_image_capture_event(struct scran_output *st_output)
 
 
 static inline void
-_print_slurp_string(struct scran_output *st_output)
+print_slurp_string(struct scran_output *st_output)
 {
     const double scale = st_output->selection_surface.surface.final_scale_factor_normalized;
     const struct scran_output_xdg_geometry geometry = st_output->xdg_geometry;
@@ -603,7 +600,7 @@ request_image_capture(struct scran_output *st_output)
     assert(!st_output->capture.frame_ctx.capturing_video);
 
     if (g_state.options.produce_slurp) {
-        _print_slurp_string(st_output);
+        print_slurp_string(st_output);
         return true;
     }
 

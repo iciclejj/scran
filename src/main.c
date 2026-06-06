@@ -151,7 +151,7 @@ init_premem()
 }
 
 static inline void
-_stay_alive_while_clipboard_active()
+stay_alive_while_clipboard_active()
 {
 
 #ifdef __GLIBC__
@@ -255,29 +255,31 @@ init_premem__destroy()
     // NOTE: Make sure this stays at an appropriate place in the teardown
     // sequence, so that memory footprint is minimized.
     if (!g_state.options.no_keepalive) {
-        _stay_alive_while_clipboard_active();
+        stay_alive_while_clipboard_active();
     }
 
     init_premem__datacontrol__destroy(&g_state.seat.datacontrol);
 }
 
 
+// TODO: Separate arena module?
+
 // Just bump this if/when we need more
 // TODO: Make this cleaner...
-#define _ARENA_BLOCKS_MAX (MAX_OUTPUTS * 6)
+#define SCRAN_ARENA_BLOCKS_MAX (MAX_OUTPUTS * 6)
 
-struct _arena_context {
+struct scran_arena_context {
     void *addr;
     size_t size;
 
     size_t block_count;
-    size_t block_offsets[_ARENA_BLOCKS_MAX];
-    void **block_recipients[_ARENA_BLOCKS_MAX];
+    size_t block_offsets[SCRAN_ARENA_BLOCKS_MAX];
+    void **block_recipients[SCRAN_ARENA_BLOCKS_MAX];
 };
 
 static inline void
-_arena_add_block(
-    struct _arena_context *restrict arena_ctx,
+scran_arena_add_block(
+    struct scran_arena_context *restrict arena_ctx,
     size_t block_size,
     size_t block_alignment,
     void **block_pointer_recipient
@@ -285,7 +287,7 @@ _arena_add_block(
     const size_t i_block = arena_ctx->block_count;
     const size_t arena_size_old = arena_ctx->size;
 
-    assert(i_block < _ARENA_BLOCKS_MAX);
+    assert(i_block < SCRAN_ARENA_BLOCKS_MAX);
 
     const size_t block_pre_padding = get_units_until_alignment(arena_size_old, block_alignment);
 
@@ -299,7 +301,7 @@ _arena_add_block(
 }
 
 static inline void
-_arena_hand_out_pointers_to_recipients(struct _arena_context *arena) {
+scran_arena_hand_out_pointers_to_recipients(struct scran_arena_context *arena) {
     assert(arena->addr != NULL);
 
     for (size_t i = 0; i < arena->block_count; ++i) {
@@ -310,7 +312,7 @@ _arena_hand_out_pointers_to_recipients(struct _arena_context *arena) {
 // Open shm file, get fd, unlink file, return fd.
 // The underlying file survives unlinking.
 static inline int
-_shm_open_anon(void)
+shm_open_anonymous(void)
 {
     static const char *shm_tmp_filename = "/icicle-wayland-client-jfkdsalfj";
     // TODO: Generate random filenames in case file already exists?
@@ -330,8 +332,8 @@ _shm_open_anon(void)
 //  - selection: No manual allocations
 static bool
 init_meminit(
-    struct _arena_context *shm_arena,
-    struct _arena_context *private_arena
+    struct scran_arena_context *shm_arena,
+    struct scran_arena_context *private_arena
 ) {
     // XXX: These asserts are not necessarily required for this function to run
     // as it should, assuming the context was properly set up until this point.
@@ -351,7 +353,7 @@ init_meminit(
 
         for (int i_buffer = 0; i_buffer < SELECTION_SURFACE_BUF_COUNT; i_buffer++) {
             const size_t _surface_buf_size = get_surface_buf_size_padded(&st_output->selection_surface.surface);
-            _arena_add_block(
+            scran_arena_add_block(
                 shm_arena,
                 _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->selection_surface.double_buffer[i_buffer].data
             );
@@ -367,31 +369,31 @@ init_meminit(
             // wl_surface::set_buffer_transform not working as expected in
             // Hyprland (#14441).
             const size_t _capture_buf_size = get_capture_buf_size(st_output);
-            _arena_add_block(
+            scran_arena_add_block(
                 shm_arena,
                 _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.capture_buffer.data
             );
-            _arena_add_block(
+            scran_arena_add_block(
                 shm_arena,
                 _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.data
             );
 
             // single-pixel buffer
             const size_t _transparent_buf_size = RGBA32_PIXEL_STRIDE;
-            _arena_add_block(
+            scran_arena_add_block(
                 shm_arena,
                 _transparent_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.transparent_single_pixel_buffer.data
             );
         }
 
         const size_t _capture_buf_size = get_capture_buf_size(st_output);
-        _arena_add_block(
+        scran_arena_add_block(
             shm_arena,
             _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.st_buffer.data
         );
 
         const size_t _capture_buf_2_size = get_capture_buf_size(st_output);
-        _arena_add_block(
+        scran_arena_add_block(
             private_arena,
             _capture_buf_2_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.img_data_2
         );
@@ -402,7 +404,7 @@ init_meminit(
     // Get shared memory
     //
     // TODO: Hugepages? (Shared memory must request it through madvise.)
-    const int global_pool_shm_fd = _shm_open_anon();
+    const int global_pool_shm_fd = shm_open_anonymous();
     if (global_pool_shm_fd == -1) {
         eprintf("Failed to open shared memory.\n");
         return false;
@@ -431,8 +433,8 @@ init_meminit(
     //
     // Assign addresses
     //
-    _arena_hand_out_pointers_to_recipients(shm_arena);
-    _arena_hand_out_pointers_to_recipients(private_arena);
+    scran_arena_hand_out_pointers_to_recipients(shm_arena);
+    scran_arena_hand_out_pointers_to_recipients(private_arena);
 
 
     //
@@ -540,8 +542,8 @@ init_meminit(
 
 static void
 init_meminit__destroy(
-    struct _arena_context *shm_arena,
-    struct _arena_context *private_arena
+    struct scran_arena_context *shm_arena,
+    struct scran_arena_context *private_arena
 ) {
     FOR_EACH_OUTPUT(i, st_output) {
         for (int i_buf = 0; i_buf < SELECTION_SURFACE_BUF_COUNT; i_buf++) {
@@ -613,20 +615,20 @@ init_postmem__destroy()
 }
 
 
-struct _scran_signal_masks {
+struct scran_signal_masks {
     sigset_t original;
     sigset_t with_scran_handlers_unmasked;
     sigset_t with_scran_handlers_masked;
 };
 
 static inline bool
-_init_signal(int signo, struct sigaction *sigaction_, sigset_t *mask_inplace, sigset_t *unmask_inplace)
+init_signal(int signo, struct sigaction *sigaction_, sigset_t *mask_inplace, sigset_t *unmask_inplace)
 {
     // INFO: A sigaction.sa_mask is for signals blocked during handler
     // execution, and is separate from our global block mask (that we
     // use for epoll_pwait). The signal that triggered the handler is
     // blocked by default, even with an empty mask (unless SA_NODEFER).
-    sigemptyset(&sigaction_->sa_mask); 
+    sigemptyset(&sigaction_->sa_mask);
 
     assert(sigaction_->sa_handler != NULL);
 
@@ -643,7 +645,7 @@ _init_signal(int signo, struct sigaction *sigaction_, sigset_t *mask_inplace, si
 }
 
 static bool
-init_signals(struct _scran_signal_masks *masks)
+init_signals(struct scran_signal_masks *masks)
 {
     // Get already blocked signals
     // TODO: Is getting the old mask actually worthwhile? Also, if we do care
@@ -657,7 +659,7 @@ init_signals(struct _scran_signal_masks *masks)
     masks->with_scran_handlers_masked = masks->original;
 
     static struct sigaction sa_grab_focus_unsafe = { .sa_handler = sig_grab_focus };
-    if (!_init_signal(SIGUSR1, &sa_grab_focus_unsafe, &masks->with_scran_handlers_masked, &masks->with_scran_handlers_unmasked)) {
+    if (!init_signal(SIGUSR1, &sa_grab_focus_unsafe, &masks->with_scran_handlers_masked, &masks->with_scran_handlers_unmasked)) {
         return false;
     }
 
@@ -667,7 +669,7 @@ init_signals(struct _scran_signal_masks *masks)
 
 // TODO: More asserts
 static bool
-run_main_loop(struct _scran_signal_masks *signal_masks)
+run_main_loop(struct scran_signal_masks *signal_masks)
 {
     assert(m_epoll_fd != -1);
 
@@ -777,8 +779,8 @@ int main(int argc, char *argv[])
     }
 
 
-    struct _arena_context shm_arena = { };
-    struct _arena_context private_arena = { };
+    struct scran_arena_context shm_arena = { };
+    struct scran_arena_context private_arena = { };
 
     if (!init_premem()) {
         eprintf("Failed pre-memory allocation initialization.\n");
@@ -797,7 +799,7 @@ int main(int argc, char *argv[])
 
     scranrot_init();
 
-    struct _scran_signal_masks signal_masks;
+    struct scran_signal_masks signal_masks;
     if (!init_signals(&signal_masks)) {
         eprintf("Failed to initialize signals.\n");
         return EXIT_FAILURE;

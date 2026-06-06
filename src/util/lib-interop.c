@@ -12,7 +12,7 @@
 
 // XXX TODO: Verify that this assignment happens at compile time.
 //           Also, maybe make it prettier if possible...
-#define _BL_FORMAT_INFO_BYTESWAPPED_RGB_KEPT_ALPHA(_bl_format_info_) \
+#define BL_FORMAT_INFO_BYTESWAPPED_RGB_KEPT_ALPHA(_bl_format_info_) \
     (BLFormatInfo){     \
         .depth = _bl_format_info_.depth,    \
         .flags = _bl_format_info_.flags,    \
@@ -59,8 +59,8 @@ wl_shm_format_to_blend2d_struct(enum wl_shm_format wl_shm_format)
     case WL_SHM_FORMAT_XRGB8888: return bl_format_info[BL_FORMAT_XRGB32];
     case WL_SHM_FORMAT_C8:       return bl_format_info[BL_FORMAT_A8];
     // Custom
-    case WL_SHM_FORMAT_ABGR8888: return _BL_FORMAT_INFO_BYTESWAPPED_RGB_KEPT_ALPHA(bl_format_info[BL_FORMAT_PRGB32]);
-    case WL_SHM_FORMAT_XBGR8888: return _BL_FORMAT_INFO_BYTESWAPPED_RGB_KEPT_ALPHA(bl_format_info[BL_FORMAT_XRGB32]);
+    case WL_SHM_FORMAT_ABGR8888: return BL_FORMAT_INFO_BYTESWAPPED_RGB_KEPT_ALPHA(bl_format_info[BL_FORMAT_PRGB32]);
+    case WL_SHM_FORMAT_XBGR8888: return BL_FORMAT_INFO_BYTESWAPPED_RGB_KEPT_ALPHA(bl_format_info[BL_FORMAT_XRGB32]);
     // TODO: Consider default: assert(true)?
     default: return (BLFormatInfo){ 0 };
     }

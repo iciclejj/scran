@@ -18,10 +18,10 @@
 
 extern const char scran_font_ttf_start[];
 extern const char scran_font_ttf_end[];
-static inline size_t _get_font_size() {
+static inline size_t get_font_size() {
     return scran_font_ttf_end - scran_font_ttf_start;
 }
-static inline const void * _get_font_data() {
+static inline const void * get_font_data() {
     return scran_font_ttf_start;
 }
 
@@ -63,7 +63,7 @@ static_assert( (sizeof(keymap_image_texts) / sizeof(keymap_image_texts[0])) == S
 
 
 static inline void
-_redraw_keymap_image(
+redraw_keymap_image(
     struct scran_ui_context     *ui_ctx,
     struct scran_ui_keymap_item *keymap_item,
     bool            pressed,
@@ -122,7 +122,7 @@ redraw_keymap(
 
         bool pressed  = ui_ctx->ui_keymap.pressed_items_mask  & (1 << i);
 
-        _redraw_keymap_image(
+        redraw_keymap_image(
             ui_ctx,
             keymap_item,
             pressed,
@@ -133,7 +133,7 @@ redraw_keymap(
 
 
 static inline struct BLTextMetrics
-_get_bl_text_metrics(
+get_bl_text_metrics(
     BLFontCore *font,
     const char16_t *text,
     size_t text_strlen
@@ -151,12 +151,12 @@ _get_bl_text_metrics(
 }
 
 static inline int
-_calculate_bl_text_width_px(
+calculate_bl_text_width_px(
     BLFontCore *font,
     const char16_t *text,
     size_t text_strlen
 ) {
-    BLTextMetrics text_metrics = _get_bl_text_metrics(font, text, text_strlen);
+    BLTextMetrics text_metrics = get_bl_text_metrics(font, text, text_strlen);
     double        width        = text_metrics.advance.x;
     int           width_px     = ceil(width) + (!!width * SCRAN_SELECTION_SHADOW_OFFSET_PX);
 
@@ -179,7 +179,7 @@ reinit_scran_ui(
     {
         BLFontDataCore font_data;
         bl_font_data_init(&font_data);
-        bl_font_data_create_from_data(&font_data, _get_font_data(), _get_font_size(), NULL, NULL);
+        bl_font_data_create_from_data(&font_data, get_font_data(), get_font_size(), NULL, NULL);
 
         BLFontFaceCore font_face;
         bl_font_face_init(&font_face);
@@ -207,7 +207,7 @@ reinit_scran_ui(
     int fixed_width_font_glyph_width_px;
     {
         static const char16_t single_glyph[] = u"W";
-        BLTextMetrics text_metrics = _get_bl_text_metrics(font, single_glyph, CHAR16_STRLEN(single_glyph));
+        BLTextMetrics text_metrics = get_bl_text_metrics(font, single_glyph, CHAR16_STRLEN(single_glyph));
         fixed_width_font_glyph_width_px = ceil(text_metrics.advance.x);
     }
 
@@ -224,7 +224,7 @@ reinit_scran_ui(
         // Some of this could be done at compile-time, but would require some ugly macros...
         for (size_t i = 0; i < SCRAN_UI_KEYMAP_N_TEXTS; ++i) {
             struct keymap_string *string = &keymap_image_texts[i];
-            int width_px = _calculate_bl_text_width_px(font, string->str, string->strlen);
+            int width_px = calculate_bl_text_width_px(font, string->str, string->strlen);
             if (width_px_max < width_px) {
                 width_px_max = width_px;
             }
@@ -254,7 +254,7 @@ reinit_scran_ui(
 static const struct {
     enum scran_ui_keymap_text  text;
     enum scran_ui_keymap_color color;
-} _pre_selection_items[] = {
+} m_pre_selection_items[] = {
     [SCRAN_UI_KEYMAP_ITEM_I_IMAGE] = { SCRAN_UI_KEYMAP_TEXT_EMPTY                 , SCRAN_UI_KEYMAP_COLOR_DEFAULT },
     [SCRAN_UI_KEYMAP_ITEM_I_VIDEO] = { SCRAN_UI_KEYMAP_TEXT_EMPTY                 , SCRAN_UI_KEYMAP_COLOR_DEFAULT },
     [SCRAN_UI_KEYMAP_ITEM_I_FOCUS] = { SCRAN_UI_KEYMAP_TEXT_EMPTY                 , SCRAN_UI_KEYMAP_COLOR_DEFAULT },
@@ -264,7 +264,7 @@ static const struct {
 static const struct {
     enum scran_ui_keymap_text  text;
     enum scran_ui_keymap_color color;
-} _post_selection_items[] = {
+} m_post_selection_items[] = {
     [SCRAN_UI_KEYMAP_ITEM_I_IMAGE] = { SCRAN_UI_KEYMAP_TEXT_IMAGE_DEFAULT, SCRAN_UI_KEYMAP_COLOR_DEFAULT },
     [SCRAN_UI_KEYMAP_ITEM_I_VIDEO] = { SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT, SCRAN_UI_KEYMAP_COLOR_DEFAULT },
     [SCRAN_UI_KEYMAP_ITEM_I_FOCUS] = { SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT, SCRAN_UI_KEYMAP_COLOR_DEFAULT },
@@ -285,8 +285,8 @@ init_scran_ui_pre_selection(
         bl_image_init(&keymap_item->bl_img);
 
         assert(keymap_item->locked == false);
-        keymap_item->live_state.text  = _pre_selection_items[i].text;
-        keymap_item->live_state.color = _pre_selection_items[i].color;
+        keymap_item->live_state.text  = m_pre_selection_items[i].text;
+        keymap_item->live_state.color = m_pre_selection_items[i].color;
     }
 
     reinit_scran_ui(ui_ctx, scale);
@@ -302,8 +302,8 @@ scran_ui_set_selection_stage_defaults(
         struct scran_ui_keymap_item *keymap_item = &ui_ctx->ui_keymap.items[i];
 
         keymap_item->locked = false;
-        keymap_item->live_state.text  = _post_selection_items[i].text;
-        keymap_item->live_state.color = _post_selection_items[i].color;
+        keymap_item->live_state.text  = m_post_selection_items[i].text;
+        keymap_item->live_state.color = m_post_selection_items[i].color;
     }
 
     ui_ctx->dirty = true;
