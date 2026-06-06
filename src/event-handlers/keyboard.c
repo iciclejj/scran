@@ -174,7 +174,7 @@ handle_keyboard_key(
         //           and don't let refocus automatically re-freeze?
         if (pretend_all_hidden) {
             FOR_EACH_OUTPUT(i, st_output) {
-                refresh_freezeframe(st_output, start_grabbing_focus_for_output);
+                freezeframe_capture_refresh(st_output, start_grabbing_focus_for_output);
             }
         } else {
             FOR_EACH_OUTPUT(i, st_output) {

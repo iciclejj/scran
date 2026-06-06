@@ -161,7 +161,7 @@ start_grabbing_focus()
 
     FOR_EACH_OUTPUT(i, st_output) {
         if (g_state.options.freezeframe) {
-            refresh_freezeframe(st_output, start_grabbing_focus_for_output);
+            freezeframe_capture_refresh(st_output, start_grabbing_focus_for_output);
             continue;
         }
 

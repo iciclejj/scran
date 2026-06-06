@@ -17,13 +17,13 @@ extern struct scran g_state;
 
 
 void
-request_freezeframe_assume_callback_set(struct scran_output *st_output) {
+freezeframe_capture_start_assume_callback_set(struct scran_output *st_output) {
     assert(st_output->freezeframe.callback != NULL);
 
     struct scran_freezeframe_buffer *capture_buffer = &st_output->freezeframe.capture_buffer;
 
     if (capture_buffer->busy) { // XXX: Not thread-safe.
-        capture_buffer->release_callback = request_freezeframe_assume_callback_set;
+        capture_buffer->release_callback = freezeframe_capture_start_assume_callback_set;
         return;
     }
 
@@ -53,9 +53,9 @@ request_freezeframe_assume_callback_set(struct scran_output *st_output) {
     capture_force_next_frame(st_output);
 }
 
-// Use refresh_freezeframe post-init/during normal runtime
+// Use freezeframe_capture_refresh post-init/during normal runtime
 void
-request_freezeframe(
+freezeframe_capture_start(
     struct scran_output *st_output,
     freezeframe_callback callback
 ) {
@@ -63,7 +63,7 @@ request_freezeframe(
     assert(st_output->freezeframe.callback == NULL);
 
     st_output->freezeframe.callback = callback;
-    request_freezeframe_assume_callback_set(st_output);
+    freezeframe_capture_start_assume_callback_set(st_output);
 }
 
 // NOTE: This function starts a chain of wayland events that must happen
@@ -78,7 +78,7 @@ request_freezeframe(
 //   3.2  Restore our selection surface
 //          Must be done after 3.1, since they both use the same layer/z-index
 void
-refresh_freezeframe(
+freezeframe_capture_refresh(
     struct scran_output *st_output,
     freezeframe_callback callback
 ) {
@@ -200,7 +200,7 @@ freezeframe_unhide_selection_surface(
     // XXX: This commit is currently redundant in practice, but keeping it here
     // so this function makes more sense on its own.
     //
-    // TODO: Refactor the entire refresh_freezeframe() chain so that we
+    // TODO: Refactor the entire freezeframe_capture_refresh() chain so that we
     // avoid all the redundant commits. Maybe move the hiding/unhiding
     // responsibility out of any freezeframe.c function entirely, and have the
     // caller ensure pre/post-recapture state like this manually.
@@ -208,13 +208,13 @@ freezeframe_unhide_selection_surface(
 }
 
 void
-update_freezeframe_scale_size_viewport(
+freezeframe_surface_update_scale_size_viewport(
     struct scran_output *st_output
 ) {
     struct scran_output_freezeframe *freezeframe    = &st_output->freezeframe;
     struct scran_output_surface     *parent_surface = &st_output->selection_surface.surface;
 
-    DEBUG("  update_freezeframe_scale_size_viewport()\n");
+    DEBUG("  freezeframe_surface_update_scale_size_viewport()\n");
 
     // We "hardcode" these for freezeframe, since it should equal to the capture
     // buffer size.

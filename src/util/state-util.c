@@ -160,6 +160,6 @@ update_surface_scale_bufsize_viewport(
     );
 
     if (g_state.options.freezeframe) {
-        update_freezeframe_scale_size_viewport(st_output);
+        freezeframe_surface_update_scale_size_viewport(st_output);
     }
 }

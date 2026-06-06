@@ -24,7 +24,7 @@ handle_presentation_feedback_presented__selection_transparent_for_freezeframe(
 
     struct scran_output *st_output = data;
 
-    request_freezeframe_assume_callback_set(st_output);
+    freezeframe_capture_start_assume_callback_set(st_output);
 }
 
 static inline void
@@ -37,7 +37,7 @@ handle_presentation_feedback_discarded__selection_transparent_for_freezeframe(
 
     // TODO(?):
     struct scran_output *st_output = data;
-    request_freezeframe_assume_callback_set(st_output);
+    freezeframe_capture_start_assume_callback_set(st_output);
 }
 
 static inline void handle_presentation_feedback_sync_output__selection_transparent_for_freezeframe( void *data, struct wp_presentation_feedback *wp_presentation_feedback, struct wl_output *wl_output) { };
