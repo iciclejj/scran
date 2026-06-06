@@ -12,21 +12,20 @@
 #define MAX(a, b) (a > b ? a : b)
 
 
+static inline void
+blboxi_flip_x_coordinates(struct BLBoxI *box, uint32_t width) {
+    int x0 = box->x0;
+    box->x0 = width - box->x1;
+    box->x1 = width - x0;
+}
+
 #if __has_include(<wayland-client.h>)
     #include <wayland-client.h>
-
-    __attribute__((always_inline))
-    static inline void
-    flip_x_coordinates(struct BLBoxI *box, uint32_t width) {
-        int x0 = box->x0;
-        box->x0 = width - box->x1;
-        box->x1 = width - x0;
-    }
 
     // TODO: Look at this again to see whether it handles inverted box. If not,
     // then assert not inverted
     static inline struct BLBoxI
-    get_reverse_transform(
+    blboxi_get_reverse_transform(
         struct BLBoxI box,
         uint32_t source_width,
         uint32_t source_height,
@@ -36,12 +35,12 @@
 
         switch (transform) {
         case WL_OUTPUT_TRANSFORM_FLIPPED:
-            flip_x_coordinates(&box, source_width);
+            blboxi_flip_x_coordinates(&box, source_width);
             __attribute__((fallthrough));
         case WL_OUTPUT_TRANSFORM_NORMAL:
             return box;
         case WL_OUTPUT_TRANSFORM_FLIPPED_90:
-            flip_x_coordinates(&box, source_height);
+            blboxi_flip_x_coordinates(&box, source_height);
             __attribute__((fallthrough));
         case WL_OUTPUT_TRANSFORM_90:
             tmp = box.x0;
@@ -51,7 +50,7 @@
             box.y1 = source_height - tmp/*x0*/;
             return box;
         case WL_OUTPUT_TRANSFORM_FLIPPED_180:
-            flip_x_coordinates(&box, source_width);
+            blboxi_flip_x_coordinates(&box, source_width);
             __attribute__((fallthrough));
         case WL_OUTPUT_TRANSFORM_180:
             tmp = box.y0;
@@ -62,7 +61,7 @@
             box.x1 = source_width - tmp;
             return box;
         case WL_OUTPUT_TRANSFORM_FLIPPED_270:
-            flip_x_coordinates(&box, source_height);
+            blboxi_flip_x_coordinates(&box, source_height);
             __attribute__((fallthrough));
         case WL_OUTPUT_TRANSFORM_270:
             tmp = box.x0;
@@ -95,7 +94,7 @@ struct scran_rgba32 {
     uint8_t a;
 };
 static inline struct scran_rgba32
-get_blrgba32_values(BLRgba32 *color) {
+blrgba32_to_scran_rgba32(BLRgba32 *color) {
     // : value((r << 16) | (g << 8) | b | (a << 24)) {}
     return (struct scran_rgba32) {
         .r = color->value >> 16,
@@ -106,7 +105,7 @@ get_blrgba32_values(BLRgba32 *color) {
 }
 
 static inline void
-set_blrgba32_values(BLRgba32 *color, struct scran_rgba32 scran_color) {
+blrgba32_set_values(BLRgba32 *color, struct scran_rgba32 scran_color) {
     color->value = (
         scran_color.r << 16 |
         scran_color.g <<  8 |
@@ -116,13 +115,13 @@ set_blrgba32_values(BLRgba32 *color, struct scran_rgba32 scran_color) {
 }
 
 static inline void
-scale_blrgba32_colors(BLRgba32 *color, float scale) {
-    struct scran_rgba32 scran_color = get_blrgba32_values(color);
+blrgba32_scale_colors(BLRgba32 *color, float scale) {
+    struct scran_rgba32 scran_color = blrgba32_to_scran_rgba32(color);
     scran_color.r = ceil(scran_color.r * scale);
     scran_color.g = ceil(scran_color.g * scale);
     scran_color.b = ceil(scran_color.b * scale);
     scran_color.a = ceil(scran_color.a * scale);
-    set_blrgba32_values(color, scran_color);
+    blrgba32_set_values(color, scran_color);
 }
 
 
@@ -227,7 +226,7 @@ blboxi_deinvert(struct BLBoxI *box)
 }
 
 static inline struct BLBoxI
-get_blboxi_deinverted(struct BLBoxI box_in)
+blboxi_get_deinverted(struct BLBoxI box_in)
 {
     const bool x_inverted = box_in.x1 < box_in.x0;
     const bool y_inverted = box_in.y1 < box_in.y0;
@@ -274,7 +273,7 @@ blboxi_to_blrecti(BLBoxI box) {
 }
 
 static inline BLBoxI
-get_blboxi_inflated(struct BLBoxI box, int inflation) {
+blboxi_get_inflated(struct BLBoxI box, int inflation) {
     return (BLBoxI) {
         box.x0 - inflation,
         box.y0 - inflation,
@@ -284,7 +283,7 @@ get_blboxi_inflated(struct BLBoxI box, int inflation) {
 }
 
 static inline void
-shift_blboxi(BLBoxI *box, int x_shift, int y_shift) {
+blboxi_shift(BLBoxI *box, int x_shift, int y_shift) {
     box->x0 += x_shift;
     box->y0 += y_shift;
     box->x1 += x_shift;
@@ -320,7 +319,7 @@ blboxi_intersection(
 
 // Operation: a - b
 static inline void
-get_box_diff_as_4_rects(
+blboxi_get_difference_as_4_rects(
     struct BLBoxI a,
     struct BLBoxI b,
     struct BLRectI ret[static 4]
@@ -380,7 +379,7 @@ get_box_diff_as_4_rects(
 
 // Operation: a ^ b
 static inline void
-get_box_symdiff_as_4_rects(
+blboxi_get_symmetric_difference_as_4_rects(
     struct BLBoxI a,
     struct BLBoxI b,
     struct BLRectI ret[static 4]

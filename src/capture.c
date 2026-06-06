@@ -109,7 +109,7 @@ update_capture_area_with_selection(
     struct scran_output *st_output,
     BLBoxI selection_box
 ) {
-    st_output->capture.frame_ctx.capture_area_px = get_reverse_transform(
+    st_output->capture.frame_ctx.capture_area_px = blboxi_get_reverse_transform(
         selection_box,
         st_output->mode.width_px,
         st_output->mode.height_px,

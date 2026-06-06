@@ -192,10 +192,10 @@ draw_and_damage_keymap(
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, SCRAN_SELECTION_BACKGROUND_COLOR.value);
 
         BLRectI text_rect_prev_uncovered[4];
-        get_box_diff_as_4_rects(blrecti_to_blboxi(text_rect_prev), capture_area_border_outline, text_rect_prev_uncovered);
+        blboxi_get_difference_as_4_rects(blrecti_to_blboxi(text_rect_prev), capture_area_border_outline, text_rect_prev_uncovered);
         // XXX: idk if this one is actually worth doing
         BLRectI text_rect_prev_any_buffer_uncovered[4];
-        get_box_diff_as_4_rects(blrecti_to_blboxi(text_rect_prev_any_buffer), capture_area_border_outline, text_rect_prev_any_buffer_uncovered);
+        blboxi_get_difference_as_4_rects(blrecti_to_blboxi(text_rect_prev_any_buffer), capture_area_border_outline, text_rect_prev_any_buffer_uncovered);
 
         for (int i = 0; i < 4; ++i) {
             bl_context_fill_rect_i(
@@ -309,9 +309,9 @@ draw_selection_and_damage_buffer(
     const BLBoxI capture_area_border_inline_last_used_in_current_buffer = get_scalesafe_border_inline(capture_area_last_used_in_current_buffer, scale);
 
     // XXX: Remake the "stroke width" macros
-    const BLBoxI capture_area_border_outline                             = get_blboxi_inflated(capture_area_border_inline                            , SCRAN_SELECTION_BORDER_THICKNESS_PX);
-    const BLBoxI capture_area_border_outline_last_used_in_any_buffer     = get_blboxi_inflated(capture_area_border_inline_last_used_in_any_buffer    , SCRAN_SELECTION_BORDER_THICKNESS_PX);
-    const BLBoxI capture_area_border_outline_last_used_in_current_buffer = get_blboxi_inflated(capture_area_border_inline_last_used_in_current_buffer, SCRAN_SELECTION_BORDER_THICKNESS_PX);
+    const BLBoxI capture_area_border_outline                             = blboxi_get_inflated(capture_area_border_inline                            , SCRAN_SELECTION_BORDER_THICKNESS_PX);
+    const BLBoxI capture_area_border_outline_last_used_in_any_buffer     = blboxi_get_inflated(capture_area_border_inline_last_used_in_any_buffer    , SCRAN_SELECTION_BORDER_THICKNESS_PX);
+    const BLBoxI capture_area_border_outline_last_used_in_current_buffer = blboxi_get_inflated(capture_area_border_inline_last_used_in_current_buffer, SCRAN_SELECTION_BORDER_THICKNESS_PX);
 
     // TODO: Just do redraw/damage directly whenever we need to redraw, rather
     // than doing it here with a flag.
@@ -325,7 +325,7 @@ draw_selection_and_damage_buffer(
 
         // Draw selection border
         BLRectI damage_regions_selection_border[4];
-        get_box_symdiff_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions_selection_border);
+        blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions_selection_border);
         draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline , damage_regions_selection_border, damage_regions_selection_border, 4);
 
         st_buffer->force_redraw = false;
@@ -336,12 +336,12 @@ draw_selection_and_damage_buffer(
             BLRectI damage_regions_buffer[8];
 
             static const int i_background_diffs = 0;
-            get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_outline                           , damage_regions_wayland + i_background_diffs);
-            get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_outline                           , damage_regions_buffer  + i_background_diffs);
+            blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_outline                           , damage_regions_wayland + i_background_diffs);
+            blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_outline                           , damage_regions_buffer  + i_background_diffs);
 
             static const int i_old_border_diffs = 4;
-            get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_inline_last_used_in_any_buffer    , damage_regions_wayland + i_old_border_diffs);
-            get_box_symdiff_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_inline_last_used_in_current_buffer, damage_regions_buffer  + i_old_border_diffs);
+            blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_inline_last_used_in_any_buffer    , damage_regions_wayland + i_old_border_diffs);
+            blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_inline_last_used_in_current_buffer, damage_regions_buffer  + i_old_border_diffs);
 
             draw_and_damage_background(selection_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, 8);
 
@@ -353,7 +353,7 @@ draw_selection_and_damage_buffer(
         {
             BLRectI damage_regions[4];
 
-            get_box_symdiff_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
+            blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
 
             draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
         }

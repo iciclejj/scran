@@ -90,7 +90,7 @@ redraw_keymap_image(
 
     if (keymap_item->disable_reason_mask != 0U) {
         BLRgba32 _color = color;
-        scale_blrgba32_colors(&_color, 0.64f); // dim the color
+        blrgba32_scale_colors(&_color, 0.64f); // dim the color
         bl_context_fill_utf16_text_i_rgba32(
             &ui_ctx->bl_ctx, &origin_shadow, &ui_ctx->font, string->str, string->strlen, _color.value
         );

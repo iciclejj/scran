@@ -133,19 +133,19 @@ handle_keyboard_key(
     assert(key_state != WL_KEYBOARD_KEY_STATE_RELEASED);
     switch (xkb_key) {
     case XKB_KEY_Left:
-        shift_blboxi(&st_output->selection_ctx.box_px, -1,  0);
+        blboxi_shift(&st_output->selection_ctx.box_px, -1,  0);
         request_selection_surface_frame_callback(st_output);
         break;
     case XKB_KEY_Right:
-        shift_blboxi(&st_output->selection_ctx.box_px, +1,  0);
+        blboxi_shift(&st_output->selection_ctx.box_px, +1,  0);
         request_selection_surface_frame_callback(st_output);
         break;
     case XKB_KEY_Up:
-        shift_blboxi(&st_output->selection_ctx.box_px,  0, -1);
+        blboxi_shift(&st_output->selection_ctx.box_px,  0, -1);
         request_selection_surface_frame_callback(st_output);
         break;
     case XKB_KEY_Down:
-        shift_blboxi(&st_output->selection_ctx.box_px,  0, +1);
+        blboxi_shift(&st_output->selection_ctx.box_px,  0, +1);
         request_selection_surface_frame_callback(st_output);
         break;
     case XKB_KEY_Tab:
