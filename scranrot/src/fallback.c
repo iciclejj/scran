@@ -16,7 +16,7 @@ enum {
 
 SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 static inline uint32_t
-_fallback_convert_pixel_format(
+convert_pixel_format(
     uint32_t pixel,
     uint32_t rgba_shift_mask // NOTE: NOT Shuffle mask.
 ) {
@@ -67,7 +67,7 @@ transform_framebuffer__fallback__rotate_270(
                         + (dst_y_px_max - (x + _x)) * dst_stride_bytes;
 
                     uint32_t val = *(uint32_t *)_src;
-                    val = _fallback_convert_pixel_format(val, rgba32_shift_mask);
+                    val = convert_pixel_format(val, rgba32_shift_mask);
 
                     *(uint32_t *)_dst = val;
                 }
@@ -117,7 +117,7 @@ transform_framebuffer__fallback__rotate_180(
                         - (x + _x) * RGBA32_PIXEL_STRIDE;
 
                     uint32_t val = *(uint32_t *)_src;
-                    val = _fallback_convert_pixel_format(val, rgba32_shift_mask);
+                    val = convert_pixel_format(val, rgba32_shift_mask);
 
                     *(uint32_t *)_dst = val;
                 }
@@ -164,7 +164,7 @@ transform_framebuffer__fallback__rotate_90(
                         + (x + _x) * dst_stride_bytes;
 
                     uint32_t val = *(uint32_t *)_src;
-                    val = _fallback_convert_pixel_format(val, rgba32_shift_mask);
+                    val = convert_pixel_format(val, rgba32_shift_mask);
 
                     *(uint32_t *)_dst = val;
                 }
@@ -207,7 +207,7 @@ transform_framebuffer__fallback__rotate_0(
                         + (x + _x) * RGBA32_PIXEL_STRIDE;
 
                     uint32_t val = *(uint32_t *)_src;
-                    val = _fallback_convert_pixel_format(val, rgba32_shift_mask);
+                    val = convert_pixel_format(val, rgba32_shift_mask);
 
                     *(uint32_t *)_dst = val;
                 }

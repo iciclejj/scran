@@ -33,20 +33,20 @@ _Static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "
 //   I.e. this:        77, 23,29,0  0,127,0,0
 //   Instead of this:  77,127,29,0  0, 23,0,0
 static inline __m128i
-_get_yuv_y_coefficients_a() {
+get_yuv_y_coefficients_a() {
     return _mm_setr_epi8(77,23,29,0,  77,23,29,0,  77,23,29,0,  77,23,29,0);
 }
 static inline __m128i
-_get_yuv_y_coefficients_b() {
+get_yuv_y_coefficients_b() {
     return _mm_setr_epi8(0,127,0,0,   0,127,0,0,   0,127,0,0,   0,127,0,0);
 }
 
 static inline __m128i
-_get_yuv_u_coefficients() {
+get_yuv_u_coefficients() {
     return _mm_setr_epi8(-43,-84,127,0, -43,-84,127,0, -43,-84,127,0, -43,-84,127,0);
 }
 static inline __m128i
-_get_yuv_v_coefficients() {
+get_yuv_v_coefficients() {
     return _mm_setr_epi8(127,-106,-21,0, 127,-106,-21,0, 127,-106,-21,0, 127,-106,-21,0);
 }
 
@@ -61,7 +61,7 @@ _get_yuv_v_coefficients() {
 //
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
-_16x16_8bpp_transpose_inplace(
+transpose_inplace_16x16_8bpp(
     __m128i arg[16]
 ) {
     __m128i tmp[16];
@@ -138,7 +138,7 @@ _16x16_8bpp_transpose_inplace(
 
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
-_16x16_8bpp_rotate_90_inplace(
+rotate_90_inplace_16x16_8bpp(
     __m128i arg[16]
 ) {
     __m128i tmp[16];
@@ -238,7 +238,7 @@ _16x16_8bpp_rotate_90_inplace(
 __attribute__((optimize("unroll-loops")))
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline __m128i
-_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2(
+convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2(
     const __m128i *const rgba_in,
     const __m128i *const coefficients_a,
     const __m128i *const coefficients_b,
@@ -265,7 +265,7 @@ _rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2(
 __attribute__((optimize("unroll-loops")))
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline __m128i
-_rgba32_to_yuv_plane_32bpp_signed_coefficients(
+convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
     const __m128i *const rgba_in,
     const __m128i *const coefficients,
     // Should probably always be 1. Required as an arg to not re-initialize every time.
@@ -295,14 +295,14 @@ _rgba32_to_yuv_plane_32bpp_signed_coefficients(
 // Safe to use as a replacement as long as the input values fall within [0, INT16_MAX]
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline __m128i
-_ssse3_packus_epi32_assume_0_to_i16max(__m128i a, __m128i b) {
+packus_epi32_ssse3_assume_0_to_i16max(__m128i a, __m128i b) {
     return _mm_packs_epi32(a, b);
 }
 
 __attribute__((optimize("unroll-loops")))
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline __m128i
-_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
+convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
     const __m128i rgba_in[4],
     const __m128i *const coefficients,
     // Should probably always be 1. Required as an arg to not re-initialize every time.
@@ -314,13 +314,13 @@ _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
     const __m128i hadamard_identity = _mm_set1_epi16(1);
 
     return _mm_srai_epi16( // V16_avg([y,x])
-               _ssse3_packus_epi32_assume_0_to_i16max( // V16_avg(y+x)
+               packus_epi32_ssse3_assume_0_to_i16max( // V16_avg(y+x)
                    _mm_madd_epi16 ( // V32_avg(y+x)
-                       _ssse3_packus_epi32_assume_0_to_i16max( // V16_avg(y)
-                           _rgba32_to_yuv_plane_32bpp_signed_coefficients( // V32_yavg
+                       packus_epi32_ssse3_assume_0_to_i16max( // V16_avg(y)
+                           convert_rgba32_to_yuv_plane_32bpp_signed_coefficients( // V32_yavg
                                &rgba_in[0], coefficients, hadamard_scaler, shr
                            ),
-                           _rgba32_to_yuv_plane_32bpp_signed_coefficients(
+                           convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
                                &rgba_in[1], coefficients, hadamard_scaler, shr
                            )
                        ),
@@ -328,11 +328,11 @@ _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                    ),
 
                    _mm_madd_epi16 (
-                       _ssse3_packus_epi32_assume_0_to_i16max(
-                           _rgba32_to_yuv_plane_32bpp_signed_coefficients(
+                       packus_epi32_ssse3_assume_0_to_i16max(
+                           convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
                                &rgba_in[2], coefficients, hadamard_scaler, shr
                            ),
-                           _rgba32_to_yuv_plane_32bpp_signed_coefficients(
+                           convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
                                &rgba_in[3], coefficients, hadamard_scaler, shr
                            )
                        ),
@@ -346,7 +346,7 @@ _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
 __attribute__((optimize("unroll-loops")))
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline __m128i
-_16px_rgba32_to_yuv_8bpp(
+convert_16px_rgba32_to_yuv_8bpp(
     const __m128i rgba_in[4],
     const __m128i *const coefficients_a,
     const __m128i *const coefficients_b,
@@ -357,20 +357,20 @@ _16px_rgba32_to_yuv_8bpp(
     // TODO: Function to get the intermediate A32 value
 
     return _mm_packus_epi16( // Y8 := [Y16 & 0xFF, Y16_1 & 0xFF] => Y8 == [y8, ...]
-              _ssse3_packus_epi32_assume_0_to_i16max( // Y16 := [Y32 & 0xFFFF, Y32_1 & 0xFFFF] => Y16 == [y16, ...]
-                  _rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32 == [y32, ...]
+              packus_epi32_ssse3_assume_0_to_i16max( // Y16 := [Y32 & 0xFFFF, Y32_1 & 0xFFFF] => Y16 == [y16, ...]
+                  convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32 == [y32, ...]
                       &rgba_in[0], coefficients_a, coefficients_b, hadamard_scaler, shr
                   ),
-                  _rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32_1
+                  convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32_1
                       &rgba_in[1], coefficients_a, coefficients_b, hadamard_scaler, shr
                   )
               ),
 
-              _ssse3_packus_epi32_assume_0_to_i16max( // A16_1
-                  _rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32_2
+              packus_epi32_ssse3_assume_0_to_i16max( // A16_1
+                  convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32_2
                       &rgba_in[2], coefficients_a, coefficients_b, hadamard_scaler, shr
                   ),
-                  _rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32_3
+                  convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32_3
                       &rgba_in[3], coefficients_a, coefficients_b, hadamard_scaler, shr
                   )
               )
@@ -393,10 +393,10 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "270 kernel assumes 32x32 RGBA32 tiles.");
 
-    const __m128i y_coefficients_a = _get_yuv_y_coefficients_a();
-    const __m128i y_coefficients_b = _get_yuv_y_coefficients_b();
-    const __m128i u_coefficients   = _get_yuv_u_coefficients();
-    const __m128i v_coefficients   = _get_yuv_v_coefficients();
+    const __m128i y_coefficients_a = get_yuv_y_coefficients_a();
+    const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
+    const __m128i u_coefficients   = get_yuv_u_coefficients();
+    const __m128i v_coefficients   = get_yuv_v_coefficients();
 
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
@@ -445,8 +445,8 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
                             },
                         };
 
-                        y_8bpp_final[j+0] = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
-                        y_8bpp_final[j+1] = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                        y_8bpp_final[j+0] = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                        y_8bpp_final[j+1] = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
 
                         // We average the two rows before converting, to reduce required calculation
                         const __m128i rgba_32bpp_rows_avg[4] = {
@@ -458,11 +458,11 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 
                         // U
                         const uint8_t j_yavg = j/2;
-                        u_i16_8bpp_xyavg[j_yavg][_xi] = _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
+                        u_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                                                             rgba_32bpp_rows_avg, &u_coefficients, &hadam_ident_epi16, 8
                                                         );
                         // V
-                        v_i16_8bpp_xyavg[j_yavg][_xi] = _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
+                        v_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                                                             rgba_32bpp_rows_avg, &v_coefficients, &hadam_ident_epi16, 8
                                                         );
                     }
@@ -470,7 +470,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 
                     // Store Y
                     //   (Inner tile)
-                    _16x16_8bpp_transpose_inplace(y_8bpp_final);
+                    transpose_inplace_16x16_8bpp(y_8bpp_final);
                     {
                         uint8_t *dst_y = dst_y_start + (y+_y) - (x+_x)*y_stride;
                         for (int j = 0; j < 16; ++j) {
@@ -498,7 +498,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
             SCRANROT_ASSERT((y==0||x==0) || (y%16==0 && x%16==0));
 
             // Store U
-            _16x16_8bpp_transpose_inplace(u_i8_4bpp_final);
+            transpose_inplace_16x16_8bpp(u_i8_4bpp_final);
             {
                 uint8_t *dst_u = dst_u_start + (y/2) - (x/2)*u_stride;
                 for (int j = 0; j < 16; ++j) {
@@ -508,7 +508,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
             }
 
             // Store V
-            _16x16_8bpp_transpose_inplace(v_i8_4bpp_final);
+            transpose_inplace_16x16_8bpp(v_i8_4bpp_final);
             {
                 uint8_t *dst_v = dst_v_start + (y/2) - (x/2)*v_stride;
                 for (int j = 0; j < 16; ++j) {
@@ -538,10 +538,10 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "180 kernel assumes 32x32 RGBA32 tiles.");
 
-    const __m128i y_coefficients_a = _get_yuv_y_coefficients_a();
-    const __m128i y_coefficients_b = _get_yuv_y_coefficients_b();
-    const __m128i u_coefficients   = _get_yuv_u_coefficients();
-    const __m128i v_coefficients   = _get_yuv_v_coefficients();
+    const __m128i y_coefficients_a = get_yuv_y_coefficients_a();
+    const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
+    const __m128i u_coefficients   = get_yuv_u_coefficients();
+    const __m128i v_coefficients   = get_yuv_v_coefficients();
 
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
@@ -592,8 +592,8 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
 
                         // Store Y
                         {
-                            const __m128i y_8bpp_final_0 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
-                            const __m128i y_8bpp_final_1 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                            const __m128i y_8bpp_final_0 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                            const __m128i y_8bpp_final_1 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
 
                             _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final_0);
                             dst_y -= y_stride;
@@ -611,11 +611,11 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
 
                         // U
                         const uint8_t j_yavg = j/2;
-                        u_i16_8bpp_xyavg[j_yavg][_xi_reversed] = _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
+                        u_i16_8bpp_xyavg[j_yavg][_xi_reversed] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                                                                      rgba_32bpp_rows_avg, &u_coefficients, &hadam_ident_epi16, 8
                                                                  );
                         // V
-                        v_i16_8bpp_xyavg[j_yavg][_xi_reversed] = _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
+                        v_i16_8bpp_xyavg[j_yavg][_xi_reversed] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                                                                      rgba_32bpp_rows_avg, &v_coefficients, &hadam_ident_epi16, 8
                                                                  );
                     }
@@ -669,10 +669,10 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "90 kernel assumes 32x32 RGBA32 tiles.");
 
-    const __m128i y_coefficients_a = _get_yuv_y_coefficients_a();
-    const __m128i y_coefficients_b = _get_yuv_y_coefficients_b();
-    const __m128i u_coefficients   = _get_yuv_u_coefficients();
-    const __m128i v_coefficients   = _get_yuv_v_coefficients();
+    const __m128i y_coefficients_a = get_yuv_y_coefficients_a();
+    const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
+    const __m128i u_coefficients   = get_yuv_u_coefficients();
+    const __m128i v_coefficients   = get_yuv_v_coefficients();
 
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
@@ -724,8 +724,8 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
                         };
 
 
-                        y_8bpp_final[j+0] = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
-                        y_8bpp_final[j+1] = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                        y_8bpp_final[j+0] = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                        y_8bpp_final[j+1] = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
 
                         // We average the two rows before converting, to reduce required calculation
                         const __m128i rgba_32bpp_rows_avg[4] = {
@@ -737,11 +737,11 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 
                         // U
                         const uint8_t j_yavg = j/2;
-                        u_i16_8bpp_xyavg[j_yavg][_xi] = _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
+                        u_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                                                             rgba_32bpp_rows_avg, &u_coefficients, &hadam_ident_epi16, 8
                                                         );
                         // V
-                        v_i16_8bpp_xyavg[j_yavg][_xi] = _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
+                        v_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                                                             rgba_32bpp_rows_avg, &v_coefficients, &hadam_ident_epi16, 8
                                                         );
                     }
@@ -749,7 +749,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
                     // Store Y (Inner tile)
                     {
                         uint8_t *dst_y = dst_y_start - (y+_y) + (x+_x)*y_stride;
-                        _16x16_8bpp_rotate_90_inplace(y_8bpp_final);
+                        rotate_90_inplace_16x16_8bpp(y_8bpp_final);
                         for (int j = 0; j < 16; ++j) {
                             _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final[j]);
                             dst_y += y_stride;
@@ -776,7 +776,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
             SCRANROT_ASSERT((y==0||x==0) || (y%16==0 && x%16==0));
 
             // Store U
-            _16x16_8bpp_rotate_90_inplace(u_i8_4bpp_final);
+            rotate_90_inplace_16x16_8bpp(u_i8_4bpp_final);
             {
                 uint8_t *dst_u = dst_u_start - (y/2) + (x/2)*u_stride;
                 for (int j = 0; j < 16; ++j) {
@@ -786,7 +786,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
             }
 
             // Store V
-            _16x16_8bpp_rotate_90_inplace(v_i8_4bpp_final);
+            rotate_90_inplace_16x16_8bpp(v_i8_4bpp_final);
             {
                 uint8_t *dst_v = dst_v_start - (y/2) + (x/2)*v_stride;
                 for (int j = 0; j < 16; ++j) {
@@ -815,10 +815,10 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "0 kernel assumes 32x32 RGBA32 tiles.");
 
-    const __m128i y_coefficients_a = _get_yuv_y_coefficients_a();
-    const __m128i y_coefficients_b = _get_yuv_y_coefficients_b();
-    const __m128i u_coefficients   = _get_yuv_u_coefficients();
-    const __m128i v_coefficients   = _get_yuv_v_coefficients();
+    const __m128i y_coefficients_a = get_yuv_y_coefficients_a();
+    const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
+    const __m128i u_coefficients   = get_yuv_u_coefficients();
+    const __m128i v_coefficients   = get_yuv_v_coefficients();
 
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
@@ -862,8 +862,8 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 
                         // Store Y
                         {
-                            const __m128i y_8bpp_final_0 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
-                            const __m128i y_8bpp_final_1 = _16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                            const __m128i y_8bpp_final_0 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                            const __m128i y_8bpp_final_1 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
                             _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final_0);
                             dst_y += y_stride;
                             _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final_1);
@@ -879,10 +879,10 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
                         };
 
                         const uint8_t j_yavg = j/2;
-                        u_i16_8bpp_xyavg[j_yavg][_xi] = _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
+                        u_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                                                             rgba_32bpp_rows_avg, &u_coefficients, &hadam_ident_epi16, 8
                                                         );
-                        v_i16_8bpp_xyavg[j_yavg][_xi] = _16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
+                        v_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                                                             rgba_32bpp_rows_avg, &v_coefficients, &hadam_ident_epi16, 8
                                                         );
                     }

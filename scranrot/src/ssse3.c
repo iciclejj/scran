@@ -28,7 +28,7 @@ _Static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "
 //           image capture, on a 5600h CPU.
 
 
-typedef void (*_scranrot_transform_framebuffer_fn__ssse3)(
+typedef void (*scranrot_transform_framebuffer_fn__ssse3)(
     const uint8_t *restrict src,
     const int src_width_px,
     const int src_height_px,
@@ -42,7 +42,7 @@ typedef void (*_scranrot_transform_framebuffer_fn__ssse3)(
 // TODO: Use KERNEL_TILE_HEIGHT_PX for an unrolled loop in these for easier tweaking
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
-_ssse3_load_rows_unaligned(
+load_tile_rows_unaligned(
     __m128i rows[static KERNEL_TILE_HEIGHT_PX],
     const __m128i *row_addrs[static KERNEL_TILE_HEIGHT_PX]
 ) {
@@ -54,7 +54,7 @@ _ssse3_load_rows_unaligned(
 
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
-_ssse3_store_rows_unaligned(
+store_tile_rows_unaligned(
     __m128i rows[static KERNEL_TILE_HEIGHT_PX],
     __m128i *row_addrs[static KERNEL_TILE_HEIGHT_PX]
 ) {
@@ -66,7 +66,7 @@ _ssse3_store_rows_unaligned(
 
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
-_ssse3_get_src_row_addresses(
+get_src_tile_row_addresses(
     const __m128i *row_addrs[static KERNEL_TILE_HEIGHT_PX],
     const char *row_addr_0,
     int src_stride_bytes
@@ -79,7 +79,7 @@ _ssse3_get_src_row_addresses(
 
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
-_ssse3_get_dst_row_addresses(
+get_dst_tile_row_addresses(
     __m128i *row_addrs[static KERNEL_TILE_HEIGHT_PX],
     const char *row_addr_0,
     int dst_stride_bytes
@@ -92,7 +92,7 @@ _ssse3_get_dst_row_addresses(
 
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
-_ssse3_convert_pixel_format(
+convert_tile_pixel_format(
     __m128i rows[static KERNEL_TILE_HEIGHT_PX],
     __m128i shuffle_mask
 ) {
@@ -104,7 +104,7 @@ _ssse3_convert_pixel_format(
 
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
-_ssse3_rotate_270(
+rotate_tile_270(
     __m128i src_rows[static KERNEL_TILE_HEIGHT_PX],
     __m128i dst_rows[static KERNEL_TILE_HEIGHT_PX]
 ) {
@@ -120,7 +120,7 @@ _ssse3_rotate_270(
 
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
-_ssse3_rotate_90(
+rotate_tile_90(
     __m128i src_rows[static KERNEL_TILE_HEIGHT_PX],
     __m128i dst_rows[static KERNEL_TILE_HEIGHT_PX]
 ) {
@@ -187,18 +187,18 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
 
             const char *const _src_block_row_addr_0 = src_block_row_addrs_base + src_col_px * RGBA32_PIXEL_STRIDE;
 
-            _ssse3_get_src_row_addresses(src_block_row_addrs, _src_block_row_addr_0, src_stride_bytes);
-            _ssse3_load_rows_unaligned(src_block_rows, src_block_row_addrs);
-            _ssse3_convert_pixel_format (src_block_rows, rgba32_shuffle_mask_128);
+            get_src_tile_row_addresses(src_block_row_addrs, _src_block_row_addr_0, src_stride_bytes);
+            load_tile_rows_unaligned(src_block_rows, src_block_row_addrs);
+            convert_tile_pixel_format (src_block_rows, rgba32_shuffle_mask_128);
 
             {
-                _ssse3_rotate_270(src_block_rows, dst_block_rows); // NOTE: Rotation-specific
+                rotate_tile_270(src_block_rows, dst_block_rows); // NOTE: Rotation-specific
 
-                _ssse3_get_dst_row_addresses(dst_block_row_addrs, dst_block_row_addr_0, dst_stride_bytes);
+                get_dst_tile_row_addresses(dst_block_row_addrs, dst_block_row_addr_0, dst_stride_bytes);
                 dst_block_row_addr_0 -= dst_stride_bytes * KERNEL_TILE_WIDTH_PX; // NOTE: Rotation-specific
             }
 
-            _ssse3_store_rows_unaligned(dst_block_rows, dst_block_row_addrs);
+            store_tile_rows_unaligned(dst_block_rows, dst_block_row_addrs);
         }
     }
 }
@@ -286,18 +286,18 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
 
             const char *const _src_block_row_addr_0 = src_block_row_addrs_base + src_col_px * RGBA32_PIXEL_STRIDE;
 
-            _ssse3_get_src_row_addresses(src_block_row_addrs, _src_block_row_addr_0, src_stride_bytes);
-            _ssse3_load_rows_unaligned(src_block_rows, src_block_row_addrs);
-            _ssse3_convert_pixel_format(src_block_rows, rgba32_shuffle_mask_128);
+            get_src_tile_row_addresses(src_block_row_addrs, _src_block_row_addr_0, src_stride_bytes);
+            load_tile_rows_unaligned(src_block_rows, src_block_row_addrs);
+            convert_tile_pixel_format(src_block_rows, rgba32_shuffle_mask_128);
 
             {
                 // NOTE: Rotation-specific code
-                _ssse3_rotate_90(src_block_rows, dst_block_rows);
-                _ssse3_get_dst_row_addresses(dst_block_row_addrs, dst_block_row_addr_0, dst_stride_bytes);
+                rotate_tile_90(src_block_rows, dst_block_rows);
+                get_dst_tile_row_addresses(dst_block_row_addrs, dst_block_row_addr_0, dst_stride_bytes);
                 dst_block_row_addr_0 += dst_stride_bytes * KERNEL_TILE_WIDTH_PX;
             }
 
-            _ssse3_store_rows_unaligned(dst_block_rows, dst_block_row_addrs);
+            store_tile_rows_unaligned(dst_block_rows, dst_block_row_addrs);
         }
     }
 }

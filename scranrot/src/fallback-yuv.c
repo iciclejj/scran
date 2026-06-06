@@ -16,7 +16,7 @@ enum {
 
 SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 static inline void
-_fallback_extract_rgb(
+extract_rgb(
     uint32_t pixel,
     uint32_t rgba_shuffle_mask,
     int *r, int *g, int *b
@@ -28,20 +28,20 @@ _fallback_extract_rgb(
 
 SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 static inline uint8_t
-_fallback_compute_y(int r, int g, int b) {
+compute_yuv_y(int r, int g, int b) {
     return (77 * r + 150 * g + 29 * b) >> 8;
 }
 
 // 131584 == 32896 * 4. Offset and division by 4 are merged into a single >>10.
 SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 static inline uint8_t
-_fallback_compute_u(int sum_r, int sum_g, int sum_b) {
+compute_yuv_u(int sum_r, int sum_g, int sum_b) {
     return (-43 * sum_r -  84 * sum_g + 127 * sum_b + 131584) >> 10;
 }
 
 SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 static inline uint8_t
-_fallback_compute_v(int sum_r, int sum_g, int sum_b) {
+compute_yuv_v(int sum_r, int sum_g, int sum_b) {
     return (127 * sum_r - 106 * sum_g -  21 * sum_b + 131584) >> 10;
 }
 
@@ -74,22 +74,22 @@ transform_framebuffer_to_yuv__fallback__rotate_270(
             int r10, g10, b10;
             int r01, g01, b01;
             int r11, g11, b11;
-            _fallback_extract_rgb(p00, rgba32_shuffle_mask, &r00, &g00, &b00);
-            _fallback_extract_rgb(p10, rgba32_shuffle_mask, &r10, &g10, &b10);
-            _fallback_extract_rgb(p01, rgba32_shuffle_mask, &r01, &g01, &b01);
-            _fallback_extract_rgb(p11, rgba32_shuffle_mask, &r11, &g11, &b11);
+            extract_rgb(p00, rgba32_shuffle_mask, &r00, &g00, &b00);
+            extract_rgb(p10, rgba32_shuffle_mask, &r10, &g10, &b10);
+            extract_rgb(p01, rgba32_shuffle_mask, &r01, &g01, &b01);
+            extract_rgb(p11, rgba32_shuffle_mask, &r11, &g11, &b11);
 
-            dst_y[(src_width_px-1-x) * dst_y_stride + (y  )] = _fallback_compute_y(r00, g00, b00);
-            dst_y[(src_width_px-2-x) * dst_y_stride + (y  )] = _fallback_compute_y(r10, g10, b10);
-            dst_y[(src_width_px-1-x) * dst_y_stride + (y+1)] = _fallback_compute_y(r01, g01, b01);
-            dst_y[(src_width_px-2-x) * dst_y_stride + (y+1)] = _fallback_compute_y(r11, g11, b11);
+            dst_y[(src_width_px-1-x) * dst_y_stride + (y  )] = compute_yuv_y(r00, g00, b00);
+            dst_y[(src_width_px-2-x) * dst_y_stride + (y  )] = compute_yuv_y(r10, g10, b10);
+            dst_y[(src_width_px-1-x) * dst_y_stride + (y+1)] = compute_yuv_y(r01, g01, b01);
+            dst_y[(src_width_px-2-x) * dst_y_stride + (y+1)] = compute_yuv_y(r11, g11, b11);
 
             const int sum_r = r00 + r10 + r01 + r11;
             const int sum_g = g00 + g10 + g01 + g11;
             const int sum_b = b00 + b10 + b01 + b11;
 
-            dst_u[((src_width_px-2-x)/2) * dst_u_stride + (y/2)] = _fallback_compute_u(sum_r, sum_g, sum_b);
-            dst_v[((src_width_px-2-x)/2) * dst_v_stride + (y/2)] = _fallback_compute_v(sum_r, sum_g, sum_b);
+            dst_u[((src_width_px-2-x)/2) * dst_u_stride + (y/2)] = compute_yuv_u(sum_r, sum_g, sum_b);
+            dst_v[((src_width_px-2-x)/2) * dst_v_stride + (y/2)] = compute_yuv_v(sum_r, sum_g, sum_b);
         }
     }
 }
@@ -123,22 +123,22 @@ transform_framebuffer_to_yuv__fallback__rotate_180(
             int r10, g10, b10;
             int r01, g01, b01;
             int r11, g11, b11;
-            _fallback_extract_rgb(p00, rgba32_shuffle_mask, &r00, &g00, &b00);
-            _fallback_extract_rgb(p10, rgba32_shuffle_mask, &r10, &g10, &b10);
-            _fallback_extract_rgb(p01, rgba32_shuffle_mask, &r01, &g01, &b01);
-            _fallback_extract_rgb(p11, rgba32_shuffle_mask, &r11, &g11, &b11);
+            extract_rgb(p00, rgba32_shuffle_mask, &r00, &g00, &b00);
+            extract_rgb(p10, rgba32_shuffle_mask, &r10, &g10, &b10);
+            extract_rgb(p01, rgba32_shuffle_mask, &r01, &g01, &b01);
+            extract_rgb(p11, rgba32_shuffle_mask, &r11, &g11, &b11);
 
-            dst_y[(src_height_px-1-y) * dst_y_stride + (src_width_px-1-x)] = _fallback_compute_y(r00, g00, b00);
-            dst_y[(src_height_px-1-y) * dst_y_stride + (src_width_px-2-x)] = _fallback_compute_y(r10, g10, b10);
-            dst_y[(src_height_px-2-y) * dst_y_stride + (src_width_px-1-x)] = _fallback_compute_y(r01, g01, b01);
-            dst_y[(src_height_px-2-y) * dst_y_stride + (src_width_px-2-x)] = _fallback_compute_y(r11, g11, b11);
+            dst_y[(src_height_px-1-y) * dst_y_stride + (src_width_px-1-x)] = compute_yuv_y(r00, g00, b00);
+            dst_y[(src_height_px-1-y) * dst_y_stride + (src_width_px-2-x)] = compute_yuv_y(r10, g10, b10);
+            dst_y[(src_height_px-2-y) * dst_y_stride + (src_width_px-1-x)] = compute_yuv_y(r01, g01, b01);
+            dst_y[(src_height_px-2-y) * dst_y_stride + (src_width_px-2-x)] = compute_yuv_y(r11, g11, b11);
 
             const int sum_r = r00 + r10 + r01 + r11;
             const int sum_g = g00 + g10 + g01 + g11;
             const int sum_b = b00 + b10 + b01 + b11;
 
-            dst_u[((src_height_px-2-y)/2) * dst_u_stride + ((src_width_px-2-x)/2)] = _fallback_compute_u(sum_r, sum_g, sum_b);
-            dst_v[((src_height_px-2-y)/2) * dst_v_stride + ((src_width_px-2-x)/2)] = _fallback_compute_v(sum_r, sum_g, sum_b);
+            dst_u[((src_height_px-2-y)/2) * dst_u_stride + ((src_width_px-2-x)/2)] = compute_yuv_u(sum_r, sum_g, sum_b);
+            dst_v[((src_height_px-2-y)/2) * dst_v_stride + ((src_width_px-2-x)/2)] = compute_yuv_v(sum_r, sum_g, sum_b);
         }
     }
 }
@@ -172,22 +172,22 @@ transform_framebuffer_to_yuv__fallback__rotate_90(
             int r10, g10, b10;
             int r01, g01, b01;
             int r11, g11, b11;
-            _fallback_extract_rgb(p00, rgba32_shuffle_mask, &r00, &g00, &b00);
-            _fallback_extract_rgb(p10, rgba32_shuffle_mask, &r10, &g10, &b10);
-            _fallback_extract_rgb(p01, rgba32_shuffle_mask, &r01, &g01, &b01);
-            _fallback_extract_rgb(p11, rgba32_shuffle_mask, &r11, &g11, &b11);
+            extract_rgb(p00, rgba32_shuffle_mask, &r00, &g00, &b00);
+            extract_rgb(p10, rgba32_shuffle_mask, &r10, &g10, &b10);
+            extract_rgb(p01, rgba32_shuffle_mask, &r01, &g01, &b01);
+            extract_rgb(p11, rgba32_shuffle_mask, &r11, &g11, &b11);
 
-            dst_y[(x  ) * dst_y_stride + (src_height_px-1-y)] = _fallback_compute_y(r00, g00, b00);
-            dst_y[(x+1) * dst_y_stride + (src_height_px-1-y)] = _fallback_compute_y(r10, g10, b10);
-            dst_y[(x  ) * dst_y_stride + (src_height_px-2-y)] = _fallback_compute_y(r01, g01, b01);
-            dst_y[(x+1) * dst_y_stride + (src_height_px-2-y)] = _fallback_compute_y(r11, g11, b11);
+            dst_y[(x  ) * dst_y_stride + (src_height_px-1-y)] = compute_yuv_y(r00, g00, b00);
+            dst_y[(x+1) * dst_y_stride + (src_height_px-1-y)] = compute_yuv_y(r10, g10, b10);
+            dst_y[(x  ) * dst_y_stride + (src_height_px-2-y)] = compute_yuv_y(r01, g01, b01);
+            dst_y[(x+1) * dst_y_stride + (src_height_px-2-y)] = compute_yuv_y(r11, g11, b11);
 
             const int sum_r = r00 + r10 + r01 + r11;
             const int sum_g = g00 + g10 + g01 + g11;
             const int sum_b = b00 + b10 + b01 + b11;
 
-            dst_u[(x/2) * dst_u_stride + ((src_height_px-2-y)/2)] = _fallback_compute_u(sum_r, sum_g, sum_b);
-            dst_v[(x/2) * dst_v_stride + ((src_height_px-2-y)/2)] = _fallback_compute_v(sum_r, sum_g, sum_b);
+            dst_u[(x/2) * dst_u_stride + ((src_height_px-2-y)/2)] = compute_yuv_u(sum_r, sum_g, sum_b);
+            dst_v[(x/2) * dst_v_stride + ((src_height_px-2-y)/2)] = compute_yuv_v(sum_r, sum_g, sum_b);
         }
     }
 }
@@ -221,22 +221,22 @@ transform_framebuffer_to_yuv__fallback__rotate_0(
             int r10, g10, b10;
             int r01, g01, b01;
             int r11, g11, b11;
-            _fallback_extract_rgb(p00, rgba32_shuffle_mask, &r00, &g00, &b00);
-            _fallback_extract_rgb(p10, rgba32_shuffle_mask, &r10, &g10, &b10);
-            _fallback_extract_rgb(p01, rgba32_shuffle_mask, &r01, &g01, &b01);
-            _fallback_extract_rgb(p11, rgba32_shuffle_mask, &r11, &g11, &b11);
+            extract_rgb(p00, rgba32_shuffle_mask, &r00, &g00, &b00);
+            extract_rgb(p10, rgba32_shuffle_mask, &r10, &g10, &b10);
+            extract_rgb(p01, rgba32_shuffle_mask, &r01, &g01, &b01);
+            extract_rgb(p11, rgba32_shuffle_mask, &r11, &g11, &b11);
 
-            dst_y[(y  ) * dst_y_stride + (x  )] = _fallback_compute_y(r00, g00, b00);
-            dst_y[(y  ) * dst_y_stride + (x+1)] = _fallback_compute_y(r10, g10, b10);
-            dst_y[(y+1) * dst_y_stride + (x  )] = _fallback_compute_y(r01, g01, b01);
-            dst_y[(y+1) * dst_y_stride + (x+1)] = _fallback_compute_y(r11, g11, b11);
+            dst_y[(y  ) * dst_y_stride + (x  )] = compute_yuv_y(r00, g00, b00);
+            dst_y[(y  ) * dst_y_stride + (x+1)] = compute_yuv_y(r10, g10, b10);
+            dst_y[(y+1) * dst_y_stride + (x  )] = compute_yuv_y(r01, g01, b01);
+            dst_y[(y+1) * dst_y_stride + (x+1)] = compute_yuv_y(r11, g11, b11);
 
             const int sum_r = r00 + r10 + r01 + r11;
             const int sum_g = g00 + g10 + g01 + g11;
             const int sum_b = b00 + b10 + b01 + b11;
 
-            dst_u[(y/2) * dst_u_stride + (x/2)] = _fallback_compute_u(sum_r, sum_g, sum_b);
-            dst_v[(y/2) * dst_v_stride + (x/2)] = _fallback_compute_v(sum_r, sum_g, sum_b);
+            dst_u[(y/2) * dst_u_stride + (x/2)] = compute_yuv_u(sum_r, sum_g, sum_b);
+            dst_v[(y/2) * dst_v_stride + (x/2)] = compute_yuv_v(sum_r, sum_g, sum_b);
         }
     }
 }

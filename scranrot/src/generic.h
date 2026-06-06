@@ -24,25 +24,25 @@ typedef void (*scranrot_transform_framebuffer_impl_fn)(
 
 SCRANROT_ALWAYS_INLINE
 static inline int
-_get_max_tileDivisible_height_px(int height, int tile_height) {
+get_max_tileDivisible_height_px(int height, int tile_height) {
     return (height / tile_height) * tile_height;
 }
 
 SCRANROT_ALWAYS_INLINE
 static inline int
-_get_max_tileDivisible_height_remainder_px(int height, int tile_height) {
+get_max_tileDivisible_height_remainder_px(int height, int tile_height) {
     return (height % tile_height);
 }
 
 SCRANROT_ALWAYS_INLINE
 static inline int
-_get_max_tileDivisible_width_px(int width, int tile_width) {
+get_max_tileDivisible_width_px(int width, int tile_width) {
     return (width / tile_width) * tile_width;
 }
 
 SCRANROT_ALWAYS_INLINE
 static inline int
-_get_max_tileDivisible_width_remainder_px(int width, int tile_width) {
+get_max_tileDivisible_width_remainder_px(int width, int tile_width) {
     return (width % tile_width);
 }
 
@@ -83,20 +83,20 @@ transform_framebuffer__generic_dispatcher(
 
     switch (transform) {
     case SCRANROT_TRANSFORM_270:
-        dst_divisible_src_w_offset = dst_stride_bytes * _get_max_tileDivisible_width_remainder_px(src_width_px, tile_width_px);
+        dst_divisible_src_w_offset = dst_stride_bytes * get_max_tileDivisible_width_remainder_px(src_width_px, tile_width_px);
         dst_divisible_src_h_offset = 0;
         dst_right_src_edge_crop_offset  = 0;
         dst_bottom_src_edge_crop_offset = (src_height_px - tile_height_px) * RGBA32_PIXEL_STRIDE;
         break;
     case SCRANROT_TRANSFORM_180:
-        dst_divisible_src_w_offset = RGBA32_PIXEL_STRIDE * _get_max_tileDivisible_width_remainder_px(src_width_px, tile_width_px);
-        dst_divisible_src_h_offset = dst_stride_bytes    * _get_max_tileDivisible_height_remainder_px(src_height_px, tile_height_px);
+        dst_divisible_src_w_offset = RGBA32_PIXEL_STRIDE * get_max_tileDivisible_width_remainder_px(src_width_px, tile_width_px);
+        dst_divisible_src_h_offset = dst_stride_bytes    * get_max_tileDivisible_height_remainder_px(src_height_px, tile_height_px);
         dst_right_src_edge_crop_offset  = 0;
         dst_bottom_src_edge_crop_offset = 0;
         break;
     case SCRANROT_TRANSFORM_90:
         dst_divisible_src_w_offset = 0;
-        dst_divisible_src_h_offset = RGBA32_PIXEL_STRIDE * _get_max_tileDivisible_height_remainder_px(src_height_px, tile_height_px);
+        dst_divisible_src_h_offset = RGBA32_PIXEL_STRIDE * get_max_tileDivisible_height_remainder_px(src_height_px, tile_height_px);
         dst_right_src_edge_crop_offset  = (src_width_px - tile_width_px) * dst_stride_bytes;
         dst_bottom_src_edge_crop_offset = 0;
         break;
@@ -112,11 +112,11 @@ transform_framebuffer__generic_dispatcher(
         return false;
     }
 
-    int src_w_px_divisible = _get_max_tileDivisible_width_px(src_width_px, tile_width_px);
-    int src_w_px_remaining = _get_max_tileDivisible_width_remainder_px(src_width_px, tile_width_px);
+    int src_w_px_divisible = get_max_tileDivisible_width_px(src_width_px, tile_width_px);
+    int src_w_px_remaining = get_max_tileDivisible_width_remainder_px(src_width_px, tile_width_px);
 
-    int src_h_px_divisible = _get_max_tileDivisible_height_px(src_height_px, tile_height_px);
-    int src_h_px_remaining = _get_max_tileDivisible_height_remainder_px(src_height_px, tile_height_px);
+    int src_h_px_divisible = get_max_tileDivisible_height_px(src_height_px, tile_height_px);
+    int src_h_px_remaining = get_max_tileDivisible_height_remainder_px(src_height_px, tile_height_px);
 
     { // Tilesize-divisible area
         uint8_t *_dst = dst + dst_divisible_src_w_offset + dst_divisible_src_h_offset;
@@ -244,7 +244,7 @@ transform_framebuffer_to_yuv420__generic_dispatcher(
     // Also pre-calculate the required offsets for the edge-handling runs.
     switch (transform) {
     case SCRANROT_TRANSFORM_270:
-        dst_row_divisible_src_w = _get_max_tileDivisible_width_remainder_px(src_width_px, tile_width_px);
+        dst_row_divisible_src_w = get_max_tileDivisible_width_remainder_px(src_width_px, tile_width_px);
         dst_col_divisible_src_w = 0;
         dst_row_divisible_src_h = 0;
         dst_col_divisible_src_h = 0;
@@ -255,8 +255,8 @@ transform_framebuffer_to_yuv420__generic_dispatcher(
         break;
     case SCRANROT_TRANSFORM_180:
         dst_row_divisible_src_w = 0;
-        dst_col_divisible_src_w = _get_max_tileDivisible_width_remainder_px(src_width_px, tile_width_px);
-        dst_row_divisible_src_h = _get_max_tileDivisible_height_remainder_px(src_height_px, tile_height_px);
+        dst_col_divisible_src_w = get_max_tileDivisible_width_remainder_px(src_width_px, tile_width_px);
+        dst_row_divisible_src_h = get_max_tileDivisible_height_remainder_px(src_height_px, tile_height_px);
         dst_col_divisible_src_h = 0;
         dst_row_right_src_edge_crop = 0;
         dst_col_right_src_edge_crop = 0;
@@ -267,7 +267,7 @@ transform_framebuffer_to_yuv420__generic_dispatcher(
         dst_row_divisible_src_w = 0;
         dst_col_divisible_src_w = 0;
         dst_row_divisible_src_h = 0;
-        dst_col_divisible_src_h = _get_max_tileDivisible_height_remainder_px(src_height_px, tile_height_px);
+        dst_col_divisible_src_h = get_max_tileDivisible_height_remainder_px(src_height_px, tile_height_px);
         dst_row_right_src_edge_crop = (src_width_px - tile_width_px);
         dst_col_right_src_edge_crop = 0;
         dst_row_bottom_src_edge_crop = 0;
@@ -289,11 +289,11 @@ transform_framebuffer_to_yuv420__generic_dispatcher(
         return false;
     }
 
-    int src_w_px_divisible = _get_max_tileDivisible_width_px(src_width_px, tile_width_px);
-    int src_w_px_remaining = _get_max_tileDivisible_width_remainder_px(src_width_px, tile_width_px);
+    int src_w_px_divisible = get_max_tileDivisible_width_px(src_width_px, tile_width_px);
+    int src_w_px_remaining = get_max_tileDivisible_width_remainder_px(src_width_px, tile_width_px);
 
-    int src_h_px_divisible = _get_max_tileDivisible_height_px(src_height_px, tile_height_px);
-    int src_h_px_remaining = _get_max_tileDivisible_height_remainder_px(src_height_px, tile_height_px);
+    int src_h_px_divisible = get_max_tileDivisible_height_px(src_height_px, tile_height_px);
+    int src_h_px_remaining = get_max_tileDivisible_height_remainder_px(src_height_px, tile_height_px);
 
 
 
