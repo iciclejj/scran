@@ -67,7 +67,7 @@ seat_listener__destroy(struct scran_seat *seat)
     ext_data_control_device_v1_destroy(seat->datacontrol.device);
 
     wl_keyboard_destroy(seat->wl_keyboard);
-    keyboard_listener_destroy(seat);
+    keyboard_listener__destroy(seat);
 
     wl_pointer_destroy(seat->wl_pointer);
     wp_cursor_shape_device_v1_destroy(seat->pointer_ctx.cursor_shape_device);

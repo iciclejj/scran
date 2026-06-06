@@ -329,7 +329,7 @@ struct wl_keyboard_listener keyboard_listener = {
 };
 
 void
-keyboard_listener_destroy(struct scran_seat *st_seat)
+keyboard_listener__destroy(struct scran_seat *st_seat)
 {
     xkb_context_unref(st_seat->keyboard.xkb_context);
     xkb_keymap_unref(st_seat->keyboard.xkb_keymap);
