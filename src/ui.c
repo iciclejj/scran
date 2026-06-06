@@ -16,13 +16,13 @@
 
 #define CHAR16_STRLEN(s) ( (sizeof(s) / sizeof(char16_t)) - 1)
 
-extern const char   _binary_assets_font_ttf_start[];
-extern const char   _binary_assets_font_ttf_end[];
+extern const char scran_font_ttf_start[];
+extern const char scran_font_ttf_end[];
 static inline size_t _get_font_size() {
-    return _binary_assets_font_ttf_end - _binary_assets_font_ttf_start;
+    return scran_font_ttf_end - scran_font_ttf_start;
 }
 static inline const void * _get_font_data() {
-    return _binary_assets_font_ttf_start;
+    return scran_font_ttf_start;
 }
 
 static const BLRgba32 keymap_colors[] = {
