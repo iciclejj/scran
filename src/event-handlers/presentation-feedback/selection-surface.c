@@ -50,7 +50,7 @@ handle_presentation_feedback_presented__selection(
     // TODO: This naive implementation is not very robust against
     // delayed/skiped/etc. frames. Probably a frame history and multi-buffered
     // capture is required, with currently available sync/protocol guarantees.
-    update_capture_area_with_selection(st_output, st_buffer->box_currently_drawn);
+    capture_update_area_with_selection(st_output, st_buffer->box_currently_drawn);
 }
 
 static inline void

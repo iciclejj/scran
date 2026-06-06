@@ -95,7 +95,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     // XXX TODO: Either separate buffer from video capture OR double-check that
     // the shared buffer doesn't cause issues + add robust checks/asserts.
     // (Primarily for when we implement simultaneous image+video capture)
-    const uint8_t *const area_start_addr = get_capture_area_start_address(frame_ctx);
+    const uint8_t *const area_start_addr = capture_get_area_start_address(frame_ctx);
     // XXX TODO(!!):
     //    Output size is not necessarily guaranteed to be <= raw pixel
     //    buffer size. In other words, this buffer could overflow, as it
@@ -142,7 +142,7 @@ handle_image_copy_capture_frame_ready__image_capture(
         &frame_ctx->bl_img_captured,
         capture_area_px_w_transformed,
         capture_area_px_h_transformed,
-        CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT,
+        IMAGE_CAPTURE_OUTPUT_BLFORMAT_DEFAULT,
         buf_cropped_converted,
         buf_cropped_converted_row_bytes,
         // XXX: Read-only access causes blend2d to make a copy if modified.
@@ -155,7 +155,7 @@ handle_image_copy_capture_frame_ready__image_capture(
 
     // TODO: This should only be called once, outside of the capture event
     // pipeline, unless between-capture format changing is implemented.
-    res = bl_image_codec_find_by_name(&frame_ctx->bl_imgcodec, CAPTURE_IMAGE_OUTPUT_BLIMAGECODEC_NAME_DEFAULT, SIZE_MAX, NULL);
+    res = bl_image_codec_find_by_name(&frame_ctx->bl_imgcodec, IMAGE_CAPTURE_OUTPUT_BLIMAGECODEC_NAME_DEFAULT, SIZE_MAX, NULL);
     // TODO: This should be initialized in init_premem, so we don't re-allocate
     // the array backing every time. Must in that case either be a double-
     // buffer, OR assert that there will never be a race condition with
@@ -183,7 +183,7 @@ handle_image_copy_capture_frame_ready__image_capture(
         }
     } else {
         static const char default_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] =
-            CAPTURE_IMAGE_OUTPUT_FILE_EXTENSION_DEFAULT;
+            IMAGE_CAPTURE_OUTPUT_FILE_EXTENSION_DEFAULT;
         output_filepath =
             scran_update_output_filepath(st_options, default_extension);
 

@@ -190,7 +190,7 @@ z_done:
         if (st_output->capture.frame_ctx.capturing_video) {
             // TODO: Both stop capture and request exit?
             eprintf(" stopping video capture.\n");
-            request_end_video_capture(st_output);
+            video_capture_request_stop(st_output);
         } else {
             eprintf(" exiting.\n");
             state->exit_requested = true;
@@ -203,7 +203,7 @@ z_done:
         if (st_output->capture.frame_ctx.capturing_video) {
             eprintf("Screenshot during video capture not implemented yet, try again later :(\n");
         } else {
-            request_image_capture(st_output);
+            image_capture_start(st_output);
 
             if (!xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE)) {
                 state->exit_requested = true;
@@ -218,14 +218,14 @@ z_done:
         bool video_button_got_jammed = false;
 
         if (st_output->capture.frame_ctx.capturing_video) {
-            request_end_video_capture(st_output);
+            video_capture_request_stop(st_output);
         } else {
             if (st_output->selection_ctx.selection_state == SELECTION_INITIALIZING) {
                 // TODO: Guard against capture_and_exit_after_selection_init?
                 set_selection_initialized(st_output);
             }
 
-            if (!request_video_capture(st_output)) {
+            if (!video_capture_start(st_output)) {
                 // TODO: Fire a notification instead?
                 video_button_got_jammed = true; // :(
                 eprintf("Failed to start video capture.\n");

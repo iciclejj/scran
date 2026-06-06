@@ -39,7 +39,7 @@ extern struct scran g_state;
 
 
 void
-write_audio_packet(
+video_capture_write_audio_packet(
     struct capture_frame_context *frame_ctx,
     AVPacket *pkt // Encoded frame
 ) {
@@ -47,8 +47,8 @@ write_audio_packet(
 
     assert(pkt != NULL);
 
-    const AVStream *const av_stream = ffmpeg_ctx->av_format_ctx->streams[AV_FORMAT_STREAM_IDX_AUDIO];
-    pkt->stream_index = AV_FORMAT_STREAM_IDX_AUDIO;
+    const AVStream *const av_stream = ffmpeg_ctx->av_format_ctx->streams[SCRAN_AV_FORMAT_STREAM_IDX_AUDIO];
+    pkt->stream_index = SCRAN_AV_FORMAT_STREAM_IDX_AUDIO;
     assert(pkt->stream_index == av_stream->index);
 
     // NOTE: This is doing the work of av_packet_rescale_ts(), but with
@@ -65,7 +65,7 @@ write_audio_packet(
 }
 
 void
-write_video_frame(
+video_capture_write_frame(
     struct capture_frame_context *frame_ctx,
     AVPacket *pkt // Encoded frame
 ) {
@@ -73,9 +73,9 @@ write_video_frame(
 
     assert(pkt != NULL);
 
-    const AVStream *const _av_stream = ffmpeg_ctx->av_format_ctx->streams[AV_FORMAT_STREAM_IDX_VIDEO];
+    const AVStream *const _av_stream = ffmpeg_ctx->av_format_ctx->streams[SCRAN_AV_FORMAT_STREAM_IDX_VIDEO];
 
-    pkt->stream_index = AV_FORMAT_STREAM_IDX_VIDEO;
+    pkt->stream_index = SCRAN_AV_FORMAT_STREAM_IDX_VIDEO;
     assert(pkt->stream_index == _av_stream->index);
 
     // NOTE: This is doing the work of av_packet_rescale_ts(), but with
@@ -94,18 +94,9 @@ write_video_frame(
     av_interleaved_write_frame(ffmpeg_ctx->av_format_ctx, pkt);
 }
 
-uint8_t *
-get_capture_area_start_address(
-    struct capture_frame_context *frame_ctx
-) {
-    return frame_ctx->st_buffer.data
-         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
-         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
-}
-
 // `selection_box` has `scran_output_selectionContext.box` coordinate space!
 void
-update_capture_area_with_selection(
+capture_update_area_with_selection(
     struct scran_output *st_output,
     BLBoxI selection_box
 ) {
@@ -121,7 +112,7 @@ update_capture_area_with_selection(
 }
 
 void
-request_video_capture_frame(
+video_capture_request_frame(
     struct capture_frame_context *frame_ctx,
     int32_t damage_x,
     int32_t damage_y,
@@ -219,7 +210,7 @@ init_ffmpeg_audio(struct scran_output *st_output)
 
     // AVStream
     AVStream *audio_stream = avformat_new_stream(ffmpeg_ctx->av_format_ctx, codec);
-    assert(audio_stream == ffmpeg_ctx->av_format_ctx->streams[AV_FORMAT_STREAM_IDX_AUDIO]);
+    assert(audio_stream == ffmpeg_ctx->av_format_ctx->streams[SCRAN_AV_FORMAT_STREAM_IDX_AUDIO]);
     avcodec_parameters_from_context(audio_stream->codecpar, ffmpeg_ctx->av_codec_ctx_audio);
 
     return true;
@@ -345,7 +336,7 @@ init_ffmpeg(struct scran_output *st_output)
 
     // AVStream
     AVStream *_av_stream = avformat_new_stream(ffmpeg_ctx->av_format_ctx, codec);
-    assert(_av_stream == ffmpeg_ctx->av_format_ctx->streams[AV_FORMAT_STREAM_IDX_VIDEO]);
+    assert(_av_stream == ffmpeg_ctx->av_format_ctx->streams[SCRAN_AV_FORMAT_STREAM_IDX_VIDEO]);
     // NOTE: Requested time_base. Final time_base will have been selected by
     // libav after write_header. av_packet_rescale_ts() exists to convert from
     // Encoder timestamps to Format timestamps prior to handing off the packet.
@@ -381,7 +372,7 @@ init_ffmpeg(struct scran_output *st_output)
     av_dict_free(&format_opts);
     if (format_ret < 0) {
         eprintf("Failed to write file header (filepath: %s)\n", output_filepath);
-        destroy_ffmpeg(st_output); // TODO: goto fail?
+        video_capture_destroy_ffmpeg(st_output); // TODO: goto fail?
         return false;
     }
 
@@ -389,7 +380,7 @@ init_ffmpeg(struct scran_output *st_output)
 }
 
 void
-destroy_ffmpeg(struct scran_output *st_output)
+video_capture_destroy_ffmpeg(struct scran_output *st_output)
 {
     struct ffmpeg_context        *ffmpeg_ctx = &st_output->capture.frame_ctx.ffmpeg_ctx;
 
@@ -405,7 +396,7 @@ destroy_ffmpeg(struct scran_output *st_output)
 
 
 bool
-request_video_capture(struct scran_output *st_output)
+video_capture_start(struct scran_output *st_output)
 {
     // TODO: Assert instead?
     if (st_output->capture.frame_ctx.capturing_video) {
@@ -450,7 +441,7 @@ request_video_capture(struct scran_output *st_output)
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
-    request_video_capture_frame(
+    video_capture_request_frame(
         &st_output->capture.frame_ctx,
         // Ensure the first frame is fully rendered
         0, 0, st_output->mode.width_px, st_output->mode.height_px
@@ -467,7 +458,7 @@ request_video_capture(struct scran_output *st_output)
 }
 
 void
-request_end_video_capture(struct scran_output *st_output)
+video_capture_request_stop(struct scran_output *st_output)
 {
     // Ensure one last frame is triggered as soon as possible, even if
     // no damage has been reported by the compositor. This ensures
@@ -475,21 +466,20 @@ request_end_video_capture(struct scran_output *st_output)
     // timestamp. This also lets the frame listener finalize the
     // recording and clean up as soon as possible.
     ext_image_copy_capture_frame_v1_destroy(st_output->capture.frame_ctx.frame);
-    request_video_capture_frame(
+    video_capture_request_frame(
         &st_output->capture.frame_ctx,
         0, 0, st_output->mode.width_px, st_output->mode.height_px
     );
 
-    force_compositor_output_damage_for_capture(st_output);
+    capture_force_next_frame(st_output);
 
     st_output->capture.frame_ctx.capturing_video = false;
 }
 
 // Should only be called once the video capture event loop is finished.
-//    Call request_end_video_capture() instead to initiate graceful completion.
-// TODO: Rename this function to be less ambiguous now that we have audio as well.
+//    Call video_capture_request_stop() instead to initiate graceful completion.
 void
-end_video_capture(struct scran_output *st_output)
+video_capture_finish(struct scran_output *st_output)
 {
     struct capture_frame_context *frame_ctx  = &st_output->capture.frame_ctx;
     struct ffmpeg_context        *ffmpeg_ctx = &st_output->capture.frame_ctx.ffmpeg_ctx;
@@ -501,7 +491,7 @@ end_video_capture(struct scran_output *st_output)
         avcodec_send_frame(ffmpeg_ctx->av_codec_ctx_audio, NULL);
         assert(ffmpeg_ctx->av_packet_audio != NULL);
         while (avcodec_receive_packet(ffmpeg_ctx->av_codec_ctx_audio, ffmpeg_ctx->av_packet_audio) != AVERROR_EOF) {
-            write_audio_packet(frame_ctx, ffmpeg_ctx->av_packet_audio);
+            video_capture_write_audio_packet(frame_ctx, ffmpeg_ctx->av_packet_audio);
         }
 
         destroy_ffmpeg_audio(st_output);
@@ -513,7 +503,7 @@ end_video_capture(struct scran_output *st_output)
     avcodec_send_frame(ffmpeg_ctx->av_codec_ctx, NULL);
     assert(ffmpeg_ctx->av_packet != NULL);
     while (avcodec_receive_packet(ffmpeg_ctx->av_codec_ctx, ffmpeg_ctx->av_packet) != AVERROR_EOF) {
-        write_video_frame(frame_ctx, ffmpeg_ctx->av_packet);
+        video_capture_write_frame(frame_ctx, ffmpeg_ctx->av_packet);
     }
 
     av_write_trailer(ffmpeg_ctx->av_format_ctx);
@@ -525,7 +515,7 @@ end_video_capture(struct scran_output *st_output)
         scran_portal_notify_file_saved(output_path);
     }
 
-    destroy_ffmpeg(st_output);
+    video_capture_destroy_ffmpeg(st_output);
 
     {
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
@@ -543,7 +533,7 @@ end_video_capture(struct scran_output *st_output)
 
 
 void
-dispatch_image_capture_event(struct scran_output *st_output)
+image_capture_request_frame(struct scran_output *st_output)
 {
     struct ext_image_copy_capture_frame_v1 *frame =
         ext_image_copy_capture_session_v1_create_frame(
@@ -594,7 +584,7 @@ print_slurp_string(struct scran_output *st_output)
 }
 
 bool
-request_image_capture(struct scran_output *st_output)
+image_capture_start(struct scran_output *st_output)
 {
     // See TODO at call site
     assert(!st_output->capture.frame_ctx.capturing_video);
@@ -604,7 +594,7 @@ request_image_capture(struct scran_output *st_output)
         return true;
     }
 
-    dispatch_image_capture_event(st_output);
+    image_capture_request_frame(st_output);
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     return true;

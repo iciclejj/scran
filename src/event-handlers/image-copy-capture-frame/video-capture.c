@@ -81,7 +81,7 @@ end_capture(
     {
         struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
         struct scran_output *const st_output = wl_container_of(st_capture, st_output, capture);
-        end_video_capture(st_output);
+        video_capture_finish(st_output);
     }
 
     DEBUG("FINISHED RECORDING.\n");
@@ -113,7 +113,7 @@ handle_image_copy_capture_frame_ready__video_capture(
         struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
         struct scran_output         *const st_output  = wl_container_of(st_capture, st_output, capture);
 
-        uint8_t *const area_start_addr = get_capture_area_start_address(frame_ctx);
+        uint8_t *const area_start_addr = capture_get_area_start_address(frame_ctx);
         // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be divisible by 2.
         // XXX TODO: Collect this bit zeroing logic somehow? (Duplicated in init_ffmpeg.)
         const int area_w_px = blboxi_width_abs_unsafe( frame_ctx->capture_area_px) & ~0b1;
@@ -165,7 +165,7 @@ handle_image_copy_capture_frame_ready__video_capture(
             return; // TODO: goto err
         }
 
-        write_video_frame(frame_ctx, ffmpeg_ctx->av_packet);
+        video_capture_write_frame(frame_ctx, ffmpeg_ctx->av_packet);
 
         // INFO: packet gets unreferenced at start of loop by avcodec_receive_packet
     }
@@ -188,7 +188,7 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     // TODO: avio_flush ?
 
-    request_video_capture_frame(
+    video_capture_request_frame(
         frame_ctx,
         // TODO: Only damage what the capture area will be on next capture,
         // somehow? Will not be possible to determine from here, though,

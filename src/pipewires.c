@@ -114,7 +114,7 @@ on_process(void *data)
                 goto cont; // TODO: goto err?
             }
 
-            write_audio_packet(frame_ctx, ffmpeg_ctx->av_packet_audio);
+            video_capture_write_audio_packet(frame_ctx, ffmpeg_ctx->av_packet_audio);
         }
 
         pts_curr += av_rescale(frame_size, NSEC_PER_SEC, SCRAN_PIPEWIRE_SAMPLE_RATE);

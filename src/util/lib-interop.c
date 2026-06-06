@@ -92,10 +92,10 @@ wl_shm_format_to_scranrot_yuv_rgba32_shuffle(enum wl_shm_format wl_shm_format)
 uint32_t
 wl_shm_format_to_blend2d_scranrot_rgba32_shuffle(enum wl_shm_format wl_shm_format)
 {
-    assert(CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT == BL_FORMAT_PRGB32);
+    assert(IMAGE_CAPTURE_OUTPUT_BLFORMAT_DEFAULT == BL_FORMAT_PRGB32);
 #ifndef NDEBUG
     enum wl_shm_format bl_default_to_wl = WL_SHM_FORMAT_ARGB8888;
-    assert(wl_shm_format_to_blend2d(bl_default_to_wl) == CAPTURE_IMAGE_OUTPUT_BLFORMAT_DEFAULT);
+    assert(wl_shm_format_to_blend2d(bl_default_to_wl) == IMAGE_CAPTURE_OUTPUT_BLFORMAT_DEFAULT);
 #endif
 
     switch (wl_shm_format) {

@@ -50,7 +50,7 @@ request_freezeframe_assume_callback_set(struct scran_output *st_output) {
     // Force some output damage, since some compositors (like Hyprland on rapid
     // consecutive freezeframe refreshes) may wait indefinitely for the next
     // capture frame if no damage is detected.
-    force_compositor_output_damage_for_capture(st_output);
+    capture_force_next_frame(st_output);
 }
 
 // Use refresh_freezeframe post-init/during normal runtime

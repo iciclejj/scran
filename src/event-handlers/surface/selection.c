@@ -88,7 +88,7 @@ selection_surface_frame_callback_handler(
         // XXX TODO: Check whether we're actually sway more robustly, and assign
         // it as part of our state. (So we don't need to assume the user is
         // running either cosmic or sway.)
-        update_capture_area_with_selection(st_output, capture_area);
+        capture_update_area_with_selection(st_output, capture_area);
     }
 
     draw_selection_and_damage_buffer(
