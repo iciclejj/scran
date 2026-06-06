@@ -11,7 +11,7 @@
 #define SCRAN_MIME_TYPE_FILEPATH_PLAIN "text/plain"
 
 
-bool update_clipboard(struct scran_seat_datacontrol *datacontrol, BLArrayCore *data, const char *data_mime_type, const char *filepath);
+bool clipboard_update(struct scran_seat_datacontrol *datacontrol, BLArrayCore *data, const char *data_mime_type, const char *filepath);
 
 
 #endif

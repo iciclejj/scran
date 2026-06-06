@@ -60,7 +60,7 @@ copy_filepath(
 }
 
 bool
-update_clipboard(
+clipboard_update(
     struct scran_seat_datacontrol *datacontrol,
     BLArrayCore *data, // Will be weak-copied. Caller should still _destroy().
     const char *data_mime_type,

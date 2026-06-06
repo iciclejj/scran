@@ -209,7 +209,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     const BLImageCodecImpl *const bl_img_codec_impl = (BLImageCodecImpl *)(frame_ctx->bl_imgcodec._d.impl);
     const char *mime_type = bl_string_get_data(&bl_img_codec_impl->mime_type);
 
-    if (!update_clipboard(&g_state.seat.datacontrol, &bl_array_img_encoded, mime_type, output_filepath)) {
+    if (!clipboard_update(&g_state.seat.datacontrol, &bl_array_img_encoded, mime_type, output_filepath)) {
         eprintf("Error updating clipboard.\n");
     }
 

@@ -510,7 +510,7 @@ video_capture_finish(struct scran_output *st_output)
     eprintf("Video saved: %s\n", g_state.options.output_path);
 
     const char *output_path = g_state.options.output_to_stdout ? NULL : ffmpeg_ctx->av_format_ctx->url;
-    update_clipboard(&g_state.seat.datacontrol, NULL, NULL, output_path);
+    clipboard_update(&g_state.seat.datacontrol, NULL, NULL, output_path);
     if (output_path != NULL) {
         scran_portal_notify_file_saved(output_path);
     }
