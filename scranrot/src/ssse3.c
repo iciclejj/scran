@@ -28,17 +28,6 @@ _Static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "
 //           image capture, on a 5600h CPU.
 
 
-typedef void (*scranrot_transform_framebuffer_fn__ssse3)(
-    const uint8_t *restrict src,
-    const int src_width_px,
-    const int src_height_px,
-    const int src_stride_bytes,
-    uint8_t *restrict dst,
-    const int dst_stride_bytes,
-    __m128i rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
-);
-
-
 // TODO: Use KERNEL_TILE_HEIGHT_PX for an unrolled loop in these for easier tweaking
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
