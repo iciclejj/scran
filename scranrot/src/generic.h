@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #include "../include/scranrot.h"
-#include "../include/scranrot-util.h"
+#include "./util.h"
 
 
 typedef void (*scranrot_transform_framebuffer_to_yuv_impl_fn)(

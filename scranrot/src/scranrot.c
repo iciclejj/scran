@@ -2,7 +2,7 @@
 #include <stddef.h>
 
 #include "../include/scranrot.h"
-#include "../include/scranrot-util.h"
+#include "./util.h"
 
 
 static _Atomic(scranrot_transform_framebuffer_fn *)        m_rgba_fn   = NULL;

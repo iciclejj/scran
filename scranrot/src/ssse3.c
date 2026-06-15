@@ -6,7 +6,7 @@
 #include <stddef.h>
 
 #include "../include/scranrot.h"
-#include "../include/scranrot-util.h"
+#include "./util.h"
 #include "./generic.h"
 #include "./sse2.h"
 

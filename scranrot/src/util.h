@@ -2,7 +2,7 @@
 #define SCRANROT_UTIL_H
 
 
-#include "./scranrot.h"
+#include "../include/scranrot.h"
 
 
 #ifndef SCRANROT_ASSERT
