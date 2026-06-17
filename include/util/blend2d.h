@@ -107,10 +107,10 @@ blrgba32_to_scran_rgba32(BLRgba32 *color) {
 static inline void
 blrgba32_set_values(BLRgba32 *color, struct scran_rgba32 scran_color) {
     color->value = (
-        scran_color.r << 16 |
-        scran_color.g <<  8 |
-        scran_color.b <<  0 |
-        scran_color.a << 24
+        (uint32_t)scran_color.r << 16 |
+        (uint32_t)scran_color.g <<  8 |
+        (uint32_t)scran_color.b <<  0 |
+        (uint32_t)scran_color.a << 24
     );
 }
 
