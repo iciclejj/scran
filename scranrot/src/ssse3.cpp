@@ -59,7 +59,7 @@ SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
 get_src_tile_row_addresses(
     const __m128i *(&row_addrs)[KERNEL_TILE_HEIGHT_PX],
-    const char *row_addr_0,
+    const u8 *row_addr_0,
     int src_stride_bytes
 ) {
     row_addrs[0] = (__m128i *)(row_addr_0);
@@ -72,7 +72,7 @@ SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
 get_dst_tile_row_addresses(
     __m128i *(&row_addrs)[KERNEL_TILE_HEIGHT_PX],
-    const char *row_addr_0,
+    const u8 *row_addr_0,
     int dst_stride_bytes
 ) {
     row_addrs[0] = (__m128i *)(row_addr_0);
@@ -165,18 +165,18 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
 
         // NOTE: Rotation-specific:
         // TODO: We can factor this even farther out
-        char *dst_block_row_addr_0 = (char *)dst
-                                     // src_width_px - KERNEL_TILE_WIDTH_PX because we're loading
-                                     // rows 0,+1,+2,+3 on every loop (note: This also accounts
-                                     // accounts for the -1 for len->index)
-                                     + (src_width_px - KERNEL_TILE_WIDTH_PX) * dst_stride_bytes
-                                     + dst_col_offset_bytes;
+        u8 *dst_block_row_addr_0 = (u8 *)dst
+                                   // src_width_px - KERNEL_TILE_WIDTH_PX because we're loading
+                                   // rows 0,+1,+2,+3 on every loop (note: This also accounts
+                                   // accounts for the -1 for len->index)
+                                   + (src_width_px - KERNEL_TILE_WIDTH_PX) * dst_stride_bytes
+                                   + dst_col_offset_bytes;
 
-        const char *const src_block_row_addrs_base = (char *)src + src_row_px * src_stride_bytes;
+        const u8 *const src_block_row_addrs_base = (u8 *)src + src_row_px * src_stride_bytes;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += KERNEL_TILE_WIDTH_PX) {
 
-            const char *const _src_block_row_addr_0 = src_block_row_addrs_base + src_col_px * RGBA32_PIXEL_STRIDE;
+            const u8 *const _src_block_row_addr_0 = src_block_row_addrs_base + src_col_px * RGBA32_PIXEL_STRIDE;
 
             get_src_tile_row_addresses(src_block_row_addrs, _src_block_row_addr_0, src_stride_bytes);
             load_tile_rows_unaligned(src_block_rows, src_block_row_addrs);
@@ -214,11 +214,11 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
     // NOTE: Rotation-specific:
     rgba32_shuffle_mask_128 = scranrot_sse2_rotate_180_get_modified_rgba_shuffle(rgba32_shuffle_mask_128);
 
-    char *const dst_last_row = (char *)dst + (src_height_px - 1) * dst_stride_bytes;
+    u8 *const dst_last_row = (u8 *)dst + (src_height_px - 1) * dst_stride_bytes;
 
-    char *dst_start = (src_width_px % KERNEL_TILE_WIDTH_PX) == 0
-                    ? dst_last_row + RGBA32_PIXEL_STRIDE * (src_width_px - KERNEL_TILE_WIDTH_PX)
-                    : dst_last_row + RGBA32_PIXEL_STRIDE * ((src_width_px / KERNEL_TILE_WIDTH_PX) * KERNEL_TILE_WIDTH_PX);
+    u8 *dst_start = (src_width_px % KERNEL_TILE_WIDTH_PX) == 0
+                  ? dst_last_row + RGBA32_PIXEL_STRIDE * (src_width_px - KERNEL_TILE_WIDTH_PX)
+                  : dst_last_row + RGBA32_PIXEL_STRIDE * ((src_width_px / KERNEL_TILE_WIDTH_PX) * KERNEL_TILE_WIDTH_PX);
 
     __m128i       *dst_curr = (__m128i *)dst_start;
     __m128i const *src_curr = (__m128i *)src;
@@ -236,8 +236,8 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
             ++src_curr;
         }
 
-        dst_curr = (__m128i *)((char *)dst_row_base - dst_stride_bytes);
-        src_curr = (__m128i *)((char *)src_row_base + src_stride_bytes);
+        dst_curr = (__m128i *)((u8 *)dst_row_base - dst_stride_bytes);
+        src_curr = (__m128i *)((u8 *)src_row_base + src_stride_bytes);
     }
 }
 
@@ -269,13 +269,13 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
         const int dst_col_px = (src_height_px - KERNEL_TILE_HEIGHT_PX) - src_row_px; // -KERNEL_TILE_HEIGHT => len -> tile index
         SCRANROT_ASSERT(RGBA32_PIXEL_STRIDE * (dst_col_px + KERNEL_TILE_HEIGHT_PX) <= dst_stride_bytes); // Stay within padded bounds
         const int dst_col_offset_bytes = dst_col_px * RGBA32_PIXEL_STRIDE;
-        char *dst_block_row_addr_0 = (char *)dst + dst_col_offset_bytes;
+        u8 *dst_block_row_addr_0 = (u8 *)dst + dst_col_offset_bytes;
 
-        const char *const src_block_row_addrs_base = (char *)src + src_row_px * src_stride_bytes;
+        const u8 *const src_block_row_addrs_base = (u8 *)src + src_row_px * src_stride_bytes;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += KERNEL_TILE_WIDTH_PX) {
 
-            const char *const _src_block_row_addr_0 = src_block_row_addrs_base + src_col_px * RGBA32_PIXEL_STRIDE;
+            const u8 *const _src_block_row_addr_0 = src_block_row_addrs_base + src_col_px * RGBA32_PIXEL_STRIDE;
 
             get_src_tile_row_addresses(src_block_row_addrs, _src_block_row_addr_0, src_stride_bytes);
             load_tile_rows_unaligned(src_block_rows, src_block_row_addrs);
@@ -326,8 +326,8 @@ transform_framebuffer__ssse3_unaligned__rotate_0(
             ++src_curr;
         }
 
-        dst_curr = (__m128i *)((char *)dst_row_base + dst_stride_bytes);
-        src_curr = (__m128i *)((char *)src_row_base + src_stride_bytes);
+        dst_curr = (__m128i *)((u8 *)dst_row_base + dst_stride_bytes);
+        src_curr = (__m128i *)((u8 *)src_row_base + src_stride_bytes);
     }
 }
 
