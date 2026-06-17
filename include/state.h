@@ -1,5 +1,5 @@
-#ifndef STATE_H
-#define STATE_H
+#ifndef SCRAN_STATE_H
+#define SCRAN_STATE_H
 
 #include <signal.h>
 #include <stdbool.h>

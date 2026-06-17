@@ -1,5 +1,5 @@
-#ifndef CAPTURE_H
-#define CAPTURE_H
+#ifndef SCRAN_CAPTURE_H
+#define SCRAN_CAPTURE_H
 
 #include <stdbool.h>
 

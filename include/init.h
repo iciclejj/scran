@@ -1,5 +1,5 @@
-#ifndef INIT_H
-#define INIT_H
+#ifndef SCRAN_INIT_H
+#define SCRAN_INIT_H
 
 #include <assert.h>
 

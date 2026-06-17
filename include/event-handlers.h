@@ -1,5 +1,5 @@
-#ifndef HANDLE_POINTER_H
-#define HANDLE_POINTER_H
+#ifndef SCRAN_EVENT_HANDLERS_H
+#define SCRAN_EVENT_HANDLERS_H
 
 #include <wayland-client.h>
 

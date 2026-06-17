@@ -1,5 +1,5 @@
-#ifndef LIB_INTEROP_H
-#define LIB_INTEROP_H
+#ifndef SCRAN_LIB_INTEROP_H
+#define SCRAN_LIB_INTEROP_H
 
 
 #include <assert.h>

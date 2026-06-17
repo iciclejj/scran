@@ -1,5 +1,5 @@
-#ifndef STATE_UTIL_H
-#define STATE_UTIL_H
+#ifndef SCRAN_STATE_UTIL_H
+#define SCRAN_STATE_UTIL_H
 
 #include <assert.h>
 #include <wayland-util.h>

@@ -1,5 +1,5 @@
-#ifndef PRINT_H
-#define PRINT_H
+#ifndef SCRAN_PRINT_H
+#define SCRAN_PRINT_H
 
 
 #include <stdio.h>

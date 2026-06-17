@@ -1,5 +1,5 @@
-#ifndef UTIL_BLEND2D_H
-#define UTIL_BLEND2D_H
+#ifndef SCRAN_UTIL_BLEND2D_H
+#define SCRAN_UTIL_BLEND2D_H
 
 #include <stdlib.h>
 #include <assert.h>
