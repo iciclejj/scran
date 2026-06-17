@@ -11,7 +11,7 @@ using namespace scranrot::internal;
 
 
 static inline __m128i
-scranrot_sse2_rgba_shuffle_to_m128i(uint32_t rgba_shuffle_mask) {
+scranrot_sse2_rgba_shuffle_to_m128i(u32 rgba_shuffle_mask) {
     // TODO: Assert rgba_shuffle is valid (and let (0 => 0,1,2,3) ?)
     const __m128i _rgba_shuffle_mask_128_offsets = _mm_setr_epi8(0,0,0,0, 4,4,4,4, 8,8,8,8, 12,12,12,12);
     const __m128i _rgba_shuffle_mask_128 = _mm_set1_epi32(rgba_shuffle_mask);

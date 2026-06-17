@@ -139,11 +139,11 @@ rotate_tile_90(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer__ssse3_unaligned__rotate_270(
-    const uint8_t *__restrict src,
+    const u8 *__restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *__restrict dst,
+    u8 *__restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
@@ -199,11 +199,11 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer__ssse3_unaligned__rotate_180(
-    const uint8_t *__restrict src,
+    const u8 *__restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *__restrict dst,
+    u8 *__restrict dst,
     const int dst_stride_bytes,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
@@ -245,11 +245,11 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer__ssse3_unaligned__rotate_90(
-    const uint8_t *__restrict src,
+    const u8 *__restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *__restrict dst,
+    u8 *__restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
@@ -297,11 +297,11 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer__ssse3_unaligned__rotate_0(
-    const uint8_t *__restrict src,
+    const u8 *__restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *__restrict dst,
+    u8 *__restrict dst,
     const int dst_stride_bytes,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
@@ -334,15 +334,15 @@ transform_framebuffer__ssse3_unaligned__rotate_0(
 
 bool
 scranrot_transform_framebuffer_ssse3__unaligned(
-    const uint8_t *__restrict src,
+    const u8 *__restrict src,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
-    uint8_t *__restrict dst,
+    u8 *__restrict dst,
     // Reorders dst's pixel byte-order relative to src.
     //   8-bit-valued mask representing new order
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)
-    uint32_t rgba_shuffle_mask,
+    u32 rgba_shuffle_mask,
     enum scranrot_transform transform,
     uintptr_t *dst_stride
 ) {

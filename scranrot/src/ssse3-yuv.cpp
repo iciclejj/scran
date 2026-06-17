@@ -222,7 +222,7 @@ rotate_90_inplace_16x16_8bpp(
 //     const __m128i *const coefficients,
 //     // Should probably always be 1. Required as an arg to not re-initialize every time.
 //     const __m128i *const hadamard_scaler,
-//     const uint8_t shr
+//     const u8 shr
 // ) {
 //     return _mm_srai_epi32( // Y32 := [_Y32>>shr] => Y32 == [y32, ...]
 //               _mm_madd_epi16( // Y32 := [_Y32=(r*cr+g*cg+b*cb+a*ca), ...] => Y32 == [y32<<shr, ...]
@@ -246,7 +246,7 @@ convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2(
     // Should probably always be 1. Required as an arg to not re-initialize every time.
     const __m128i *const hadamard_scaler,
     // any reasonable 8-bit y spec will want 8, but if we e.g. halve the gamut, we will need to shift by 7
-    const uint8_t shr
+    const u8 shr
 ) {
     return _mm_srai_epi32( // Y32 := [_Y32>>shr] => Y32 == [y32, ...]
               _mm_add_epi32(
@@ -272,7 +272,7 @@ convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
     // Should probably always be 1. Required as an arg to not re-initialize every time.
     const __m128i *const hadamard_scaler,
     // any reasonable 8-bit y spec will want 8, but if we e.g. halve the gamut, we will need to shift by 7
-    const uint8_t shr
+    const u8 shr
 ) {
     // We need to represent our values as signed, so we normalize them by adding
     // the max signed absolute value, to take the (post-shr) range from -127:128 -> 0:255
@@ -308,7 +308,7 @@ convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
     const __m128i *const coefficients,
     // Should probably always be 1. Required as an arg to not re-initialize every time.
     const __m128i *const hadamard_scaler,
-    const uint8_t shr
+    const u8 shr
 ) {
     // Returns: [ (i16)(a0+a1)/2, (i16)(a2+a3)/2, ...]
 
@@ -353,7 +353,7 @@ convert_16px_rgba32_to_yuv_8bpp(
     const __m128i *const coefficients_b,
     // Should probably always be 1. Required as an arg to not re-initialize every time.
     const __m128i *const hadamard_scaler,
-    const uint8_t shr
+    const u8 shr
 ) {
     // TODO: Function to get the intermediate A32 value
 
@@ -381,13 +381,13 @@ convert_16px_rgba32_to_yuv_8bpp(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
-    const uint8_t *__restrict src,
+    const u8 *__restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *__restrict y_plane, int y_stride,
-    uint8_t *__restrict u_plane, int u_stride,
-    uint8_t *__restrict v_plane, int v_stride,
+    u8 *__restrict y_plane, int y_stride,
+    u8 *__restrict u_plane, int u_stride,
+    u8 *__restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
@@ -403,9 +403,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
 
     const int dst_height_px = src_width_px;
-    uint8_t *dst_y_start = y_plane + (dst_height_px   - 1)*y_stride;
-    uint8_t *dst_u_start = u_plane + (dst_height_px/2 - 1)*u_stride;
-    uint8_t *dst_v_start = v_plane + (dst_height_px/2 - 1)*v_stride;
+    u8 *dst_y_start = y_plane + (dst_height_px   - 1)*y_stride;
+    u8 *dst_u_start = u_plane + (dst_height_px/2 - 1)*u_stride;
+    u8 *dst_v_start = v_plane + (dst_height_px/2 - 1)*v_stride;
 
 
     for (int y = 0; y <= src_height_px - 32; y += 32) {
@@ -426,9 +426,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 
                 for (int _x = 0; _x < 32; _x += 16) {
 
-                    const uint8_t _xi = _x >> 4; // divide by 16
+                    const u8 _xi = _x >> 4; // divide by 16
                     __m128i y_8bpp_final[16];
-                    const uint8_t *const src_subtile = (uint8_t *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
+                    const u8 *const src_subtile = (u8 *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
@@ -458,7 +458,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
                         };
 
                         // U
-                        const uint8_t j_yavg = j/2;
+                        const u8 j_yavg = j/2;
                         u_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                                                             rgba_32bpp_rows_avg, &u_coefficients, &hadam_ident_epi16, 8
                                                         );
@@ -473,7 +473,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
                     //   (Inner tile)
                     transpose_inplace_16x16_8bpp(y_8bpp_final);
                     {
-                        uint8_t *dst_y = dst_y_start + (y+_y) - (x+_x)*y_stride;
+                        u8 *dst_y = dst_y_start + (y+_y) - (x+_x)*y_stride;
                         for (int j = 0; j < 16; ++j) {
                             _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final[j]);
                             dst_y -= y_stride;
@@ -501,7 +501,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
             // Store U
             transpose_inplace_16x16_8bpp(u_i8_4bpp_final);
             {
-                uint8_t *dst_u = dst_u_start + (y/2) - (x/2)*u_stride;
+                u8 *dst_u = dst_u_start + (y/2) - (x/2)*u_stride;
                 for (int j = 0; j < 16; ++j) {
                     _mm_storeu_si128((__m128i*)dst_u, u_i8_4bpp_final[j]);
                     dst_u -= u_stride;
@@ -511,7 +511,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
             // Store V
             transpose_inplace_16x16_8bpp(v_i8_4bpp_final);
             {
-                uint8_t *dst_v = dst_v_start + (y/2) - (x/2)*v_stride;
+                u8 *dst_v = dst_v_start + (y/2) - (x/2)*v_stride;
                 for (int j = 0; j < 16; ++j) {
                     _mm_storeu_si128((__m128i*)dst_v, v_i8_4bpp_final[j]);
                     dst_v -= v_stride;
@@ -524,13 +524,13 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
-    const uint8_t *__restrict src,
+    const u8 *__restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *__restrict y_plane, int y_stride,
-    uint8_t *__restrict u_plane, int u_stride,
-    uint8_t *__restrict v_plane, int v_stride,
+    u8 *__restrict y_plane, int y_stride,
+    u8 *__restrict u_plane, int u_stride,
+    u8 *__restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rotate_180_get_modified_rgba_shuffle(
@@ -547,9 +547,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
 
-    uint8_t *dst_y_start = y_plane + (src_height_px-1)   * y_stride + (src_width_px   - sizeof(__m128i));
-    uint8_t *dst_u_start = u_plane + (src_height_px-1)/2 * u_stride + (src_width_px/2 - sizeof(__m128i));
-    uint8_t *dst_v_start = v_plane + (src_height_px-1)/2 * v_stride + (src_width_px/2 - sizeof(__m128i));
+    u8 *dst_y_start = y_plane + (src_height_px-1)   * y_stride + (src_width_px   - sizeof(__m128i));
+    u8 *dst_u_start = u_plane + (src_height_px-1)/2 * u_stride + (src_width_px/2 - sizeof(__m128i));
+    u8 *dst_v_start = v_plane + (src_height_px-1)/2 * v_stride + (src_width_px/2 - sizeof(__m128i));
 
 
     for (int y = 0; y < src_height_px; y += 32) {
@@ -568,11 +568,11 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
 
                 for (int _x = 0; _x < 32; _x += 16) {
 
-                    // const uint8_t _xi          = _x >> 4; // divide by 16
+                    // const u8 _xi          = _x >> 4; // divide by 16
                     // NOTE: 180 uses reversed _x index order here compared to the other rotations
-                    const uint8_t _xi_reversed = (16 - _x) >> 4;
-                    const uint8_t *const src_subtile = (uint8_t *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
-                    uint8_t *dst_y = dst_y_start - (y+_y)*y_stride - (x+_x);
+                    const u8 _xi_reversed = (16 - _x) >> 4;
+                    const u8 *const src_subtile = (u8 *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
+                    u8 *dst_y = dst_y_start - (y+_y)*y_stride - (x+_x);
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
@@ -611,7 +611,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
                         };
 
                         // U
-                        const uint8_t j_yavg = j/2;
+                        const u8 j_yavg = j/2;
                         u_i16_8bpp_xyavg[j_yavg][_xi_reversed] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                                                                      rgba_32bpp_rows_avg, &u_coefficients, &hadam_ident_epi16, 8
                                                                  );
@@ -640,8 +640,8 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
 
             // Store U,V
             {
-                uint8_t *dst_u = dst_u_start - ((y/2)*u_stride) - (x/2);
-                uint8_t *dst_v = dst_v_start - ((y/2)*v_stride) - (x/2);
+                u8 *dst_u = dst_u_start - ((y/2)*u_stride) - (x/2);
+                u8 *dst_v = dst_v_start - ((y/2)*v_stride) - (x/2);
                 for (int l = 0; l < 16; ++l) {
                     _mm_storeu_si128((__m128i*)dst_u, u_i8_4bpp_final[l]);
                     _mm_storeu_si128((__m128i*)dst_v, v_i8_4bpp_final[l]);
@@ -657,13 +657,13 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
-    const uint8_t *__restrict src,
+    const u8 *__restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *__restrict y_plane, int y_stride,
-    uint8_t *__restrict u_plane, int u_stride,
-    uint8_t *__restrict v_plane, int v_stride,
+    u8 *__restrict y_plane, int y_stride,
+    u8 *__restrict u_plane, int u_stride,
+    u8 *__restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
@@ -682,9 +682,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
     // is always positioned "behind" us.
     static const int dst_col_offset = -16;
     const int dst_width_px = src_height_px;
-    uint8_t *dst_y_start = y_plane + dst_width_px   + dst_col_offset;
-    uint8_t *dst_u_start = u_plane + dst_width_px/2 + dst_col_offset;
-    uint8_t *dst_v_start = v_plane + dst_width_px/2 + dst_col_offset;
+    u8 *dst_y_start = y_plane + dst_width_px   + dst_col_offset;
+    u8 *dst_u_start = u_plane + dst_width_px/2 + dst_col_offset;
+    u8 *dst_v_start = v_plane + dst_width_px/2 + dst_col_offset;
 
     for (int y = 0; y <= src_height_px - 32; y += 32) {
         for (int x = 0; x <= src_width_px - 32; x += 32) {
@@ -704,9 +704,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 
                 for (int _x = 0; _x < 32; _x += 16) {
 
-                    const uint8_t _xi = _x >> 4; // divide by 16
+                    const u8 _xi = _x >> 4; // divide by 16
                     __m128i y_8bpp_final[16];
-                    const uint8_t *const src_subtile = (uint8_t *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
+                    const u8 *const src_subtile = (u8 *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
@@ -737,7 +737,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
                         };
 
                         // U
-                        const uint8_t j_yavg = j/2;
+                        const u8 j_yavg = j/2;
                         u_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                                                             rgba_32bpp_rows_avg, &u_coefficients, &hadam_ident_epi16, 8
                                                         );
@@ -749,7 +749,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 
                     // Store Y (Inner tile)
                     {
-                        uint8_t *dst_y = dst_y_start - (y+_y) + (x+_x)*y_stride;
+                        u8 *dst_y = dst_y_start - (y+_y) + (x+_x)*y_stride;
                         rotate_90_inplace_16x16_8bpp(y_8bpp_final);
                         for (int j = 0; j < 16; ++j) {
                             _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final[j]);
@@ -779,7 +779,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
             // Store U
             rotate_90_inplace_16x16_8bpp(u_i8_4bpp_final);
             {
-                uint8_t *dst_u = dst_u_start - (y/2) + (x/2)*u_stride;
+                u8 *dst_u = dst_u_start - (y/2) + (x/2)*u_stride;
                 for (int j = 0; j < 16; ++j) {
                     _mm_storeu_si128((__m128i*)dst_u, u_i8_4bpp_final[j]);
                     dst_u += u_stride;
@@ -789,7 +789,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
             // Store V
             rotate_90_inplace_16x16_8bpp(v_i8_4bpp_final);
             {
-                uint8_t *dst_v = dst_v_start - (y/2) + (x/2)*v_stride;
+                u8 *dst_v = dst_v_start - (y/2) + (x/2)*v_stride;
                 for (int j = 0; j < 16; ++j) {
                     _mm_storeu_si128((__m128i*)dst_v, v_i8_4bpp_final[j]);
                     dst_v += v_stride;
@@ -803,13 +803,13 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
-    const uint8_t *__restrict src,
+    const u8 *__restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *__restrict y_plane, int y_stride,
-    uint8_t *__restrict u_plane, int u_stride,
-    uint8_t *__restrict v_plane, int v_stride,
+    u8 *__restrict y_plane, int y_stride,
+    u8 *__restrict u_plane, int u_stride,
+    u8 *__restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
@@ -841,9 +841,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 
                 for (int _x = 0; _x < 32; _x += 16) {
 
-                    const uint8_t _xi = _x >> 4; // divide by 16
-                    const uint8_t *const src_subtile = (uint8_t *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
-                    uint8_t *dst_y = y_plane + (y+_y)*y_stride + (x+_x);
+                    const u8 _xi = _x >> 4; // divide by 16
+                    const u8 *const src_subtile = (u8 *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
+                    u8 *dst_y = y_plane + (y+_y)*y_stride + (x+_x);
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
@@ -879,7 +879,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
                             _mm_avg_epu8(rgba_32bpp[0][3], rgba_32bpp[1][3]),
                         };
 
-                        const uint8_t j_yavg = j/2;
+                        const u8 j_yavg = j/2;
                         u_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                                                             rgba_32bpp_rows_avg, &u_coefficients, &hadam_ident_epi16, 8
                                                         );
@@ -907,8 +907,8 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 
             // Store U,V
             {
-                uint8_t *dst_u = u_plane + (y/2)*u_stride + (x/2);
-                uint8_t *dst_v = v_plane + (y/2)*v_stride + (x/2);
+                u8 *dst_u = u_plane + (y/2)*u_stride + (x/2);
+                u8 *dst_v = v_plane + (y/2)*v_stride + (x/2);
                 for (int l = 0; l < 16; ++l) {
                     _mm_storeu_si128((__m128i*)dst_u, u_i8_4bpp_final[l]);
                     _mm_storeu_si128((__m128i*)dst_v, v_i8_4bpp_final[l]);
@@ -924,17 +924,17 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 
 bool
 scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned(
-    const uint8_t *__restrict src,
+    const u8 *__restrict src,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
-    uint8_t *__restrict dst,
-    uint32_t rgba_shuffle_mask,
+    u8 *__restrict dst,
+    u32 rgba_shuffle_mask,
     enum scranrot_transform transform,
     // OUT:
-    uint8_t **dst_y, int *dst_y_stride,
-    uint8_t **dst_u, int *dst_u_stride,
-    uint8_t **dst_v, int *dst_v_stride
+    u8 **dst_y, int *dst_y_stride,
+    u8 **dst_u, int *dst_u_stride,
+    u8 **dst_v, int *dst_v_stride
 ) {
     if (src_width_px < MIN_TILE_WIDTH_PX || src_height_px < MIN_TILE_HEIGHT_PX) {
         return scranrot_transform_framebuffer_to_yuv420_fallback(
