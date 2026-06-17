@@ -1,12 +1,11 @@
-#include <stdatomic.h>
 #include <stddef.h>
 
 #include "../include/scranrot.h"
 #include "./util.h"
 
 
-static _Atomic(scranrot_transform_framebuffer_fn *)        m_rgba_fn   = NULL;
-static _Atomic(scranrot_transform_framebuffer_to_yuv_fn *) m_yuv420_fn = NULL;
+static scranrot_transform_framebuffer_fn        *m_rgba_fn   = NULL;
+static scranrot_transform_framebuffer_to_yuv_fn *m_yuv420_fn = NULL;
 
 
 // Rotates frame buffer, shuffles pixel geometry, and stores result to dst
@@ -25,7 +24,7 @@ scranrot_transform_framebuffer(
     // OUT:
     uintptr_t *dst_stride
 ) {
-    scranrot_transform_framebuffer_fn *fn = atomic_load_explicit(&m_rgba_fn, memory_order_relaxed);
+    scranrot_transform_framebuffer_fn *fn = m_rgba_fn;
     SCRANROT_ASSERT(fn != NULL);
 
     return fn(
@@ -56,7 +55,7 @@ scranrot_transform_framebuffer_to_yuv420(
         return false;
     }
 
-    scranrot_transform_framebuffer_to_yuv_fn *fn = atomic_load_explicit(&m_yuv420_fn, memory_order_relaxed);
+    scranrot_transform_framebuffer_to_yuv_fn *fn = m_yuv420_fn;
     SCRANROT_ASSERT(fn != NULL);
 
     return fn(
@@ -101,7 +100,7 @@ get_yuv420_fn()
 void
 scranrot_init()
 {
-    atomic_store_explicit(&m_rgba_fn, get_rgba_fn(), memory_order_relaxed);
-    atomic_store_explicit(&m_yuv420_fn, get_yuv420_fn(), memory_order_relaxed);
+    m_rgba_fn = get_rgba_fn();
+    m_yuv420_fn = get_yuv420_fn();
 }
 
