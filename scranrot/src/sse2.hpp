@@ -5,6 +5,9 @@
 #include <emmintrin.h>
 
 #include "../include/scranrot.h"
+#include "./common.hpp"
+
+using namespace scranrot::internal;
 
 
 static inline __m128i

@@ -1,8 +1,9 @@
-#include <stddef.h>
-
 #include "../include/scranrot.h"
-#include "./util.h"
-#include "./generic.h"
+#include "./util.hpp"
+#include "./generic.hpp"
+#include "./common.hpp"
+
+using namespace scranrot::internal;
 
 
 enum {
@@ -49,18 +50,18 @@ compute_yuv_v(int sum_r, int sum_g, int sum_b) {
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer_to_yuv__fallback__rotate_270(
-    const uint8_t *restrict src,
+    const uint8_t *__restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *restrict dst_y, const int dst_y_stride,
-    uint8_t *restrict dst_u, const int dst_u_stride,
-    uint8_t *restrict dst_v, const int dst_v_stride,
+    uint8_t *__restrict dst_y, const int dst_y_stride,
+    uint8_t *__restrict dst_u, const int dst_u_stride,
+    uint8_t *__restrict dst_v, const int dst_v_stride,
     const void *_rgba32_shuffle_mask
 ) {
     const uint32_t rgba32_shuffle_mask = *(uint32_t *)_rgba32_shuffle_mask;
 
-    _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "270 kernel assumes 2x2 RGBA32 tile");
+    static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "270 kernel assumes 2x2 RGBA32 tile");
 
     for (int y = 0; y < src_height_px; y += 2) {
         for (int x = 0; x < src_width_px; x += 2) {
@@ -98,18 +99,18 @@ transform_framebuffer_to_yuv__fallback__rotate_270(
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer_to_yuv__fallback__rotate_180(
-    const uint8_t *restrict src,
+    const uint8_t *__restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *restrict dst_y, const int dst_y_stride,
-    uint8_t *restrict dst_u, const int dst_u_stride,
-    uint8_t *restrict dst_v, const int dst_v_stride,
+    uint8_t *__restrict dst_y, const int dst_y_stride,
+    uint8_t *__restrict dst_u, const int dst_u_stride,
+    uint8_t *__restrict dst_v, const int dst_v_stride,
     const void *_rgba32_shuffle_mask
 ) {
     const uint32_t rgba32_shuffle_mask = *(uint32_t *)_rgba32_shuffle_mask;
 
-    _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "180 kernel assumes 2x2 RGBA32 tile");
+    static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "180 kernel assumes 2x2 RGBA32 tile");
 
     for (int y = 0; y < src_height_px; y += 2) {
         for (int x = 0; x < src_width_px; x += 2) {
@@ -147,18 +148,18 @@ transform_framebuffer_to_yuv__fallback__rotate_180(
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer_to_yuv__fallback__rotate_90(
-    const uint8_t *restrict src,
+    const uint8_t *__restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *restrict dst_y, const int dst_y_stride,
-    uint8_t *restrict dst_u, const int dst_u_stride,
-    uint8_t *restrict dst_v, const int dst_v_stride,
+    uint8_t *__restrict dst_y, const int dst_y_stride,
+    uint8_t *__restrict dst_u, const int dst_u_stride,
+    uint8_t *__restrict dst_v, const int dst_v_stride,
     const void *_rgba32_shuffle_mask
 ) {
     const uint32_t rgba32_shuffle_mask = *(uint32_t *)_rgba32_shuffle_mask;
 
-    _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "90 kernel assumes 2x2 RGBA32 tile");
+    static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "90 kernel assumes 2x2 RGBA32 tile");
 
     for (int y = 0; y < src_height_px; y += 2) {
         for (int x = 0; x < src_width_px; x += 2) {
@@ -196,18 +197,18 @@ transform_framebuffer_to_yuv__fallback__rotate_90(
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer_to_yuv__fallback__rotate_0(
-    const uint8_t *restrict src,
+    const uint8_t *__restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *restrict dst_y, const int dst_y_stride,
-    uint8_t *restrict dst_u, const int dst_u_stride,
-    uint8_t *restrict dst_v, const int dst_v_stride,
+    uint8_t *__restrict dst_y, const int dst_y_stride,
+    uint8_t *__restrict dst_u, const int dst_u_stride,
+    uint8_t *__restrict dst_v, const int dst_v_stride,
     const void *_rgba32_shuffle_mask
 ) {
     const uint32_t rgba32_shuffle_mask = *(uint32_t *)_rgba32_shuffle_mask;
 
-    _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "0 kernel assumes 2x2 RGBA32 tile");
+    static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "0 kernel assumes 2x2 RGBA32 tile");
 
     for (int y = 0; y < src_height_px; y += 2) {
         for (int x = 0; x < src_width_px; x += 2) {
@@ -244,11 +245,11 @@ transform_framebuffer_to_yuv__fallback__rotate_0(
 
 bool
 scranrot_transform_framebuffer_to_yuv420_fallback(
-    const uint8_t *restrict src,
+    const uint8_t *__restrict src,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
-    uint8_t *restrict dst,
+    uint8_t *__restrict dst,
     uint32_t rgba_shuffle_mask,
     enum scranrot_transform transform,
     // OUT:
@@ -256,7 +257,7 @@ scranrot_transform_framebuffer_to_yuv420_fallback(
     uint8_t **dst_u, int *dst_u_stride,
     uint8_t **dst_v, int *dst_v_stride
 ) {
-    _Static_assert(MIN_TILE_WIDTH_PX == 2 && MIN_TILE_HEIGHT_PX == 2,
+    static_assert(MIN_TILE_WIDTH_PX == 2 && MIN_TILE_HEIGHT_PX == 2,
                    "2x2 is the minimum possible YUV420 size. Our fallback kernels should support this.");
     if (SCRANROT_UNLIKELY(src_width_px < MIN_TILE_WIDTH_PX || src_height_px < MIN_TILE_HEIGHT_PX)) {
         return false;
@@ -264,7 +265,7 @@ scranrot_transform_framebuffer_to_yuv420_fallback(
 
     SCRANROT_ASSERT(src_width_px * RGBA32_PIXEL_STRIDE <= src_stride_bytes);
 
-    scranrot_transform_framebuffer_to_yuv_impl_fn transform_fn = NULL;
+    scranrot_transform_framebuffer_to_yuv_impl_fn transform_fn = nullptr;
 
     switch (transform) {
     case SCRANROT_TRANSFORM_270:
@@ -280,7 +281,7 @@ scranrot_transform_framebuffer_to_yuv420_fallback(
         return false;
     }
 
-    SCRANROT_ASSERT(transform_fn != NULL);
+    SCRANROT_ASSERT(transform_fn != nullptr);
     return transform_framebuffer_to_yuv420__generic_dispatcher(
         src, src_width_px, src_height_px, src_stride_bytes,
         dst,

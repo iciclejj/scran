@@ -1,13 +1,14 @@
 #if defined(__x86_64__) || defined(__i386__)
 
 
-#include <stdbool.h>
-#include <stdint.h>
 #include <tmmintrin.h>
 
 #include "../include/scranrot.h"
-#include "./sse2.h"
-#include "./generic.h"
+#include "./sse2.hpp"
+#include "./generic.hpp"
+#include "./common.hpp"
+
+using namespace scranrot::internal;
 
 
 enum {
@@ -19,7 +20,7 @@ enum {
     MIN_TILE_WIDTH_PX  = KERNEL_TILE_WIDTH_PX,
     MIN_TILE_HEIGHT_PX = KERNEL_TILE_HEIGHT_PX,
 };
-_Static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "This file assumes an XMM register holds 4 RGBA32 pixels.");
+static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "This file assumes an XMM register holds 4 RGBA32 pixels.");
 
 
 // Y coefficients are split across a and b coefficient arrays, since we cannot
@@ -380,18 +381,18 @@ convert_16px_rgba32_to_yuv_8bpp(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
-    const uint8_t *restrict src,
+    const uint8_t *__restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *restrict y_plane, int y_stride,
-    uint8_t *restrict u_plane, int u_stride,
-    uint8_t *restrict v_plane, int v_stride,
+    uint8_t *__restrict y_plane, int y_stride,
+    uint8_t *__restrict u_plane, int u_stride,
+    uint8_t *__restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
-    _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "270 kernel assumes 32x32 RGBA32 tiles.");
+    static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "270 kernel assumes 32x32 RGBA32 tiles.");
 
     const __m128i y_coefficients_a = get_yuv_y_coefficients_a();
     const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
@@ -523,20 +524,20 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
-    const uint8_t *restrict src,
+    const uint8_t *__restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *restrict y_plane, int y_stride,
-    uint8_t *restrict u_plane, int u_stride,
-    uint8_t *restrict v_plane, int v_stride,
+    uint8_t *__restrict y_plane, int y_stride,
+    uint8_t *__restrict u_plane, int u_stride,
+    uint8_t *__restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rotate_180_get_modified_rgba_shuffle(
         *(__m128i *)_rgba32_shuffle_mask_128
     );
 
-    _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "180 kernel assumes 32x32 RGBA32 tiles.");
+    static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "180 kernel assumes 32x32 RGBA32 tiles.");
 
     const __m128i y_coefficients_a = get_yuv_y_coefficients_a();
     const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
@@ -656,18 +657,18 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
-    const uint8_t *restrict src,
+    const uint8_t *__restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *restrict y_plane, int y_stride,
-    uint8_t *restrict u_plane, int u_stride,
-    uint8_t *restrict v_plane, int v_stride,
+    uint8_t *__restrict y_plane, int y_stride,
+    uint8_t *__restrict u_plane, int u_stride,
+    uint8_t *__restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
-    _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "90 kernel assumes 32x32 RGBA32 tiles.");
+    static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "90 kernel assumes 32x32 RGBA32 tiles.");
 
     const __m128i y_coefficients_a = get_yuv_y_coefficients_a();
     const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
@@ -802,18 +803,18 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
-    const uint8_t *restrict src,
+    const uint8_t *__restrict src,
     const int src_width_px,
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *restrict y_plane, int y_stride,
-    uint8_t *restrict u_plane, int u_stride,
-    uint8_t *restrict v_plane, int v_stride,
+    uint8_t *__restrict y_plane, int y_stride,
+    uint8_t *__restrict u_plane, int u_stride,
+    uint8_t *__restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
 
-    _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "0 kernel assumes 32x32 RGBA32 tiles.");
+    static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "0 kernel assumes 32x32 RGBA32 tiles.");
 
     const __m128i y_coefficients_a = get_yuv_y_coefficients_a();
     const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
@@ -923,11 +924,11 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 
 bool
 scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned(
-    const uint8_t *restrict src,
+    const uint8_t *__restrict src,
     int src_width_px,
     int src_height_px,
     int src_stride_bytes,
-    uint8_t *restrict dst,
+    uint8_t *__restrict dst,
     uint32_t rgba_shuffle_mask,
     enum scranrot_transform transform,
     // OUT:
@@ -947,7 +948,7 @@ scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned(
 
     const __m128i rgba_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba_shuffle_mask);
 
-    scranrot_transform_framebuffer_to_yuv_impl_fn transform_fn = NULL;
+    scranrot_transform_framebuffer_to_yuv_impl_fn transform_fn = nullptr;
 
     switch (transform) {
     case SCRANROT_TRANSFORM_270:
@@ -969,7 +970,7 @@ scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned(
         );
     }
 
-    SCRANROT_ASSERT(transform_fn != NULL);
+    SCRANROT_ASSERT(transform_fn != nullptr);
     return transform_framebuffer_to_yuv420__generic_dispatcher(
         src, src_width_px, src_height_px, src_stride_bytes,
         dst,

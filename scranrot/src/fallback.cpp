@@ -1,8 +1,9 @@
-#include <stddef.h>
-
 #include "../include/scranrot.h"
-#include "./util.h"
-#include "./generic.h"
+#include "./util.hpp"
+#include "./generic.hpp"
+#include "./common.hpp"
+
+using namespace scranrot::internal;
 
 
 enum {
@@ -34,17 +35,17 @@ convert_pixel_format(
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer__fallback__rotate_270(
-    const uint8_t *const restrict src,
+    const uint8_t *const __restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *const restrict dst,
+    uint8_t *const __restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
     uint32_t rgba32_shift_mask = *(uint32_t *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
 
-    _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "270 kernel assumes 4-row RGBA32 tile");
+    static_assert(KERNEL_TILE_HEIGHT_PX == 4, "270 kernel assumes 4-row RGBA32 tile");
 
     const int dst_y_px_max = src_width_px - 1;
 
@@ -81,17 +82,17 @@ transform_framebuffer__fallback__rotate_270(
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer__fallback__rotate_180(
-    const uint8_t *const restrict src,
+    const uint8_t *const __restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *const restrict dst,
+    uint8_t *const __restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
     uint32_t rgba32_shift_mask = *(uint32_t *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
 
-    _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "180 kernel assumes 4-row RGBA32 tile");
+    static_assert(KERNEL_TILE_HEIGHT_PX == 4, "180 kernel assumes 4-row RGBA32 tile");
 
     static const int tile_height = 4;
     static const int tile_width  = KERNEL_TILE_WIDTH_PX;
@@ -131,17 +132,17 @@ transform_framebuffer__fallback__rotate_180(
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer__fallback__rotate_90(
-    const uint8_t *const restrict src,
+    const uint8_t *const __restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *const restrict dst,
+    uint8_t *const __restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
     uint32_t rgba32_shift_mask = *(uint32_t *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
 
-    _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "90 kernel assumes 4-row RGBA32 tile");
+    static_assert(KERNEL_TILE_HEIGHT_PX == 4, "90 kernel assumes 4-row RGBA32 tile");
 
     const int dst_x_px_max = src_height_px - 1;
 
@@ -177,17 +178,17 @@ transform_framebuffer__fallback__rotate_90(
 SCRANROT_TARGET_FALLBACK
 static void
 transform_framebuffer__fallback__rotate_0(
-    const uint8_t *const restrict src,
+    const uint8_t *const __restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
-    uint8_t *const restrict dst,
+    uint8_t *const __restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
     uint32_t rgba32_shift_mask = *(uint32_t *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
 
-    _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "0 kernel assumes 4-row RGBA32 tile");
+    static_assert(KERNEL_TILE_HEIGHT_PX == 4, "0 kernel assumes 4-row RGBA32 tile");
 
     static const int tile_height = 4;
     static const int tile_width  = KERNEL_TILE_WIDTH_PX;
@@ -246,7 +247,7 @@ scranrot_transform_framebuffer_fallback(
 
     const uint32_t rgba_shift_mask = _rgba_shuffle_mask * 8;
 
-    scranrot_transform_framebuffer_impl_fn transform_fn = NULL;
+    scranrot_transform_framebuffer_impl_fn transform_fn = nullptr;
 
     switch (transform) {
     case SCRANROT_TRANSFORM_270:
@@ -262,7 +263,7 @@ scranrot_transform_framebuffer_fallback(
         return false;
     }
 
-    SCRANROT_ASSERT(transform_fn != NULL);
+    SCRANROT_ASSERT(transform_fn != nullptr);
     return transform_framebuffer__generic_dispatcher(
         src, src_width_px, src_height_px, src_stride_bytes,
         dst, dst_stride_bytes,

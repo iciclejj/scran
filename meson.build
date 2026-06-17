@@ -1,5 +1,6 @@
 project(
-  'scran', 'c',
+  'scran',
+  ['c', 'cpp'],
   version: files('VERSION'),
   meson_version: '>=1.1.0',
   license: 'MIT AND OFL-1.1',
@@ -7,6 +8,7 @@ project(
   default_options: [
     'warning_level=2', # -Wall -Wextra
     'c_std=gnu11',
+    'cpp_std=c++20',
     'b_ndebug=if-release',
   ]
 )
@@ -18,7 +20,7 @@ add_project_arguments(
     '-Wmissing-prototypes',
     '-DSCRAN_VERSION_STRING="v@0@"'.format(meson.project_version()),
   ],
-  language: 'c'
+  language: ['c']
 )
 
 sd_bus_opt = get_option('sd-bus-provider')

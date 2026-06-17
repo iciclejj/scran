@@ -6,7 +6,7 @@
 
 
 #ifndef SCRANROT_ASSERT
-#include <assert.h>
+#include <cassert>
 #define SCRANROT_ASSERT assert
 #endif
 
