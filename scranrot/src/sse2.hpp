@@ -4,8 +4,8 @@
 
 #include <emmintrin.h>
 
-#include "../include/scranrot.h"
 #include "./common.hpp"
+#include "./backends.hpp"
 
 
 namespace scranrot::internal {

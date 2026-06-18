@@ -923,7 +923,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 
 
 bool
-scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned(
+scranrot::internal::transform_framebuffer_to_yuv420_ssse3__unaligned(
     const u8 *__restrict src,
     int src_width_px,
     int src_height_px,
@@ -937,7 +937,7 @@ scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned(
     u8 **dst_v, int *dst_v_stride
 ) {
     if (src_width_px < MIN_TILE_WIDTH_PX || src_height_px < MIN_TILE_HEIGHT_PX) {
-        return scranrot_transform_framebuffer_to_yuv420_fallback(
+        return transform_framebuffer_to_yuv420_fallback(
             src, src_width_px, src_height_px, src_stride_bytes,
             dst, rgba_shuffle_mask, transform,
             dst_y, dst_y_stride,
@@ -961,7 +961,7 @@ scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned(
         transform_fn = transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0  ; break;
     default:
         // XXX TODO: Implement flipped
-        return scranrot_transform_framebuffer_to_yuv420_fallback(
+        return transform_framebuffer_to_yuv420_fallback(
             src, src_width_px, src_height_px, src_stride_bytes,
             dst, rgba_shuffle_mask, transform,
             dst_y, dst_y_stride,

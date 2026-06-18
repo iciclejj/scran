@@ -1,12 +1,13 @@
 #include "../include/scranrot.h"
 #include "./util.hpp"
 #include "./common.hpp"
+#include "./backends.hpp"
 
 using namespace scranrot::internal;
 
 
-static constinit scranrot_transform_framebuffer_fn        *m_rgba_fn   = nullptr;
-static constinit scranrot_transform_framebuffer_to_yuv_fn *m_yuv420_fn = nullptr;
+static constinit transform_framebuffer_fn        *m_rgba_fn   = nullptr;
+static constinit transform_framebuffer_to_yuv_fn *m_yuv420_fn = nullptr;
 
 
 // Rotates frame buffer, shuffles pixel geometry, and stores result to dst
@@ -25,7 +26,7 @@ scranrot_transform_framebuffer(
     // OUT:
     uintptr_t *dst_stride
 ) {
-    scranrot_transform_framebuffer_fn *fn = m_rgba_fn;
+    transform_framebuffer_fn *fn = m_rgba_fn;
     SCRANROT_ASSERT(fn != nullptr);
 
     return fn(
@@ -56,7 +57,7 @@ scranrot_transform_framebuffer_to_yuv420(
         return false;
     }
 
-    scranrot_transform_framebuffer_to_yuv_fn *fn = m_yuv420_fn;
+    transform_framebuffer_to_yuv_fn *fn = m_yuv420_fn;
     SCRANROT_ASSERT(fn != nullptr);
 
     return fn(
@@ -70,31 +71,31 @@ scranrot_transform_framebuffer_to_yuv420(
     );
 }
 
-static inline scranrot_transform_framebuffer_fn *
+static inline transform_framebuffer_fn *
 get_rgba_fn()
 {
 #if defined(__x86_64__) || defined(__i386__)
     __builtin_cpu_init();
     if (__builtin_cpu_supports("ssse3")) {
-        return scranrot_transform_framebuffer_ssse3__unaligned;
+        return transform_framebuffer_ssse3__unaligned;
     } else
 #endif
     {
-        return scranrot_transform_framebuffer_fallback;
+        return transform_framebuffer_fallback;
     }
 }
 
-static inline scranrot_transform_framebuffer_to_yuv_fn *
+static inline transform_framebuffer_to_yuv_fn *
 get_yuv420_fn()
 {
 #if defined(__x86_64__) || defined(__i386__)
     __builtin_cpu_init();
     if (__builtin_cpu_supports("ssse3")) {
-        return scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned;
+        return transform_framebuffer_to_yuv420_ssse3__unaligned;
     } else
 #endif
     {
-        return scranrot_transform_framebuffer_to_yuv420_fallback;
+        return transform_framebuffer_to_yuv420_fallback;
     }
 }
 

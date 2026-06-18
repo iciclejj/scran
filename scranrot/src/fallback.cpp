@@ -220,7 +220,7 @@ transform_framebuffer__fallback__rotate_0(
 
 
 bool
-scranrot_transform_framebuffer_fallback(
+scranrot::internal::transform_framebuffer_fallback(
     const u8 *src,
     int src_width_px,
     int src_height_px,

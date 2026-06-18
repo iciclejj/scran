@@ -333,7 +333,7 @@ transform_framebuffer__ssse3_unaligned__rotate_0(
 
 
 bool
-scranrot_transform_framebuffer_ssse3__unaligned(
+scranrot::internal::transform_framebuffer_ssse3__unaligned(
     const u8 *__restrict src,
     int src_width_px,
     int src_height_px,
@@ -347,7 +347,7 @@ scranrot_transform_framebuffer_ssse3__unaligned(
     uintptr_t *dst_stride
 ) {
     if (src_width_px < MIN_TILE_WIDTH_PX || src_height_px < MIN_TILE_HEIGHT_PX) {
-        return scranrot_transform_framebuffer_fallback(
+        return transform_framebuffer_fallback(
                 src, src_width_px, src_height_px, src_stride_bytes,
                 dst,
                 rgba_shuffle_mask, transform,
@@ -376,7 +376,7 @@ scranrot_transform_framebuffer_ssse3__unaligned(
         transform_fn = transform_framebuffer__ssse3_unaligned__rotate_0;  break;
     default:
         // XXX TODO: Implement flipped
-        return scranrot_transform_framebuffer_fallback(
+        return transform_framebuffer_fallback(
                 src, src_width_px, src_height_px, src_stride_bytes,
                 dst,
                 rgba_shuffle_mask, transform,

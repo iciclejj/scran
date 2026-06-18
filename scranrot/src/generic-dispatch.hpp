@@ -4,6 +4,7 @@
 #include "../include/scranrot.h"
 #include "./util.hpp"
 #include "./common.hpp"
+#include "./backends.hpp"
 
 namespace scranrot::internal {
 
