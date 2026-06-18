@@ -6,7 +6,7 @@
 
 #include "../include/scranrot.h"
 #include "./util.hpp"
-#include "./generic.hpp"
+#include "./generic-dispatch.hpp"
 #include "./sse2.hpp"
 #include "./common.hpp"
 

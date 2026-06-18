@@ -1,6 +1,6 @@
 #include "../include/scranrot.h"
 #include "./util.hpp"
-#include "./generic.hpp"
+#include "./generic-dispatch.hpp"
 #include "./common.hpp"
 
 using namespace scranrot::internal;
