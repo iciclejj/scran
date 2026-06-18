@@ -4,11 +4,11 @@
 #include <emmintrin.h> // SSE2
 #include <tmmintrin.h> // SSE3
 
-#include "../include/scranrot.h"
-#include "./util.hpp"
-#include "./generic-dispatch.hpp"
-#include "./sse2.hpp"
-#include "./common.hpp"
+#include "scranrot.h"
+#include "../util.hpp"
+#include "../generic-dispatch.hpp"
+#include "../sse2.hpp"
+#include "../common.hpp"
 
 using namespace scranrot::internal;
 

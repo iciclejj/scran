@@ -1,10 +1,10 @@
 scranrot_inc = include_directories('include')
 scranrot_sources = files(
   'src/scranrot.cpp',
-  'src/fallback.cpp',
-  'src/fallback-yuv.cpp',
-  'src/ssse3.cpp',
-  'src/ssse3-yuv.cpp',
+  'src/rgba32_to_rgba32/fallback.cpp',
+  'src/rgba32_to_rgba32/ssse3.cpp',
+  'src/rgba32_to_yuv420/fallback.cpp',
+  'src/rgba32_to_yuv420/ssse3.cpp',
 )
 scranrot_cpp_args = [
   '-fno-exceptions',

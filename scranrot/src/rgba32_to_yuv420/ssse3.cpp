@@ -3,10 +3,10 @@
 
 #include <tmmintrin.h>
 
-#include "../include/scranrot.h"
-#include "./sse2.hpp"
-#include "./generic-dispatch.hpp"
-#include "./common.hpp"
+#include "scranrot.h"
+#include "../sse2.hpp"
+#include "../generic-dispatch.hpp"
+#include "../common.hpp"
 
 using namespace scranrot::internal;
 
