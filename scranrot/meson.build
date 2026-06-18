@@ -10,6 +10,7 @@ scranrot_cpp_args = [
   '-fno-exceptions',
   '-fno-rtti',
   '-fno-threadsafe-statics',
+  '-Wcast-align=strict',
 ]
 
 scranrot_lib = static_library(

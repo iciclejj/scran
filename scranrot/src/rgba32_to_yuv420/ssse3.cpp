@@ -390,7 +390,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
     u8 *__restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
-    const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
+    const __m128i rgba32_shuffle_mask_128 = load_unaligned<__m128i>(_rgba32_shuffle_mask_128);
 
     static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "270 kernel assumes 32x32 RGBA32 tiles.");
 
@@ -434,15 +434,15 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 
                         const __m128i rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
                             {
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
                             }, {
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
                             },
                         };
 
@@ -475,7 +475,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
                     {
                         u8 *dst_y = dst_y_start + (y+_y) - (x+_x)*y_stride;
                         for (int j = 0; j < 16; ++j) {
-                            _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final[j]);
+                            store_unaligned(dst_y, y_8bpp_final[j]);
                             dst_y -= y_stride;
                         }
                     }
@@ -503,7 +503,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
             {
                 u8 *dst_u = dst_u_start + (y/2) - (x/2)*u_stride;
                 for (int j = 0; j < 16; ++j) {
-                    _mm_storeu_si128((__m128i*)dst_u, u_i8_4bpp_final[j]);
+                    store_unaligned(dst_u, u_i8_4bpp_final[j]);
                     dst_u -= u_stride;
                 }
             }
@@ -513,7 +513,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
             {
                 u8 *dst_v = dst_v_start + (y/2) - (x/2)*v_stride;
                 for (int j = 0; j < 16; ++j) {
-                    _mm_storeu_si128((__m128i*)dst_v, v_i8_4bpp_final[j]);
+                    store_unaligned(dst_v, v_i8_4bpp_final[j]);
                     dst_v -= v_stride;
                 }
             }
@@ -534,7 +534,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rotate_180_get_modified_rgba_shuffle(
-        *(__m128i *)_rgba32_shuffle_mask_128
+        load_unaligned<__m128i>(_rgba32_shuffle_mask_128)
     );
 
     static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "180 kernel assumes 32x32 RGBA32 tiles.");
@@ -579,15 +579,15 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
                         // NOTE: 180 uses reversed load order here compared to the other rotations
                         const __m128i rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
                             {
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
                             }, {
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
                             },
                         };
 
@@ -596,9 +596,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
                             const __m128i y_8bpp_final_0 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
                             const __m128i y_8bpp_final_1 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
 
-                            _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final_0);
+                            store_unaligned(dst_y, y_8bpp_final_0);
                             dst_y -= y_stride;
-                            _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final_1);
+                            store_unaligned(dst_y, y_8bpp_final_1);
                             dst_y -= y_stride;
                         }
 
@@ -643,8 +643,8 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
                 u8 *dst_u = dst_u_start - ((y/2)*u_stride) - (x/2);
                 u8 *dst_v = dst_v_start - ((y/2)*v_stride) - (x/2);
                 for (int l = 0; l < 16; ++l) {
-                    _mm_storeu_si128((__m128i*)dst_u, u_i8_4bpp_final[l]);
-                    _mm_storeu_si128((__m128i*)dst_v, v_i8_4bpp_final[l]);
+                    store_unaligned(dst_u, u_i8_4bpp_final[l]);
+                    store_unaligned(dst_v, v_i8_4bpp_final[l]);
                     dst_u -= u_stride;
                     dst_v -= v_stride;
                 }
@@ -666,7 +666,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
     u8 *__restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
-    const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
+    const __m128i rgba32_shuffle_mask_128 = load_unaligned<__m128i>(_rgba32_shuffle_mask_128);
 
     static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "90 kernel assumes 32x32 RGBA32 tiles.");
 
@@ -712,15 +712,15 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 
                         const __m128i rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
                             {
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
                             }, {
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
                             },
                         };
 
@@ -752,7 +752,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
                         u8 *dst_y = dst_y_start - (y+_y) + (x+_x)*y_stride;
                         rotate_90_inplace_16x16_8bpp(y_8bpp_final);
                         for (int j = 0; j < 16; ++j) {
-                            _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final[j]);
+                            store_unaligned(dst_y, y_8bpp_final[j]);
                             dst_y += y_stride;
                         }
                     }
@@ -781,7 +781,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
             {
                 u8 *dst_u = dst_u_start - (y/2) + (x/2)*u_stride;
                 for (int j = 0; j < 16; ++j) {
-                    _mm_storeu_si128((__m128i*)dst_u, u_i8_4bpp_final[j]);
+                    store_unaligned(dst_u, u_i8_4bpp_final[j]);
                     dst_u += u_stride;
                 }
             }
@@ -791,7 +791,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
             {
                 u8 *dst_v = dst_v_start - (y/2) + (x/2)*v_stride;
                 for (int j = 0; j < 16; ++j) {
-                    _mm_storeu_si128((__m128i*)dst_v, v_i8_4bpp_final[j]);
+                    store_unaligned(dst_v, v_i8_4bpp_final[j]);
                     dst_v += v_stride;
                 }
             }
@@ -812,7 +812,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
     u8 *__restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
-    const __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
+    const __m128i rgba32_shuffle_mask_128 = load_unaligned<__m128i>(_rgba32_shuffle_mask_128);
 
     static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "0 kernel assumes 32x32 RGBA32 tiles.");
 
@@ -849,15 +849,15 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 
                         const __m128i rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
                             {
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+0)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
                             }, {
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( _mm_loadu_si128((__m128i *)(src_subtile + (j+1)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE)) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes +  0*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes +  4*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes +  8*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
+                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes + 12*RGBA32_PIXEL_STRIDE) , rgba32_shuffle_mask_128),
                             },
                         };
 
@@ -865,9 +865,9 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
                         {
                             const __m128i y_8bpp_final_0 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
                             const __m128i y_8bpp_final_1 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
-                            _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final_0);
+                            store_unaligned(dst_y, y_8bpp_final_0);
                             dst_y += y_stride;
-                            _mm_storeu_si128((__m128i*)dst_y, y_8bpp_final_1);
+                            store_unaligned(dst_y, y_8bpp_final_1);
                             dst_y += y_stride;
                         }
 
@@ -910,8 +910,8 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
                 u8 *dst_u = u_plane + (y/2)*u_stride + (x/2);
                 u8 *dst_v = v_plane + (y/2)*v_stride + (x/2);
                 for (int l = 0; l < 16; ++l) {
-                    _mm_storeu_si128((__m128i*)dst_u, u_i8_4bpp_final[l]);
-                    _mm_storeu_si128((__m128i*)dst_v, v_i8_4bpp_final[l]);
+                    store_unaligned(dst_u, u_i8_4bpp_final[l]);
+                    store_unaligned(dst_v, v_i8_4bpp_final[l]);
                     dst_u += u_stride;
                     dst_v += v_stride;
                 }

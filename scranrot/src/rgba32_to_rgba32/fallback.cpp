@@ -43,7 +43,7 @@ transform_framebuffer__fallback__rotate_270(
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
-    u32 rgba32_shift_mask = *(u32 *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
+    u32 rgba32_shift_mask = load_unaligned<u32>(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
 
     static_assert(KERNEL_TILE_HEIGHT_PX == 4, "270 kernel assumes 4-row RGBA32 tile");
 
@@ -67,10 +67,10 @@ transform_framebuffer__fallback__rotate_270(
                         + (y + _y) * RGBA32_PIXEL_STRIDE
                         + (dst_y_px_max - (x + _x)) * dst_stride_bytes;
 
-                    u32 val = *(u32 *)_src;
+                    u32 val = load_unaligned<u32>(_src);
                     val = convert_pixel_format(val, rgba32_shift_mask);
 
-                    *(u32 *)_dst = val;
+                    store_unaligned(_dst, val);
                 }
             }
 
@@ -90,7 +90,7 @@ transform_framebuffer__fallback__rotate_180(
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
-    u32 rgba32_shift_mask = *(u32 *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
+    u32 rgba32_shift_mask = load_unaligned<u32>(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
 
     static_assert(KERNEL_TILE_HEIGHT_PX == 4, "180 kernel assumes 4-row RGBA32 tile");
 
@@ -117,10 +117,10 @@ transform_framebuffer__fallback__rotate_180(
                         - (y + _y) * dst_stride_bytes
                         - (x + _x) * RGBA32_PIXEL_STRIDE;
 
-                    u32 val = *(u32 *)_src;
+                    u32 val = load_unaligned<u32>(_src);
                     val = convert_pixel_format(val, rgba32_shift_mask);
 
-                    *(u32 *)_dst = val;
+                    store_unaligned<u32>(_dst, val);
                 }
             }
 
@@ -140,7 +140,7 @@ transform_framebuffer__fallback__rotate_90(
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
-    u32 rgba32_shift_mask = *(u32 *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
+    u32 rgba32_shift_mask = load_unaligned<u32>(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
 
     static_assert(KERNEL_TILE_HEIGHT_PX == 4, "90 kernel assumes 4-row RGBA32 tile");
 
@@ -164,10 +164,10 @@ transform_framebuffer__fallback__rotate_90(
                         + (dst_x_px_max - (y + _y)) * RGBA32_PIXEL_STRIDE
                         + (x + _x) * dst_stride_bytes;
 
-                    u32 val = *(u32 *)_src;
+                    u32 val = load_unaligned<u32>(_src);
                     val = convert_pixel_format(val, rgba32_shift_mask);
 
-                    *(u32 *)_dst = val;
+                    store_unaligned<u32>(_dst, val);
                 }
             }
 
@@ -186,7 +186,7 @@ transform_framebuffer__fallback__rotate_0(
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
 ) {
-    u32 rgba32_shift_mask = *(u32 *)_rgba32_shift_mask; // Mask for _mm_shuffle_epi8
+    u32 rgba32_shift_mask = load_unaligned<u32>(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
 
     static_assert(KERNEL_TILE_HEIGHT_PX == 4, "0 kernel assumes 4-row RGBA32 tile");
 
@@ -207,10 +207,10 @@ transform_framebuffer__fallback__rotate_0(
                         + (y + _y) * dst_stride_bytes
                         + (x + _x) * RGBA32_PIXEL_STRIDE;
 
-                    u32 val = *(u32 *)_src;
+                    u32 val = load_unaligned<u32>(_src);
                     val = convert_pixel_format(val, rgba32_shift_mask);
 
-                    *(u32 *)_dst = val;
+                    store_unaligned(_dst, val);
                 }
             }
 

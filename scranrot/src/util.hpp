@@ -3,6 +3,7 @@
 
 
 #include "../include/scranrot.h"
+#include "./backends.hpp"
 
 
 #ifndef SCRANROT_ASSERT
@@ -36,6 +37,26 @@ namespace scranrot::internal {
             || transform == SCRANROT_TRANSFORM_FLIPPED_270
              ? src_height
              : src_width;
+    }
+
+    template<typename T>
+    SCRANROT_ALWAYS_INLINE
+    static inline T
+    load_unaligned(const void *src)
+    {
+        static_assert(__is_trivially_copyable(T));
+        T val;
+        __builtin_memcpy(&val, src, sizeof(val));
+        return val;
+    }
+
+    template<typename T>
+    SCRANROT_ALWAYS_INLINE
+    static inline void
+    store_unaligned(void *dst, const T &val)
+    {
+        static_assert(__is_trivially_copyable(T));
+        __builtin_memcpy(dst, &val, sizeof(val));
     }
 
 }

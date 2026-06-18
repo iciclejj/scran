@@ -6,6 +6,7 @@
 
 #include "./types.hpp"
 #include "./backends.hpp"
+#include "./util.hpp"
 
 
 namespace scranrot::internal {
@@ -23,6 +24,20 @@ namespace scranrot::internal {
     static inline __m128i
     scranrot_sse2_rotate_180_get_modified_rgba_shuffle(const __m128i original_rgba_shuffle_mask) {
         return _mm_shuffle_epi32(original_rgba_shuffle_mask, _MM_SHUFFLE(0,1,2,3));
+    }
+
+    template<>
+    SCRANROT_ALWAYS_INLINE
+    inline __m128i
+    load_unaligned<__m128i>(const void *src) {
+        return _mm_loadu_si128(static_cast<const __m128i_u *>(src));
+    }
+
+    template<>
+    SCRANROT_ALWAYS_INLINE
+    inline void
+    store_unaligned<__m128i>(void *dst, const __m128i &val) {
+        _mm_storeu_si128(static_cast<__m128i_u *>(dst), val);
     }
 
 }
