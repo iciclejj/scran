@@ -3,7 +3,7 @@
 
 #include "../include/scranrot.h"
 #include "./util.hpp"
-#include "./common.hpp"
+#include "./types.hpp"
 #include "./backends.hpp"
 
 namespace scranrot::internal {

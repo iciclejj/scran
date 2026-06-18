@@ -1,6 +1,6 @@
 #include "../include/scranrot.h"
 #include "./util.hpp"
-#include "./common.hpp"
+#include "./types.hpp"
 #include "./backends.hpp"
 
 using namespace scranrot::internal;

@@ -1,5 +1,5 @@
-#ifndef SCRANROT_COMMON_HPP
-#define SCRANROT_COMMON_HPP
+#ifndef SCRANROT_TYPES_HPP
+#define SCRANROT_TYPES_HPP
 
 #include <cstdint>
 #include <cstddef>

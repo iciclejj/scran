@@ -3,7 +3,7 @@
 
 
 #include "../include/scranrot.h"
-#include "./common.hpp"
+#include "./types.hpp"
 
 
 #define SCRANROT_ALWAYS_INLINE \
