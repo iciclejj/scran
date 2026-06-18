@@ -241,13 +241,13 @@ scranrot_transform_framebuffer_fallback(
     // TODO: Assert rgba_shuffle is valid (and let (0 => 0,1,2,3) ?)
 
     SCRANROT_ASSERT(src_width_px * RGBA32_PIXEL_STRIDE <= src_stride_bytes);
-    const int _dst_stride_px = scranrot_get_transformed_width(src_width_px, src_height_px, transform);
+    const int _dst_stride_px = get_transformed_width(src_width_px, src_height_px, transform);
     const int dst_stride_bytes = RGBA32_PIXEL_STRIDE * _dst_stride_px;
     *dst_stride = dst_stride_bytes;
 
     const u32 rgba_shift_mask = _rgba_shuffle_mask * 8;
 
-    scranrot_transform_framebuffer_impl_fn transform_fn = nullptr;
+    transform_framebuffer_impl_fn transform_fn = nullptr;
 
     switch (transform) {
     case SCRANROT_TRANSFORM_270:

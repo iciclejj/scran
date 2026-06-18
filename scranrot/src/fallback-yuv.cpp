@@ -265,7 +265,7 @@ scranrot_transform_framebuffer_to_yuv420_fallback(
 
     SCRANROT_ASSERT(src_width_px * RGBA32_PIXEL_STRIDE <= src_stride_bytes);
 
-    scranrot_transform_framebuffer_to_yuv_impl_fn transform_fn = nullptr;
+    transform_framebuffer_to_yuv_impl_fn transform_fn = nullptr;
 
     switch (transform) {
     case SCRANROT_TRANSFORM_270:

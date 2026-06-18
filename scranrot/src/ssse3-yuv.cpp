@@ -948,7 +948,7 @@ scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned(
 
     const __m128i rgba_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba_shuffle_mask);
 
-    scranrot_transform_framebuffer_to_yuv_impl_fn transform_fn = nullptr;
+    transform_framebuffer_to_yuv_impl_fn transform_fn = nullptr;
 
     switch (transform) {
     case SCRANROT_TRANSFORM_270:
