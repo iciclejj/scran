@@ -66,10 +66,10 @@ transform_framebuffer_to_yuv__fallback__rotate_270(
     for (int y = 0; y < src_height_px; y += 2) {
         for (int x = 0; x < src_width_px; x += 2) {
 
-            const u32 p00 = *(const u32 *)((const u8 *)src + (y+0) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const u32 p10 = *(const u32 *)((const u8 *)src + (y+0) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
-            const u32 p01 = *(const u32 *)((const u8 *)src + (y+1) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const u32 p11 = *(const u32 *)((const u8 *)src + (y+1) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
+            const u32 p00 = *(const u32 *)(src + (y+0) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
+            const u32 p10 = *(const u32 *)(src + (y+0) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
+            const u32 p01 = *(const u32 *)(src + (y+1) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
+            const u32 p11 = *(const u32 *)(src + (y+1) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
 
             int r00, g00, b00;
             int r10, g10, b10;
@@ -115,10 +115,10 @@ transform_framebuffer_to_yuv__fallback__rotate_180(
     for (int y = 0; y < src_height_px; y += 2) {
         for (int x = 0; x < src_width_px; x += 2) {
 
-            const u32 p00 = *(const u32 *)((const u8 *)src + (y+0) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const u32 p10 = *(const u32 *)((const u8 *)src + (y+0) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
-            const u32 p01 = *(const u32 *)((const u8 *)src + (y+1) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const u32 p11 = *(const u32 *)((const u8 *)src + (y+1) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
+            const u32 p00 = *(const u32 *)(src + (y+0) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
+            const u32 p10 = *(const u32 *)(src + (y+0) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
+            const u32 p01 = *(const u32 *)(src + (y+1) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
+            const u32 p11 = *(const u32 *)(src + (y+1) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
 
             int r00, g00, b00;
             int r10, g10, b10;
@@ -164,10 +164,10 @@ transform_framebuffer_to_yuv__fallback__rotate_90(
     for (int y = 0; y < src_height_px; y += 2) {
         for (int x = 0; x < src_width_px; x += 2) {
 
-            const u32 p00 = *(const u32 *)((const u8 *)src + (y+0) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const u32 p10 = *(const u32 *)((const u8 *)src + (y+0) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
-            const u32 p01 = *(const u32 *)((const u8 *)src + (y+1) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const u32 p11 = *(const u32 *)((const u8 *)src + (y+1) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
+            const u32 p00 = *(const u32 *)(src + (y+0) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
+            const u32 p10 = *(const u32 *)(src + (y+0) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
+            const u32 p01 = *(const u32 *)(src + (y+1) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
+            const u32 p11 = *(const u32 *)(src + (y+1) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
 
             int r00, g00, b00;
             int r10, g10, b10;
@@ -213,10 +213,10 @@ transform_framebuffer_to_yuv__fallback__rotate_0(
     for (int y = 0; y < src_height_px; y += 2) {
         for (int x = 0; x < src_width_px; x += 2) {
 
-            const u32 p00 = *(const u32 *)((const u8 *)src + (y+0) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const u32 p10 = *(const u32 *)((const u8 *)src + (y+0) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
-            const u32 p01 = *(const u32 *)((const u8 *)src + (y+1) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const u32 p11 = *(const u32 *)((const u8 *)src + (y+1) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
+            const u32 p00 = *(const u32 *)(src + (y+0) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
+            const u32 p10 = *(const u32 *)(src + (y+0) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
+            const u32 p01 = *(const u32 *)(src + (y+1) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
+            const u32 p11 = *(const u32 *)(src + (y+1) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
 
             int r00, g00, b00;
             int r10, g10, b10;

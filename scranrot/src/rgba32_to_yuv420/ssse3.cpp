@@ -428,7 +428,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 
                     const u8 _xi = _x >> 4; // divide by 16
                     __m128i y_8bpp_final[16];
-                    const u8 *const src_subtile = (u8 *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
+                    const u8 *const src_subtile = src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
@@ -571,7 +571,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
                     // const u8 _xi          = _x >> 4; // divide by 16
                     // NOTE: 180 uses reversed _x index order here compared to the other rotations
                     const u8 _xi_reversed = (16 - _x) >> 4;
-                    const u8 *const src_subtile = (u8 *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
+                    const u8 *const src_subtile = src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
                     u8 *dst_y = dst_y_start - (y+_y)*y_stride - (x+_x);
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
@@ -706,7 +706,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 
                     const u8 _xi = _x >> 4; // divide by 16
                     __m128i y_8bpp_final[16];
-                    const u8 *const src_subtile = (u8 *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
+                    const u8 *const src_subtile = src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
@@ -842,7 +842,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
                 for (int _x = 0; _x < 32; _x += 16) {
 
                     const u8 _xi = _x >> 4; // divide by 16
-                    const u8 *const src_subtile = (u8 *)src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
+                    const u8 *const src_subtile = src + (y+_y)*src_stride_bytes + (x+_x)*RGBA32_PIXEL_STRIDE;
                     u8 *dst_y = y_plane + (y+_y)*y_stride + (x+_x);
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently

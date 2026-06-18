@@ -165,14 +165,14 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
 
         // NOTE: Rotation-specific:
         // TODO: We can factor this even farther out
-        u8 *dst_block_row_addr_0 = (u8 *)dst
+        u8 *dst_block_row_addr_0 = dst
                                    // src_width_px - KERNEL_TILE_WIDTH_PX because we're loading
                                    // rows 0,+1,+2,+3 on every loop (note: This also accounts
                                    // accounts for the -1 for len->index)
                                    + (src_width_px - KERNEL_TILE_WIDTH_PX) * dst_stride_bytes
                                    + dst_col_offset_bytes;
 
-        const u8 *const src_block_row_addrs_base = (u8 *)src + src_row_px * src_stride_bytes;
+        const u8 *const src_block_row_addrs_base = src + src_row_px * src_stride_bytes;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += KERNEL_TILE_WIDTH_PX) {
 
@@ -214,7 +214,7 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
     // NOTE: Rotation-specific:
     rgba32_shuffle_mask_128 = scranrot_sse2_rotate_180_get_modified_rgba_shuffle(rgba32_shuffle_mask_128);
 
-    u8 *const dst_last_row = (u8 *)dst + (src_height_px - 1) * dst_stride_bytes;
+    u8 *const dst_last_row = dst + (src_height_px - 1) * dst_stride_bytes;
 
     u8 *dst_start = (src_width_px % KERNEL_TILE_WIDTH_PX) == 0
                   ? dst_last_row + RGBA32_PIXEL_STRIDE * (src_width_px - KERNEL_TILE_WIDTH_PX)
@@ -269,9 +269,9 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
         const int dst_col_px = (src_height_px - KERNEL_TILE_HEIGHT_PX) - src_row_px; // -KERNEL_TILE_HEIGHT => len -> tile index
         SCRANROT_ASSERT(RGBA32_PIXEL_STRIDE * (dst_col_px + KERNEL_TILE_HEIGHT_PX) <= dst_stride_bytes); // Stay within padded bounds
         const int dst_col_offset_bytes = dst_col_px * RGBA32_PIXEL_STRIDE;
-        u8 *dst_block_row_addr_0 = (u8 *)dst + dst_col_offset_bytes;
+        u8 *dst_block_row_addr_0 = dst + dst_col_offset_bytes;
 
-        const u8 *const src_block_row_addrs_base = (u8 *)src + src_row_px * src_stride_bytes;
+        const u8 *const src_block_row_addrs_base = src + src_row_px * src_stride_bytes;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += KERNEL_TILE_WIDTH_PX) {
 

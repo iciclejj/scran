@@ -58,12 +58,12 @@ transform_framebuffer__fallback__rotate_270(
             for (int _y = 0; _y < tile_height; ++_y) {
                 for (int _x = 0; _x < tile_width; ++_x) {
 
-                    const u8 *const _src = (u8 *)src
+                    const u8 *const _src = src
                         + (y + _y) * src_stride_bytes
                         + (x + _x) * RGBA32_PIXEL_STRIDE;
 
                     // NOTE: Rotation-specific
-                    u8 *const _dst = (u8 *)dst
+                    u8 *const _dst = dst
                         + (y + _y) * RGBA32_PIXEL_STRIDE
                         + (dst_y_px_max - (x + _x)) * dst_stride_bytes;
 
@@ -98,7 +98,7 @@ transform_framebuffer__fallback__rotate_180(
     static const int tile_width  = KERNEL_TILE_WIDTH_PX;
 
     u8 *const dst_last_pixel_address =
-        (u8 *)dst
+        dst
         + (src_height_px - 1) * dst_stride_bytes
         + (src_width_px - 1) * RGBA32_PIXEL_STRIDE
         ;
@@ -109,11 +109,11 @@ transform_framebuffer__fallback__rotate_180(
             for (int _y = 0; _y < tile_height; ++_y) {
                 for (int _x = 0; _x < tile_width; ++_x) {
 
-                    const u8 *const _src = (u8 *)src
+                    const u8 *const _src = src
                         + (y + _y) * src_stride_bytes
                         + (x + _x) * RGBA32_PIXEL_STRIDE;
 
-                    u8 *const _dst = (u8 *)dst_last_pixel_address
+                    u8 *const _dst = dst_last_pixel_address
                         - (y + _y) * dst_stride_bytes
                         - (x + _x) * RGBA32_PIXEL_STRIDE;
 
@@ -155,12 +155,12 @@ transform_framebuffer__fallback__rotate_90(
             for (int _y = 0; _y < tile_height; ++_y) {
                 for (int _x = 0; _x < tile_width; ++_x) {
 
-                    const u8 *const _src = (u8 *)src
+                    const u8 *const _src = src
                         + (y + _y) * src_stride_bytes
                         + (x + _x) * RGBA32_PIXEL_STRIDE;
 
                     // NOTE: Rotation-specific (90 vs 270)
-                    u8 *const _dst = (u8 *)dst
+                    u8 *const _dst = dst
                         + (dst_x_px_max - (y + _y)) * RGBA32_PIXEL_STRIDE
                         + (x + _x) * dst_stride_bytes;
 
@@ -199,11 +199,11 @@ transform_framebuffer__fallback__rotate_0(
             for (int _y = 0; _y < tile_height; ++_y) {
                 for (int _x = 0; _x < tile_width; ++_x) {
 
-                    const u8 *const _src = (u8 *)src
+                    const u8 *const _src = src
                         + (y + _y) * src_stride_bytes
                         + (x + _x) * RGBA32_PIXEL_STRIDE;
 
-                    u8 *const _dst = (u8 *)dst
+                    u8 *const _dst = dst
                         + (y + _y) * dst_stride_bytes
                         + (x + _x) * RGBA32_PIXEL_STRIDE;
 
