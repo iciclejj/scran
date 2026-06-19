@@ -27,39 +27,14 @@ static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "T
 template<int TileHeightPx>
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
-load_tile_rows_unaligned(
-    __m128i (&rows)[TileHeightPx],
-    const u8 *(&row_addrs)[TileHeightPx]
-) {
-    auto fn = [&](auto i) -> void {
-        rows[i] = load_unaligned<__m128i>(row_addrs[i]);
-    };
-    static_for<TileHeightPx>(fn);
-}
-
-template<int TileHeightPx>
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline void
-store_tile_rows_unaligned(
-    const __m128i (&rows)[TileHeightPx],
-    u8 *(&row_addrs)[TileHeightPx]
-) {
-    auto fn = [&](auto i) {
-        store_unaligned(row_addrs[i], rows[i]);
-    };
-    static_for<TileHeightPx>(fn);
-}
-
-template<int TileHeightPx>
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline void
-get_src_tile_row_addresses(
-    const u8 *(&row_addrs)[TileHeightPx],
-    const u8 *row_addr_0,
+load_src_tile_rows_unaligned(
+    __m128i (&rows_out)[TileHeightPx],
+    const u8 *row_in_addr_0,
     int src_stride_bytes [[maybe_unused]]
 ) {
-    auto fn = [&](auto i) {
-        row_addrs[i] = row_addr_0 + i * src_stride_bytes;
+    auto fn = [&](auto i) -> void {
+        const u8 *const row_in_addr = row_in_addr_0 + i * src_stride_bytes;
+        rows_out[i] = load_unaligned<__m128i>(row_in_addr);
     };
     static_for<TileHeightPx>(fn);
 }
@@ -67,13 +42,14 @@ get_src_tile_row_addresses(
 template<int TileHeightPx>
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
-get_dst_tile_row_addresses(
-    u8 *(&row_addrs)[TileHeightPx],
-    u8 *row_addr_0,
+store_dst_tile_rows_unaligned(
+    const __m128i (&rows_in)[TileHeightPx],
+    u8 *row_out_addr_0,
     int dst_stride_bytes [[maybe_unused]]
 ) {
     auto fn = [&](auto i) {
-        row_addrs[i] = row_addr_0 + i * dst_stride_bytes;
+        u8 *const row_out_addr = row_out_addr_0 + i * dst_stride_bytes;
+        store_unaligned(row_out_addr, rows_in[i]);
     };
     static_for<TileHeightPx>(fn);
 }
@@ -275,8 +251,6 @@ transform_framebuffer_ssse3_impl(
 
     __m128i src_tile_rows[Rotation::TILE_HEIGHT_PX];
     __m128i dst_tile_rows[Rotation::TILE_HEIGHT_PX_DST];
-    u8 const *src_tile_row_addrs[Rotation::TILE_HEIGHT_PX];
-    u8       *dst_tile_row_addrs[Rotation::TILE_HEIGHT_PX_DST];
 
     const Point src_px_max = {
         .x = src_width_px - 1,
@@ -297,18 +271,14 @@ transform_framebuffer_ssse3_impl(
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += TILE_WIDTH_PX) {
 
-            get_src_tile_row_addresses(src_tile_row_addrs, src_curr, src_stride_bytes);
-            load_tile_rows_unaligned(src_tile_rows, src_tile_row_addrs);
-
+            load_src_tile_rows_unaligned(src_tile_rows, src_curr, src_stride_bytes);
             convert_tile_pixel_format(src_tile_rows, rgba32_shuffle_mask_128);
-
-            get_dst_tile_row_addresses(dst_tile_row_addrs, dst_curr, dst_stride_bytes);
 
             if constexpr (requires { Rotation::rotate_with_copy(dst_tile_rows, src_tile_rows); }) {
                 Rotation::rotate_with_copy(dst_tile_rows, src_tile_rows);
-                store_tile_rows_unaligned(dst_tile_rows, dst_tile_row_addrs);
+                store_dst_tile_rows_unaligned(dst_tile_rows, dst_curr, dst_stride_bytes);
             } else {
-                store_tile_rows_unaligned(src_tile_rows, dst_tile_row_addrs);
+                store_dst_tile_rows_unaligned(src_tile_rows, dst_curr, dst_stride_bytes);
             }
 
             dst_curr += dst_step_for_src_x_step;
