@@ -59,6 +59,23 @@ namespace scranrot::internal {
         __builtin_memcpy(dst, &val, sizeof(val));
     }
 
+    template<int I, int N, typename Fn>
+    SCRANROT_ALWAYS_INLINE
+    static inline void
+    static_for_impl(Fn &fn) {
+        if constexpr (I < N) {
+            fn(std::integral_constant<int, I>{});
+            static_for_impl<I+1, N>(fn);
+        }
+    }
+    template<       int N, typename Fn>
+    SCRANROT_ALWAYS_INLINE
+    static inline void
+    static_for(Fn &fn) {
+        static_assert(N >= 0);
+        static_for_impl<0, N>(fn);
+    }
+
 }
 
 
