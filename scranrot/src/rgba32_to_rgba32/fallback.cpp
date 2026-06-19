@@ -6,132 +6,136 @@
 using namespace scranrot::internal;
 
 
-enum {
-    KERNEL_TILE_WIDTH_PX  = 1, // Optimal seems to be 1 (on a 5600h, both with and without auto-vectorization)
-    KERNEL_TILE_HEIGHT_PX = 4,
+namespace {
 
-    MIN_TILE_WIDTH_PX  = KERNEL_TILE_WIDTH_PX,
-    MIN_TILE_HEIGHT_PX = KERNEL_TILE_HEIGHT_PX,
-};
+    enum {
+        KERNEL_TILE_WIDTH_PX  = 1, // Optimal seems to be 1 (on a 5600h, both with and without auto-vectorization)
+        KERNEL_TILE_HEIGHT_PX = 4,
 
-
-SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
-static inline u32
-convert_pixel_format(
-    u32 pixel,
-    u32 rgba_shift_mask // NOTE: NOT Shuffle mask.
-) {
-    u32 converted_pixel =
-             ((pixel & 0xFF000000) >> 24) << ((rgba_shift_mask & 0xFF000000) >> 24)
-           | ((pixel & 0x00FF0000) >> 16) << ((rgba_shift_mask & 0x00FF0000) >> 16)
-           | ((pixel & 0x0000FF00) >> 8)  << ((rgba_shift_mask & 0x0000FF00) >> 8)
-           | ((pixel & 0x000000FF))       << ((rgba_shift_mask & 0x000000FF))
-    ;
-
-    return converted_pixel;
-}
-
-
-// TODO: Make dst pointer a template parameter, so we can pre-calculate
-//       e.g. dst_last_pixel_address for 180-kernel?
-//          I.e.         dst_last_pixel_address
-//                       - x_src * PX_STRIDE
-//                       - y_src * dst_stride_bytes
-//          instead of   dst
-//                       + (y_src_max - y_src) * PX_STIDE
-//                       + (x_src_max - x_src) * dst_stride_bytes
-
-struct Rotate270 {
-    SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
-    static inline Point get_dst_point(Point src,  Point src_max) {
-        return {
-            .x =  src.y,
-            .y = (src_max.x - src.x)
-        };
-    }
-};
-
-struct Rotate90 {
-    SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
-    static inline Point get_dst_point(Point src, Point src_max) {
-        return {
-            .x = (src_max.y - src.y),
-            .y =  src.x
-        };
-    }
-};
-
-struct Rotate180 {
-    SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
-    static inline Point get_dst_point(Point src, Point src_max) {
-        return {
-            .x = (src_max.x - src.x),
-            .y = (src_max.y - src.y)
-        };
-    }
-};
-
-struct Rotate0 {
-    SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
-    static inline Point get_dst_point(Point src, Point /*src_max*/) {
-        return {
-            .x = src.x,
-            .y = src.y
-        };
-    }
-};
-
-template<typename Rotation>
-SCRANROT_TARGET_FALLBACK
-static void
-transform_framebuffer_fallback_impl(
-    const u8 *const __restrict src,
-    const int src_width_px, // Stride of the entire capture source
-    const int src_height_px,
-    const int src_stride_bytes,
-    u8 *const __restrict dst,
-    const int dst_stride_bytes, // Stride of the final output image
-    const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
-) {
-    u32 rgba32_shift_mask = load_unaligned<u32>(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
-
-    static_assert(KERNEL_TILE_HEIGHT_PX == 4, "kernel assumes 4-row RGBA32 tile");
-
-    static const int tile_height = 4;
-    static const int tile_width  = KERNEL_TILE_WIDTH_PX;
-
-    const Point src_px_max = {
-        .x = src_width_px - 1,
-        .y = src_height_px - 1
+        MIN_TILE_WIDTH_PX  = KERNEL_TILE_WIDTH_PX,
+        MIN_TILE_HEIGHT_PX = KERNEL_TILE_HEIGHT_PX,
     };
 
-    for (int y = 0; y < src_height_px; y += tile_height) {
-        for (int x = 0; x < src_width_px; x += tile_width) {
 
-            for (int _y = 0; _y < tile_height; ++_y) {
-                for (int _x = 0; _x < tile_width; ++_x) {
+    SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
+    inline u32
+    convert_pixel_format(
+        u32 pixel,
+        u32 rgba_shift_mask // NOTE: NOT Shuffle mask.
+    ) {
+        u32 converted_pixel =
+                 ((pixel & 0xFF000000) >> 24) << ((rgba_shift_mask & 0xFF000000) >> 24)
+               | ((pixel & 0x00FF0000) >> 16) << ((rgba_shift_mask & 0x00FF0000) >> 16)
+               | ((pixel & 0x0000FF00) >> 8)  << ((rgba_shift_mask & 0x0000FF00) >> 8)
+               | ((pixel & 0x000000FF))       << ((rgba_shift_mask & 0x000000FF))
+        ;
 
-                    const Point src_px = {  (x + _x),  (y + _y)  };
+        return converted_pixel;
+    }
 
-                    u8 const *const _src = src
-                        + src_px.y * src_stride_bytes
-                        + src_px.x * RGBA32_PIXEL_STRIDE;
 
-                    const Point dst_px = Rotation::get_dst_point(src_px, src_px_max);
+    // TODO: Make dst pointer a template parameter, so we can pre-calculate
+    //       e.g. dst_last_pixel_address for 180-kernel?
+    //          I.e.         dst_last_pixel_address
+    //                       - x_src * PX_STRIDE
+    //                       - y_src * dst_stride_bytes
+    //          instead of   dst
+    //                       + (y_src_max - y_src) * PX_STIDE
+    //                       + (x_src_max - x_src) * dst_stride_bytes
 
-                    u8 *const _dst = dst
-                        + dst_px.y * dst_stride_bytes
-                        + dst_px.x * RGBA32_PIXEL_STRIDE;
+    struct Rotate270 {
+        SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
+        static inline Point get_dst_point(Point src,  Point src_max) {
+            return {
+                .x =  src.y,
+                .y = (src_max.x - src.x)
+            };
+        }
+    };
 
-                    u32 val = load_unaligned<u32>(_src);
-                    val = convert_pixel_format(val, rgba32_shift_mask);
+    struct Rotate90 {
+        SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
+        static inline Point get_dst_point(Point src, Point src_max) {
+            return {
+                .x = (src_max.y - src.y),
+                .y =  src.x
+            };
+        }
+    };
 
-                    store_unaligned(_dst, val);
+    struct Rotate180 {
+        SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
+        static inline Point get_dst_point(Point src, Point src_max) {
+            return {
+                .x = (src_max.x - src.x),
+                .y = (src_max.y - src.y)
+            };
+        }
+    };
+
+    struct Rotate0 {
+        SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
+        static inline Point get_dst_point(Point src, Point /*src_max*/) {
+            return {
+                .x = src.x,
+                .y = src.y
+            };
+        }
+    };
+
+    template<typename Rotation>
+    SCRANROT_TARGET_FALLBACK
+    void
+    transform_framebuffer_fallback_impl(
+        const u8 *const __restrict src,
+        const int src_width_px, // Stride of the entire capture source
+        const int src_height_px,
+        const int src_stride_bytes,
+        u8 *const __restrict dst,
+        const int dst_stride_bytes, // Stride of the final output image
+        const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
+    ) {
+        u32 rgba32_shift_mask = load_unaligned<u32>(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
+
+        static_assert(KERNEL_TILE_HEIGHT_PX == 4, "kernel assumes 4-row RGBA32 tile");
+
+        static const int tile_height = 4;
+        static const int tile_width  = KERNEL_TILE_WIDTH_PX;
+
+        const Point src_px_max = {
+            .x = src_width_px - 1,
+            .y = src_height_px - 1
+        };
+
+        for (int y = 0; y < src_height_px; y += tile_height) {
+            for (int x = 0; x < src_width_px; x += tile_width) {
+
+                for (int _y = 0; _y < tile_height; ++_y) {
+                    for (int _x = 0; _x < tile_width; ++_x) {
+
+                        const Point src_px = {  (x + _x),  (y + _y)  };
+
+                        u8 const *const _src = src
+                            + src_px.y * src_stride_bytes
+                            + src_px.x * RGBA32_PIXEL_STRIDE;
+
+                        const Point dst_px = Rotation::get_dst_point(src_px, src_px_max);
+
+                        u8 *const _dst = dst
+                            + dst_px.y * dst_stride_bytes
+                            + dst_px.x * RGBA32_PIXEL_STRIDE;
+
+                        u32 val = load_unaligned<u32>(_src);
+                        val = convert_pixel_format(val, rgba32_shift_mask);
+
+                        store_unaligned(_dst, val);
+                    }
                 }
-            }
 
+            }
         }
     }
+
 }
 
 
