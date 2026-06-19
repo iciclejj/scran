@@ -214,7 +214,6 @@ rotate_90_inplace_16x16_8bpp(
     arg[15] = _mm_unpackhi_epi64(tmp[ 7], tmp[15]);
 }
 
-// __attribute__((optimize("unroll-loops")))
 // SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 // static inline __m128i
 // _rgba32_to_yuv_plane_32bpp_unsigned_coefficients(
@@ -236,7 +235,6 @@ rotate_90_inplace_16x16_8bpp(
 // Same as non-x2 function, but takes two coefficient arrays. Intended to be
 // used when the coefficient values don't fit within signed 8-bit.
 // Coefficient arrays a,b are treated as one array a+b (element-wise sum)
-__attribute__((optimize("unroll-loops")))
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline __m128i
 convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2(
@@ -263,7 +261,6 @@ convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2(
           );
 }
 
-__attribute__((optimize("unroll-loops")))
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline __m128i
 convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
@@ -300,7 +297,6 @@ packus_epi32_ssse3_assume_0_to_i16max(__m128i a, __m128i b) {
     return _mm_packs_epi32(a, b);
 }
 
-__attribute__((optimize("unroll-loops")))
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline __m128i
 convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
@@ -344,7 +340,6 @@ convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
            );
 }
 
-__attribute__((optimize("unroll-loops")))
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline __m128i
 convert_16px_rgba32_to_yuv_8bpp(
