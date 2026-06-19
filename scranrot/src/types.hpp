@@ -24,6 +24,11 @@ namespace scranrot::internal {
         && std::is_same_v<i8, signed char>,
         "scranrot requires 8-bit bytes, and (un)signed char == (u)int8_t to keep same strict aliasing assumptions"
     );
+
+    struct Point {
+        int x;
+        int y;
+    };
 }
 
 

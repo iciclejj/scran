@@ -32,152 +32,59 @@ convert_pixel_format(
 }
 
 
-SCRANROT_TARGET_FALLBACK
-static void
-transform_framebuffer__fallback__rotate_270(
-    const u8 *const __restrict src,
-    const int src_width_px, // Stride of the entire capture source
-    const int src_height_px,
-    const int src_stride_bytes,
-    u8 *const __restrict dst,
-    const int dst_stride_bytes, // Stride of the final output image
-    const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
-) {
-    u32 rgba32_shift_mask = load_unaligned<u32>(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
+// TODO: Make dst pointer a template parameter, so we can pre-calculate
+//       e.g. dst_last_pixel_address for 180-kernel?
+//          I.e.         dst_last_pixel_address
+//                       - x_src * PX_STRIDE
+//                       - y_src * dst_stride_bytes
+//          instead of   dst
+//                       + (y_src_max - y_src) * PX_STIDE
+//                       + (x_src_max - x_src) * dst_stride_bytes
 
-    static_assert(KERNEL_TILE_HEIGHT_PX == 4, "270 kernel assumes 4-row RGBA32 tile");
-
-    const int dst_y_px_max = src_width_px - 1;
-
-    static const int tile_height = 4;
-    static const int tile_width  = KERNEL_TILE_WIDTH_PX;
-
-    for (int y = 0; y < src_height_px; y += tile_height) {
-        for (int x = 0; x < src_width_px; x += tile_width) {
-
-            for (int _y = 0; _y < tile_height; ++_y) {
-                for (int _x = 0; _x < tile_width; ++_x) {
-
-                    const u8 *const _src = src
-                        + (y + _y) * src_stride_bytes
-                        + (x + _x) * RGBA32_PIXEL_STRIDE;
-
-                    // NOTE: Rotation-specific
-                    u8 *const _dst = dst
-                        + (y + _y) * RGBA32_PIXEL_STRIDE
-                        + (dst_y_px_max - (x + _x)) * dst_stride_bytes;
-
-                    u32 val = load_unaligned<u32>(_src);
-                    val = convert_pixel_format(val, rgba32_shift_mask);
-
-                    store_unaligned(_dst, val);
-                }
-            }
-
-        }
+struct Rotate270 {
+    SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
+    static inline Point get_dst_point(Point src,  Point src_max) {
+        return {
+            .x =  src.y,
+            .y = (src_max.x - src.x)
+        };
     }
-}
+};
 
-
-SCRANROT_TARGET_FALLBACK
-static void
-transform_framebuffer__fallback__rotate_180(
-    const u8 *const __restrict src,
-    const int src_width_px, // Stride of the entire capture source
-    const int src_height_px,
-    const int src_stride_bytes,
-    u8 *const __restrict dst,
-    const int dst_stride_bytes, // Stride of the final output image
-    const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
-) {
-    u32 rgba32_shift_mask = load_unaligned<u32>(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
-
-    static_assert(KERNEL_TILE_HEIGHT_PX == 4, "180 kernel assumes 4-row RGBA32 tile");
-
-    static const int tile_height = 4;
-    static const int tile_width  = KERNEL_TILE_WIDTH_PX;
-
-    u8 *const dst_last_pixel_address =
-        dst
-        + (src_height_px - 1) * dst_stride_bytes
-        + (src_width_px - 1) * RGBA32_PIXEL_STRIDE
-        ;
-
-    for (int y = 0; y < src_height_px; y += tile_height) {
-        for (int x = 0; x < src_width_px; x += tile_width) {
-
-            for (int _y = 0; _y < tile_height; ++_y) {
-                for (int _x = 0; _x < tile_width; ++_x) {
-
-                    const u8 *const _src = src
-                        + (y + _y) * src_stride_bytes
-                        + (x + _x) * RGBA32_PIXEL_STRIDE;
-
-                    u8 *const _dst = dst_last_pixel_address
-                        - (y + _y) * dst_stride_bytes
-                        - (x + _x) * RGBA32_PIXEL_STRIDE;
-
-                    u32 val = load_unaligned<u32>(_src);
-                    val = convert_pixel_format(val, rgba32_shift_mask);
-
-                    store_unaligned<u32>(_dst, val);
-                }
-            }
-
-        }
+struct Rotate90 {
+    SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
+    static inline Point get_dst_point(Point src, Point src_max) {
+        return {
+            .x = (src_max.y - src.y),
+            .y =  src.x
+        };
     }
-}
+};
 
-
-SCRANROT_TARGET_FALLBACK
-static void
-transform_framebuffer__fallback__rotate_90(
-    const u8 *const __restrict src,
-    const int src_width_px, // Stride of the entire capture source
-    const int src_height_px,
-    const int src_stride_bytes,
-    u8 *const __restrict dst,
-    const int dst_stride_bytes, // Stride of the final output image
-    const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
-) {
-    u32 rgba32_shift_mask = load_unaligned<u32>(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
-
-    static_assert(KERNEL_TILE_HEIGHT_PX == 4, "90 kernel assumes 4-row RGBA32 tile");
-
-    const int dst_x_px_max = src_height_px - 1;
-
-    static const int tile_height = 4;
-    static const int tile_width  = KERNEL_TILE_WIDTH_PX;
-
-    for (int y = 0; y < src_height_px; y += tile_height) {
-        for (int x = 0; x < src_width_px; x += tile_width) {
-
-            for (int _y = 0; _y < tile_height; ++_y) {
-                for (int _x = 0; _x < tile_width; ++_x) {
-
-                    const u8 *const _src = src
-                        + (y + _y) * src_stride_bytes
-                        + (x + _x) * RGBA32_PIXEL_STRIDE;
-
-                    // NOTE: Rotation-specific (90 vs 270)
-                    u8 *const _dst = dst
-                        + (dst_x_px_max - (y + _y)) * RGBA32_PIXEL_STRIDE
-                        + (x + _x) * dst_stride_bytes;
-
-                    u32 val = load_unaligned<u32>(_src);
-                    val = convert_pixel_format(val, rgba32_shift_mask);
-
-                    store_unaligned<u32>(_dst, val);
-                }
-            }
-
-        }
+struct Rotate180 {
+    SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
+    static inline Point get_dst_point(Point src, Point src_max) {
+        return {
+            .x = (src_max.x - src.x),
+            .y = (src_max.y - src.y)
+        };
     }
-}
+};
 
+struct Rotate0 {
+    SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
+    static inline Point get_dst_point(Point src, Point /*src_max*/) {
+        return {
+            .x = src.x,
+            .y = src.y
+        };
+    }
+};
+
+template<typename Rotation>
 SCRANROT_TARGET_FALLBACK
 static void
-transform_framebuffer__fallback__rotate_0(
+transform_framebuffer_fallback_impl(
     const u8 *const __restrict src,
     const int src_width_px, // Stride of the entire capture source
     const int src_height_px,
@@ -188,10 +95,15 @@ transform_framebuffer__fallback__rotate_0(
 ) {
     u32 rgba32_shift_mask = load_unaligned<u32>(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
 
-    static_assert(KERNEL_TILE_HEIGHT_PX == 4, "0 kernel assumes 4-row RGBA32 tile");
+    static_assert(KERNEL_TILE_HEIGHT_PX == 4, "kernel assumes 4-row RGBA32 tile");
 
     static const int tile_height = 4;
     static const int tile_width  = KERNEL_TILE_WIDTH_PX;
+
+    const Point src_px_max = {
+        .x = src_width_px - 1,
+        .y = src_height_px - 1
+    };
 
     for (int y = 0; y < src_height_px; y += tile_height) {
         for (int x = 0; x < src_width_px; x += tile_width) {
@@ -199,13 +111,17 @@ transform_framebuffer__fallback__rotate_0(
             for (int _y = 0; _y < tile_height; ++_y) {
                 for (int _x = 0; _x < tile_width; ++_x) {
 
-                    const u8 *const _src = src
-                        + (y + _y) * src_stride_bytes
-                        + (x + _x) * RGBA32_PIXEL_STRIDE;
+                    const Point src_px = {  (x + _x),  (y + _y)  };
+
+                    u8 const *const _src = src
+                        + src_px.y * src_stride_bytes
+                        + src_px.x * RGBA32_PIXEL_STRIDE;
+
+                    const Point dst_px = Rotation::get_dst_point(src_px, src_px_max);
 
                     u8 *const _dst = dst
-                        + (y + _y) * dst_stride_bytes
-                        + (x + _x) * RGBA32_PIXEL_STRIDE;
+                        + dst_px.y * dst_stride_bytes
+                        + dst_px.x * RGBA32_PIXEL_STRIDE;
 
                     u32 val = load_unaligned<u32>(_src);
                     val = convert_pixel_format(val, rgba32_shift_mask);
@@ -251,13 +167,13 @@ scranrot::internal::transform_framebuffer_fallback(
 
     switch (transform) {
     case SCRANROT_TRANSFORM_270:
-        transform_fn = transform_framebuffer__fallback__rotate_270; break;
+        transform_fn = transform_framebuffer_fallback_impl<Rotate270>; break;
     case SCRANROT_TRANSFORM_180:
-        transform_fn = transform_framebuffer__fallback__rotate_180; break;
+        transform_fn = transform_framebuffer_fallback_impl<Rotate180>; break;
     case SCRANROT_TRANSFORM_90:
-        transform_fn = transform_framebuffer__fallback__rotate_90;  break;
+        transform_fn = transform_framebuffer_fallback_impl<Rotate90> ; break;
     case SCRANROT_TRANSFORM_NORMAL:
-        transform_fn = transform_framebuffer__fallback__rotate_0;  break;
+        transform_fn = transform_framebuffer_fallback_impl<Rotate0>  ; break;
     default:
         // XXX TODO: Implement flipped
         return false;
