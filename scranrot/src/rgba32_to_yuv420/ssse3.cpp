@@ -13,15 +13,12 @@ using namespace scranrot::internal;
 
 
 enum {
-    RGBA32_PIXELS_PER_XMM = 4,
-
     TILE_WIDTH_PX  = 32,
     TILE_HEIGHT_PX = 32,
 
     MIN_TILE_WIDTH_PX  = TILE_WIDTH_PX,
     MIN_TILE_HEIGHT_PX = TILE_HEIGHT_PX,
 };
-static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "This file assumes an XMM register holds 4 RGBA32 pixels.");
 
 
 struct Rotate270 {
