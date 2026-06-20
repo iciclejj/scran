@@ -356,6 +356,12 @@ struct YUV420BackendSSSE3 {
         }
     }
 
+    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    static inline StorageT shuffle_rgba32_row(const StorageT &row, const StorageT &shuffle_mask) {
+        return _mm_shuffle_epi8(row, shuffle_mask);
+    }
+
+
     // XXX TODO: Merge these once Backend policies are fully implemented
     SCRANROT_ALWAYS_INLINE
     static inline StorageT convert_shuffle_mask(const u32 &mask_u32) {

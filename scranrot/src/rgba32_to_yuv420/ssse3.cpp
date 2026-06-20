@@ -224,17 +224,17 @@ transform_framebuffer_to_yuv_ssse3_impl(
                                 return (i);
                             }
                         };
-                        const __m128i rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
+                        const StorageT rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
                             {
-                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes + _col_index(0)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes + _col_index(1)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes + _col_index(2)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+0)*src_stride_bytes + _col_index(3)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(0)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(1)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(2)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(3)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
                             }, {
-                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes + _col_index(0)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes + _col_index(1)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes + _col_index(2)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
-                                _mm_shuffle_epi8( load_unaligned<__m128i>(src_subtile + (j+1)*src_stride_bytes + _col_index(3)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(0)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(1)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(2)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(3)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
                             },
                         };
 
