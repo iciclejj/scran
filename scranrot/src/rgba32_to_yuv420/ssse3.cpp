@@ -238,23 +238,23 @@ rotate_90_inplace_16x16_8bpp(
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline __m128i
 convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2(
-    const __m128i *const rgba_in,
-    const __m128i *const coefficients_a,
-    const __m128i *const coefficients_b,
+    const __m128i &rgba_in,
+    const __m128i &coefficients_a,
+    const __m128i &coefficients_b,
     // Should probably always be 1. Required as an arg to not re-initialize every time.
-    const __m128i *const hadamard_scaler,
+    const __m128i &hadamard_scaler,
     // any reasonable 8-bit y spec will want 8, but if we e.g. halve the gamut, we will need to shift by 7
     const u8 shr
 ) {
     return _mm_srai_epi32( // Y32 := [_Y32>>shr] => Y32 == [y32, ...]
               _mm_add_epi32(
                   _mm_madd_epi16( // Y32 := [_Y32=(r*cr+g*cg+b*cb+a*ca), ...] => Y32 == [y32<<shr, ...]
-                      _mm_maddubs_epi16(*rgba_in, *coefficients_a),
-                      *hadamard_scaler
+                      _mm_maddubs_epi16(rgba_in, coefficients_a),
+                      hadamard_scaler
                   ),
                   _mm_madd_epi16(
-                      _mm_maddubs_epi16(*rgba_in, *coefficients_b),
-                      *hadamard_scaler
+                      _mm_maddubs_epi16(rgba_in, coefficients_b),
+                      hadamard_scaler
                   )
               ),
               shr
@@ -264,10 +264,10 @@ convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2(
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline __m128i
 convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
-    const __m128i *const rgba_in,
-    const __m128i *const coefficients,
+    const __m128i &rgba_in,
+    const __m128i &coefficients,
     // Should probably always be 1. Required as an arg to not re-initialize every time.
-    const __m128i *const hadamard_scaler,
+    const __m128i &hadamard_scaler,
     // any reasonable 8-bit y spec will want 8, but if we e.g. halve the gamut, we will need to shift by 7
     const u8 shr
 ) {
@@ -279,8 +279,8 @@ convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
     return _mm_srai_epi32( // Y32 := [_Y32>>shr] => Y32 == [y32, ...]
                _mm_add_epi32( // Y32 := uv_s_to_us_offset(Y32)
                    _mm_madd_epi16( // Y32 := [_Y32=(r*cr+g*cg+b*cb+a*ca), ...] => Y32 == [(+/-)y32<<shr, ...]
-                       _mm_maddubs_epi16(*rgba_in, *coefficients),
-                       *hadamard_scaler
+                       _mm_maddubs_epi16(rgba_in, coefficients),
+                       hadamard_scaler
                    ),
                    uv_s_to_us_offset_epi32
                ),
@@ -300,10 +300,10 @@ packus_epi32_ssse3_assume_0_to_i16max(__m128i a, __m128i b) {
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline __m128i
 convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-    const __m128i rgba_in[4],
-    const __m128i *const coefficients,
+    const __m128i (&rgba_in)[4],
+    const __m128i &coefficients,
     // Should probably always be 1. Required as an arg to not re-initialize every time.
-    const __m128i *const hadamard_scaler,
+    const __m128i &hadamard_scaler,
     const u8 shr
 ) {
     // Returns: [ (i16)(a0+a1)/2, (i16)(a2+a3)/2, ...]
@@ -315,10 +315,10 @@ convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                    _mm_madd_epi16 ( // V32_avg(y+x)
                        packus_epi32_ssse3_assume_0_to_i16max( // V16_avg(y)
                            convert_rgba32_to_yuv_plane_32bpp_signed_coefficients( // V32_yavg
-                               &rgba_in[0], coefficients, hadamard_scaler, shr
+                               rgba_in[0], coefficients, hadamard_scaler, shr
                            ),
                            convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
-                               &rgba_in[1], coefficients, hadamard_scaler, shr
+                               rgba_in[1], coefficients, hadamard_scaler, shr
                            )
                        ),
                        hadamard_identity // NOTE: This one must be identity (all 1). Don't use the passed hadamard_scaler.
@@ -327,10 +327,10 @@ convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                    _mm_madd_epi16 (
                        packus_epi32_ssse3_assume_0_to_i16max(
                            convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
-                               &rgba_in[2], coefficients, hadamard_scaler, shr
+                               rgba_in[2], coefficients, hadamard_scaler, shr
                            ),
                            convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
-                               &rgba_in[3], coefficients, hadamard_scaler, shr
+                               rgba_in[3], coefficients, hadamard_scaler, shr
                            )
                        ),
                        hadamard_identity
@@ -343,11 +343,11 @@ convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline __m128i
 convert_16px_rgba32_to_yuv_8bpp(
-    const __m128i rgba_in[4],
-    const __m128i *const coefficients_a,
-    const __m128i *const coefficients_b,
+    const __m128i (&rgba_in)[4],
+    const __m128i &coefficients_a,
+    const __m128i &coefficients_b,
     // Should probably always be 1. Required as an arg to not re-initialize every time.
-    const __m128i *const hadamard_scaler,
+    const __m128i &hadamard_scaler,
     const u8 shr
 ) {
     // TODO: Function to get the intermediate A32 value
@@ -355,19 +355,19 @@ convert_16px_rgba32_to_yuv_8bpp(
     return _mm_packus_epi16( // Y8 := [Y16 & 0xFF, Y16_1 & 0xFF] => Y8 == [y8, ...]
               packus_epi32_ssse3_assume_0_to_i16max( // Y16 := [Y32 & 0xFFFF, Y32_1 & 0xFFFF] => Y16 == [y16, ...]
                   convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32 == [y32, ...]
-                      &rgba_in[0], coefficients_a, coefficients_b, hadamard_scaler, shr
+                      rgba_in[0], coefficients_a, coefficients_b, hadamard_scaler, shr
                   ),
                   convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32_1
-                      &rgba_in[1], coefficients_a, coefficients_b, hadamard_scaler, shr
+                      rgba_in[1], coefficients_a, coefficients_b, hadamard_scaler, shr
                   )
               ),
 
               packus_epi32_ssse3_assume_0_to_i16max( // A16_1
                   convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32_2
-                      &rgba_in[2], coefficients_a, coefficients_b, hadamard_scaler, shr
+                      rgba_in[2], coefficients_a, coefficients_b, hadamard_scaler, shr
                   ),
                   convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32_3
-                      &rgba_in[3], coefficients_a, coefficients_b, hadamard_scaler, shr
+                      rgba_in[3], coefficients_a, coefficients_b, hadamard_scaler, shr
                   )
               )
           );
@@ -611,8 +611,8 @@ transform_framebuffer_to_yuv_ssse3_impl(
                         };
 
                         {
-                            const __m128i y_8bpp_final_0 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
-                            const __m128i y_8bpp_final_1 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, &hadam_ident_epi16, 8);
+                            const __m128i y_8bpp_final_0 = convert_16px_rgba32_to_yuv_8bpp(rgba_32bpp[0], y_coefficients_a, y_coefficients_b, hadam_ident_epi16, 8);
+                            const __m128i y_8bpp_final_1 = convert_16px_rgba32_to_yuv_8bpp(rgba_32bpp[1], y_coefficients_a, y_coefficients_b, hadam_ident_epi16, 8);
 
                             if constexpr (Rotation::SHOULD_STORE_Y_IMMEDIATELY) {
                                 store_unaligned(dst_y, y_8bpp_final_0);
@@ -644,10 +644,10 @@ transform_framebuffer_to_yuv_ssse3_impl(
 
                         const u8 j_yavg = j/2;
                         u_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba_32bpp_rows_avg, &u_coefficients, &hadam_ident_epi16, 8
+                                                            rgba_32bpp_rows_avg, u_coefficients, hadam_ident_epi16, 8
                                                         );
                         v_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba_32bpp_rows_avg, &v_coefficients, &hadam_ident_epi16, 8
+                                                            rgba_32bpp_rows_avg, v_coefficients, hadam_ident_epi16, 8
                                                         );
                     }
 
