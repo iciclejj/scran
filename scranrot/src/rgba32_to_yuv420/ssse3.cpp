@@ -81,11 +81,6 @@ struct Rotate270 {
     static inline u8 *get_dst_yuv_uv_addr_from_start_addr(u8 *uv_start, auto uv_stride, Point src) {
         return uv_start + (src.y / 2) - ((src.x / 2) * uv_stride);
     }
-
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline __m128i get_modified_shuffle_mask(__m128i mask) {
-        return mask;
-    }
 };
 
 struct Rotate90 {
@@ -121,11 +116,6 @@ struct Rotate90 {
     static inline void rotate_in_place_16x16_8bpp(auto &rows_i8_4bpp) {
         rotate_90_inplace_16x16_8bpp(rows_i8_4bpp);
     }
-
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline __m128i get_modified_shuffle_mask(__m128i mask) {
-        return mask;
-    }
 };
 
 struct Rotate180 {
@@ -155,12 +145,6 @@ struct Rotate180 {
 
     SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
     static inline void rotate_in_place_16x16_8bpp(auto &/*rows*/) { }
-
-
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline __m128i get_modified_shuffle_mask(__m128i mask) {
-        return scranrot_sse2_rotate_180_get_modified_rgba_shuffle(mask);
-    }
 };
 
 struct Rotate0 {
@@ -190,11 +174,6 @@ struct Rotate0 {
 
     SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
     static inline void rotate_in_place_16x16_8bpp(auto &/*rows*/) { }
-
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline __m128i get_modified_shuffle_mask(__m128i mask) {
-        return mask;
-    }
 };
 
 template<typename Backend, typename Rotation>
@@ -210,8 +189,11 @@ transform_framebuffer_to_yuv_ssse3_impl(
     u8 *__restrict v_plane, int v_stride,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
-    const __m128i rgba32_shuffle_mask_128 =
-        Rotation::get_modified_shuffle_mask( load_unaligned<__m128i>(_rgba32_shuffle_mask_128) );
+    using StorageT = Backend::StorageT;
+
+    const StorageT rgba32_shuffle_mask_128 = Backend::template modify_shuffle_mask<Rotation>(
+        load_unaligned<StorageT>(_rgba32_shuffle_mask_128)
+    );
 
     static_assert(TILE_WIDTH_PX == 32 && TILE_HEIGHT_PX == 32, "All kernels assume 32x32 RGBA32 tiles.");
 
@@ -418,7 +400,7 @@ scranrot::internal::transform_framebuffer_to_yuv420_ssse3__unaligned(
         );
     }
 
-    const __m128i rgba_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba_shuffle_mask);
+    const YUV420BackendSSSE3::StorageT rgba_shuffle_mask_128 = YUV420BackendSSSE3::convert_shuffle_mask(rgba_shuffle_mask);
 
     transform_framebuffer_to_yuv_impl_fn transform_fn = nullptr;
 
