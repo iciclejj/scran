@@ -24,35 +24,6 @@ enum {
 static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "This file assumes an XMM register holds 4 RGBA32 pixels.");
 
 
-// Y coefficients are split across a and b coefficient arrays, since we cannot
-// fit them as 8bit signed ints. We use the sum of multiplying with each array
-// to get the correct result.
-// Target: 77,150,29
-//
-// NOTE: We also keep the combined values as low as possible within these
-// constraints, so that it also won't overflow the 16-bit ints after
-// multiplication.
-//   I.e. this:        77, 23,29,0  0,127,0,0
-//   Instead of this:  77,127,29,0  0, 23,0,0
-static inline __m128i
-get_yuv_y_coefficients_a() {
-    return _mm_setr_epi8(77,23,29,0,  77,23,29,0,  77,23,29,0,  77,23,29,0);
-}
-static inline __m128i
-get_yuv_y_coefficients_b() {
-    return _mm_setr_epi8(0,127,0,0,   0,127,0,0,   0,127,0,0,   0,127,0,0);
-}
-
-static inline __m128i
-get_yuv_u_coefficients() {
-    return _mm_setr_epi8(-43,-84,127,0, -43,-84,127,0, -43,-84,127,0, -43,-84,127,0);
-}
-static inline __m128i
-get_yuv_v_coefficients() {
-    return _mm_setr_epi8(127,-106,-21,0, 127,-106,-21,0, 127,-106,-21,0, 127,-106,-21,0);
-}
-
-
 struct Rotate270 {
     static constexpr scranrot_transform TRANSFORM = SCRANROT_TRANSFORM_270;
     static constexpr bool SHOULD_STORE_Y_IMMEDIATELY     = false;
@@ -197,10 +168,10 @@ transform_framebuffer_to_yuv_ssse3_impl(
 
     static_assert(TILE_WIDTH_PX == 32 && TILE_HEIGHT_PX == 32, "All kernels assume 32x32 RGBA32 tiles.");
 
-    const __m128i y_coefficients_a = get_yuv_y_coefficients_a();
-    const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
-    const __m128i u_coefficients   = get_yuv_u_coefficients();
-    const __m128i v_coefficients   = get_yuv_v_coefficients();
+    const StorageT y_coefficients_a = Backend::get_yuv_y_coefficients_a();
+    const StorageT y_coefficients_b = Backend::get_yuv_y_coefficients_b();
+    const StorageT u_coefficients   = Backend::get_yuv_u_coefficients();
+    const StorageT v_coefficients   = Backend::get_yuv_v_coefficients();
 
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
