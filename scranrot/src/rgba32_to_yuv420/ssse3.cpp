@@ -171,7 +171,7 @@ transform_framebuffer_to_yuv_ssse3_impl(
     const StorageT v_coefficients   = Backend::get_yuv_v_coefficients();
 
     // TODO: Better to just _mm_set1_epi16(1) in each location?
-    const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
+    const StorageT hadam_ident_epi16 = Backend::get_all_1s_i16_matrix();
 
     const Point src_px_max = {
         .x = src_width_px - 1,

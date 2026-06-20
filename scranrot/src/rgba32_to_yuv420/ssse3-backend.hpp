@@ -401,6 +401,12 @@ struct YUV420BackendSSSE3 {
         return _mm_setr_epi8(127,-106,-21,0, 127,-106,-21,0, 127,-106,-21,0, 127,-106,-21,0);
     }
 
+    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    static inline StorageT
+    get_all_1s_i16_matrix() {
+        return _mm_set1_epi16(1);
+    }
+
 
 };
 
