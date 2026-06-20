@@ -5,7 +5,6 @@
 
 #include "scranrot.h"
 #include "./ssse3-backend.hpp"
-#include "../sse2.hpp"
 #include "../generic-dispatch.hpp"
 #include "../types.hpp"
 
@@ -188,14 +187,14 @@ transform_framebuffer_to_yuv_ssse3_impl(
 
             // y (yuv) is 2x bpp, so we transpose and store already in inner loop
             // NOTE: bpp here is for u/v-plane pixels, which are at half res for yuv420
-            __m128i u_i8_4bpp_final[16];
-            __m128i v_i8_4bpp_final[16];
+            StorageT u_i8_4bpp_final[16];
+            StorageT v_i8_4bpp_final[16];
 
             for (int _y = 0; _y < 32; _y += 16) {
 
                 // NOTE: See comment in 270/90 handlers at this location. Though not actually tested for 0 or 180.
-                __m128i u_i16_8bpp_xyavg[8][2];
-                __m128i v_i16_8bpp_xyavg[8][2];
+                StorageT u_i16_8bpp_xyavg[8][2];
+                StorageT v_i16_8bpp_xyavg[8][2];
 
                 for (int _x = 0; _x < 32; _x += 16) {
 
@@ -208,7 +207,7 @@ transform_framebuffer_to_yuv_ssse3_impl(
                     }();
 
                     // XXX TODO: Can we omit the declaration entirely for the rotations that don't make use of this?
-                    [[maybe_unused]] __m128i y_8bpp_final[16];
+                    [[maybe_unused]] StorageT y_8bpp_final[16];
 
                     const Point src_px = {  (x + _x),  (y + _y)  };
 
@@ -239,8 +238,8 @@ transform_framebuffer_to_yuv_ssse3_impl(
                         };
 
                         {
-                            const __m128i y_8bpp_final_0 = Backend::rgba_to_y_row(rgba_32bpp[0], y_coefficients_a, y_coefficients_b, hadam_ident_epi16, 8);
-                            const __m128i y_8bpp_final_1 = Backend::rgba_to_y_row(rgba_32bpp[1], y_coefficients_a, y_coefficients_b, hadam_ident_epi16, 8);
+                            const StorageT y_8bpp_final_0 = Backend::rgba_to_y_row(rgba_32bpp[0], y_coefficients_a, y_coefficients_b, hadam_ident_epi16, 8);
+                            const StorageT y_8bpp_final_1 = Backend::rgba_to_y_row(rgba_32bpp[1], y_coefficients_a, y_coefficients_b, hadam_ident_epi16, 8);
 
                             if constexpr (Rotation::SHOULD_STORE_Y_IMMEDIATELY) {
                                 store_unaligned(dst_y, y_8bpp_final_0);
@@ -263,7 +262,7 @@ transform_framebuffer_to_yuv_ssse3_impl(
                         }
 
                         // We average the two rows before converting, to reduce required calculation
-                        const __m128i rgba_32bpp_rows_avg[4] = {
+                        const StorageT rgba_32bpp_rows_avg[4] = {
                             _mm_avg_epu8(rgba_32bpp[0][0], rgba_32bpp[1][0]),
                             _mm_avg_epu8(rgba_32bpp[0][1], rgba_32bpp[1][1]),
                             _mm_avg_epu8(rgba_32bpp[0][2], rgba_32bpp[1][2]),
