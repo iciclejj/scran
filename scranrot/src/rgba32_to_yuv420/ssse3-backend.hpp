@@ -383,8 +383,7 @@ struct YUV420BackendSSSE3 {
     }
 
     SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline Coefficients
-    get_yuv_coefficients() {
+    static inline Coefficients get_yuv_coefficients() {
         return {
             .y = {
                 // Y coefficients are split across a and b coefficient arrays, since we cannot
