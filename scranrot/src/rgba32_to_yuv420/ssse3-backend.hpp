@@ -337,6 +337,7 @@ convert_16px_rgba32_to_yuv_8bpp(
 struct YUV420BackendSSSE3 {
     using StorageT = __m128i;
 
+    using ShuffleMask  = __m128i;
     using Coefficients = struct {
         struct { // See comment in getter
             __m128i a;
@@ -372,8 +373,8 @@ struct YUV420BackendSSSE3 {
 
     template<typename Rotation>
     SCRANROT_ALWAYS_INLINE
-    static inline StorageT get_rgba32_shuffle_mask(const u32 &mask_u32) {
-        StorageT mask = scranrot_sse2_rgba_shuffle_to_m128i(mask_u32);
+    static inline ShuffleMask get_rgba32_shuffle_mask(const u32 &mask_u32) {
+        __m128i mask = scranrot_sse2_rgba_shuffle_to_m128i(mask_u32);
 
         if constexpr (Rotation::TRANSFORM == SCRANROT_TRANSFORM_180) {
             mask = scranrot_sse2_rotate_180_get_modified_rgba_shuffle(mask);

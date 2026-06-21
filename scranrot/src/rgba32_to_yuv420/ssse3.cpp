@@ -158,12 +158,10 @@ transform_framebuffer_to_yuv_ssse3_impl(
 ) {
     using StorageT = Backend::StorageT;
     using Coefficients = Backend::Coefficients;
+    using ShuffleMask  = Backend::ShuffleMask;
 
-    const StorageT rgba32_shuffle_mask = Backend::template get_rgba32_shuffle_mask<Rotation>(rgba32_shuffle_mask_u32);
-
-    static_assert(TILE_WIDTH_PX == 32 && TILE_HEIGHT_PX == 32, "All kernels assume 32x32 RGBA32 tiles.");
-
-    const Coefficients coefficients = Backend::get_yuv_coefficients();
+    const ShuffleMask  rgba32_shuffle_mask = Backend::template get_rgba32_shuffle_mask<Rotation>(rgba32_shuffle_mask_u32);
+    const Coefficients coefficients        = Backend::get_yuv_coefficients();
 
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const StorageT hadam_ident_epi16 = Backend::get_all_1s_i16_matrix();
@@ -177,6 +175,7 @@ transform_framebuffer_to_yuv_ssse3_impl(
     u8 *dst_u_start = Rotation::get_dst_yuv_uv_walk_start_address(u_plane, u_stride, src_px_max, sizeof(StorageT));
     u8 *dst_v_start = Rotation::get_dst_yuv_uv_walk_start_address(v_plane, v_stride, src_px_max, sizeof(StorageT));
 
+    static_assert(TILE_WIDTH_PX == 32 && TILE_HEIGHT_PX == 32, "All kernels assume 32x32 RGBA32 tiles.");
 
     for (int y = 0; y < src_height_px; y += 32) {
         for (int x = 0; x < src_width_px; x += 32) {
