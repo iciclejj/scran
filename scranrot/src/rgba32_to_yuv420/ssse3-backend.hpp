@@ -370,18 +370,15 @@ struct YUV420BackendSSSE3 {
         return _mm_shuffle_epi8(row, shuffle_mask);
     }
 
-
-    // XXX TODO: Merge these once Backend policies are fully implemented
-    SCRANROT_ALWAYS_INLINE
-    static inline StorageT convert_shuffle_mask(const u32 &mask_u32) {
-        return scranrot_sse2_rgba_shuffle_to_m128i(mask_u32);
-    }
     template<typename Rotation>
     SCRANROT_ALWAYS_INLINE
-    static inline StorageT modify_shuffle_mask(const StorageT &mask) {
+    static inline StorageT get_rgba32_shuffle_mask(const u32 &mask_u32) {
+        StorageT mask = scranrot_sse2_rgba_shuffle_to_m128i(mask_u32);
+
         if constexpr (Rotation::TRANSFORM == SCRANROT_TRANSFORM_180) {
-            return scranrot_sse2_rotate_180_get_modified_rgba_shuffle(mask);
+            mask = scranrot_sse2_rotate_180_get_modified_rgba_shuffle(mask);
         }
+
         return mask;
     }
 

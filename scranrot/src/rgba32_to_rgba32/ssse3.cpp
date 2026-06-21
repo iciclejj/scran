@@ -242,9 +242,9 @@ namespace {
         const int src_stride_bytes,
         u8 *__restrict dst,
         const int dst_stride_bytes,
-        const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+        const u32 _rgba32_shuffle_mask // Mask for _mm_shuffle_epi8
     ) {
-        __m128i rgba32_shuffle_mask_128 = load_unaligned<__m128i>(_rgba32_shuffle_mask_128);
+        __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(_rgba32_shuffle_mask);
 
         Rotation::modify_shuffle_mask(rgba32_shuffle_mask_128);
 
@@ -317,8 +317,6 @@ namespace {
         }
         SCRANROT_ASSERT(src_width_px * RGBA32_PIXEL_STRIDE <= src_stride_bytes);
 
-        const __m128i rgba_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba_shuffle_mask);
-
         const int _dst_stride_px = get_transformed_width(src_width_px, src_height_px, transform);
         // XXX: This is not needed for unaligned
         const int dst_stride_bytes = RGBA32_PIXEL_STRIDE * _dst_stride_px;
@@ -329,7 +327,7 @@ namespace {
             dst, dst_stride_bytes,
 
             transform_framebuffer_ssse3_impl<Rotation>,
-            transform, &rgba_shuffle_mask_128,
+            transform, rgba_shuffle_mask,
             TILE_WIDTH_PX, Rotation::TILE_HEIGHT_PX
         );
     }

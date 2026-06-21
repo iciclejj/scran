@@ -13,13 +13,13 @@ namespace scranrot::internal {
         u8 *__restrict dst_y, const int dst_y_stride,
         u8 *__restrict dst_u, const int dst_u_stride,
         u8 *__restrict dst_v, const int dst_v_stride,
-        const void *rgba32_shuffle
+        const u32 rgba32_shuffle
     );
 
     // TODO: Use u8 * here too
     typedef void (*transform_framebuffer_impl_fn)(
         const u8 *__restrict src, const int src_width_px, const int src_height_px, const int src_stride_bytes,
-        u8 *__restrict dst, const int dst_stride_bytes, const void *rgba32_shuffle
+        u8 *__restrict dst, const int dst_stride_bytes, const u32 rgba32_shuffle
     );
 
 
@@ -60,8 +60,7 @@ namespace scranrot::internal {
 
         transform_framebuffer_impl_fn rotation_impl_fn,
         enum scranrot_transform transform,
-        // rotation_impl_fn-defined format, e.g. __m128i or u32.
-        const void *rgba32_shuffle,
+        const u32 rgba32_shuffle,
         int tile_width_px,
         int tile_height_px
     ) {
@@ -185,7 +184,7 @@ namespace scranrot::internal {
 
         transform_framebuffer_to_yuv_impl_fn rotation_impl_fn,
         enum scranrot_transform transform,
-        const void *rgba32_shuffle, // rotation_impl_fn-defined format, e.g. __m128i or u32.
+        const u32 rgba32_shuffle,
         int tile_width_px,
         int tile_height_px,
 

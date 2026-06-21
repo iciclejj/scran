@@ -57,10 +57,8 @@ transform_framebuffer_to_yuv__fallback__rotate_270(
     u8 *__restrict dst_y, const int dst_y_stride,
     u8 *__restrict dst_u, const int dst_u_stride,
     u8 *__restrict dst_v, const int dst_v_stride,
-    const void *_rgba32_shuffle_mask
+    const u32 rgba32_shuffle_mask
 ) {
-    const u32 rgba32_shuffle_mask = load_unaligned<u32>(_rgba32_shuffle_mask);
-
     static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "270 kernel assumes 2x2 RGBA32 tile");
 
     for (int y = 0; y < src_height_px; y += 2) {
@@ -106,10 +104,8 @@ transform_framebuffer_to_yuv__fallback__rotate_180(
     u8 *__restrict dst_y, const int dst_y_stride,
     u8 *__restrict dst_u, const int dst_u_stride,
     u8 *__restrict dst_v, const int dst_v_stride,
-    const void *_rgba32_shuffle_mask
+    const u32 rgba32_shuffle_mask
 ) {
-    const u32 rgba32_shuffle_mask = load_unaligned<u32>(_rgba32_shuffle_mask);
-
     static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "180 kernel assumes 2x2 RGBA32 tile");
 
     for (int y = 0; y < src_height_px; y += 2) {
@@ -155,10 +151,8 @@ transform_framebuffer_to_yuv__fallback__rotate_90(
     u8 *__restrict dst_y, const int dst_y_stride,
     u8 *__restrict dst_u, const int dst_u_stride,
     u8 *__restrict dst_v, const int dst_v_stride,
-    const void *_rgba32_shuffle_mask
+    const u32 rgba32_shuffle_mask
 ) {
-    const u32 rgba32_shuffle_mask = load_unaligned<u32>(_rgba32_shuffle_mask);
-
     static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "90 kernel assumes 2x2 RGBA32 tile");
 
     for (int y = 0; y < src_height_px; y += 2) {
@@ -204,10 +198,8 @@ transform_framebuffer_to_yuv__fallback__rotate_0(
     u8 *__restrict dst_y, const int dst_y_stride,
     u8 *__restrict dst_u, const int dst_u_stride,
     u8 *__restrict dst_v, const int dst_v_stride,
-    const void *_rgba32_shuffle_mask
+    const u32 rgba32_shuffle_mask
 ) {
-    const u32 rgba32_shuffle_mask = load_unaligned<u32>(_rgba32_shuffle_mask);
-
     static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "0 kernel assumes 2x2 RGBA32 tile");
 
     for (int y = 0; y < src_height_px; y += 2) {
@@ -287,7 +279,7 @@ scranrot::internal::transform_framebuffer_to_yuv420_fallback(
         dst,
 
         transform_fn,
-        transform, &rgba_shuffle_mask,
+        transform, rgba_shuffle_mask,
         KERNEL_TILE_WIDTH_PX, KERNEL_TILE_HEIGHT_PX,
 
         // OUT:

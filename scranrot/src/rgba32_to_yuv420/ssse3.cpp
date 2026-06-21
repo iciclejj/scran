@@ -154,14 +154,12 @@ transform_framebuffer_to_yuv_ssse3_impl(
     u8 *__restrict y_plane, int y_stride,
     u8 *__restrict u_plane, int u_stride,
     u8 *__restrict v_plane, int v_stride,
-    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const u32 rgba32_shuffle_mask_u32
 ) {
     using StorageT = Backend::StorageT;
     using Coefficients = Backend::Coefficients;
 
-    const StorageT rgba32_shuffle_mask_128 = Backend::template modify_shuffle_mask<Rotation>(
-        load_unaligned<StorageT>(_rgba32_shuffle_mask_128)
-    );
+    const StorageT rgba32_shuffle_mask = Backend::template get_rgba32_shuffle_mask<Rotation>(rgba32_shuffle_mask_u32);
 
     static_assert(TILE_WIDTH_PX == 32 && TILE_HEIGHT_PX == 32, "All kernels assume 32x32 RGBA32 tiles.");
 
@@ -223,15 +221,15 @@ transform_framebuffer_to_yuv_ssse3_impl(
                         };
                         const StorageT rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
                             {
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(0)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(1)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(2)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(3)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(0)*sizeof(StorageT)) , rgba32_shuffle_mask),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(1)*sizeof(StorageT)) , rgba32_shuffle_mask),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(2)*sizeof(StorageT)) , rgba32_shuffle_mask),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(3)*sizeof(StorageT)) , rgba32_shuffle_mask),
                             }, {
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(0)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(1)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(2)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(3)*sizeof(StorageT)) , rgba32_shuffle_mask_128),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(0)*sizeof(StorageT)) , rgba32_shuffle_mask),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(1)*sizeof(StorageT)) , rgba32_shuffle_mask),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(2)*sizeof(StorageT)) , rgba32_shuffle_mask),
+                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(3)*sizeof(StorageT)) , rgba32_shuffle_mask),
                             },
                         };
 
@@ -365,8 +363,6 @@ scranrot::internal::transform_framebuffer_to_yuv420_ssse3__unaligned(
         );
     }
 
-    const YUV420BackendSSSE3::StorageT rgba_shuffle_mask_128 = YUV420BackendSSSE3::convert_shuffle_mask(rgba_shuffle_mask);
-
     transform_framebuffer_to_yuv_impl_fn transform_fn = nullptr;
 
     switch (transform) {
@@ -395,7 +391,7 @@ scranrot::internal::transform_framebuffer_to_yuv420_ssse3__unaligned(
         dst,
 
         transform_fn,
-        transform, &rgba_shuffle_mask_128,
+        transform, rgba_shuffle_mask,
         TILE_WIDTH_PX, TILE_HEIGHT_PX,
 
         // OUT:
