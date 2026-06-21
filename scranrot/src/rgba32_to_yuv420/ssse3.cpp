@@ -157,6 +157,7 @@ transform_framebuffer_to_yuv_ssse3_impl(
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
     using StorageT = Backend::StorageT;
+    using Coefficients = Backend::Coefficients;
 
     const StorageT rgba32_shuffle_mask_128 = Backend::template modify_shuffle_mask<Rotation>(
         load_unaligned<StorageT>(_rgba32_shuffle_mask_128)
@@ -164,10 +165,7 @@ transform_framebuffer_to_yuv_ssse3_impl(
 
     static_assert(TILE_WIDTH_PX == 32 && TILE_HEIGHT_PX == 32, "All kernels assume 32x32 RGBA32 tiles.");
 
-    const StorageT y_coefficients_a = Backend::get_yuv_y_coefficients_a();
-    const StorageT y_coefficients_b = Backend::get_yuv_y_coefficients_b();
-    const StorageT u_coefficients   = Backend::get_yuv_u_coefficients();
-    const StorageT v_coefficients   = Backend::get_yuv_v_coefficients();
+    const Coefficients coefficients = Backend::get_yuv_coefficients();
 
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const StorageT hadam_ident_epi16 = Backend::get_all_1s_i16_matrix();
@@ -238,8 +236,8 @@ transform_framebuffer_to_yuv_ssse3_impl(
                         };
 
                         {
-                            const StorageT y_8bpp_final_0 = Backend::rgba_to_y_row(rgba_32bpp[0], y_coefficients_a, y_coefficients_b, hadam_ident_epi16, 8);
-                            const StorageT y_8bpp_final_1 = Backend::rgba_to_y_row(rgba_32bpp[1], y_coefficients_a, y_coefficients_b, hadam_ident_epi16, 8);
+                            const StorageT y_8bpp_final_0 = Backend::rgba_to_y_row(rgba_32bpp[0], coefficients, hadam_ident_epi16, 8);
+                            const StorageT y_8bpp_final_1 = Backend::rgba_to_y_row(rgba_32bpp[1], coefficients, hadam_ident_epi16, 8);
 
                             if constexpr (Rotation::SHOULD_STORE_Y_IMMEDIATELY) {
                                 store_unaligned(dst_y, y_8bpp_final_0);
@@ -271,10 +269,10 @@ transform_framebuffer_to_yuv_ssse3_impl(
 
                         const u8 j_yavg = j/2;
                         u_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba_32bpp_rows_avg, u_coefficients, hadam_ident_epi16, 8
+                                                            rgba_32bpp_rows_avg, coefficients.u, hadam_ident_epi16, 8
                                                         );
                         v_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba_32bpp_rows_avg, v_coefficients, hadam_ident_epi16, 8
+                                                            rgba_32bpp_rows_avg, coefficients.v, hadam_ident_epi16, 8
                                                         );
                     }
 

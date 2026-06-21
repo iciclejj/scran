@@ -337,12 +337,21 @@ convert_16px_rgba32_to_yuv_8bpp(
 struct YUV420BackendSSSE3 {
     using StorageT = __m128i;
 
+    using Coefficients = struct {
+        struct { // See comment in getter
+            __m128i a;
+            __m128i b;
+        } y;
+        __m128i u;
+        __m128i v;
+    };
+
     SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
     static inline StorageT rgba_to_y_row(
-        const StorageT (&rgba_in)[4], const StorageT &y_coefficients_a, const StorageT &y_coefficients_b, const StorageT &hadamard_scaler, u8 shr
+        const StorageT (&rgba_in)[4], const Coefficients &coefficients, const StorageT &hadamard_scaler, u8 shr
     ) {
         return convert_16px_rgba32_to_yuv_8bpp(
-            rgba_in, y_coefficients_a, y_coefficients_b, hadamard_scaler, shr
+            rgba_in, coefficients.y.a, coefficients.y.b, hadamard_scaler, shr
         );
     }
 
@@ -376,35 +385,27 @@ struct YUV420BackendSSSE3 {
         return mask;
     }
 
-    // Y coefficients are split across a and b coefficient arrays, since we cannot
-    // fit them as 8bit signed ints. We use the sum of multiplying with each array
-    // to get the correct result.
-    // Target: 77,150,29
-    //
-    // NOTE: We also keep the combined values as low as possible within these
-    // constraints, so that it also won't overflow the 16-bit ints after
-    // multiplication.
-    //   I.e. this:        77, 23,29,0  0,127,0,0
-    //   Instead of this:  77,127,29,0  0, 23,0,0
     SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline StorageT
-    get_yuv_y_coefficients_a() {
-        return _mm_setr_epi8(77,23,29,0,  77,23,29,0,  77,23,29,0,  77,23,29,0);
-    }
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline StorageT
-    get_yuv_y_coefficients_b() {
-        return _mm_setr_epi8(0,127,0,0,   0,127,0,0,   0,127,0,0,   0,127,0,0);
-    }
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline StorageT
-    get_yuv_u_coefficients() {
-        return _mm_setr_epi8(-43,-84,127,0, -43,-84,127,0, -43,-84,127,0, -43,-84,127,0);
-    }
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline StorageT
-    get_yuv_v_coefficients() {
-        return _mm_setr_epi8(127,-106,-21,0, 127,-106,-21,0, 127,-106,-21,0, 127,-106,-21,0);
+    static inline Coefficients
+    get_yuv_coefficients() {
+        return {
+            .y = {
+                // Y coefficients are split across a and b coefficient arrays, since we cannot
+                // fit them as 8bit signed ints. We use the sum of multiplying with each array
+                // to get the correct result.
+                // Target: 77,150,29
+                //
+                // NOTE: We also keep the combined values as low as possible within these
+                // constraints, so that it also won't overflow the 16-bit ints after
+                // multiplication.
+                //   I.e. this:        77, 23,29,0  0,127,0,0
+                //   Instead of this:  77,127,29,0  0, 23,0,0
+                _mm_setr_epi8(77,23,29,0,  77,23,29,0,  77,23,29,0,  77,23,29,0),
+                _mm_setr_epi8(0,127,0,0,   0,127,0,0,   0,127,0,0,   0,127,0,0),
+            },
+            .u = { _mm_setr_epi8(-43,-84,127,0, -43,-84,127,0, -43,-84,127,0, -43,-84,127,0)},
+            .v = { _mm_setr_epi8(127,-106,-21,0, 127,-106,-21,0, 127,-106,-21,0, 127,-106,-21,0) },
+        };
     }
 
     SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
