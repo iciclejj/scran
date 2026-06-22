@@ -346,13 +346,15 @@ struct YUV420BackendSSSE3 {
         __m128i u;
         __m128i v;
     };
+    using Rgba16px    = struct { __m128i impl[4]; };
+
 
     SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
     static inline StorageT rgba_to_y_row(
-        const StorageT (&rgba_in)[4], const Coefficients &coefficients, const StorageT &hadamard_scaler, u8 shr
+        const Rgba16px &rgba_in, const Coefficients &coefficients, const StorageT &hadamard_scaler, u8 shr
     ) {
         return convert_16px_rgba32_to_yuv_8bpp(
-            rgba_in, coefficients.y.a, coefficients.y.b, hadamard_scaler, shr
+            rgba_in.impl, coefficients.y.a, coefficients.y.b, hadamard_scaler, shr
         );
     }
 
@@ -366,10 +368,37 @@ struct YUV420BackendSSSE3 {
         }
     }
 
+
+    template<bool LoadReversed>
     SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline StorageT shuffle_rgba32_row(const StorageT &row, const StorageT &shuffle_mask) {
-        return _mm_shuffle_epi8(row, shuffle_mask);
+    static inline Rgba16px load_shuffled_rgba16px(const u8 *src, const ShuffleMask &shuffle_mask) {
+        if constexpr (LoadReversed) {
+            return {
+                _mm_shuffle_epi8(load_unaligned<__m128i>(src+12*RGBA32_PIXEL_STRIDE), shuffle_mask),
+                _mm_shuffle_epi8(load_unaligned<__m128i>(src+ 8*RGBA32_PIXEL_STRIDE), shuffle_mask),
+                _mm_shuffle_epi8(load_unaligned<__m128i>(src+ 4*RGBA32_PIXEL_STRIDE), shuffle_mask),
+                _mm_shuffle_epi8(load_unaligned<__m128i>(src+ 0*RGBA32_PIXEL_STRIDE), shuffle_mask),
+            };
+        } else {
+            return {
+                _mm_shuffle_epi8(load_unaligned<__m128i>(src+ 0*RGBA32_PIXEL_STRIDE), shuffle_mask),
+                _mm_shuffle_epi8(load_unaligned<__m128i>(src+ 4*RGBA32_PIXEL_STRIDE), shuffle_mask),
+                _mm_shuffle_epi8(load_unaligned<__m128i>(src+ 8*RGBA32_PIXEL_STRIDE), shuffle_mask),
+                _mm_shuffle_epi8(load_unaligned<__m128i>(src+12*RGBA32_PIXEL_STRIDE), shuffle_mask),
+            };
+        }
     }
+
+    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    static inline Rgba16px average_rgba16px(const Rgba16px &a, const Rgba16px &b) {
+        return {
+            _mm_avg_epu8(a.impl[0], b.impl[0]),
+            _mm_avg_epu8(a.impl[1], b.impl[1]),
+            _mm_avg_epu8(a.impl[2], b.impl[2]),
+            _mm_avg_epu8(a.impl[3], b.impl[3]),
+        };
+    }
+
 
     template<typename Rotation>
     SCRANROT_ALWAYS_INLINE

@@ -157,8 +157,9 @@ transform_framebuffer_to_yuv_ssse3_impl(
     const u32 rgba32_shuffle_mask_u32
 ) {
     using StorageT = Backend::StorageT;
-    using Coefficients = Backend::Coefficients;
-    using ShuffleMask  = Backend::ShuffleMask;
+    using Coefficients  = Backend::Coefficients;
+    using ShuffleMask   = Backend::ShuffleMask;
+    using Rgba16px = Backend::Rgba16px;
 
     const ShuffleMask  rgba32_shuffle_mask = Backend::template get_rgba32_shuffle_mask<Rotation>(rgba32_shuffle_mask_u32);
     const Coefficients coefficients        = Backend::get_yuv_coefficients();
@@ -211,30 +212,15 @@ transform_framebuffer_to_yuv_ssse3_impl(
 
                     for (int j = 0; j < 16; j += 2) { // += 2 so we can average u and v more efficiently
 
-                        constexpr auto _col_index = [](int i) constexpr {
-                            if constexpr (Rotation::WRITE_SUB_TILE_COLS_IN_REVERSE) {
-                                return (3 - i);
-                            } else {
-                                return (i);
-                            }
-                        };
-                        const StorageT rgba_32bpp[2][4] = { // 4 XMM registers hold one 16px RGBA32 row
-                            {
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(0)*sizeof(StorageT)) , rgba32_shuffle_mask),
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(1)*sizeof(StorageT)) , rgba32_shuffle_mask),
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(2)*sizeof(StorageT)) , rgba32_shuffle_mask),
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+0)*src_stride_bytes + _col_index(3)*sizeof(StorageT)) , rgba32_shuffle_mask),
-                            }, {
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(0)*sizeof(StorageT)) , rgba32_shuffle_mask),
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(1)*sizeof(StorageT)) , rgba32_shuffle_mask),
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(2)*sizeof(StorageT)) , rgba32_shuffle_mask),
-                                Backend::shuffle_rgba32_row( load_unaligned<StorageT>(src_subtile + (j+1)*src_stride_bytes + _col_index(3)*sizeof(StorageT)) , rgba32_shuffle_mask),
-                            },
-                        };
+                        // XXX TODO: This should be decided based on the rotation by *this* function,
+                        // not by the Rotation type itself.
+                        constexpr bool LOAD_REVERSED = Rotation::WRITE_SUB_TILE_COLS_IN_REVERSE;
+                        const Rgba16px rgba16px_row_0 = Backend::template load_shuffled_rgba16px<LOAD_REVERSED>(src_subtile + (j+0)*src_stride_bytes, rgba32_shuffle_mask);
+                        const Rgba16px rgba16px_row_1 = Backend::template load_shuffled_rgba16px<LOAD_REVERSED>(src_subtile + (j+1)*src_stride_bytes, rgba32_shuffle_mask);
 
                         {
-                            const StorageT y_8bpp_final_0 = Backend::rgba_to_y_row(rgba_32bpp[0], coefficients, hadam_ident_epi16, 8);
-                            const StorageT y_8bpp_final_1 = Backend::rgba_to_y_row(rgba_32bpp[1], coefficients, hadam_ident_epi16, 8);
+                            const StorageT y_8bpp_final_0 = Backend::rgba_to_y_row(rgba16px_row_0, coefficients, hadam_ident_epi16, 8);
+                            const StorageT y_8bpp_final_1 = Backend::rgba_to_y_row(rgba16px_row_1, coefficients, hadam_ident_epi16, 8);
 
                             if constexpr (Rotation::SHOULD_STORE_Y_IMMEDIATELY) {
                                 store_unaligned(dst_y, y_8bpp_final_0);
@@ -257,19 +243,14 @@ transform_framebuffer_to_yuv_ssse3_impl(
                         }
 
                         // We average the two rows before converting, to reduce required calculation
-                        const StorageT rgba_32bpp_rows_avg[4] = {
-                            _mm_avg_epu8(rgba_32bpp[0][0], rgba_32bpp[1][0]),
-                            _mm_avg_epu8(rgba_32bpp[0][1], rgba_32bpp[1][1]),
-                            _mm_avg_epu8(rgba_32bpp[0][2], rgba_32bpp[1][2]),
-                            _mm_avg_epu8(rgba_32bpp[0][3], rgba_32bpp[1][3]),
-                        };
+                        const Rgba16px rgba16px_rows_average = Backend::average_rgba16px(rgba16px_row_0, rgba16px_row_1);
 
                         const u8 j_yavg = j/2;
                         u_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba_32bpp_rows_avg, coefficients.u, hadam_ident_epi16, 8
+                                                            rgba16px_rows_average.impl, coefficients.u, hadam_ident_epi16, 8
                                                         );
                         v_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba_32bpp_rows_avg, coefficients.v, hadam_ident_epi16, 8
+                                                            rgba16px_rows_average.impl, coefficients.v, hadam_ident_epi16, 8
                                                         );
                     }
 
