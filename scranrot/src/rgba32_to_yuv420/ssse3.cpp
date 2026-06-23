@@ -8,7 +8,7 @@
 #include "../generic-dispatch.hpp"
 #include "../types.hpp"
 
-using namespace scranrot::internal;
+using namespace scranrot::internal::yuv420;
 
 
 enum {
