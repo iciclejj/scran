@@ -137,7 +137,6 @@ transform_framebuffer_to_yuv_ssse3_impl(
     u8 *__restrict v_plane, int v_stride,
     const u32 rgba32_shuffle_mask_u32
 ) {
-    using StorageT = Backend::StorageT;
     using Coefficients = Backend::Coefficients;
     using ShuffleMask  = Backend::ShuffleMask;
     using Rgba16px     = Backend::Rgba16px;
@@ -153,11 +152,11 @@ transform_framebuffer_to_yuv_ssse3_impl(
         .y = src_height_px - 1
     };
 
-    u8 *dst_y_start = Rotation::get_dst_yuv_y_walk_start_address(y_plane, y_stride, src_px_max, sizeof(StorageT));
-    u8 *dst_u_start = Rotation::get_dst_yuv_uv_walk_start_address(u_plane, u_stride, src_px_max, sizeof(StorageT));
-    u8 *dst_v_start = Rotation::get_dst_yuv_uv_walk_start_address(v_plane, v_stride, src_px_max, sizeof(StorageT));
+    u8 *dst_y_start = Rotation::get_dst_yuv_y_walk_start_address(y_plane, y_stride, src_px_max, sizeof(Rgba16px_Y));
+    u8 *dst_u_start = Rotation::get_dst_yuv_uv_walk_start_address(u_plane, u_stride, src_px_max, sizeof(Rgba32px_UV));
+    u8 *dst_v_start = Rotation::get_dst_yuv_uv_walk_start_address(v_plane, v_stride, src_px_max, sizeof(Rgba32px_UV));
 
-    static_assert(TILE_WIDTH_PX == 32 && TILE_HEIGHT_PX == 32, "All kernels assume 32x32 RGBA32 tiles.");
+    static_assert(TILE_WIDTH_PX == 32 && TILE_HEIGHT_PX == 32, "Kernel assumes 32x32 RGBA32 tiles.");
 
     for (int y = 0; y < src_height_px; y += 32) {
         for (int x = 0; x < src_width_px; x += 32) {
@@ -203,14 +202,14 @@ transform_framebuffer_to_yuv_ssse3_impl(
                             const Rgba16px_Y rgba16px_row_1_y = Backend::rgba16px_to_y(rgba16px_row_1, coefficients);
 
                             if constexpr (Rotation::SHOULD_STORE_Y_IMMEDIATELY) {
-                                store_unaligned(dst_y, rgba16px_row_0_y);
+                                Backend::store_rgba16px_y(dst_y, rgba16px_row_0_y);
                                 if constexpr (Rotation::DST_ROWS_WALK_BACKWARDS) {
                                     dst_y -= y_stride;
                                 } else {
                                     dst_y += y_stride;
                                 }
 
-                                store_unaligned(dst_y, rgba16px_row_1_y);
+                                Backend::store_rgba16px_y(dst_y, rgba16px_row_1_y);
                                 if constexpr (Rotation::DST_ROWS_WALK_BACKWARDS) {
                                     dst_y -= y_stride;
                                 } else {
@@ -238,7 +237,7 @@ transform_framebuffer_to_yuv_ssse3_impl(
                         // Store Y (Inner tile)
                         Backend::template rotate_rgba16px_y_tile_in_place<Rotation>(rgba16px_rows_y);
                         for (int j = 0; j < 16; ++j) {
-                            store_unaligned(dst_y, rgba16px_rows_y[j]);
+                            Backend::store_rgba16px_y(dst_y, rgba16px_rows_y[j]);
                             if constexpr (Rotation::DST_ROWS_WALK_BACKWARDS) {
                                 dst_y -= y_stride;
                             } else {
@@ -272,7 +271,7 @@ transform_framebuffer_to_yuv_ssse3_impl(
             {
                 u8 *dst_u = Rotation::get_dst_yuv_uv_addr_from_start_addr(dst_u_start, u_stride, src_px);
                 for (int l = 0; l < 16; ++l) {
-                    store_unaligned(dst_u, rgba32px_rows_u[l]);
+                    Backend::store_rgba32px_uv(dst_u, rgba32px_rows_u[l]);
                     if constexpr (Rotation::DST_ROWS_WALK_BACKWARDS) {
                         dst_u -= u_stride;
                     } else {
@@ -286,7 +285,7 @@ transform_framebuffer_to_yuv_ssse3_impl(
             {
                 u8 *dst_v = Rotation::get_dst_yuv_uv_addr_from_start_addr(dst_v_start, v_stride, src_px);
                 for (int l = 0; l < 16; ++l) {
-                    store_unaligned(dst_v, rgba32px_rows_v[l]);
+                    Backend::store_rgba32px_uv(dst_v, rgba32px_rows_v[l]);
                     if constexpr (Rotation::DST_ROWS_WALK_BACKWARDS) {
                         dst_v -= v_stride;
                     } else {

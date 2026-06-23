@@ -335,8 +335,6 @@ convert_16px_rgba32_to_yuv_8bpp(
 
 
 struct YUV420BackendSSSE3 {
-    using StorageT = __m128i;
-
     using ShuffleMask  = __m128i;
     using Coefficients = struct {
         struct { // See comment in getter
@@ -399,6 +397,16 @@ struct YUV420BackendSSSE3 {
     static inline void rotate_rgba32px_uv_tile_in_place(Rgba32px_UV (&tile)[16]) {
         // XXX: Theoretically should also assert that both have 8-bit samples
         rotate_rgba16px_y_tile_in_place<Rotation>(tile);
+    }
+
+    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    static inline void store_rgba16px_y(u8 *dst, Rgba16px_Y rgba16px_y) {
+        store_unaligned(dst, rgba16px_y);
+    }
+    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    static inline void store_rgba32px_uv(u8 *dst, Rgba32px_UV rgba32px_uv) {
+        // XXX: Theoretically should also assert that both have 8-bit samples
+        store_unaligned(dst, rgba32px_uv);
     }
 
 
