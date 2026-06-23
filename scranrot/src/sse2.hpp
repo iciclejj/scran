@@ -40,6 +40,168 @@ namespace scranrot::internal {
         _mm_storeu_si128(static_cast<__m128i_u *>(dst), val);
     }
 
+    // TODO: Use unrolled loops for all the transpose and rotation functions.
+
+    // Transpose is equivalent to 270 degree rotation + flip.
+    //   We can simply read the result in reverse order in order to get the 270.
+    //   Reading in reverse order is often simpler for rotating the entire image
+    //   anyways, depending on how we do the pointer walks. At least it is simpler
+    //   inside of our loops here.
+    //
+    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    static inline void
+    transpose_inplace_16x16_8bpp(
+        __m128i (&arg)[16]
+    ) {
+        __m128i tmp[16];
+
+        tmp[ 0] = _mm_unpacklo_epi8(arg[ 0], arg[ 1]);
+        tmp[ 1] = _mm_unpackhi_epi8(arg[ 0], arg[ 1]);
+        tmp[ 2] = _mm_unpacklo_epi8(arg[ 2], arg[ 3]);
+        tmp[ 3] = _mm_unpackhi_epi8(arg[ 2], arg[ 3]);
+        tmp[ 4] = _mm_unpacklo_epi8(arg[ 4], arg[ 5]);
+        tmp[ 5] = _mm_unpackhi_epi8(arg[ 4], arg[ 5]);
+        tmp[ 6] = _mm_unpacklo_epi8(arg[ 6], arg[ 7]);
+        tmp[ 7] = _mm_unpackhi_epi8(arg[ 6], arg[ 7]);
+        tmp[ 8] = _mm_unpacklo_epi8(arg[ 8], arg[ 9]);
+        tmp[ 9] = _mm_unpackhi_epi8(arg[ 8], arg[ 9]);
+        tmp[10] = _mm_unpacklo_epi8(arg[10], arg[11]);
+        tmp[11] = _mm_unpackhi_epi8(arg[10], arg[11]);
+        tmp[12] = _mm_unpacklo_epi8(arg[12], arg[13]);
+        tmp[13] = _mm_unpackhi_epi8(arg[12], arg[13]);
+        tmp[14] = _mm_unpacklo_epi8(arg[14], arg[15]);
+        tmp[15] = _mm_unpackhi_epi8(arg[14], arg[15]);
+
+        arg[ 0] = _mm_unpacklo_epi16(tmp[ 0], tmp[ 2]);
+        arg[ 1] = _mm_unpackhi_epi16(tmp[ 0], tmp[ 2]);
+        arg[ 2] = _mm_unpacklo_epi16(tmp[ 1], tmp[ 3]);
+        arg[ 3] = _mm_unpackhi_epi16(tmp[ 1], tmp[ 3]);
+        arg[ 4] = _mm_unpacklo_epi16(tmp[ 4], tmp[ 6]);
+        arg[ 5] = _mm_unpackhi_epi16(tmp[ 4], tmp[ 6]);
+        arg[ 6] = _mm_unpacklo_epi16(tmp[ 5], tmp[ 7]);
+        arg[ 7] = _mm_unpackhi_epi16(tmp[ 5], tmp[ 7]);
+        arg[ 8] = _mm_unpacklo_epi16(tmp[ 8], tmp[10]);
+        arg[ 9] = _mm_unpackhi_epi16(tmp[ 8], tmp[10]);
+        arg[10] = _mm_unpacklo_epi16(tmp[ 9], tmp[11]);
+        arg[11] = _mm_unpackhi_epi16(tmp[ 9], tmp[11]);
+        arg[12] = _mm_unpacklo_epi16(tmp[12], tmp[14]);
+        arg[13] = _mm_unpackhi_epi16(tmp[12], tmp[14]);
+        arg[14] = _mm_unpacklo_epi16(tmp[13], tmp[15]);
+        arg[15] = _mm_unpackhi_epi16(tmp[13], tmp[15]);
+
+        tmp[ 0] = _mm_unpacklo_epi32(arg[ 0], arg[ 4]);
+        tmp[ 1] = _mm_unpackhi_epi32(arg[ 0], arg[ 4]);
+        tmp[ 2] = _mm_unpacklo_epi32(arg[ 1], arg[ 5]);
+        tmp[ 3] = _mm_unpackhi_epi32(arg[ 1], arg[ 5]);
+        tmp[ 4] = _mm_unpacklo_epi32(arg[ 2], arg[ 6]);
+        tmp[ 5] = _mm_unpackhi_epi32(arg[ 2], arg[ 6]);
+        tmp[ 6] = _mm_unpacklo_epi32(arg[ 3], arg[ 7]);
+        tmp[ 7] = _mm_unpackhi_epi32(arg[ 3], arg[ 7]);
+        tmp[ 8] = _mm_unpacklo_epi32(arg[ 8], arg[12]);
+        tmp[ 9] = _mm_unpackhi_epi32(arg[ 8], arg[12]);
+        tmp[10] = _mm_unpacklo_epi32(arg[ 9], arg[13]);
+        tmp[11] = _mm_unpackhi_epi32(arg[ 9], arg[13]);
+        tmp[12] = _mm_unpacklo_epi32(arg[10], arg[14]);
+        tmp[13] = _mm_unpackhi_epi32(arg[10], arg[14]);
+        tmp[14] = _mm_unpacklo_epi32(arg[11], arg[15]);
+        tmp[15] = _mm_unpackhi_epi32(arg[11], arg[15]);
+
+        // Last pass reversed relative to transpose
+        arg[0]  = _mm_unpacklo_epi64(tmp[ 0], tmp[ 8]);
+        arg[1]  = _mm_unpackhi_epi64(tmp[ 0], tmp[ 8]);
+        arg[2]  = _mm_unpacklo_epi64(tmp[ 1], tmp[ 9]);
+        arg[3]  = _mm_unpackhi_epi64(tmp[ 1], tmp[ 9]);
+        arg[4]  = _mm_unpacklo_epi64(tmp[ 2], tmp[10]);
+        arg[5]  = _mm_unpackhi_epi64(tmp[ 2], tmp[10]);
+        arg[6]  = _mm_unpacklo_epi64(tmp[ 3], tmp[11]);
+        arg[7]  = _mm_unpackhi_epi64(tmp[ 3], tmp[11]);
+        arg[8]  = _mm_unpacklo_epi64(tmp[ 4], tmp[12]);
+        arg[9]  = _mm_unpackhi_epi64(tmp[ 4], tmp[12]);
+        arg[10] = _mm_unpacklo_epi64(tmp[ 5], tmp[13]);
+        arg[11] = _mm_unpackhi_epi64(tmp[ 5], tmp[13]);
+        arg[12] = _mm_unpacklo_epi64(tmp[ 6], tmp[14]);
+        arg[13] = _mm_unpackhi_epi64(tmp[ 6], tmp[14]);
+        arg[14] = _mm_unpacklo_epi64(tmp[ 7], tmp[15]);
+        arg[15] = _mm_unpackhi_epi64(tmp[ 7], tmp[15]);
+    }
+
+    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    static inline void
+    rotate_90_inplace_16x16_8bpp(
+        __m128i (&arg)[16]
+    ) {
+        __m128i tmp[16];
+
+        // First pass reversed relative to transpose
+        tmp[ 0] = _mm_unpacklo_epi8(arg[15], arg[14]);
+        tmp[ 1] = _mm_unpackhi_epi8(arg[15], arg[14]);
+        tmp[ 2] = _mm_unpacklo_epi8(arg[13], arg[12]);
+        tmp[ 3] = _mm_unpackhi_epi8(arg[13], arg[12]);
+        tmp[ 4] = _mm_unpacklo_epi8(arg[11], arg[10]);
+        tmp[ 5] = _mm_unpackhi_epi8(arg[11], arg[10]);
+        tmp[ 6] = _mm_unpacklo_epi8(arg[ 9], arg[ 8]);
+        tmp[ 7] = _mm_unpackhi_epi8(arg[ 9], arg[ 8]);
+        tmp[ 8] = _mm_unpacklo_epi8(arg[ 7], arg[ 6]);
+        tmp[ 9] = _mm_unpackhi_epi8(arg[ 7], arg[ 6]);
+        tmp[10] = _mm_unpacklo_epi8(arg[ 5], arg[ 4]);
+        tmp[11] = _mm_unpackhi_epi8(arg[ 5], arg[ 4]);
+        tmp[12] = _mm_unpacklo_epi8(arg[ 3], arg[ 2]);
+        tmp[13] = _mm_unpackhi_epi8(arg[ 3], arg[ 2]);
+        tmp[14] = _mm_unpacklo_epi8(arg[ 1], arg[ 0]);
+        tmp[15] = _mm_unpackhi_epi8(arg[ 1], arg[ 0]);
+
+        arg[0]  = _mm_unpacklo_epi16(tmp[ 0], tmp[ 2]);
+        arg[1]  = _mm_unpackhi_epi16(tmp[ 0], tmp[ 2]);
+        arg[2]  = _mm_unpacklo_epi16(tmp[ 1], tmp[ 3]);
+        arg[3]  = _mm_unpackhi_epi16(tmp[ 1], tmp[ 3]);
+        arg[4]  = _mm_unpacklo_epi16(tmp[ 4], tmp[ 6]);
+        arg[5]  = _mm_unpackhi_epi16(tmp[ 4], tmp[ 6]);
+        arg[6]  = _mm_unpacklo_epi16(tmp[ 5], tmp[ 7]);
+        arg[7]  = _mm_unpackhi_epi16(tmp[ 5], tmp[ 7]);
+        arg[8]  = _mm_unpacklo_epi16(tmp[ 8], tmp[10]);
+        arg[9]  = _mm_unpackhi_epi16(tmp[ 8], tmp[10]);
+        arg[10] = _mm_unpacklo_epi16(tmp[ 9], tmp[11]);
+        arg[11] = _mm_unpackhi_epi16(tmp[ 9], tmp[11]);
+        arg[12] = _mm_unpacklo_epi16(tmp[12], tmp[14]);
+        arg[13] = _mm_unpackhi_epi16(tmp[12], tmp[14]);
+        arg[14] = _mm_unpacklo_epi16(tmp[13], tmp[15]);
+        arg[15] = _mm_unpackhi_epi16(tmp[13], tmp[15]);
+
+        tmp[ 0] = _mm_unpacklo_epi32(arg[ 0], arg[ 4]);
+        tmp[ 1] = _mm_unpackhi_epi32(arg[ 0], arg[ 4]);
+        tmp[ 2] = _mm_unpacklo_epi32(arg[ 1], arg[ 5]);
+        tmp[ 3] = _mm_unpackhi_epi32(arg[ 1], arg[ 5]);
+        tmp[ 4] = _mm_unpacklo_epi32(arg[ 2], arg[ 6]);
+        tmp[ 5] = _mm_unpackhi_epi32(arg[ 2], arg[ 6]);
+        tmp[ 6] = _mm_unpacklo_epi32(arg[ 3], arg[ 7]);
+        tmp[ 7] = _mm_unpackhi_epi32(arg[ 3], arg[ 7]);
+        tmp[ 8] = _mm_unpacklo_epi32(arg[ 8], arg[12]);
+        tmp[ 9] = _mm_unpackhi_epi32(arg[ 8], arg[12]);
+        tmp[10] = _mm_unpacklo_epi32(arg[ 9], arg[13]);
+        tmp[11] = _mm_unpackhi_epi32(arg[ 9], arg[13]);
+        tmp[12] = _mm_unpacklo_epi32(arg[10], arg[14]);
+        tmp[13] = _mm_unpackhi_epi32(arg[10], arg[14]);
+        tmp[14] = _mm_unpacklo_epi32(arg[11], arg[15]);
+        tmp[15] = _mm_unpackhi_epi32(arg[11], arg[15]);
+
+        arg[ 0] = _mm_unpacklo_epi64(tmp[ 0], tmp[ 8]);
+        arg[ 1] = _mm_unpackhi_epi64(tmp[ 0], tmp[ 8]);
+        arg[ 2] = _mm_unpacklo_epi64(tmp[ 1], tmp[ 9]);
+        arg[ 3] = _mm_unpackhi_epi64(tmp[ 1], tmp[ 9]);
+        arg[ 4] = _mm_unpacklo_epi64(tmp[ 2], tmp[10]);
+        arg[ 5] = _mm_unpackhi_epi64(tmp[ 2], tmp[10]);
+        arg[ 6] = _mm_unpacklo_epi64(tmp[ 3], tmp[11]);
+        arg[ 7] = _mm_unpackhi_epi64(tmp[ 3], tmp[11]);
+        arg[ 8] = _mm_unpacklo_epi64(tmp[ 4], tmp[12]);
+        arg[ 9] = _mm_unpackhi_epi64(tmp[ 4], tmp[12]);
+        arg[10] = _mm_unpacklo_epi64(tmp[ 5], tmp[13]);
+        arg[11] = _mm_unpackhi_epi64(tmp[ 5], tmp[13]);
+        arg[12] = _mm_unpacklo_epi64(tmp[ 6], tmp[14]);
+        arg[13] = _mm_unpackhi_epi64(tmp[ 6], tmp[14]);
+        arg[14] = _mm_unpacklo_epi64(tmp[ 7], tmp[15]);
+        arg[15] = _mm_unpackhi_epi64(tmp[ 7], tmp[15]);
+    }
+
 }
 
 
