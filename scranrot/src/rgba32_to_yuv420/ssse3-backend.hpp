@@ -349,6 +349,7 @@ struct YUV420BackendSSSE3 {
     using Rgba16px    = struct { __m128i impl[4]; };
     using Rgba16px_Y  = __m128i;
     using Rgba16px_UV = __m128i; // u16
+    using Rgba32px_UV = __m128i; // u8
 
 
     SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
@@ -376,14 +377,28 @@ struct YUV420BackendSSSE3 {
         );
     }
 
+    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    static inline Rgba32px_UV rgba16px_uv_to_rgba32px_uv(
+        const Rgba16px_UV &a, const Rgba16px_UV &b
+    ) {
+        return _mm_packus_epi16(a, b);
+    }
+
+
     template<typename Rotation>
     SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline void rotate_8bpp_tile_in_place(StorageT (&tile)[16]) {
+    static inline void rotate_rgba16px_y_tile_in_place(Rgba16px_Y (&tile)[16]) {
         if constexpr (Rotation::TRANSFORM == SCRANROT_TRANSFORM_270) {
             transpose_inplace_16x16_8bpp(tile);
         } else if constexpr (Rotation::TRANSFORM == SCRANROT_TRANSFORM_90) {
             rotate_90_inplace_16x16_8bpp(tile);
         }
+    }
+    template<typename Rotation>
+    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    static inline void rotate_rgba32px_uv_tile_in_place(Rgba32px_UV (&tile)[16]) {
+        // XXX: Theoretically should also assert that both have 8-bit samples
+        rotate_rgba16px_y_tile_in_place<Rotation>(tile);
     }
 
 

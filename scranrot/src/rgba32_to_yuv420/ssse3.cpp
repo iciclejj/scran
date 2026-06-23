@@ -162,6 +162,7 @@ transform_framebuffer_to_yuv_ssse3_impl(
     using Rgba16px     = Backend::Rgba16px;
     using Rgba16px_Y   = Backend::Rgba16px_Y;
     using Rgba16px_UV  = Backend::Rgba16px_UV;
+    using Rgba32px_UV  = Backend::Rgba32px_UV;
 
     const ShuffleMask  rgba32_shuffle_mask = Backend::template get_rgba32_shuffle_mask<Rotation>(rgba32_shuffle_mask_u32);
     const Coefficients coefficients        = Backend::get_yuv_coefficients();
@@ -182,8 +183,8 @@ transform_framebuffer_to_yuv_ssse3_impl(
 
             // y (yuv) is 2x bpp, so we transpose and store already in inner loop
             // NOTE: bpp here is for u/v-plane pixels, which are at half res for yuv420
-            StorageT u_i8_4bpp_final[16];
-            StorageT v_i8_4bpp_final[16];
+            Rgba32px_UV rgba32px_rows_u[16];
+            Rgba32px_UV rgba32px_rows_v[16];
 
             for (int _y = 0; _y < 32; _y += 16) {
 
@@ -201,7 +202,7 @@ transform_framebuffer_to_yuv_ssse3_impl(
                     }();
 
                     // XXX TODO: Can we omit the declaration entirely for the rotations that don't make use of this?
-                    [[maybe_unused]] StorageT rgba16px_rows_y[16];
+                    [[maybe_unused]] Rgba16px_Y rgba16px_rows_y[16];
 
                     const Point src_px = {  (x + _x),  (y + _y)  };
 
@@ -254,7 +255,7 @@ transform_framebuffer_to_yuv_ssse3_impl(
 
                     if constexpr(Rotation::SHOULD_STORE_Y_IMMEDIATELY == false) {
                         // Store Y (Inner tile)
-                        Backend::template rotate_8bpp_tile_in_place<Rotation>(rgba16px_rows_y);
+                        Backend::template rotate_rgba16px_y_tile_in_place<Rotation>(rgba16px_rows_y);
                         for (int j = 0; j < 16; ++j) {
                             store_unaligned(dst_y, rgba16px_rows_y[j]);
                             if constexpr (Rotation::DST_ROWS_WALK_BACKWARDS) {
@@ -269,11 +270,11 @@ transform_framebuffer_to_yuv_ssse3_impl(
 
                 // Finalize uv for entire outer tile row
                 for (int k = 0; k < 8; ++k) {
-                    u_i8_4bpp_final[(_y/2)+k] = _mm_packus_epi16(
+                    rgba32px_rows_u[(_y/2)+k] = Backend::rgba16px_uv_to_rgba32px_uv(
                                                      rgba16px_rows_u[k][0],
                                                      rgba16px_rows_u[k][1]
                                                 );
-                    v_i8_4bpp_final[(_y/2)+k] = _mm_packus_epi16(
+                    rgba32px_rows_v[(_y/2)+k] = Backend::rgba16px_uv_to_rgba32px_uv(
                                                      rgba16px_rows_v[k][0],
                                                      rgba16px_rows_v[k][1]
                                                 );
@@ -286,11 +287,11 @@ transform_framebuffer_to_yuv_ssse3_impl(
             const Point src_px   = { x, y };
 
             // Store U
-            Backend::template rotate_8bpp_tile_in_place<Rotation>(u_i8_4bpp_final);
+            Backend::template rotate_rgba32px_uv_tile_in_place<Rotation>(rgba32px_rows_u);
             {
                 u8 *dst_u = Rotation::get_dst_yuv_uv_addr_from_start_addr(dst_u_start, u_stride, src_px);
                 for (int l = 0; l < 16; ++l) {
-                    store_unaligned(dst_u, u_i8_4bpp_final[l]);
+                    store_unaligned(dst_u, rgba32px_rows_u[l]);
                     if constexpr (Rotation::DST_ROWS_WALK_BACKWARDS) {
                         dst_u -= u_stride;
                     } else {
@@ -300,11 +301,11 @@ transform_framebuffer_to_yuv_ssse3_impl(
             }
 
             // Store V
-            Backend::template rotate_8bpp_tile_in_place<Rotation>(v_i8_4bpp_final);
+            Backend::template rotate_rgba32px_uv_tile_in_place<Rotation>(rgba32px_rows_v);
             {
                 u8 *dst_v = Rotation::get_dst_yuv_uv_addr_from_start_addr(dst_v_start, v_stride, src_px);
                 for (int l = 0; l < 16; ++l) {
-                    store_unaligned(dst_v, v_i8_4bpp_final[l]);
+                    store_unaligned(dst_v, rgba32px_rows_v[l]);
                     if constexpr (Rotation::DST_ROWS_WALK_BACKWARDS) {
                         dst_v -= v_stride;
                     } else {
