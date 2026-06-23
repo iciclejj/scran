@@ -30,21 +30,19 @@ struct Rotate270 {
 
     // 90-rotation dst starts at the right edge and moves backwards, so the current (sub-)tile
     // is always positioned "behind" us.
-    SCRANROT_TARGET_SSSE3
     static inline u8 *get_dst_yuv_y_walk_start_address(u8 *y_plane, auto y_stride, Point src_max, auto /*subtile_size*/) {
         const int dst_height_px = src_max.x + 1;
         return y_plane + (dst_height_px - 1)*y_stride;
     }
-    SCRANROT_TARGET_SSSE3
     static inline u8 *get_dst_yuv_uv_walk_start_address(u8 *uv_plane, auto uv_stride, Point src_max, auto /*subtile_size*/) {
         const int dst_height_px = src_max.x + 1;
         return uv_plane + (dst_height_px/2 - 1)*uv_stride;
     }
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    SCRANROT_ALWAYS_INLINE
     static inline u8 *get_dst_yuv_y_addr_from_start_addr(u8 *y_start, auto y_stride, Point src) {
         return y_start  + src.y       - (src.x       * y_stride);
     }
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    SCRANROT_ALWAYS_INLINE
     static inline u8 *get_dst_yuv_uv_addr_from_start_addr(u8 *uv_start, auto uv_stride, Point src) {
         return uv_start + (src.y / 2) - ((src.x / 2) * uv_stride);
     }
@@ -60,28 +58,21 @@ struct Rotate90 {
 
     // 90-rotation dst starts at the right edge and moves backwards, so the current (sub-)tile
     // is always positioned "behind" us.
-    SCRANROT_TARGET_SSSE3
     static inline u8 *get_dst_yuv_y_walk_start_address(u8 *y_plane, auto /*y_stride*/, Point src_max, auto subtile_size) {
         const int dst_width_px = src_max.y + 1;
         return y_plane  +  dst_width_px      - subtile_size;
     }
-    SCRANROT_TARGET_SSSE3
     static inline u8 *get_dst_yuv_uv_walk_start_address(u8 *uv_plane, auto /*uv_stride*/, Point src_max, auto subtile_size) {
         const int dst_width_px = src_max.y + 1;
         return uv_plane + (dst_width_px / 2) - subtile_size;
     }
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    SCRANROT_ALWAYS_INLINE
     static inline u8 *get_dst_yuv_y_addr_from_start_addr(u8 *y_start, auto y_stride, Point src) {
         return y_start  -  src.y      + ( src.x      * y_stride);
     }
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    SCRANROT_ALWAYS_INLINE
     static inline u8 *get_dst_yuv_uv_addr_from_start_addr(u8 *uv_start, auto uv_stride, Point src) {
         return uv_start - (src.y / 2) + ((src.x / 2) * uv_stride);
-    }
-
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline void rotate_in_place_16x16_8bpp(auto &rows_i8_4bpp) {
-        rotate_90_inplace_16x16_8bpp(rows_i8_4bpp);
     }
 };
 
@@ -93,25 +84,20 @@ struct Rotate180 {
     static constexpr bool DST_ROWS_WALK_BACKWARDS        = true;
 
 
-    SCRANROT_TARGET_SSSE3
     static inline u8 *get_dst_yuv_y_walk_start_address(u8 *y_plane, auto y_stride, Point src_max, auto subtile_size) {
         return y_plane + src_max.y * y_stride + ((src_max.x+1) - subtile_size);
     }
-    SCRANROT_TARGET_SSSE3
     static inline u8 *get_dst_yuv_uv_walk_start_address(u8 *uv_plane, auto uv_stride, Point src_max, auto subtile_size) {
         return uv_plane + src_max.y/2 * uv_stride + ((src_max.x+1)/2 - subtile_size);
     }
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    SCRANROT_ALWAYS_INLINE
     static inline u8 *get_dst_yuv_y_addr_from_start_addr(u8 *y_start, auto y_stride, Point src) {
         return y_start  - (src.y       * y_stride ) - src.x;
     }
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    SCRANROT_ALWAYS_INLINE
     static inline u8 *get_dst_yuv_uv_addr_from_start_addr(u8 *uv_start, auto uv_stride, Point src) {
         return uv_start - ((src.y / 2) * uv_stride) - (src.x / 2);
     }
-
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline void rotate_in_place_16x16_8bpp(auto &/*rows*/) { }
 };
 
 struct Rotate0 {
@@ -122,25 +108,20 @@ struct Rotate0 {
     static constexpr bool DST_ROWS_WALK_BACKWARDS        = false;
 
 
-    SCRANROT_TARGET_SSSE3
     static inline u8 *get_dst_yuv_y_walk_start_address(u8 *y_plane, auto /*y_stride*/, Point /*src_max*/, auto /*subtile_size*/) {
         return y_plane;
     }
-    SCRANROT_TARGET_SSSE3
     static inline u8 *get_dst_yuv_uv_walk_start_address(u8 *uv_plane, auto /*uv_stride*/, Point /*src_max*/, auto /*subtile_size*/) {
         return uv_plane;
     }
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    SCRANROT_ALWAYS_INLINE
     static inline u8 *get_dst_yuv_y_addr_from_start_addr(u8 *y_start, auto y_stride, Point src) {
         return y_start  + src.x       + (src.y       * y_stride);
     }
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    SCRANROT_ALWAYS_INLINE
     static inline u8 *get_dst_yuv_uv_addr_from_start_addr(u8 *uv_start, auto uv_stride, Point src) {
         return uv_start + (src.x / 2) + ((src.y / 2) * uv_stride);
     }
-
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline void rotate_in_place_16x16_8bpp(auto &/*rows*/) { }
 };
 
 template<typename Backend, typename Rotation>
