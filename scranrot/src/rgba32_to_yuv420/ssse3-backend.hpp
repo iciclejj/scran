@@ -347,14 +347,32 @@ struct YUV420BackendSSSE3 {
         __m128i v;
     };
     using Rgba16px    = struct { __m128i impl[4]; };
+    using Rgba16px_Y  = __m128i;
+    using Rgba16px_UV = __m128i; // u16
 
 
     SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline StorageT rgba_to_y_row(
-        const Rgba16px &rgba_in, const Coefficients &coefficients, const StorageT &hadamard_scaler, u8 shr
+    static inline Rgba16px_Y rgba16px_to_y(
+        const Rgba16px &rgba16px, const Coefficients &coefficients
     ) {
         return convert_16px_rgba32_to_yuv_8bpp(
-            rgba_in.impl, coefficients.y.a, coefficients.y.b, hadamard_scaler, shr
+            rgba16px.impl, coefficients.y.a, coefficients.y.b, _mm_set1_epi16(1), 8
+        );
+    }
+    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    static inline Rgba16px_UV rgba16px_to_u_xpairavg(
+        const Rgba16px &rgba16px, const Coefficients &coefficients
+    ) {
+        return convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
+            rgba16px.impl, coefficients.u, _mm_set1_epi16(1), 8
+        );
+    }
+    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+    static inline Rgba16px_UV rgba16px_to_v_xpairavg(
+        const Rgba16px &rgba16px, const Coefficients &coefficients
+    ) {
+        return convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
+            rgba16px.impl, coefficients.v, _mm_set1_epi16(1), 8
         );
     }
 
@@ -433,13 +451,6 @@ struct YUV420BackendSSSE3 {
             .v = { _mm_setr_epi8(127,-106,-21,0, 127,-106,-21,0, 127,-106,-21,0, 127,-106,-21,0) },
         };
     }
-
-    SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-    static inline StorageT
-    get_all_1s_i16_matrix() {
-        return _mm_set1_epi16(1);
-    }
-
 
 };
 

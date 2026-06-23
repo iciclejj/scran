@@ -157,15 +157,14 @@ transform_framebuffer_to_yuv_ssse3_impl(
     const u32 rgba32_shuffle_mask_u32
 ) {
     using StorageT = Backend::StorageT;
-    using Coefficients  = Backend::Coefficients;
-    using ShuffleMask   = Backend::ShuffleMask;
-    using Rgba16px = Backend::Rgba16px;
+    using Coefficients = Backend::Coefficients;
+    using ShuffleMask  = Backend::ShuffleMask;
+    using Rgba16px     = Backend::Rgba16px;
+    using Rgba16px_Y   = Backend::Rgba16px_Y;
+    using Rgba16px_UV  = Backend::Rgba16px_UV;
 
     const ShuffleMask  rgba32_shuffle_mask = Backend::template get_rgba32_shuffle_mask<Rotation>(rgba32_shuffle_mask_u32);
     const Coefficients coefficients        = Backend::get_yuv_coefficients();
-
-    // TODO: Better to just _mm_set1_epi16(1) in each location?
-    const StorageT hadam_ident_epi16 = Backend::get_all_1s_i16_matrix();
 
     const Point src_px_max = {
         .x = src_width_px - 1,
@@ -188,9 +187,8 @@ transform_framebuffer_to_yuv_ssse3_impl(
 
             for (int _y = 0; _y < 32; _y += 16) {
 
-                // NOTE: See comment in 270/90 handlers at this location. Though not actually tested for 0 or 180.
-                StorageT u_i16_8bpp_xyavg[8][2];
-                StorageT v_i16_8bpp_xyavg[8][2];
+                Rgba16px_UV rgba16px_rows_u[8][2];
+                Rgba16px_UV rgba16px_rows_v[8][2];
 
                 for (int _x = 0; _x < 32; _x += 16) {
 
@@ -203,7 +201,7 @@ transform_framebuffer_to_yuv_ssse3_impl(
                     }();
 
                     // XXX TODO: Can we omit the declaration entirely for the rotations that don't make use of this?
-                    [[maybe_unused]] StorageT y_8bpp_final[16];
+                    [[maybe_unused]] StorageT rgba16px_rows_y[16];
 
                     const Point src_px = {  (x + _x),  (y + _y)  };
 
@@ -219,46 +217,46 @@ transform_framebuffer_to_yuv_ssse3_impl(
                         const Rgba16px rgba16px_row_1 = Backend::template load_shuffled_rgba16px<LOAD_REVERSED>(src_subtile + (j+1)*src_stride_bytes, rgba32_shuffle_mask);
 
                         {
-                            const StorageT y_8bpp_final_0 = Backend::rgba_to_y_row(rgba16px_row_0, coefficients, hadam_ident_epi16, 8);
-                            const StorageT y_8bpp_final_1 = Backend::rgba_to_y_row(rgba16px_row_1, coefficients, hadam_ident_epi16, 8);
+                            const Rgba16px_Y rgba16px_row_0_y = Backend::rgba16px_to_y(rgba16px_row_0, coefficients);
+                            const Rgba16px_Y rgba16px_row_1_y = Backend::rgba16px_to_y(rgba16px_row_1, coefficients);
 
                             if constexpr (Rotation::SHOULD_STORE_Y_IMMEDIATELY) {
-                                store_unaligned(dst_y, y_8bpp_final_0);
+                                store_unaligned(dst_y, rgba16px_row_0_y);
                                 if constexpr (Rotation::DST_ROWS_WALK_BACKWARDS) {
                                     dst_y -= y_stride;
                                 } else {
                                     dst_y += y_stride;
                                 }
 
-                                store_unaligned(dst_y, y_8bpp_final_1);
+                                store_unaligned(dst_y, rgba16px_row_1_y);
                                 if constexpr (Rotation::DST_ROWS_WALK_BACKWARDS) {
                                     dst_y -= y_stride;
                                 } else {
                                     dst_y += y_stride;
                                 }
                             } else {
-                                y_8bpp_final[j+0] = y_8bpp_final_0;
-                                y_8bpp_final[j+1] = y_8bpp_final_1;
+                                rgba16px_rows_y[j+0] = rgba16px_row_0_y;
+                                rgba16px_rows_y[j+1] = rgba16px_row_1_y;
                             }
                         }
 
                         // We average the two rows before converting, to reduce required calculation
-                        const Rgba16px rgba16px_rows_average = Backend::average_rgba16px(rgba16px_row_0, rgba16px_row_1);
+                        const Rgba16px rgba16px_row_0_1_average = Backend::average_rgba16px(rgba16px_row_0, rgba16px_row_1);
 
                         const u8 j_yavg = j/2;
-                        u_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba16px_rows_average.impl, coefficients.u, hadam_ident_epi16, 8
+                        rgba16px_rows_u[j_yavg][_xi] = Backend::rgba16px_to_u_xpairavg(
+                                                            rgba16px_row_0_1_average, coefficients
                                                         );
-                        v_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba16px_rows_average.impl, coefficients.v, hadam_ident_epi16, 8
+                        rgba16px_rows_v[j_yavg][_xi] = Backend::rgba16px_to_v_xpairavg(
+                                                            rgba16px_row_0_1_average, coefficients
                                                         );
                     }
 
                     if constexpr(Rotation::SHOULD_STORE_Y_IMMEDIATELY == false) {
                         // Store Y (Inner tile)
-                        Backend::template rotate_8bpp_tile_in_place<Rotation>(y_8bpp_final);
+                        Backend::template rotate_8bpp_tile_in_place<Rotation>(rgba16px_rows_y);
                         for (int j = 0; j < 16; ++j) {
-                            store_unaligned(dst_y, y_8bpp_final[j]);
+                            store_unaligned(dst_y, rgba16px_rows_y[j]);
                             if constexpr (Rotation::DST_ROWS_WALK_BACKWARDS) {
                                 dst_y -= y_stride;
                             } else {
@@ -272,12 +270,12 @@ transform_framebuffer_to_yuv_ssse3_impl(
                 // Finalize uv for entire outer tile row
                 for (int k = 0; k < 8; ++k) {
                     u_i8_4bpp_final[(_y/2)+k] = _mm_packus_epi16(
-                                                     u_i16_8bpp_xyavg[k][0],
-                                                     u_i16_8bpp_xyavg[k][1]
+                                                     rgba16px_rows_u[k][0],
+                                                     rgba16px_rows_u[k][1]
                                                 );
                     v_i8_4bpp_final[(_y/2)+k] = _mm_packus_epi16(
-                                                     v_i16_8bpp_xyavg[k][0],
-                                                     v_i16_8bpp_xyavg[k][1]
+                                                     rgba16px_rows_v[k][0],
+                                                     rgba16px_rows_v[k][1]
                                                 );
                 }
 
