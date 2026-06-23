@@ -49,7 +49,7 @@ namespace scranrot::internal {
 
     transform_framebuffer_fn transform_framebuffer_ssse3__unaligned;
     transform_framebuffer_fn transform_framebuffer_fallback;
-    transform_framebuffer_to_yuv_fn transform_framebuffer_to_yuv420_ssse3__unaligned;
+    transform_framebuffer_to_yuv_fn transform_framebuffer_to_yuv420_ssse3;
     transform_framebuffer_to_yuv_fn transform_framebuffer_to_yuv420_fallback;
 
 }
