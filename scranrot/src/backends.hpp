@@ -10,6 +10,8 @@
     __attribute__((always_inline))
 #define SCRANROT_TARGET_SSSE3 \
     __attribute__((target("ssse3")))
+#define SCRANROT_TARGET_AVX2 \
+    __attribute__((target("avx2")))
 #define SCRANROT_TARGET_FALLBACK
 
 
@@ -50,6 +52,7 @@ namespace scranrot::internal {
     transform_framebuffer_fn transform_framebuffer_ssse3__unaligned;
     transform_framebuffer_fn transform_framebuffer_fallback;
     transform_framebuffer_to_yuv_fn transform_framebuffer_to_yuv420_ssse3;
+    transform_framebuffer_to_yuv_fn transform_framebuffer_to_yuv420_avx2;
     transform_framebuffer_to_yuv_fn transform_framebuffer_to_yuv420_fallback;
 
 }

@@ -90,9 +90,11 @@ get_yuv420_fn()
 {
 #if defined(__x86_64__) || defined(__i386__)
     __builtin_cpu_init();
-    if (__builtin_cpu_supports("ssse3")) {
+    if (__builtin_cpu_supports("avx2")) {
+        return transform_framebuffer_to_yuv420_avx2;
+    } else if (__builtin_cpu_supports("ssse3")) {
         return transform_framebuffer_to_yuv420_ssse3;
-    } else
+    }
 #endif
     {
         return transform_framebuffer_to_yuv420_fallback;

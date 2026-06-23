@@ -5,6 +5,7 @@ scranrot_sources = files(
   'src/rgba32_to_rgba32/ssse3.cpp',
   'src/rgba32_to_yuv420/fallback.cpp',
   'src/rgba32_to_yuv420/ssse3.cpp',
+  'src/rgba32_to_yuv420/avx2.cpp',
 )
 scranrot_cpp_args = [
   '-fno-exceptions',
