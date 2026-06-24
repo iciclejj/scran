@@ -14,6 +14,23 @@
 #define SCRANROT_UNLIKELY(x) __builtin_expect(!!(x), 0)
 
 
+// load unaligned
+static inline uint32_t
+scranrot_loadu_u32(const void *src)
+{
+    uint32_t val;
+    __builtin_memcpy(&val, src, sizeof(val));
+    return val;
+}
+
+// store unaligned
+static inline void
+scranrot_storeu_u32(void *dst, uint32_t val)
+{
+    __builtin_memcpy(dst, &val, sizeof(val));
+}
+
+
 static inline int
 scranrot_get_transformed_height(int src_width, int src_height, enum scranrot_transform transform)
 {

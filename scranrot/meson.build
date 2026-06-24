@@ -6,10 +6,14 @@ scranrot_sources = files(
   'src/rgba32-to-yuv420/fallback.c',
   'src/rgba32-to-yuv420/ssse3.c',
 )
+scranrot_c_args = [
+  '-Wcast-align=strict',
+]
 scranrot_lib = static_library(
   'scranrot',
   scranrot_sources,
   include_directories: scranrot_inc,
+  c_args: scranrot_c_args,
 )
 
 scranrot_dep = declare_dependency(
@@ -34,7 +38,7 @@ shared_library(
   ],
   c_args: [
     '-fno-stack-protector',
-  ],
+  ] + scranrot_c_args,
   install: false,
   build_by_default: true,
 )

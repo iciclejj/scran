@@ -34,50 +34,50 @@ SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
 load_tile_rows_unaligned(
     __m128i rows[static KERNEL_TILE_HEIGHT_PX],
-    const __m128i *row_addrs[static KERNEL_TILE_HEIGHT_PX]
+    const uint8_t *row_addrs[static KERNEL_TILE_HEIGHT_PX]
 ) {
-    rows[0] = _mm_loadu_si128(row_addrs[0]);
-    rows[1] = _mm_loadu_si128(row_addrs[1]);
-    rows[2] = _mm_loadu_si128(row_addrs[2]);
-    rows[3] = _mm_loadu_si128(row_addrs[3]);
+    rows[0] = scranrot_sse2_loadu_m128i(row_addrs[0]);
+    rows[1] = scranrot_sse2_loadu_m128i(row_addrs[1]);
+    rows[2] = scranrot_sse2_loadu_m128i(row_addrs[2]);
+    rows[3] = scranrot_sse2_loadu_m128i(row_addrs[3]);
 }
 
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
 store_tile_rows_unaligned(
     __m128i rows[static KERNEL_TILE_HEIGHT_PX],
-    __m128i *row_addrs[static KERNEL_TILE_HEIGHT_PX]
+    uint8_t *row_addrs[static KERNEL_TILE_HEIGHT_PX]
 ) {
-    _mm_storeu_si128(row_addrs[0], rows[0]);
-    _mm_storeu_si128(row_addrs[1], rows[1]);
-    _mm_storeu_si128(row_addrs[2], rows[2]);
-    _mm_storeu_si128(row_addrs[3], rows[3]);
+    scranrot_sse2_storeu_m128i(row_addrs[0], rows[0]);
+    scranrot_sse2_storeu_m128i(row_addrs[1], rows[1]);
+    scranrot_sse2_storeu_m128i(row_addrs[2], rows[2]);
+    scranrot_sse2_storeu_m128i(row_addrs[3], rows[3]);
 }
 
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
 get_src_tile_row_addresses(
-    const __m128i *row_addrs[static KERNEL_TILE_HEIGHT_PX],
+    const uint8_t *row_addrs[static KERNEL_TILE_HEIGHT_PX],
     const uint8_t *row_addr_0,
     int src_stride_bytes
 ) {
-    row_addrs[0] = (__m128i *)(row_addr_0);
-    row_addrs[1] = (__m128i *)(row_addr_0 + 1 * src_stride_bytes);
-    row_addrs[2] = (__m128i *)(row_addr_0 + 2 * src_stride_bytes);
-    row_addrs[3] = (__m128i *)(row_addr_0 + 3 * src_stride_bytes);
+    row_addrs[0] = row_addr_0;
+    row_addrs[1] = row_addr_0 + 1 * src_stride_bytes;
+    row_addrs[2] = row_addr_0 + 2 * src_stride_bytes;
+    row_addrs[3] = row_addr_0 + 3 * src_stride_bytes;
 }
 
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 static inline void
 get_dst_tile_row_addresses(
-    __m128i *row_addrs[static KERNEL_TILE_HEIGHT_PX],
-    const uint8_t *row_addr_0,
+    uint8_t *row_addrs[static KERNEL_TILE_HEIGHT_PX],
+    uint8_t *row_addr_0,
     int dst_stride_bytes
 ) {
-    row_addrs[0] = (__m128i *)(row_addr_0);
-    row_addrs[1] = (__m128i *)(row_addr_0 + 1 * dst_stride_bytes);
-    row_addrs[2] = (__m128i *)(row_addr_0 + 2 * dst_stride_bytes);
-    row_addrs[3] = (__m128i *)(row_addr_0 + 3 * dst_stride_bytes);
+    row_addrs[0] = row_addr_0;
+    row_addrs[1] = row_addr_0 + 1 * dst_stride_bytes;
+    row_addrs[2] = row_addr_0 + 2 * dst_stride_bytes;
+    row_addrs[3] = row_addr_0 + 3 * dst_stride_bytes;
 }
 
 SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
@@ -146,15 +146,15 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
-    __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
+    __m128i rgba32_shuffle_mask_128 = scranrot_sse2_loadu_m128i(_rgba32_shuffle_mask_128);
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 4 && KERNEL_TILE_HEIGHT_PX == 4, "270 kernel assumes 4x4 RGBA32 tiles.");
 
     __m128i src_block_rows[KERNEL_TILE_HEIGHT_PX];
-    const __m128i *src_block_row_addrs[KERNEL_TILE_HEIGHT_PX];
+    const uint8_t *src_block_row_addrs[KERNEL_TILE_HEIGHT_PX];
 
     __m128i dst_block_rows[KERNEL_TILE_HEIGHT_PX];
-    __m128i *dst_block_row_addrs[KERNEL_TILE_HEIGHT_PX];
+    uint8_t *dst_block_row_addrs[KERNEL_TILE_HEIGHT_PX];
 
 
     for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += KERNEL_TILE_HEIGHT_PX) {
@@ -206,7 +206,7 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
     const int dst_stride_bytes,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
-    __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
+    __m128i rgba32_shuffle_mask_128 = scranrot_sse2_loadu_m128i(_rgba32_shuffle_mask_128);
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 4, "180 kernel assumes 4-width RGBA32 tile");
 
@@ -219,24 +219,24 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
                     ? dst_last_row + RGBA32_PIXEL_STRIDE * (src_width_px - KERNEL_TILE_WIDTH_PX)
                     : dst_last_row + RGBA32_PIXEL_STRIDE * ((src_width_px / KERNEL_TILE_WIDTH_PX) * KERNEL_TILE_WIDTH_PX);
 
-    __m128i       *dst_curr = (__m128i *)dst_start;
-    __m128i const *src_curr = (__m128i *)src;
+    uint8_t       *dst_curr = dst_start;
+    const uint8_t *src_curr = src;
 
     for (int src_row_px = 0; src_row_px < src_height_px; ++src_row_px) {
-        const __m128i *dst_row_base = dst_curr;
-        const __m128i *src_row_base = src_curr;
+        uint8_t       *dst_row_base = dst_curr;
+        const uint8_t *src_row_base = src_curr;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += KERNEL_TILE_WIDTH_PX) {
-            __m128i src_curr_value = _mm_loadu_si128(src_curr);
+            __m128i src_curr_value = scranrot_sse2_loadu_m128i(src_curr);
             src_curr_value = _mm_shuffle_epi8(src_curr_value, rgba32_shuffle_mask_128);
-            _mm_storeu_si128(dst_curr, src_curr_value);
+            scranrot_sse2_storeu_m128i(dst_curr, src_curr_value);
 
-            --dst_curr;
-            ++src_curr;
+            dst_curr -= sizeof(__m128i);
+            src_curr += sizeof(__m128i);
         }
 
-        dst_curr = (__m128i *)((uint8_t *)dst_row_base - dst_stride_bytes);
-        src_curr = (__m128i *)((uint8_t *)src_row_base + src_stride_bytes);
+        dst_curr = dst_row_base - dst_stride_bytes;
+        src_curr = src_row_base + src_stride_bytes;
     }
 }
 
@@ -252,15 +252,15 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
     const int dst_stride_bytes, // Stride of the final output image
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
-    __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
+    __m128i rgba32_shuffle_mask_128 = scranrot_sse2_loadu_m128i(_rgba32_shuffle_mask_128);
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 4 && KERNEL_TILE_HEIGHT_PX == 4, "90 kernel assumes 4x4 RGBA32 tiles.");
 
     __m128i src_block_rows[KERNEL_TILE_HEIGHT_PX];
-    const __m128i *src_block_row_addrs[KERNEL_TILE_HEIGHT_PX];
+    const uint8_t *src_block_row_addrs[KERNEL_TILE_HEIGHT_PX];
 
     __m128i dst_block_rows[KERNEL_TILE_HEIGHT_PX];
-    __m128i *dst_block_row_addrs[KERNEL_TILE_HEIGHT_PX];
+    uint8_t *dst_block_row_addrs[KERNEL_TILE_HEIGHT_PX];
 
 
     for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += KERNEL_TILE_HEIGHT_PX) {
@@ -304,29 +304,29 @@ transform_framebuffer__ssse3_unaligned__rotate_0(
     const int dst_stride_bytes,
     const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
 ) {
-    __m128i rgba32_shuffle_mask_128 = *(__m128i *)_rgba32_shuffle_mask_128;
+    __m128i rgba32_shuffle_mask_128 = scranrot_sse2_loadu_m128i(_rgba32_shuffle_mask_128);
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 4, "0 kernel assumes 4-width RGBA32 tile");
 
-    __m128i       *dst_curr = (__m128i *)dst;
-    __m128i const *src_curr = (__m128i *)src;
+    uint8_t       *dst_curr = dst;
+    const uint8_t *src_curr = src;
 
     for (int src_row_px = 0; src_row_px < src_height_px; ++src_row_px) {
-        const __m128i *const dst_row_base = dst_curr;
-        const __m128i *const src_row_base = src_curr;
+        uint8_t       *const dst_row_base = dst_curr;
+        const uint8_t *const src_row_base = src_curr;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += KERNEL_TILE_WIDTH_PX) {
 
-            __m128i src_curr_value = _mm_loadu_si128(src_curr);
+            __m128i src_curr_value = scranrot_sse2_loadu_m128i(src_curr);
             src_curr_value = _mm_shuffle_epi8(src_curr_value, rgba32_shuffle_mask_128);
-            _mm_storeu_si128(dst_curr, src_curr_value);
+            scranrot_sse2_storeu_m128i(dst_curr, src_curr_value);
 
-            ++dst_curr;
-            ++src_curr;
+            dst_curr += sizeof(__m128i);
+            src_curr += sizeof(__m128i);
         }
 
-        dst_curr = (__m128i *)((uint8_t *)dst_row_base + dst_stride_bytes);
-        src_curr = (__m128i *)((uint8_t *)src_row_base + src_stride_bytes);
+        dst_curr = dst_row_base + dst_stride_bytes;
+        src_curr = src_row_base + src_stride_bytes;
     }
 }
 
