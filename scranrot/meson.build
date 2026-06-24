@@ -1,10 +1,10 @@
 scranrot_inc = include_directories('include')
 scranrot_sources = files(
   'src/scranrot.c',
-  'src/fallback.c',
-  'src/fallback-yuv.c',
-  'src/ssse3.c',
-  'src/ssse3-yuv.c',
+  'src/rgba32-to-rgba32/fallback.c',
+  'src/rgba32-to-rgba32/ssse3.c',
+  'src/rgba32-to-yuv420/fallback.c',
+  'src/rgba32-to-yuv420/ssse3.c',
 )
 scranrot_lib = static_library(
   'scranrot',

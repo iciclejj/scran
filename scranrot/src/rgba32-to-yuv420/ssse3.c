@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <tmmintrin.h>
 
-#include "../include/scranrot.h"
-#include "./sse2.h"
-#include "./generic.h"
+#include "../../include/scranrot.h"
+#include "../sse2.h"
+#include "../generic.h"
 
 
 enum {

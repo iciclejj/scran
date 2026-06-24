@@ -1,8 +1,8 @@
 #include <stddef.h>
 
-#include "../include/scranrot.h"
-#include "./util.h"
-#include "./generic.h"
+#include "../../include/scranrot.h"
+#include "../util.h"
+#include "../generic.h"
 
 
 enum {
