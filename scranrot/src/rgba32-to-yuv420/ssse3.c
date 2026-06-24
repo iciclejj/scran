@@ -7,7 +7,7 @@
 
 #include "scranrot.h"
 #include "../util-sse2.h"
-#include "../generic.h"
+#include "../generic-kernel-dispatcher.h"
 #include "../implementations.h"
 
 
