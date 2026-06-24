@@ -11,11 +11,9 @@
 #define SCRANROT_ALWAYS_INLINE \
     __attribute__((always_inline))
 #define SCRANROT_TARGET_SSSE3 \
-    __attribute__((optimize("O3"))) \
     __attribute__((target("ssse3")))
 // TODO: Make TARGET_FALLBACK more robust against vectorization etc?
 #define SCRANROT_TARGET_FALLBACK \
-    __attribute__((optimize("O3")))
 
 
 typedef bool scranrot_transform_framebuffer_to_yuv_fn(
