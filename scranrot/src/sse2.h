@@ -4,7 +4,7 @@
 
 #include <emmintrin.h>
 
-#include "../include/scranrot.h"
+#include "scranrot.h"
 
 
 static inline __m128i

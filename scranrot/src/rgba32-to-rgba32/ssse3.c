@@ -5,7 +5,7 @@
 #include <tmmintrin.h> // SSE3
 #include <stddef.h>
 
-#include "../../include/scranrot.h"
+#include "scranrot.h"
 #include "../util.h"
 #include "../generic.h"
 #include "../sse2.h"

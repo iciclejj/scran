@@ -1,6 +1,6 @@
 #include <stddef.h>
 
-#include "../../include/scranrot.h"
+#include "scranrot.h"
 #include "../util.h"
 #include "../generic.h"
 

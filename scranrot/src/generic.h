@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "../include/scranrot.h"
+#include "scranrot.h"
 #include "./util.h"
 
 

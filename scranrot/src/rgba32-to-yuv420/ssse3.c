@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <tmmintrin.h>
 
-#include "../../include/scranrot.h"
+#include "scranrot.h"
 #include "../sse2.h"
 #include "../generic.h"
 
