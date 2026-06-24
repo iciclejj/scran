@@ -6,7 +6,7 @@
 #include <tmmintrin.h>
 
 #include "scranrot.h"
-#include "../sse2.h"
+#include "../util-sse2.h"
 #include "../generic.h"
 #include "../implementations.h"
 
