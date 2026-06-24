@@ -922,7 +922,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
 
 
 bool
-scranrot_transform_framebuffer_to_yuv420_ssse3__unaligned(
+scranrot_transform_framebuffer_to_yuv420_ssse3(
     const uint8_t *restrict src,
     int src_width_px,
     int src_height_px,
