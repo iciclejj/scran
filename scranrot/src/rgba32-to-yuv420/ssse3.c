@@ -379,7 +379,7 @@ convert_16px_rgba32_to_yuv_8bpp(
 
 SCRANROT_TARGET_SSSE3
 static void
-transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
+transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_270(
     const uint8_t *restrict src,
     const int src_width_px,
     const int src_height_px,
@@ -522,7 +522,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270(
 
 SCRANROT_TARGET_SSSE3
 static void
-transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
+transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_180(
     const uint8_t *restrict src,
     const int src_width_px,
     const int src_height_px,
@@ -655,7 +655,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180(
 
 SCRANROT_TARGET_SSSE3
 static void
-transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
+transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_90(
     const uint8_t *restrict src,
     const int src_width_px,
     const int src_height_px,
@@ -801,7 +801,7 @@ transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90(
 
 SCRANROT_TARGET_SSSE3
 static void
-transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0(
+transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_0(
     const uint8_t *restrict src,
     const int src_width_px,
     const int src_height_px,
@@ -951,13 +951,13 @@ scranrot_transform_framebuffer_to_yuv420_ssse3(
 
     switch (transform) {
     case SCRANROT_TRANSFORM_270:
-        transform_fn = transform_framebuffer_to_yuv__ssse3_unaligned__rotate_270; break;
+        transform_fn = transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_270; break;
     case SCRANROT_TRANSFORM_180:
-        transform_fn = transform_framebuffer_to_yuv__ssse3_unaligned__rotate_180; break;
+        transform_fn = transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_180; break;
     case SCRANROT_TRANSFORM_90:
-        transform_fn = transform_framebuffer_to_yuv__ssse3_unaligned__rotate_90 ; break;
+        transform_fn = transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_90 ; break;
     case SCRANROT_TRANSFORM_NORMAL:
-        transform_fn = transform_framebuffer_to_yuv__ssse3_unaligned__rotate_0  ; break;
+        transform_fn = transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_0  ; break;
     default:
         // XXX TODO: Implement flipped
         return scranrot_transform_framebuffer_to_yuv420_fallback(
