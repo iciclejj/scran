@@ -8,6 +8,7 @@
 #include "scranrot.h"
 #include "../sse2.h"
 #include "../generic.h"
+#include "../implementations.h"
 
 
 enum {

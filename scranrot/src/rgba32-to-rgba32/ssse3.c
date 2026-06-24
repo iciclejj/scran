@@ -9,6 +9,7 @@
 #include "../util.h"
 #include "../generic.h"
 #include "../sse2.h"
+#include "../implementations.h"
 
 
 enum {

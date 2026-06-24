@@ -2,6 +2,7 @@
 
 #include "scranrot.h"
 #include "./util.h"
+#include "./implementations.h"
 
 
 static scranrot_transform_framebuffer_fn        *m_rgba_fn   = NULL;

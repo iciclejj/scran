@@ -3,6 +3,7 @@
 #include "scranrot.h"
 #include "../util.h"
 #include "../generic.h"
+#include "../implementations.h"
 
 
 enum {

@@ -5,6 +5,7 @@
 
 #include "scranrot.h"
 #include "./util.h"
+#include "./implementations.h"
 
 
 typedef void (*scranrot_transform_framebuffer_to_yuv_impl_fn)(
