@@ -212,9 +212,8 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
     // NOTE: Rotation-specific:
     rgba32_shuffle_mask_128 = scranrot_sse2_rotate_180_get_modified_rgba_shuffle(rgba32_shuffle_mask_128);
 
-    uint8_t *const dst_last_row = dst + (src_height_px - 1) * dst_stride_bytes;
-
-    uint8_t *dst_start = dst_last_row + RGBA32_PIXEL_STRIDE * (src_width_px - KERNEL_TILE_WIDTH_PX);
+    uint8_t *dst_start = scranrot_rgba32_last_row_end(dst, src_width_px, src_height_px, dst_stride_bytes)
+                         - scranrot_rgba32_px_to_bytes(KERNEL_TILE_WIDTH_PX);
     assert(src_width_px % KERNEL_TILE_WIDTH_PX == 0); // Dispatcher's responsibility
 
     uint8_t       *dst_curr = dst_start;

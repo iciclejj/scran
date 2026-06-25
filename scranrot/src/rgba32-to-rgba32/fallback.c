@@ -98,10 +98,8 @@ transform_framebuffer__fallback__rotate_180(
     static const int tile_width  = KERNEL_TILE_WIDTH_PX;
 
     uint8_t *const dst_last_pixel_address =
-        dst
-        + (src_height_px - 1) * dst_stride_bytes
-        + (src_width_px - 1) * RGBA32_PIXEL_STRIDE
-        ;
+        scranrot_rgba32_last_row_end(dst, src_width_px, src_height_px, dst_stride_bytes)
+        - RGBA32_PIXEL_STRIDE;
 
     for (int y = 0; y < src_height_px; y += tile_height) {
         for (int x = 0; x < src_width_px; x += tile_width) {

@@ -53,5 +53,68 @@ scranrot_get_transformed_width(int src_width, int src_height, enum scranrot_tran
          : src_width;
 }
 
+static inline int
+scranrot_rgba32_px_to_bytes(int px) {
+    return px * RGBA32_PIXEL_STRIDE;
+}
+
+static inline uint8_t *
+scranrot_rgba32_row_end(uint8_t *row_start, int width_px) {
+    return row_start + scranrot_rgba32_px_to_bytes(width_px);
+}
+
+static inline uint8_t *
+scranrot_rgba32_last_row_start(uint8_t *first_row_start, int height_px, int stride_bytes) {
+    return first_row_start + ((height_px - 1) * stride_bytes);
+}
+
+static inline uint8_t *
+scranrot_rgba32_last_row_end(uint8_t *first_row_start, int width_px, int height_px, int stride_bytes) {
+    return scranrot_rgba32_row_end(
+               scranrot_rgba32_last_row_start(first_row_start, height_px, stride_bytes),
+               width_px
+           );
+}
+
+static inline uint8_t *
+scranrot_yuv420_y_row_end(uint8_t *row_start, int y_width) {
+    return row_start + (y_width);
+}
+
+static inline uint8_t *
+scranrot_yuv420_y_last_row_start(uint8_t *first_row_start, int y_height, int y_stride_bytes) {
+    return first_row_start + ((y_height - 1) * y_stride_bytes);
+}
+
+static inline uint8_t *
+scranrot_yuv420_y_last_row_end(uint8_t *first_row_start, int y_width, int y_height, int y_stride_bytes) {
+    return scranrot_yuv420_y_row_end(
+               scranrot_yuv420_y_last_row_start(first_row_start, y_height, y_stride_bytes),
+               y_width
+           );
+
+}
+
+static inline uint8_t *
+scranrot_yuv420_uv_row_end(uint8_t *row_start, int y_width) {
+    int uv_width = y_width / 2;
+    return row_start + (uv_width);
+}
+
+static inline uint8_t *
+scranrot_yuv420_uv_last_row_start(uint8_t *first_row_start, int y_height, int uv_stride_bytes) {
+    int uv_height = y_height / 2;
+    return first_row_start + ((uv_height - 1) * uv_stride_bytes);
+}
+
+static inline uint8_t *
+scranrot_yuv420_uv_last_row_end(uint8_t *first_row_start, int y_width, int y_height, int uv_stride_bytes) {
+    return scranrot_yuv420_uv_row_end(
+               scranrot_yuv420_uv_last_row_start(first_row_start, y_height, uv_stride_bytes),
+               y_width
+           );
+
+}
+
 
 #endif

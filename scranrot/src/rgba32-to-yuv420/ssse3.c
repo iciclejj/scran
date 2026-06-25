@@ -6,6 +6,7 @@
 #include <tmmintrin.h>
 
 #include "scranrot.h"
+#include "../util.h"
 #include "../util-sse2.h"
 #include "../generic-kernel-dispatcher.h"
 #include "../implementations.h"
@@ -238,9 +239,9 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_270(
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
 
     const int dst_height_px = src_width_px;
-    uint8_t *dst_y_start = y_plane + (dst_height_px   - 1)*y_stride;
-    uint8_t *dst_u_start = u_plane + (dst_height_px/2 - 1)*u_stride;
-    uint8_t *dst_v_start = v_plane + (dst_height_px/2 - 1)*v_stride;
+    uint8_t *dst_y_start = scranrot_yuv420_y_last_row_start( y_plane, dst_height_px, y_stride);
+    uint8_t *dst_u_start = scranrot_yuv420_uv_last_row_start(u_plane, dst_height_px, u_stride);
+    uint8_t *dst_v_start = scranrot_yuv420_uv_last_row_start(v_plane, dst_height_px, v_stride);
 
 
     for (int y = 0; y <= src_height_px - 32; y += 32) {
@@ -382,9 +383,12 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_180(
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
 
-    uint8_t *dst_y_start = y_plane + (src_height_px-1)   * y_stride + (src_width_px   - sizeof(__m128i));
-    uint8_t *dst_u_start = u_plane + (src_height_px-1)/2 * u_stride + (src_width_px/2 - sizeof(__m128i));
-    uint8_t *dst_v_start = v_plane + (src_height_px-1)/2 * v_stride + (src_width_px/2 - sizeof(__m128i));
+    uint8_t *dst_y_start = scranrot_yuv420_y_last_row_end( y_plane, src_width_px, src_height_px, y_stride)
+                           - sizeof(__m128i);
+    uint8_t *dst_u_start = scranrot_yuv420_uv_last_row_end(u_plane, src_width_px, src_height_px, u_stride)
+                           - sizeof(__m128i);
+    uint8_t *dst_v_start = scranrot_yuv420_uv_last_row_end(v_plane, src_width_px, src_height_px, v_stride)
+                           - sizeof(__m128i);
 
 
     for (int y = 0; y < src_height_px; y += 32) {
@@ -513,13 +517,13 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_90(
     // TODO: Better to just _mm_set1_epi16(1) in each location?
     const __m128i hadam_ident_epi16 = _mm_set1_epi16(1);
 
-    // 90-rotation dst starts at the right edge and moves backwards, so the current (sub-)tile
-    // is always positioned "behind" us.
-    static const int dst_col_offset = -16;
     const int dst_width_px = src_height_px;
-    uint8_t *dst_y_start = y_plane + dst_width_px   + dst_col_offset;
-    uint8_t *dst_u_start = u_plane + dst_width_px/2 + dst_col_offset;
-    uint8_t *dst_v_start = v_plane + dst_width_px/2 + dst_col_offset;
+    uint8_t *dst_y_start = scranrot_yuv420_y_row_end( y_plane, dst_width_px)
+                           - sizeof(__m128i);
+    uint8_t *dst_u_start = scranrot_yuv420_uv_row_end(u_plane, dst_width_px)
+                           - sizeof(__m128i);
+    uint8_t *dst_v_start = scranrot_yuv420_uv_row_end(v_plane, dst_width_px)
+                           - sizeof(__m128i);
 
     for (int y = 0; y <= src_height_px - 32; y += 32) {
         for (int x = 0; x <= src_width_px - 32; x += 32) {

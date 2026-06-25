@@ -204,8 +204,8 @@ transform_framebuffer_to_yuv420__generic_dispatcher(
     const int dst_u_stride = dst_width_px / 2;
     const int dst_v_stride = dst_width_px / 2;
     uint8_t *const dst_y = dst;
-    uint8_t *const dst_u = dst_y + dst_y_stride *  dst_height_px;
-    uint8_t *const dst_v = dst_u + dst_u_stride * (dst_height_px / 2);
+    uint8_t *const dst_u = scranrot_yuv420_y_last_row_end(dst_y, dst_width_px, dst_height_px, dst_y_stride);
+    uint8_t *const dst_v = scranrot_yuv420_uv_last_row_end(dst_u, dst_width_px, dst_height_px, dst_u_stride);
 
     *dst_y_ = dst_y;
     *dst_u_ = dst_u;
