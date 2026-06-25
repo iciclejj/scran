@@ -63,13 +63,23 @@ transform_framebuffer_to_yuv__fallback__rotate_270(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "270 kernel assumes 2x2 RGBA32 tile");
 
-    for (int y = 0; y < src_height_px; y += 2) {
-        for (int x = 0; x < src_width_px; x += 2) {
+    uint8_t const *src_tile_row = src;
+    uint8_t       *dst_y_tile_col = scranrot_yuv420_y_last_row_start( dst_y, src_width_px, dst_y_stride);
+    uint8_t       *dst_u_tile_col = scranrot_yuv420_uv_last_row_start(dst_u, src_width_px, dst_u_stride);
+    uint8_t       *dst_v_tile_col = scranrot_yuv420_uv_last_row_start(dst_v, src_width_px, dst_v_stride);
 
-            const uint32_t p00 = scranrot_loadu_u32(src + (y+0) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const uint32_t p10 = scranrot_loadu_u32(src + (y+0) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
-            const uint32_t p01 = scranrot_loadu_u32(src + (y+1) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const uint32_t p11 = scranrot_loadu_u32(src + (y+1) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
+    for (int y = 0; y < src_height_px; y += 2) {
+        uint8_t const *src_row_0 = src_tile_row;
+        uint8_t const *src_row_1 = src_tile_row + src_stride_bytes;
+        uint8_t       *dst_y_tile = dst_y_tile_col;
+        uint8_t       *dst_u_tile = dst_u_tile_col;
+        uint8_t       *dst_v_tile = dst_v_tile_col;
+
+        for (int x = 0; x < src_width_px; x += 2) {
+            const uint32_t p00 = scranrot_loadu_u32(src_row_0 + 0 * RGBA32_PIXEL_STRIDE);
+            const uint32_t p10 = scranrot_loadu_u32(src_row_0 + 1 * RGBA32_PIXEL_STRIDE);
+            const uint32_t p01 = scranrot_loadu_u32(src_row_1 + 0 * RGBA32_PIXEL_STRIDE);
+            const uint32_t p11 = scranrot_loadu_u32(src_row_1 + 1 * RGBA32_PIXEL_STRIDE);
 
             int r00, g00, b00;
             int r10, g10, b10;
@@ -80,18 +90,31 @@ transform_framebuffer_to_yuv__fallback__rotate_270(
             extract_rgb(p01, rgba32_shuffle_mask, &r01, &g01, &b01);
             extract_rgb(p11, rgba32_shuffle_mask, &r11, &g11, &b11);
 
-            dst_y[(src_width_px-1-x) * dst_y_stride + (y  )] = compute_yuv_y(r00, g00, b00);
-            dst_y[(src_width_px-2-x) * dst_y_stride + (y  )] = compute_yuv_y(r10, g10, b10);
-            dst_y[(src_width_px-1-x) * dst_y_stride + (y+1)] = compute_yuv_y(r01, g01, b01);
-            dst_y[(src_width_px-2-x) * dst_y_stride + (y+1)] = compute_yuv_y(r11, g11, b11);
+            uint8_t *const dst_y_row_0 = dst_y_tile;
+            uint8_t *const dst_y_row_1 = dst_y_tile - dst_y_stride;
+            dst_y_row_0[0] = compute_yuv_y(r00, g00, b00);
+            dst_y_row_1[0] = compute_yuv_y(r10, g10, b10);
+            dst_y_row_0[1] = compute_yuv_y(r01, g01, b01);
+            dst_y_row_1[1] = compute_yuv_y(r11, g11, b11);
 
             const int sum_r = r00 + r10 + r01 + r11;
             const int sum_g = g00 + g10 + g01 + g11;
             const int sum_b = b00 + b10 + b01 + b11;
 
-            dst_u[((src_width_px-2-x)/2) * dst_u_stride + (y/2)] = compute_yuv_u(sum_r, sum_g, sum_b);
-            dst_v[((src_width_px-2-x)/2) * dst_v_stride + (y/2)] = compute_yuv_v(sum_r, sum_g, sum_b);
+            *dst_u_tile = compute_yuv_u(sum_r, sum_g, sum_b);
+            *dst_v_tile = compute_yuv_v(sum_r, sum_g, sum_b);
+
+            src_row_0 += 2 * RGBA32_PIXEL_STRIDE;
+            src_row_1 += 2 * RGBA32_PIXEL_STRIDE;
+            dst_y_tile -= 2 * dst_y_stride;
+            dst_u_tile -= dst_u_stride;
+            dst_v_tile -= dst_v_stride;
         }
+
+        src_tile_row += 2 * src_stride_bytes;
+        dst_y_tile_col += 2;
+        dst_u_tile_col += 1;
+        dst_v_tile_col += 1;
     }
 }
 
@@ -112,13 +135,23 @@ transform_framebuffer_to_yuv__fallback__rotate_180(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "180 kernel assumes 2x2 RGBA32 tile");
 
-    for (int y = 0; y < src_height_px; y += 2) {
-        for (int x = 0; x < src_width_px; x += 2) {
+    uint8_t const *src_tile_row = src;
+    uint8_t       *dst_y_tile_row = scranrot_yuv420_y_last_row_end( dst_y, src_width_px, src_height_px, dst_y_stride) - 1;
+    uint8_t       *dst_u_tile_row = scranrot_yuv420_uv_last_row_end(dst_u, src_width_px, src_height_px, dst_u_stride) - 1;
+    uint8_t       *dst_v_tile_row = scranrot_yuv420_uv_last_row_end(dst_v, src_width_px, src_height_px, dst_v_stride) - 1;
 
-            const uint32_t p00 = scranrot_loadu_u32(src + (y+0) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const uint32_t p10 = scranrot_loadu_u32(src + (y+0) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
-            const uint32_t p01 = scranrot_loadu_u32(src + (y+1) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const uint32_t p11 = scranrot_loadu_u32(src + (y+1) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
+    for (int y = 0; y < src_height_px; y += 2) {
+        uint8_t const *src_row_0 = src_tile_row;
+        uint8_t const *src_row_1 = src_tile_row + src_stride_bytes;
+        uint8_t       *dst_y_tile = dst_y_tile_row;
+        uint8_t       *dst_u_tile = dst_u_tile_row;
+        uint8_t       *dst_v_tile = dst_v_tile_row;
+
+        for (int x = 0; x < src_width_px; x += 2) {
+            const uint32_t p00 = scranrot_loadu_u32(src_row_0 + 0 * RGBA32_PIXEL_STRIDE);
+            const uint32_t p10 = scranrot_loadu_u32(src_row_0 + 1 * RGBA32_PIXEL_STRIDE);
+            const uint32_t p01 = scranrot_loadu_u32(src_row_1 + 0 * RGBA32_PIXEL_STRIDE);
+            const uint32_t p11 = scranrot_loadu_u32(src_row_1 + 1 * RGBA32_PIXEL_STRIDE);
 
             int r00, g00, b00;
             int r10, g10, b10;
@@ -129,18 +162,31 @@ transform_framebuffer_to_yuv__fallback__rotate_180(
             extract_rgb(p01, rgba32_shuffle_mask, &r01, &g01, &b01);
             extract_rgb(p11, rgba32_shuffle_mask, &r11, &g11, &b11);
 
-            dst_y[(src_height_px-1-y) * dst_y_stride + (src_width_px-1-x)] = compute_yuv_y(r00, g00, b00);
-            dst_y[(src_height_px-1-y) * dst_y_stride + (src_width_px-2-x)] = compute_yuv_y(r10, g10, b10);
-            dst_y[(src_height_px-2-y) * dst_y_stride + (src_width_px-1-x)] = compute_yuv_y(r01, g01, b01);
-            dst_y[(src_height_px-2-y) * dst_y_stride + (src_width_px-2-x)] = compute_yuv_y(r11, g11, b11);
+            uint8_t *const dst_y_row_0 = dst_y_tile;
+            uint8_t *const dst_y_row_1 = dst_y_tile - dst_y_stride;
+            dst_y_row_0[ 0] = compute_yuv_y(r00, g00, b00);
+            dst_y_row_0[-1] = compute_yuv_y(r10, g10, b10);
+            dst_y_row_1[ 0] = compute_yuv_y(r01, g01, b01);
+            dst_y_row_1[-1] = compute_yuv_y(r11, g11, b11);
 
             const int sum_r = r00 + r10 + r01 + r11;
             const int sum_g = g00 + g10 + g01 + g11;
             const int sum_b = b00 + b10 + b01 + b11;
 
-            dst_u[((src_height_px-2-y)/2) * dst_u_stride + ((src_width_px-2-x)/2)] = compute_yuv_u(sum_r, sum_g, sum_b);
-            dst_v[((src_height_px-2-y)/2) * dst_v_stride + ((src_width_px-2-x)/2)] = compute_yuv_v(sum_r, sum_g, sum_b);
+            *dst_u_tile = compute_yuv_u(sum_r, sum_g, sum_b);
+            *dst_v_tile = compute_yuv_v(sum_r, sum_g, sum_b);
+
+            src_row_0 += 2 * RGBA32_PIXEL_STRIDE;
+            src_row_1 += 2 * RGBA32_PIXEL_STRIDE;
+            dst_y_tile -= 2;
+            dst_u_tile -= 1;
+            dst_v_tile -= 1;
         }
+
+        src_tile_row += 2 * src_stride_bytes;
+        dst_y_tile_row -= 2 * dst_y_stride;
+        dst_u_tile_row -= dst_u_stride;
+        dst_v_tile_row -= dst_v_stride;
     }
 }
 
@@ -161,13 +207,25 @@ transform_framebuffer_to_yuv__fallback__rotate_90(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "90 kernel assumes 2x2 RGBA32 tile");
 
-    for (int y = 0; y < src_height_px; y += 2) {
-        for (int x = 0; x < src_width_px; x += 2) {
+    const int dst_width_px = src_height_px;
 
-            const uint32_t p00 = scranrot_loadu_u32(src + (y+0) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const uint32_t p10 = scranrot_loadu_u32(src + (y+0) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
-            const uint32_t p01 = scranrot_loadu_u32(src + (y+1) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const uint32_t p11 = scranrot_loadu_u32(src + (y+1) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
+    uint8_t const *src_tile_row = src;
+    uint8_t       *dst_y_tile_col = scranrot_yuv420_y_row_end( dst_y, dst_width_px) - 1;
+    uint8_t       *dst_u_tile_col = scranrot_yuv420_uv_row_end(dst_u, dst_width_px) - 1;
+    uint8_t       *dst_v_tile_col = scranrot_yuv420_uv_row_end(dst_v, dst_width_px) - 1;
+
+    for (int y = 0; y < src_height_px; y += 2) {
+        uint8_t const *src_row_0 = src_tile_row;
+        uint8_t const *src_row_1 = src_tile_row + src_stride_bytes;
+        uint8_t       *dst_y_tile = dst_y_tile_col;
+        uint8_t       *dst_u_tile = dst_u_tile_col;
+        uint8_t       *dst_v_tile = dst_v_tile_col;
+
+        for (int x = 0; x < src_width_px; x += 2) {
+            const uint32_t p00 = scranrot_loadu_u32(src_row_0 + 0 * RGBA32_PIXEL_STRIDE);
+            const uint32_t p10 = scranrot_loadu_u32(src_row_0 + 1 * RGBA32_PIXEL_STRIDE);
+            const uint32_t p01 = scranrot_loadu_u32(src_row_1 + 0 * RGBA32_PIXEL_STRIDE);
+            const uint32_t p11 = scranrot_loadu_u32(src_row_1 + 1 * RGBA32_PIXEL_STRIDE);
 
             int r00, g00, b00;
             int r10, g10, b10;
@@ -178,18 +236,31 @@ transform_framebuffer_to_yuv__fallback__rotate_90(
             extract_rgb(p01, rgba32_shuffle_mask, &r01, &g01, &b01);
             extract_rgb(p11, rgba32_shuffle_mask, &r11, &g11, &b11);
 
-            dst_y[(x  ) * dst_y_stride + (src_height_px-1-y)] = compute_yuv_y(r00, g00, b00);
-            dst_y[(x+1) * dst_y_stride + (src_height_px-1-y)] = compute_yuv_y(r10, g10, b10);
-            dst_y[(x  ) * dst_y_stride + (src_height_px-2-y)] = compute_yuv_y(r01, g01, b01);
-            dst_y[(x+1) * dst_y_stride + (src_height_px-2-y)] = compute_yuv_y(r11, g11, b11);
+            uint8_t *const dst_y_row_0 = dst_y_tile;
+            uint8_t *const dst_y_row_1 = dst_y_tile + dst_y_stride;
+            dst_y_row_0[ 0] = compute_yuv_y(r00, g00, b00);
+            dst_y_row_1[ 0] = compute_yuv_y(r10, g10, b10);
+            dst_y_row_0[-1] = compute_yuv_y(r01, g01, b01);
+            dst_y_row_1[-1] = compute_yuv_y(r11, g11, b11);
 
             const int sum_r = r00 + r10 + r01 + r11;
             const int sum_g = g00 + g10 + g01 + g11;
             const int sum_b = b00 + b10 + b01 + b11;
 
-            dst_u[(x/2) * dst_u_stride + ((src_height_px-2-y)/2)] = compute_yuv_u(sum_r, sum_g, sum_b);
-            dst_v[(x/2) * dst_v_stride + ((src_height_px-2-y)/2)] = compute_yuv_v(sum_r, sum_g, sum_b);
+            *dst_u_tile = compute_yuv_u(sum_r, sum_g, sum_b);
+            *dst_v_tile = compute_yuv_v(sum_r, sum_g, sum_b);
+
+            src_row_0 += 2 * RGBA32_PIXEL_STRIDE;
+            src_row_1 += 2 * RGBA32_PIXEL_STRIDE;
+            dst_y_tile += 2 * dst_y_stride;
+            dst_u_tile += dst_u_stride;
+            dst_v_tile += dst_v_stride;
         }
+
+        src_tile_row += 2 * src_stride_bytes;
+        dst_y_tile_col -= 2;
+        dst_u_tile_col -= 1;
+        dst_v_tile_col -= 1;
     }
 }
 
@@ -210,13 +281,23 @@ transform_framebuffer_to_yuv__fallback__rotate_0(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "0 kernel assumes 2x2 RGBA32 tile");
 
-    for (int y = 0; y < src_height_px; y += 2) {
-        for (int x = 0; x < src_width_px; x += 2) {
+    uint8_t const *src_tile_row = src;
+    uint8_t       *dst_y_tile_row = dst_y;
+    uint8_t       *dst_u_tile_row = dst_u;
+    uint8_t       *dst_v_tile_row = dst_v;
 
-            const uint32_t p00 = scranrot_loadu_u32(src + (y+0) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const uint32_t p10 = scranrot_loadu_u32(src + (y+0) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
-            const uint32_t p01 = scranrot_loadu_u32(src + (y+1) * src_stride_bytes + (x+0) * RGBA32_PIXEL_STRIDE);
-            const uint32_t p11 = scranrot_loadu_u32(src + (y+1) * src_stride_bytes + (x+1) * RGBA32_PIXEL_STRIDE);
+    for (int y = 0; y < src_height_px; y += 2) {
+        uint8_t const *src_row_0 = src_tile_row;
+        uint8_t const *src_row_1 = src_tile_row + src_stride_bytes;
+        uint8_t       *dst_y_tile = dst_y_tile_row;
+        uint8_t       *dst_u_tile = dst_u_tile_row;
+        uint8_t       *dst_v_tile = dst_v_tile_row;
+
+        for (int x = 0; x < src_width_px; x += 2) {
+            const uint32_t p00 = scranrot_loadu_u32(src_row_0 + 0 * RGBA32_PIXEL_STRIDE);
+            const uint32_t p10 = scranrot_loadu_u32(src_row_0 + 1 * RGBA32_PIXEL_STRIDE);
+            const uint32_t p01 = scranrot_loadu_u32(src_row_1 + 0 * RGBA32_PIXEL_STRIDE);
+            const uint32_t p11 = scranrot_loadu_u32(src_row_1 + 1 * RGBA32_PIXEL_STRIDE);
 
             int r00, g00, b00;
             int r10, g10, b10;
@@ -227,18 +308,31 @@ transform_framebuffer_to_yuv__fallback__rotate_0(
             extract_rgb(p01, rgba32_shuffle_mask, &r01, &g01, &b01);
             extract_rgb(p11, rgba32_shuffle_mask, &r11, &g11, &b11);
 
-            dst_y[(y  ) * dst_y_stride + (x  )] = compute_yuv_y(r00, g00, b00);
-            dst_y[(y  ) * dst_y_stride + (x+1)] = compute_yuv_y(r10, g10, b10);
-            dst_y[(y+1) * dst_y_stride + (x  )] = compute_yuv_y(r01, g01, b01);
-            dst_y[(y+1) * dst_y_stride + (x+1)] = compute_yuv_y(r11, g11, b11);
+            uint8_t *const dst_y_row_0 = dst_y_tile;
+            uint8_t *const dst_y_row_1 = dst_y_tile + dst_y_stride;
+            dst_y_row_0[0] = compute_yuv_y(r00, g00, b00);
+            dst_y_row_0[1] = compute_yuv_y(r10, g10, b10);
+            dst_y_row_1[0] = compute_yuv_y(r01, g01, b01);
+            dst_y_row_1[1] = compute_yuv_y(r11, g11, b11);
 
             const int sum_r = r00 + r10 + r01 + r11;
             const int sum_g = g00 + g10 + g01 + g11;
             const int sum_b = b00 + b10 + b01 + b11;
 
-            dst_u[(y/2) * dst_u_stride + (x/2)] = compute_yuv_u(sum_r, sum_g, sum_b);
-            dst_v[(y/2) * dst_v_stride + (x/2)] = compute_yuv_v(sum_r, sum_g, sum_b);
+            *dst_u_tile = compute_yuv_u(sum_r, sum_g, sum_b);
+            *dst_v_tile = compute_yuv_v(sum_r, sum_g, sum_b);
+
+            src_row_0 += 2 * RGBA32_PIXEL_STRIDE;
+            src_row_1 += 2 * RGBA32_PIXEL_STRIDE;
+            dst_y_tile += 2;
+            dst_u_tile += 1;
+            dst_v_tile += 1;
         }
+
+        src_tile_row += 2 * src_stride_bytes;
+        dst_y_tile_row += 2 * dst_y_stride;
+        dst_u_tile_row += dst_u_stride;
+        dst_v_tile_row += dst_v_stride;
     }
 }
 

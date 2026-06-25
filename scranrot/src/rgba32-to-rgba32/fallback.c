@@ -47,35 +47,47 @@ transform_framebuffer__fallback__rotate_270(
 
     _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "270 kernel assumes 4-row RGBA32 tile");
 
-    const int dst_y_px_max = src_width_px - 1;
+    const int dst_height_px = src_width_px;
 
     static const int tile_height = 4;
     static const int tile_width  = KERNEL_TILE_WIDTH_PX;
 
+    uint8_t const *src_tile_row = src;
+    uint8_t       *dst_tile_col = scranrot_rgba32_last_row_start(dst, dst_height_px, dst_stride_bytes);
+
     for (int y = 0; y < src_height_px; y += tile_height) {
+        uint8_t const *src_tile = src_tile_row;
+        uint8_t       *dst_tile = dst_tile_col;
+
         for (int x = 0; x < src_width_px; x += tile_width) {
+            uint8_t const *_src_tile_row = src_tile;
+            uint8_t       *_dst_tile_col = dst_tile;
 
             for (int _y = 0; _y < tile_height; ++_y) {
+                uint8_t const *_src = _src_tile_row;
+                uint8_t       *_dst = _dst_tile_col;
+
                 for (int _x = 0; _x < tile_width; ++_x) {
-
-                    const uint8_t *const _src = src
-                        + (y + _y) * src_stride_bytes
-                        + (x + _x) * RGBA32_PIXEL_STRIDE;
-
-                    // NOTE: Rotation-specific
-                    uint8_t *const _dst = dst
-                        + (y + _y) * RGBA32_PIXEL_STRIDE
-                        + (dst_y_px_max - (x + _x)) * dst_stride_bytes;
-
                     uint32_t val = scranrot_loadu_u32(_src);
                     val = convert_pixel_format(val, rgba32_shift_mask);
-
                     scranrot_storeu_u32(_dst, val);
+
+                    _src += sizeof(uint32_t);
+                    _dst -= dst_stride_bytes;
                 }
+
+                _src_tile_row += src_stride_bytes;
+                _dst_tile_col += sizeof(uint32_t);
             }
 
+            src_tile += tile_width * sizeof(uint32_t);
+            dst_tile -= tile_width * dst_stride_bytes;
         }
+
+        src_tile_row += tile_height * src_stride_bytes;
+        dst_tile_col += tile_height * sizeof(uint32_t);
     }
+
 }
 
 
@@ -92,37 +104,25 @@ transform_framebuffer__fallback__rotate_180(
 ) {
     uint32_t rgba32_shift_mask = scranrot_loadu_u32(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
 
-    _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "180 kernel assumes 4-row RGBA32 tile");
+    uint8_t const *src_row = src;
+    uint8_t       *dst_row = scranrot_rgba32_last_row_end(dst, src_width_px, src_height_px, dst_stride_bytes)
+                             - RGBA32_PIXEL_STRIDE;
 
-    static const int tile_height = 4;
-    static const int tile_width  = KERNEL_TILE_WIDTH_PX;
+    for (int y = 0; y < src_height_px; ++y) {
+        uint8_t const *_src = src_row;
+        uint8_t       *_dst = dst_row;
 
-    uint8_t *const dst_last_pixel_address =
-        scranrot_rgba32_last_row_end(dst, src_width_px, src_height_px, dst_stride_bytes)
-        - RGBA32_PIXEL_STRIDE;
+        for (int x = 0; x < src_width_px; ++x) {
+            uint32_t val = scranrot_loadu_u32(_src);
+            val = convert_pixel_format(val, rgba32_shift_mask);
+            scranrot_storeu_u32(_dst, val);
 
-    for (int y = 0; y < src_height_px; y += tile_height) {
-        for (int x = 0; x < src_width_px; x += tile_width) {
-
-            for (int _y = 0; _y < tile_height; ++_y) {
-                for (int _x = 0; _x < tile_width; ++_x) {
-
-                    const uint8_t *const _src = src
-                        + (y + _y) * src_stride_bytes
-                        + (x + _x) * RGBA32_PIXEL_STRIDE;
-
-                    uint8_t *const _dst = dst_last_pixel_address
-                        - (y + _y) * dst_stride_bytes
-                        - (x + _x) * RGBA32_PIXEL_STRIDE;
-
-                    uint32_t val = scranrot_loadu_u32(_src);
-                    val = convert_pixel_format(val, rgba32_shift_mask);
-
-                    scranrot_storeu_u32(_dst, val);
-                }
-            }
-
+            _src += sizeof(uint32_t);
+            _dst -= sizeof(uint32_t);
         }
+
+        src_row += src_stride_bytes;
+        dst_row -= dst_stride_bytes;
     }
 }
 
@@ -142,35 +142,48 @@ transform_framebuffer__fallback__rotate_90(
 
     _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "90 kernel assumes 4-row RGBA32 tile");
 
-    const int dst_x_px_max = src_height_px - 1;
+    const int dst_width_px = src_height_px;
 
     static const int tile_height = 4;
     static const int tile_width  = KERNEL_TILE_WIDTH_PX;
 
+    uint8_t const *src_tile_row = src;
+    uint8_t       *dst_tile_col = scranrot_rgba32_row_end(dst, dst_width_px)
+                                  - RGBA32_PIXEL_STRIDE;
+
     for (int y = 0; y < src_height_px; y += tile_height) {
+        uint8_t const *src_tile = src_tile_row;
+        uint8_t       *dst_tile = dst_tile_col;
+
         for (int x = 0; x < src_width_px; x += tile_width) {
+            uint8_t const *_src_tile_row = src_tile;
+            uint8_t       *_dst_tile_col = dst_tile;
 
             for (int _y = 0; _y < tile_height; ++_y) {
+                uint8_t const *_src = _src_tile_row;
+                uint8_t       *_dst = _dst_tile_col;
+
                 for (int _x = 0; _x < tile_width; ++_x) {
-
-                    const uint8_t *const _src = src
-                        + (y + _y) * src_stride_bytes
-                        + (x + _x) * RGBA32_PIXEL_STRIDE;
-
-                    // NOTE: Rotation-specific (90 vs 270)
-                    uint8_t *const _dst = dst
-                        + (dst_x_px_max - (y + _y)) * RGBA32_PIXEL_STRIDE
-                        + (x + _x) * dst_stride_bytes;
-
                     uint32_t val = scranrot_loadu_u32(_src);
                     val = convert_pixel_format(val, rgba32_shift_mask);
-
                     scranrot_storeu_u32(_dst, val);
+
+                    _src += sizeof(uint32_t);
+                    _dst += dst_stride_bytes;
                 }
+
+                _src_tile_row += src_stride_bytes;
+                _dst_tile_col -= sizeof(uint32_t);
             }
 
+            src_tile += tile_width * sizeof(uint32_t);
+            dst_tile += tile_width * dst_stride_bytes;
         }
+
+        src_tile_row += tile_height * src_stride_bytes;
+        dst_tile_col -= tile_height * sizeof(uint32_t);
     }
+
 }
 
 SCRANROT_TARGET_FALLBACK
@@ -186,33 +199,24 @@ transform_framebuffer__fallback__rotate_0(
 ) {
     uint32_t rgba32_shift_mask = scranrot_loadu_u32(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
 
-    _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "0 kernel assumes 4-row RGBA32 tile");
+    uint8_t const *src_row = src;
+    uint8_t       *dst_row = dst;
 
-    static const int tile_height = 4;
-    static const int tile_width  = KERNEL_TILE_WIDTH_PX;
+    for (int y = 0; y < src_height_px; ++y) {
+        uint8_t const *_src = src_row;
+        uint8_t       *_dst = dst_row;
 
-    for (int y = 0; y < src_height_px; y += tile_height) {
-        for (int x = 0; x < src_width_px; x += tile_width) {
+        for (int x = 0; x < src_width_px; ++x) {
+            uint32_t val = scranrot_loadu_u32(_src);
+            val = convert_pixel_format(val, rgba32_shift_mask);
+            scranrot_storeu_u32(_dst, val);
 
-            for (int _y = 0; _y < tile_height; ++_y) {
-                for (int _x = 0; _x < tile_width; ++_x) {
-
-                    const uint8_t *const _src = src
-                        + (y + _y) * src_stride_bytes
-                        + (x + _x) * RGBA32_PIXEL_STRIDE;
-
-                    uint8_t *const _dst = dst
-                        + (y + _y) * dst_stride_bytes
-                        + (x + _x) * RGBA32_PIXEL_STRIDE;
-
-                    uint32_t val = scranrot_loadu_u32(_src);
-                    val = convert_pixel_format(val, rgba32_shift_mask);
-
-                    scranrot_storeu_u32(_dst, val);
-                }
-            }
-
+            _src += sizeof(uint32_t);
+            _dst += sizeof(uint32_t);
         }
+
+        src_row += src_stride_bytes;
+        dst_row += dst_stride_bytes;
     }
 }
 

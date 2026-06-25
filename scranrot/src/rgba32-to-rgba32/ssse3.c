@@ -156,40 +156,31 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
     __m128i dst_block_rows[KERNEL_TILE_HEIGHT_PX];
     uint8_t *dst_block_row_addrs[KERNEL_TILE_HEIGHT_PX];
 
+    const int dst_height_px = src_width_px;
+
+    const uint8_t *src_tile_row = src;
+    uint8_t       *dst_tile_col = scranrot_rgba32_last_row_start(dst, dst_height_px, dst_stride_bytes)
+                                  - (KERNEL_TILE_WIDTH_PX - 1) * dst_stride_bytes;
 
     for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += KERNEL_TILE_HEIGHT_PX) {
-
-        const int dst_col_px = src_row_px; // NOTE: Rotation-speicific
-        const int dst_col_offset_bytes = dst_col_px * RGBA32_PIXEL_STRIDE;
-
-        // NOTE: Rotation-specific:
-        // TODO: We can factor this even farther out
-        uint8_t *dst_block_row_addr_0 = dst
-                                     // src_width_px - KERNEL_TILE_WIDTH_PX because we're loading
-                                     // rows 0,+1,+2,+3 on every loop (note: This also accounts
-                                     // accounts for the -1 for len->index)
-                                     + (src_width_px - KERNEL_TILE_WIDTH_PX) * dst_stride_bytes
-                                     + dst_col_offset_bytes;
-
-        const uint8_t *const src_block_row_addrs_base = src + src_row_px * src_stride_bytes;
+        const uint8_t *src_tile = src_tile_row;
+        uint8_t       *dst_tile = dst_tile_col;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += KERNEL_TILE_WIDTH_PX) {
-
-            const uint8_t *const _src_block_row_addr_0 = src_block_row_addrs_base + src_col_px * RGBA32_PIXEL_STRIDE;
-
-            get_src_tile_row_addresses(src_block_row_addrs, _src_block_row_addr_0, src_stride_bytes);
+            get_src_tile_row_addresses(src_block_row_addrs, src_tile, src_stride_bytes);
             load_tile_rows_unaligned(src_block_rows, src_block_row_addrs);
             convert_tile_pixel_format (src_block_rows, rgba32_shuffle_mask_128);
 
-            {
-                rotate_tile_270(src_block_rows, dst_block_rows); // NOTE: Rotation-specific
-
-                get_dst_tile_row_addresses(dst_block_row_addrs, dst_block_row_addr_0, dst_stride_bytes);
-                dst_block_row_addr_0 -= dst_stride_bytes * KERNEL_TILE_WIDTH_PX; // NOTE: Rotation-specific
-            }
-
+            rotate_tile_270(src_block_rows, dst_block_rows);
+            get_dst_tile_row_addresses(dst_block_row_addrs, dst_tile, dst_stride_bytes);
             store_tile_rows_unaligned(dst_block_rows, dst_block_row_addrs);
+
+            src_tile += sizeof(__m128i);
+            dst_tile -= dst_stride_bytes * KERNEL_TILE_WIDTH_PX;
         }
+
+        src_tile_row += KERNEL_TILE_HEIGHT_PX * src_stride_bytes;
+        dst_tile_col += KERNEL_TILE_HEIGHT_PX * RGBA32_PIXEL_STRIDE;
     }
 }
 
@@ -259,33 +250,31 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
     __m128i dst_block_rows[KERNEL_TILE_HEIGHT_PX];
     uint8_t *dst_block_row_addrs[KERNEL_TILE_HEIGHT_PX];
 
+    const int dst_width_px = src_height_px;
+
+    const uint8_t *src_tile_row = src;
+    uint8_t       *dst_tile_col = scranrot_rgba32_row_end(dst, dst_width_px)
+                                  - sizeof(__m128i);
 
     for (int src_row_px = 0; src_row_px < src_height_px; src_row_px += KERNEL_TILE_HEIGHT_PX) {
-        // NOTE: Rotation-specific code:
-        const int dst_col_px = (src_height_px - KERNEL_TILE_HEIGHT_PX) - src_row_px; // -KERNEL_TILE_HEIGHT => len -> tile index
-        SCRANROT_ASSERT(RGBA32_PIXEL_STRIDE * (dst_col_px + KERNEL_TILE_HEIGHT_PX) <= dst_stride_bytes); // Stay within padded bounds
-        const int dst_col_offset_bytes = dst_col_px * RGBA32_PIXEL_STRIDE;
-        uint8_t *dst_block_row_addr_0 = dst + dst_col_offset_bytes;
-
-        const uint8_t *const src_block_row_addrs_base = src + src_row_px * src_stride_bytes;
+        const uint8_t *src_tile = src_tile_row;
+        uint8_t       *dst_tile = dst_tile_col;
 
         for (int src_col_px = 0; src_col_px < src_width_px; src_col_px += KERNEL_TILE_WIDTH_PX) {
-
-            const uint8_t *const _src_block_row_addr_0 = src_block_row_addrs_base + src_col_px * RGBA32_PIXEL_STRIDE;
-
-            get_src_tile_row_addresses(src_block_row_addrs, _src_block_row_addr_0, src_stride_bytes);
+            get_src_tile_row_addresses(src_block_row_addrs, src_tile, src_stride_bytes);
             load_tile_rows_unaligned(src_block_rows, src_block_row_addrs);
             convert_tile_pixel_format(src_block_rows, rgba32_shuffle_mask_128);
 
-            {
-                // NOTE: Rotation-specific code
-                rotate_tile_90(src_block_rows, dst_block_rows);
-                get_dst_tile_row_addresses(dst_block_row_addrs, dst_block_row_addr_0, dst_stride_bytes);
-                dst_block_row_addr_0 += dst_stride_bytes * KERNEL_TILE_WIDTH_PX;
-            }
-
+            rotate_tile_90(src_block_rows, dst_block_rows);
+            get_dst_tile_row_addresses(dst_block_row_addrs, dst_tile, dst_stride_bytes);
             store_tile_rows_unaligned(dst_block_rows, dst_block_row_addrs);
+
+            src_tile += sizeof(__m128i);
+            dst_tile += dst_stride_bytes * KERNEL_TILE_WIDTH_PX;
         }
+
+        src_tile_row += KERNEL_TILE_HEIGHT_PX * src_stride_bytes;
+        dst_tile_col -= KERNEL_TILE_HEIGHT_PX * RGBA32_PIXEL_STRIDE;
     }
 }
 
