@@ -7,14 +7,14 @@
 #include "./implementations.h"
 
 
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+SCRANROT_TARGET_SSE2 SCRANROT_ALWAYS_INLINE
 static inline __m128i
 scranrot_sse2_loadu_m128i(const void *src)
 {
     return _mm_loadu_si128((const __m128i_u *)src);
 }
 
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+SCRANROT_TARGET_SSE2 SCRANROT_ALWAYS_INLINE
 static inline void
 scranrot_sse2_storeu_m128i(void *dst, __m128i val)
 {
@@ -22,7 +22,7 @@ scranrot_sse2_storeu_m128i(void *dst, __m128i val)
 }
 
 
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+SCRANROT_TARGET_SSE2 SCRANROT_ALWAYS_INLINE
 static inline void
 scranrot_sse2_transpose_inplace_16x16_8bpp(
     __m128i arg[16]
@@ -107,7 +107,7 @@ scranrot_sse2_transpose_inplace_16x16_8bpp(
 
 
 
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+SCRANROT_TARGET_SSE2 SCRANROT_ALWAYS_INLINE
 static inline void
 scranrot_sse2_rotate_90_inplace_16x16_8bpp(
     __m128i arg[16]

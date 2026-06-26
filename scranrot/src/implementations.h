@@ -10,6 +10,8 @@
 
 #define SCRANROT_ALWAYS_INLINE \
     __attribute__((always_inline))
+#define SCRANROT_TARGET_SSE2 \
+    __attribute__((target("sse2")))
 #define SCRANROT_TARGET_SSSE3 \
     __attribute__((target("ssse3")))
 // TODO: Make TARGET_FALLBACK more robust against vectorization etc?
