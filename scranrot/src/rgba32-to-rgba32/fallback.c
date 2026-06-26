@@ -31,6 +31,12 @@ convert_pixel_format(
     return converted_pixel;
 }
 
+SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
+static inline uint32_t
+get_rgba32_shift_mask(uint32_t rgba32_shuffle_mask) {
+    return rgba32_shuffle_mask * 8;
+}
+
 
 SCRANROT_TARGET_FALLBACK
 static void
@@ -41,9 +47,9 @@ transform_framebuffer__fallback__rotate_270(
     const int src_stride_bytes,
     uint8_t *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
-    const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shuffle_mask
 ) {
-    uint32_t rgba32_shift_mask = scranrot_loadu_u32(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shift_mask = get_rgba32_shift_mask(rgba32_shuffle_mask);
 
     _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "270 kernel assumes 4-row RGBA32 tile");
 
@@ -100,9 +106,9 @@ transform_framebuffer__fallback__rotate_180(
     const int src_stride_bytes,
     uint8_t *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
-    const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shuffle_mask
 ) {
-    uint32_t rgba32_shift_mask = scranrot_loadu_u32(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shift_mask = get_rgba32_shift_mask(rgba32_shuffle_mask);
 
     uint8_t const *src_row = src;
     uint8_t       *dst_row = scranrot_rgba32_last_row_end(dst, src_width_px, src_height_px, dst_stride_bytes)
@@ -136,9 +142,9 @@ transform_framebuffer__fallback__rotate_90(
     const int src_stride_bytes,
     uint8_t *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
-    const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shuffle_mask
 ) {
-    uint32_t rgba32_shift_mask = scranrot_loadu_u32(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shift_mask = get_rgba32_shift_mask(rgba32_shuffle_mask);
 
     _Static_assert(KERNEL_TILE_HEIGHT_PX == 4, "90 kernel assumes 4-row RGBA32 tile");
 
@@ -195,9 +201,9 @@ transform_framebuffer__fallback__rotate_0(
     const int src_stride_bytes,
     uint8_t *const restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
-    const void *_rgba32_shift_mask // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shuffle_mask
 ) {
-    uint32_t rgba32_shift_mask = scranrot_loadu_u32(_rgba32_shift_mask); // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shift_mask = get_rgba32_shift_mask(rgba32_shuffle_mask);
 
     uint8_t const *src_row = src;
     uint8_t       *dst_row = dst;
@@ -231,7 +237,7 @@ scranrot_transform_framebuffer_fallback(
     // Reorders dst's pixel byte-order relative to src.
     //   8-bit-valued mask representing new order
     //     I.e. 0x03000201 => 3, 0, 2, 1 => (RGBA -> ARBG)
-    uint32_t _rgba_shuffle_mask,
+    uint32_t rgba_shuffle_mask,
     enum scranrot_transform transform,
     uintptr_t *dst_stride
 ) {
@@ -246,8 +252,6 @@ scranrot_transform_framebuffer_fallback(
     const int _dst_stride_px = scranrot_get_transformed_width(src_width_px, src_height_px, transform);
     const int dst_stride_bytes = RGBA32_PIXEL_STRIDE * _dst_stride_px;
     *dst_stride = dst_stride_bytes;
-
-    const uint32_t rgba_shift_mask = _rgba_shuffle_mask * 8;
 
     scranrot_transform_framebuffer_impl_fn transform_fn = NULL;
 
@@ -270,7 +274,7 @@ scranrot_transform_framebuffer_fallback(
         src, src_width_px, src_height_px, src_stride_bytes,
         dst, dst_stride_bytes,
         transform_fn,
-        transform, &rgba_shift_mask,
+        transform, rgba_shuffle_mask,
         KERNEL_TILE_WIDTH_PX, KERNEL_TILE_HEIGHT_PX
     );
 }

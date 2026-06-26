@@ -57,10 +57,8 @@ transform_framebuffer_to_yuv__fallback__rotate_270(
     uint8_t *restrict dst_y, const int dst_y_stride,
     uint8_t *restrict dst_u, const int dst_u_stride,
     uint8_t *restrict dst_v, const int dst_v_stride,
-    const void *_rgba32_shuffle_mask
+    const uint32_t rgba32_shuffle_mask
 ) {
-    const uint32_t rgba32_shuffle_mask = scranrot_loadu_u32(_rgba32_shuffle_mask);
-
     _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "270 kernel assumes 2x2 RGBA32 tile");
 
     uint8_t const *src_tile_row = src;
@@ -129,10 +127,8 @@ transform_framebuffer_to_yuv__fallback__rotate_180(
     uint8_t *restrict dst_y, const int dst_y_stride,
     uint8_t *restrict dst_u, const int dst_u_stride,
     uint8_t *restrict dst_v, const int dst_v_stride,
-    const void *_rgba32_shuffle_mask
+    const uint32_t rgba32_shuffle_mask
 ) {
-    const uint32_t rgba32_shuffle_mask = scranrot_loadu_u32(_rgba32_shuffle_mask);
-
     _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "180 kernel assumes 2x2 RGBA32 tile");
 
     uint8_t const *src_tile_row = src;
@@ -201,10 +197,8 @@ transform_framebuffer_to_yuv__fallback__rotate_90(
     uint8_t *restrict dst_y, const int dst_y_stride,
     uint8_t *restrict dst_u, const int dst_u_stride,
     uint8_t *restrict dst_v, const int dst_v_stride,
-    const void *_rgba32_shuffle_mask
+    const uint32_t rgba32_shuffle_mask
 ) {
-    const uint32_t rgba32_shuffle_mask = scranrot_loadu_u32(_rgba32_shuffle_mask);
-
     _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "90 kernel assumes 2x2 RGBA32 tile");
 
     const int dst_width_px = src_height_px;
@@ -275,10 +269,8 @@ transform_framebuffer_to_yuv__fallback__rotate_0(
     uint8_t *restrict dst_y, const int dst_y_stride,
     uint8_t *restrict dst_u, const int dst_u_stride,
     uint8_t *restrict dst_v, const int dst_v_stride,
-    const void *_rgba32_shuffle_mask
+    const uint32_t rgba32_shuffle_mask
 ) {
-    const uint32_t rgba32_shuffle_mask = scranrot_loadu_u32(_rgba32_shuffle_mask);
-
     _Static_assert(KERNEL_TILE_WIDTH_PX == 2 && KERNEL_TILE_HEIGHT_PX == 2, "0 kernel assumes 2x2 RGBA32 tile");
 
     uint8_t const *src_tile_row = src;
@@ -381,7 +373,7 @@ scranrot_transform_framebuffer_to_yuv420_fallback(
         dst,
 
         transform_fn,
-        transform, &rgba_shuffle_mask,
+        transform, rgba_shuffle_mask,
         KERNEL_TILE_WIDTH_PX, KERNEL_TILE_HEIGHT_PX,
 
         // OUT:

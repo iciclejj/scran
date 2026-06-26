@@ -224,9 +224,9 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_270(
     uint8_t *restrict y_plane, int y_stride,
     uint8_t *restrict u_plane, int u_stride,
     uint8_t *restrict v_plane, int v_stride,
-    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shuffle_mask
 ) {
-    const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_loadu_m128i(_rgba32_shuffle_mask_128);
+    const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba32_shuffle_mask);
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "270 kernel assumes 32x32 RGBA32 tiles.");
 
@@ -367,10 +367,10 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_180(
     uint8_t *restrict y_plane, int y_stride,
     uint8_t *restrict u_plane, int u_stride,
     uint8_t *restrict v_plane, int v_stride,
-    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shuffle_mask
 ) {
     const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rotate_180_get_modified_rgba_shuffle(
-        scranrot_sse2_loadu_m128i(_rgba32_shuffle_mask_128)
+        scranrot_sse2_rgba_shuffle_to_m128i(rgba32_shuffle_mask)
     );
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "180 kernel assumes 32x32 RGBA32 tiles.");
@@ -503,9 +503,9 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_90(
     uint8_t *restrict y_plane, int y_stride,
     uint8_t *restrict u_plane, int u_stride,
     uint8_t *restrict v_plane, int v_stride,
-    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shuffle_mask
 ) {
-    const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_loadu_m128i(_rgba32_shuffle_mask_128);
+    const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba32_shuffle_mask);
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "90 kernel assumes 32x32 RGBA32 tiles.");
 
@@ -649,9 +649,9 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_0(
     uint8_t *restrict y_plane, int y_stride,
     uint8_t *restrict u_plane, int u_stride,
     uint8_t *restrict v_plane, int v_stride,
-    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shuffle_mask
 ) {
-    const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_loadu_m128i(_rgba32_shuffle_mask_128);
+    const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba32_shuffle_mask);
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "0 kernel assumes 32x32 RGBA32 tiles.");
 
@@ -785,8 +785,6 @@ scranrot_transform_framebuffer_to_yuv420_ssse3(
         );
     }
 
-    const __m128i rgba_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba_shuffle_mask);
-
     scranrot_transform_framebuffer_to_yuv_impl_fn transform_fn = NULL;
 
     switch (transform) {
@@ -815,7 +813,7 @@ scranrot_transform_framebuffer_to_yuv420_ssse3(
         dst,
 
         transform_fn,
-        transform, &rgba_shuffle_mask_128,
+        transform, rgba_shuffle_mask,
         KERNEL_TILE_WIDTH_PX, KERNEL_TILE_HEIGHT_PX,
 
         // OUT:

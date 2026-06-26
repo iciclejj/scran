@@ -13,13 +13,13 @@ typedef void (*scranrot_transform_framebuffer_to_yuv_impl_fn)(
     uint8_t *restrict dst_y, const int dst_y_stride,
     uint8_t *restrict dst_u, const int dst_u_stride,
     uint8_t *restrict dst_v, const int dst_v_stride,
-    const void *rgba32_shuffle
+    const uint32_t rgba32_shuffle
 );
 
 // TODO: Use uint8_t * here too
 typedef void (*scranrot_transform_framebuffer_impl_fn)(
     const uint8_t *restrict src, const int src_width_px, const int src_height_px, const int src_stride_bytes,
-    uint8_t *restrict dst, const int dst_stride_bytes, const void *rgba32_shuffle
+    uint8_t *restrict dst, const int dst_stride_bytes, const uint32_t rgba32_shuffle
 );
 
 
@@ -60,8 +60,7 @@ transform_framebuffer__generic_dispatcher(
 
     scranrot_transform_framebuffer_impl_fn rotation_impl_fn,
     enum scranrot_transform transform,
-    // rotation_impl_fn-defined format, e.g. __m128i or uint32_t.
-    const void *rgba32_shuffle,
+    const uint32_t rgba32_shuffle,
     int tile_width_px,
     int tile_height_px
 ) {
@@ -185,7 +184,7 @@ transform_framebuffer_to_yuv420__generic_dispatcher(
 
     scranrot_transform_framebuffer_to_yuv_impl_fn rotation_impl_fn,
     enum scranrot_transform transform,
-    const void *rgba32_shuffle, // rotation_impl_fn-defined format, e.g. __m128i or uint32_t.
+    const uint32_t rgba32_shuffle,
     int tile_width_px,
     int tile_height_px,
 

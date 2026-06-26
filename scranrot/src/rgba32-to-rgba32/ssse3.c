@@ -144,9 +144,9 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
     const int src_stride_bytes,
     uint8_t *restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
-    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shuffle_mask
 ) {
-    __m128i rgba32_shuffle_mask_128 = scranrot_sse2_loadu_m128i(_rgba32_shuffle_mask_128);
+    __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba32_shuffle_mask);
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 4 && KERNEL_TILE_HEIGHT_PX == 4, "270 kernel assumes 4x4 RGBA32 tiles.");
 
@@ -194,9 +194,9 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
     const int src_stride_bytes,
     uint8_t *restrict dst,
     const int dst_stride_bytes,
-    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shuffle_mask
 ) {
-    __m128i rgba32_shuffle_mask_128 = scranrot_sse2_loadu_m128i(_rgba32_shuffle_mask_128);
+    __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba32_shuffle_mask);
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 4, "180 kernel assumes 4-width RGBA32 tile");
 
@@ -238,9 +238,9 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
     const int src_stride_bytes,
     uint8_t *restrict dst,
     const int dst_stride_bytes, // Stride of the final output image
-    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shuffle_mask
 ) {
-    __m128i rgba32_shuffle_mask_128 = scranrot_sse2_loadu_m128i(_rgba32_shuffle_mask_128);
+    __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba32_shuffle_mask);
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 4 && KERNEL_TILE_HEIGHT_PX == 4, "90 kernel assumes 4x4 RGBA32 tiles.");
 
@@ -288,9 +288,9 @@ transform_framebuffer__ssse3_unaligned__rotate_0(
     const int src_stride_bytes,
     uint8_t *restrict dst,
     const int dst_stride_bytes,
-    const void *_rgba32_shuffle_mask_128 // Mask for _mm_shuffle_epi8
+    const uint32_t rgba32_shuffle_mask
 ) {
-    __m128i rgba32_shuffle_mask_128 = scranrot_sse2_loadu_m128i(_rgba32_shuffle_mask_128);
+    __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba32_shuffle_mask);
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 4, "0 kernel assumes 4-width RGBA32 tile");
 
@@ -341,8 +341,6 @@ scranrot_transform_framebuffer_ssse3(
     }
     SCRANROT_ASSERT(src_width_px * RGBA32_PIXEL_STRIDE <= src_stride_bytes);
 
-    const __m128i rgba_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba_shuffle_mask);
-
     const int _dst_stride_px = scranrot_get_transformed_width(src_width_px, src_height_px, transform);
     // XXX: This is not needed for unaligned
     const int dst_stride_bytes = RGBA32_PIXEL_STRIDE * _dst_stride_px;
@@ -376,7 +374,7 @@ scranrot_transform_framebuffer_ssse3(
         dst, dst_stride_bytes,
 
         transform_fn,
-        transform, &rgba_shuffle_mask_128,
+        transform, rgba_shuffle_mask,
         KERNEL_TILE_WIDTH_PX, KERNEL_TILE_HEIGHT_PX
     );
 }
