@@ -194,7 +194,6 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
 }
 
 
-// XXX TODO: Double-check the padding and alignment for this
 SCRANROT_TARGET_SSSE3
 static void
 transform_framebuffer__ssse3_unaligned__rotate_180(
@@ -215,9 +214,8 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
 
     uint8_t *const dst_last_row = dst + (src_height_px - 1) * dst_stride_bytes;
 
-    uint8_t *dst_start = (src_width_px % KERNEL_TILE_WIDTH_PX) == 0
-                    ? dst_last_row + RGBA32_PIXEL_STRIDE * (src_width_px - KERNEL_TILE_WIDTH_PX)
-                    : dst_last_row + RGBA32_PIXEL_STRIDE * ((src_width_px / KERNEL_TILE_WIDTH_PX) * KERNEL_TILE_WIDTH_PX);
+    uint8_t *dst_start = dst_last_row + RGBA32_PIXEL_STRIDE * (src_width_px - KERNEL_TILE_WIDTH_PX);
+    assert(src_width_px % KERNEL_TILE_WIDTH_PX == 0); // Dispatcher's responsibility
 
     uint8_t       *dst_curr = dst_start;
     const uint8_t *src_curr = src;
