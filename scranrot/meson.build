@@ -5,6 +5,7 @@ scranrot_sources = files(
   'src/rgba32-to-rgba32/ssse3.c',
   'src/rgba32-to-yuv420/fallback.c',
   'src/rgba32-to-yuv420/ssse3.c',
+  'src/rgba32-to-yuv420/avx2.c',
 )
 scranrot_c_args = [
   '-Wcast-align=strict',

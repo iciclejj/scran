@@ -14,6 +14,8 @@
     __attribute__((target("sse2")))
 #define SCRANROT_TARGET_SSSE3 \
     __attribute__((target("ssse3")))
+#define SCRANROT_TARGET_AVX2 \
+    __attribute__((target("avx2")))
 // TODO: Make TARGET_FALLBACK more robust against vectorization etc?
 #define SCRANROT_TARGET_FALLBACK \
 
@@ -53,6 +55,7 @@ typedef bool scranrot_transform_framebuffer_fn(
 
 scranrot_transform_framebuffer_fn scranrot_transform_framebuffer_ssse3;
 scranrot_transform_framebuffer_fn scranrot_transform_framebuffer_fallback;
+scranrot_transform_framebuffer_to_yuv_fn scranrot_transform_framebuffer_to_yuv420_avx2;
 scranrot_transform_framebuffer_to_yuv_fn scranrot_transform_framebuffer_to_yuv420_ssse3;
 scranrot_transform_framebuffer_to_yuv_fn scranrot_transform_framebuffer_to_yuv420_fallback;
 
