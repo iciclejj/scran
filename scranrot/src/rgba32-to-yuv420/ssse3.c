@@ -137,7 +137,7 @@ packus_epi32_ssse3_assume_0_to_i16max(__m128i a, __m128i b) {
 
 static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-    const __m128i rgba_in[4],
+    const __m128i rgba_in[static 4],
     const __m128i *const coefficients,
     // Should probably always be 1. Required as an arg to not re-initialize every time.
     const __m128i *const hadamard_scaler,
@@ -179,7 +179,7 @@ convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
 
 static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 convert_16px_rgba32_to_yuv_8bpp(
-    const __m128i rgba_in[4],
+    const __m128i rgba_in[static 4],
     const __m128i *const coefficients_a,
     const __m128i *const coefficients_b,
     // Should probably always be 1. Required as an arg to not re-initialize every time.
