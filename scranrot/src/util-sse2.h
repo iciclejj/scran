@@ -7,23 +7,20 @@
 #include "./implementations.h"
 
 
-SCRANROT_TARGET_SSE2 SCRANROT_ALWAYS_INLINE
-static inline __m128i
+static inline __m128i SCRANROT_TARGET_SSE2 SCRANROT_ALWAYS_INLINE
 scranrot_sse2_loadu_m128i(const void *src)
 {
     return _mm_loadu_si128((const __m128i_u *)src);
 }
 
-SCRANROT_TARGET_SSE2 SCRANROT_ALWAYS_INLINE
-static inline void
+static inline void SCRANROT_TARGET_SSE2 SCRANROT_ALWAYS_INLINE
 scranrot_sse2_storeu_m128i(void *dst, __m128i val)
 {
     _mm_storeu_si128((__m128i_u *)dst, val);
 }
 
 
-SCRANROT_TARGET_SSE2 SCRANROT_ALWAYS_INLINE
-static inline void
+static inline void SCRANROT_TARGET_SSE2 SCRANROT_ALWAYS_INLINE
 scranrot_sse2_transpose_inplace_16x16_8bpp(
     __m128i arg[16]
 ) {
@@ -107,8 +104,7 @@ scranrot_sse2_transpose_inplace_16x16_8bpp(
 
 
 
-SCRANROT_TARGET_SSE2 SCRANROT_ALWAYS_INLINE
-static inline void
+static inline void SCRANROT_TARGET_SSE2 SCRANROT_ALWAYS_INLINE
 scranrot_sse2_rotate_90_inplace_16x16_8bpp(
     __m128i arg[16]
 ) {
@@ -194,8 +190,7 @@ scranrot_sse2_rgba_shuffle_to_m128i(uint32_t rgba_shuffle_mask) {
     return rgba_shuffle_mask_128;
 }
 
-SCRANROT_ALWAYS_INLINE
-static inline __m128i
+static inline __m128i SCRANROT_ALWAYS_INLINE
 scranrot_sse2_rotate_180_get_modified_rgba_shuffle(const __m128i original_rgba_shuffle_mask) {
     return _mm_shuffle_epi32(original_rgba_shuffle_mask, _MM_SHUFFLE(0,1,2,3));
 }

@@ -15,8 +15,7 @@ enum {
 };
 
 
-SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
-static inline void
+static inline void SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 extract_rgb(
     uint32_t pixel,
     uint32_t rgba_shuffle_mask,
@@ -27,28 +26,24 @@ extract_rgb(
     *b = (pixel >> (((rgba_shuffle_mask >> 16) & 0xFF) * 8)) & 0xFF;
 }
 
-SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
-static inline uint8_t
+static inline uint8_t SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 compute_yuv_y(int r, int g, int b) {
     return (77 * r + 150 * g + 29 * b) >> 8;
 }
 
 // 131584 == 32896 * 4. Offset and division by 4 are merged into a single >>10.
-SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
-static inline uint8_t
+static inline uint8_t SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 compute_yuv_u(int sum_r, int sum_g, int sum_b) {
     return (-43 * sum_r -  84 * sum_g + 127 * sum_b + 131584) >> 10;
 }
 
-SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
-static inline uint8_t
+static inline uint8_t SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 compute_yuv_v(int sum_r, int sum_g, int sum_b) {
     return (127 * sum_r - 106 * sum_g -  21 * sum_b + 131584) >> 10;
 }
 
 
-SCRANROT_TARGET_FALLBACK
-static void
+static void SCRANROT_TARGET_FALLBACK
 transform_framebuffer_to_yuv__fallback__rotate_270(
     const uint8_t *restrict src,
     const int src_width_px,
@@ -117,8 +112,7 @@ transform_framebuffer_to_yuv__fallback__rotate_270(
 }
 
 
-SCRANROT_TARGET_FALLBACK
-static void
+static void SCRANROT_TARGET_FALLBACK
 transform_framebuffer_to_yuv__fallback__rotate_180(
     const uint8_t *restrict src,
     const int src_width_px,
@@ -187,8 +181,7 @@ transform_framebuffer_to_yuv__fallback__rotate_180(
 }
 
 
-SCRANROT_TARGET_FALLBACK
-static void
+static void SCRANROT_TARGET_FALLBACK
 transform_framebuffer_to_yuv__fallback__rotate_90(
     const uint8_t *restrict src,
     const int src_width_px,
@@ -259,8 +252,7 @@ transform_framebuffer_to_yuv__fallback__rotate_90(
 }
 
 
-SCRANROT_TARGET_FALLBACK
-static void
+static void SCRANROT_TARGET_FALLBACK
 transform_framebuffer_to_yuv__fallback__rotate_0(
     const uint8_t *restrict src,
     const int src_width_px,

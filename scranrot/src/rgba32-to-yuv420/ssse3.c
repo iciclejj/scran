@@ -76,8 +76,7 @@ get_yuv_v_coefficients() {
 // Same as non-x2 function, but takes two coefficient arrays. Intended to be
 // used when the coefficient values don't fit within signed 8-bit.
 // Coefficient arrays a,b are treated as one array a+b (element-wise sum)
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline __m128i
+static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2(
     const __m128i *const rgba_in,
     const __m128i *const coefficients_a,
@@ -102,8 +101,7 @@ convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2(
           );
 }
 
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline __m128i
+static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
     const __m128i *const rgba_in,
     const __m128i *const coefficients,
@@ -132,14 +130,12 @@ convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
 // SSSE3 replacement for SSE4.1's _mm_packus_epi32.
 //
 // Safe to use as a replacement as long as the input values fall within [0, INT16_MAX]
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline __m128i
+static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 packus_epi32_ssse3_assume_0_to_i16max(__m128i a, __m128i b) {
     return _mm_packs_epi32(a, b);
 }
 
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline __m128i
+static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
     const __m128i rgba_in[4],
     const __m128i *const coefficients,
@@ -181,8 +177,7 @@ convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
            );
 }
 
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline __m128i
+static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 convert_16px_rgba32_to_yuv_8bpp(
     const __m128i rgba_in[4],
     const __m128i *const coefficients_a,
@@ -214,8 +209,7 @@ convert_16px_rgba32_to_yuv_8bpp(
           );
 }
 
-SCRANROT_TARGET_SSSE3
-static void
+static void SCRANROT_TARGET_SSSE3
 transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_270(
     const uint8_t *restrict src,
     const int src_width_px,
@@ -357,8 +351,7 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_270(
     }
 }
 
-SCRANROT_TARGET_SSSE3
-static void
+static void SCRANROT_TARGET_SSSE3
 transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_180(
     const uint8_t *restrict src,
     const int src_width_px,
@@ -493,8 +486,7 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_180(
     }
 }
 
-SCRANROT_TARGET_SSSE3
-static void
+static void SCRANROT_TARGET_SSSE3
 transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_90(
     const uint8_t *restrict src,
     const int src_width_px,
@@ -639,8 +631,7 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_90(
     }
 }
 
-SCRANROT_TARGET_SSSE3
-static void
+static void SCRANROT_TARGET_SSSE3
 transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_0(
     const uint8_t *restrict src,
     const int src_width_px,

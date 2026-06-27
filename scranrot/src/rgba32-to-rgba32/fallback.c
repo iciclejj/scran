@@ -15,8 +15,7 @@ enum {
 };
 
 
-SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
-static inline uint32_t
+static inline uint32_t SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 convert_pixel_format(
     uint32_t pixel,
     uint32_t rgba_shift_mask // NOTE: NOT Shuffle mask.
@@ -31,15 +30,13 @@ convert_pixel_format(
     return converted_pixel;
 }
 
-SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
-static inline uint32_t
+static inline uint32_t SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 get_rgba32_shift_mask(uint32_t rgba32_shuffle_mask) {
     return rgba32_shuffle_mask * 8;
 }
 
 
-SCRANROT_TARGET_FALLBACK
-static void
+static void SCRANROT_TARGET_FALLBACK
 transform_framebuffer__fallback__rotate_270(
     const uint8_t *const restrict src,
     const int src_width_px, // Stride of the entire capture source
@@ -97,8 +94,7 @@ transform_framebuffer__fallback__rotate_270(
 }
 
 
-SCRANROT_TARGET_FALLBACK
-static void
+static void SCRANROT_TARGET_FALLBACK
 transform_framebuffer__fallback__rotate_180(
     const uint8_t *const restrict src,
     const int src_width_px, // Stride of the entire capture source
@@ -133,8 +129,7 @@ transform_framebuffer__fallback__rotate_180(
 }
 
 
-SCRANROT_TARGET_FALLBACK
-static void
+static void SCRANROT_TARGET_FALLBACK
 transform_framebuffer__fallback__rotate_90(
     const uint8_t *const restrict src,
     const int src_width_px, // Stride of the entire capture source
@@ -192,8 +187,7 @@ transform_framebuffer__fallback__rotate_90(
 
 }
 
-SCRANROT_TARGET_FALLBACK
-static void
+static void SCRANROT_TARGET_FALLBACK
 transform_framebuffer__fallback__rotate_0(
     const uint8_t *const restrict src,
     const int src_width_px, // Stride of the entire capture source

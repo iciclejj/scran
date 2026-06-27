@@ -23,33 +23,28 @@ typedef void (*scranrot_transform_framebuffer_impl_fn)(
 );
 
 
-SCRANROT_ALWAYS_INLINE
-static inline int
+static inline int SCRANROT_ALWAYS_INLINE
 get_max_tileDivisible_height_px(int height, int tile_height) {
     return (height / tile_height) * tile_height;
 }
 
-SCRANROT_ALWAYS_INLINE
-static inline int
+static inline int SCRANROT_ALWAYS_INLINE
 get_max_tileDivisible_height_remainder_px(int height, int tile_height) {
     return (height % tile_height);
 }
 
-SCRANROT_ALWAYS_INLINE
-static inline int
+static inline int SCRANROT_ALWAYS_INLINE
 get_max_tileDivisible_width_px(int width, int tile_width) {
     return (width / tile_width) * tile_width;
 }
 
-SCRANROT_ALWAYS_INLINE
-static inline int
+static inline int SCRANROT_ALWAYS_INLINE
 get_max_tileDivisible_width_remainder_px(int width, int tile_width) {
     return (width % tile_width);
 }
 
 // TODO: Should maybe not be inline after all
-SCRANROT_ALWAYS_INLINE
-static inline bool
+static inline bool SCRANROT_ALWAYS_INLINE
 transform_framebuffer__generic_dispatcher(
     const uint8_t *const restrict src,
     const int src_width_px,
@@ -173,8 +168,7 @@ transform_framebuffer__generic_dispatcher(
 }
 
 // TODO: Should maybe not be inline after all
-SCRANROT_ALWAYS_INLINE
-static inline bool
+static inline bool SCRANROT_ALWAYS_INLINE
 transform_framebuffer_to_yuv420__generic_dispatcher(
     const uint8_t *const restrict src,
     const int src_width_px,

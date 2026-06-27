@@ -30,8 +30,7 @@ _Static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "
 
 
 // TODO: Use KERNEL_TILE_HEIGHT_PX for an unrolled loop in these for easier tweaking
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline void
+static inline void SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 load_tile_rows_unaligned(
     __m128i rows[static KERNEL_TILE_HEIGHT_PX],
     const uint8_t *row_addrs[static KERNEL_TILE_HEIGHT_PX]
@@ -42,8 +41,7 @@ load_tile_rows_unaligned(
     rows[3] = scranrot_sse2_loadu_m128i(row_addrs[3]);
 }
 
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline void
+static inline void SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 store_tile_rows_unaligned(
     __m128i rows[static KERNEL_TILE_HEIGHT_PX],
     uint8_t *row_addrs[static KERNEL_TILE_HEIGHT_PX]
@@ -54,8 +52,7 @@ store_tile_rows_unaligned(
     scranrot_sse2_storeu_m128i(row_addrs[3], rows[3]);
 }
 
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline void
+static inline void SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 get_src_tile_row_addresses(
     const uint8_t *row_addrs[static KERNEL_TILE_HEIGHT_PX],
     const uint8_t *row_addr_0,
@@ -67,8 +64,7 @@ get_src_tile_row_addresses(
     row_addrs[3] = row_addr_0 + 3 * src_stride_bytes;
 }
 
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline void
+static inline void SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 get_dst_tile_row_addresses(
     uint8_t *row_addrs[static KERNEL_TILE_HEIGHT_PX],
     uint8_t *row_addr_0,
@@ -80,8 +76,7 @@ get_dst_tile_row_addresses(
     row_addrs[3] = row_addr_0 + 3 * dst_stride_bytes;
 }
 
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline void
+static inline void SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 convert_tile_pixel_format(
     __m128i rows[static KERNEL_TILE_HEIGHT_PX],
     __m128i shuffle_mask
@@ -92,8 +87,7 @@ convert_tile_pixel_format(
     rows[3] = _mm_shuffle_epi8(rows[3], shuffle_mask);
 }
 
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline void
+static inline void SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 rotate_tile_270(
     __m128i src_rows[static KERNEL_TILE_HEIGHT_PX],
     __m128i dst_rows[static KERNEL_TILE_HEIGHT_PX]
@@ -108,8 +102,7 @@ rotate_tile_270(
     dst_rows[0] = _mm_unpackhi_epi64(dst_row_1lo_0lo, dst_row_1hi_0hi);
 }
 
-SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-static inline void
+static inline void SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 rotate_tile_90(
     __m128i src_rows[static KERNEL_TILE_HEIGHT_PX],
     __m128i dst_rows[static KERNEL_TILE_HEIGHT_PX]
@@ -135,8 +128,7 @@ rotate_tile_90(
 //
 
 
-SCRANROT_TARGET_SSSE3
-static void
+static void SCRANROT_TARGET_SSSE3
 transform_framebuffer__ssse3_unaligned__rotate_270(
     const uint8_t *restrict src,
     const int src_width_px, // Stride of the entire capture source
@@ -185,8 +177,7 @@ transform_framebuffer__ssse3_unaligned__rotate_270(
 }
 
 
-SCRANROT_TARGET_SSSE3
-static void
+static void SCRANROT_TARGET_SSSE3
 transform_framebuffer__ssse3_unaligned__rotate_180(
     const uint8_t *restrict src,
     const int src_width_px,
@@ -229,8 +220,7 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
 }
 
 
-SCRANROT_TARGET_SSSE3
-static void
+static void SCRANROT_TARGET_SSSE3
 transform_framebuffer__ssse3_unaligned__rotate_90(
     const uint8_t *restrict src,
     const int src_width_px, // Stride of the entire capture source
@@ -279,8 +269,7 @@ transform_framebuffer__ssse3_unaligned__rotate_90(
 }
 
 
-SCRANROT_TARGET_SSSE3
-static void
+static void SCRANROT_TARGET_SSSE3
 transform_framebuffer__ssse3_unaligned__rotate_0(
     const uint8_t *restrict src,
     const int src_width_px,
