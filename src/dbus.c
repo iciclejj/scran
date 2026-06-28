@@ -675,14 +675,21 @@ scran_dbus_update(int epoll_fd, int *timeout_ms)
     int ret;
 
     // NOTE: Until sd_bus_process() returns 0, there might still be more work
-    // left to do. Since we're single-threaded (outside of libav* internals),
-    // we only call this once, on the off-chance that a loop would block e.g.
+    // left to do. Since our main loop is single-threaded, we limit how many
+    // calls we allow per call, on the off-chance that a loop would block e.g.
     // a video capture frame.
-    //     Might need change if we start using D-Bus more heavily, e.g. ScreenCast.
     //     TODO: Verify that sd_bus_get_timeout() handles this appropriately.
-    if (0 > (ret = sd_bus_process(m_dbus.bus, NULL))) {
-        log_sd_bus_ret_error(ret, "sd_bus_process() failed. Stopping SD-Bus connection.");
-        goto fail;
+    for (int i = 0; i < 8; ++i) {
+        ret = sd_bus_process(m_dbus.bus, NULL);
+
+        if (ret == 0) {
+            break;
+        }
+
+        if (ret < 0) {
+            log_sd_bus_ret_error(ret, "sd_bus_process() failed. Stopping SD-Bus connection.");
+            goto fail;
+        }
     }
 
     // sd_bus_get_events manpage implies we should always check for a new fd
