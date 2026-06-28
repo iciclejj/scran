@@ -43,3 +43,17 @@ shared_library(
   install: false,
   build_by_default: true,
 )
+
+test(
+  'scranrot',
+  executable(
+    'scranrot-test',
+    files('tests/main.c'),
+    dependencies: scranrot_dep,
+    include_directories: [
+      include_directories('src'), # Internal
+    ],
+    c_args: scranrot_c_args,
+  ),
+  suite: 'scranrot',
+)
