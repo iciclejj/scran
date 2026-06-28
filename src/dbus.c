@@ -42,7 +42,6 @@ log_sd_bus_ret_error(
             ret_, strerror(-ret_));
 }
 
-
 static inline void
 log_sd_bus_error(
     const sd_bus_error *error,
@@ -56,22 +55,38 @@ log_sd_bus_error(
     );
 }
 
-static int
-Notification_AddNotification_callback(
-    sd_bus_message *message, // Should not be freed.
-    void *data,
-    sd_bus_error *ret_error // This is for us to return, not to read
-) {
-    const char *error_name = NULL;
-    if (sd_bus_message_is_method_error(message, error_name)) {
-        const sd_bus_error *error = sd_bus_message_get_error(message);
-        log_sd_bus_error(error, "AddNotification Error\n");
+
+static inline int
+get_sd_bus_timeout_ms()
+{
+    uint64_t timeout_abs_usec = UINT64_MAX;
+    sd_bus_get_timeout(m_dbus.bus, &timeout_abs_usec);
+
+    switch (timeout_abs_usec) {
+    case 0:
+        return 0;
+    case UINT64_MAX:
+        return -1;
+    default:
+        break;
+    }
+
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+
+    uint64_t now_usec = ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
+
+    if (timeout_abs_usec < now_usec) {
         return 0;
     }
 
-    DEBUG("AddNotification reply without error.\n");
-    return 0;
+    // Rounding up; see 3 sd_bus_get_timeout
+    int rel_ms = (timeout_abs_usec - now_usec + 999) / 1000;
+
+    return rel_ms;
 }
+
+
 
 static int
 OpenURI_OpenFile_callback(
@@ -131,6 +146,23 @@ scran_portal_open_file(const char *file_path)
 }
 
 
+static int
+Notification_AddNotification_callback(
+    sd_bus_message *message, // Should not be freed.
+    void *data,
+    sd_bus_error *ret_error // This is for us to return, not to read
+) {
+    const char *error_name = NULL;
+    if (sd_bus_message_is_method_error(message, error_name)) {
+        const sd_bus_error *error = sd_bus_message_get_error(message);
+        log_sd_bus_error(error, "AddNotification Error\n");
+        return 0;
+    }
+
+    DEBUG("AddNotification reply without error.\n");
+    return 0;
+}
+
 void
 scran_portal_notify_file_saved(const char *saved_file_path)
 {
@@ -169,89 +201,6 @@ scran_portal_notify_file_saved(const char *saved_file_path)
         );
     }
 
-    return;
-}
-
-
-static inline int
-_get_sd_bus_timeout_ms()
-{
-    uint64_t timeout_abs_usec = UINT64_MAX;
-    sd_bus_get_timeout(m_dbus.bus, &timeout_abs_usec);
-
-    switch (timeout_abs_usec) {
-    case 0:
-        return 0;
-    case UINT64_MAX:
-        return -1;
-    default:
-        break;
-    }
-
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-
-    uint64_t now_usec = ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
-
-    if (timeout_abs_usec < now_usec) {
-        return 0;
-    }
-
-    // Rounding up; see 3 sd_bus_get_timeout
-    int rel_ms = (timeout_abs_usec - now_usec + 999) / 1000;
-
-    return rel_ms;
-}
-
-// Should be fired unconditionally after each poll return if we can't guarantee
-// that the next poll will happen before the currently (at time of poll return)
-// set timeout_ms runs out. See 'man 3 sd_bus_get_{fd/events/timeout}' for more
-// details.
-// This function is still safe to call if dbus was not successfully initialized,
-// and will simply set timeout_ms to -1.
-void
-scran_dbus_update(int epoll_fd, int *timeout_ms)
-{
-    if (m_dbus.bus == NULL) {
-        assert(m_dbus.fd == -1);
-        *timeout_ms = -1;
-        return;
-    }
-
-    int ret;
-
-    // NOTE: Until sd_bus_process() returns 0, there might still be more work
-    // left to do. Since we're single-threaded (outside of libav* internals),
-    // we only call this once, on the off-chance that a loop would block e.g.
-    // a video capture frame.
-    //     Might need change if we start using D-Bus more heavily, e.g. ScreenCast.
-    //     TODO: Verify that sd_bus_get_timeout() handles this appropriately.
-    if (0 > (ret = sd_bus_process(m_dbus.bus, NULL))) {
-        log_sd_bus_ret_error(ret, "sd_bus_process() failed. Stopping SD-Bus connection.");
-        goto fail;
-    }
-
-    // sd_bus_get_events manpage implies we should always check for a new fd
-    int dbus_fd = sd_bus_get_fd(m_dbus.bus);
-    int _dbus_events = sd_bus_get_events(m_dbus.bus);
-    struct epoll_event epoll_event = {
-        .events = _dbus_events,
-        .data.fd = dbus_fd,
-    };
-    if (dbus_fd == m_dbus.fd) {
-        epoll_ctl(epoll_fd, EPOLL_CTL_MOD, m_dbus.fd, &epoll_event);
-    } else {
-        epoll_ctl(epoll_fd, EPOLL_CTL_DEL, m_dbus.fd, NULL);
-        epoll_ctl(epoll_fd, EPOLL_CTL_ADD, dbus_fd, &epoll_event);
-        m_dbus.fd = dbus_fd;
-    }
-
-    *timeout_ms = _get_sd_bus_timeout_ms();
-    return;
-
-fail:
-    scran_dbus_destroy(epoll_fd);
-    *timeout_ms = -1;
     return;
 }
 
@@ -697,7 +646,7 @@ scran_dbus_init(int epoll_fd, int *timeout_ms)
     }
     m_dbus.fd = dbus_fd;
 
-    *timeout_ms = _get_sd_bus_timeout_ms();
+    *timeout_ms = get_sd_bus_timeout_ms();
     return true;
 
 fail:
@@ -706,6 +655,60 @@ fail_before_open:
     *timeout_ms = -1;
     return false;
 }
+
+
+// Should be fired unconditionally after each poll return if we can't guarantee
+// that the next poll will happen before the currently (at time of poll return)
+// set timeout_ms runs out. See 'man 3 sd_bus_get_{fd/events/timeout}' for more
+// details.
+// This function is still safe to call if dbus was not successfully initialized,
+// and will simply set timeout_ms to -1.
+void
+scran_dbus_update(int epoll_fd, int *timeout_ms)
+{
+    if (m_dbus.bus == NULL) {
+        assert(m_dbus.fd == -1);
+        *timeout_ms = -1;
+        return;
+    }
+
+    int ret;
+
+    // NOTE: Until sd_bus_process() returns 0, there might still be more work
+    // left to do. Since we're single-threaded (outside of libav* internals),
+    // we only call this once, on the off-chance that a loop would block e.g.
+    // a video capture frame.
+    //     Might need change if we start using D-Bus more heavily, e.g. ScreenCast.
+    //     TODO: Verify that sd_bus_get_timeout() handles this appropriately.
+    if (0 > (ret = sd_bus_process(m_dbus.bus, NULL))) {
+        log_sd_bus_ret_error(ret, "sd_bus_process() failed. Stopping SD-Bus connection.");
+        goto fail;
+    }
+
+    // sd_bus_get_events manpage implies we should always check for a new fd
+    int dbus_fd = sd_bus_get_fd(m_dbus.bus);
+    int _dbus_events = sd_bus_get_events(m_dbus.bus);
+    struct epoll_event epoll_event = {
+        .events = _dbus_events,
+        .data.fd = dbus_fd,
+    };
+    if (dbus_fd == m_dbus.fd) {
+        epoll_ctl(epoll_fd, EPOLL_CTL_MOD, m_dbus.fd, &epoll_event);
+    } else {
+        epoll_ctl(epoll_fd, EPOLL_CTL_DEL, m_dbus.fd, NULL);
+        epoll_ctl(epoll_fd, EPOLL_CTL_ADD, dbus_fd, &epoll_event);
+        m_dbus.fd = dbus_fd;
+    }
+
+    *timeout_ms = get_sd_bus_timeout_ms();
+    return;
+
+fail:
+    scran_dbus_destroy(epoll_fd);
+    *timeout_ms = -1;
+    return;
+}
+
 
 void
 scran_dbus_destroy_StatusNotifierItem()
