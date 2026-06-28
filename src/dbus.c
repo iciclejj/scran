@@ -672,22 +672,20 @@ scran_dbus_update(int epoll_fd, int *timeout_ms)
         return;
     }
 
-    int ret;
-
     // NOTE: Until sd_bus_process() returns 0, there might still be more work
     // left to do. Since our main loop is single-threaded, we limit how many
     // calls we allow per call, on the off-chance that a loop would block e.g.
     // a video capture frame.
-    //     TODO: Verify that sd_bus_get_timeout() handles this appropriately.
+    int process_ret;
     for (int i = 0; i < 8; ++i) {
-        ret = sd_bus_process(m_dbus.bus, NULL);
+        process_ret = sd_bus_process(m_dbus.bus, NULL);
 
-        if (ret == 0) {
+        if (process_ret == 0) {
             break;
         }
 
-        if (ret < 0) {
-            log_sd_bus_ret_error(ret, "sd_bus_process() failed. Stopping SD-Bus connection.");
+        if (process_ret < 0) {
+            log_sd_bus_ret_error(process_ret, "sd_bus_process() failed. Stopping SD-Bus connection.");
             goto fail;
         }
     }
@@ -707,7 +705,12 @@ scran_dbus_update(int epoll_fd, int *timeout_ms)
         m_dbus.fd = dbus_fd;
     }
 
-    *timeout_ms = get_sd_bus_timeout_ms();
+    if (process_ret > 0) {
+        *timeout_ms = 0; // May not have finished all processing
+    } else {
+        *timeout_ms = get_sd_bus_timeout_ms();
+    }
+
     return;
 
 fail:
