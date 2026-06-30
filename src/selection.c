@@ -13,6 +13,7 @@
 #include "ui.h"
 #include "freezeframe.h"
 #include "init.h"
+#include "dbus.h"
 
 
 extern struct scran g_state;
@@ -208,9 +209,12 @@ stop_grabbing_focus()
             for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
                 scran_ui_keymap_item_set_disabled(ui_ctx, i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, true);
             }
-            scran_ui_keymap_item_set_text(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED);
+            scran_ui_keymap_item_set_text(
+                ui_ctx,
+                SCRAN_UI_KEYMAP_ITEM_I_FOCUS,
+                scran_dbus_have_tray_icon() ? SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED_TRAY : SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED_HELP
+            );
             request_selection_surface_frame_callback(st_output);
         }
     }
 }
-

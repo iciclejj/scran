@@ -25,7 +25,8 @@ static struct {
     sd_bus *bus;
     int fd;
 
-    bool         StatusNotifierItem_name_registered;
+    bool         StatusNotifierItem_name_registered;         // Name registered with DBus
+    bool         StatusNotifierItem_registered_with_watcher; // Item registered with StatusNotifierWatcher
     sd_bus_slot *StatusNotifierItem_vtable_slot;
     sd_bus_slot *StatusNotifierItem_current_callback_slot;
 } m_dbus = { .fd = -1 };
@@ -435,6 +436,8 @@ StatusNotifierWatcher_RegisterStatusNotifierItem_callback(
         goto fail;
     }
 
+    m_dbus.StatusNotifierItem_registered_with_watcher = true;
+
     DEBUG("RegisterStatusNotifierItem reply without error.\n");
     return 0;
 fail:
@@ -720,6 +723,12 @@ fail:
 }
 
 
+bool
+scran_dbus_have_tray_icon()
+{
+    return m_dbus.StatusNotifierItem_registered_with_watcher;
+}
+
 void
 scran_dbus_destroy_StatusNotifierItem()
 {
@@ -740,6 +749,8 @@ scran_dbus_destroy_StatusNotifierItem()
             m_dbus.StatusNotifierItem_name_registered = false;
         }
     }
+
+    m_dbus.StatusNotifierItem_registered_with_watcher = false;
 }
 
 void
@@ -759,4 +770,3 @@ scran_dbus_destroy(int epoll_fd)
         DEBUG("Deleted D-Bus fd from epoll\n");
     }
 }
-
