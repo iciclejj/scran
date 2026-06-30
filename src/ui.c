@@ -53,7 +53,7 @@ static struct keymap_string keymap_image_texts[] = {
     [SCRAN_UI_KEYMAP_TEXT_VIDEO_MOD]              = INIT_KEYMAP_STRING(u"[␣] Video \uf026"),
 
     [SCRAN_UI_KEYMAP_TEXT_FOCUS_DEFAULT]          = INIT_KEYMAP_STRING(u"[⇥] Release focus"),
-    [SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED]         = INIT_KEYMAP_STRING(u"[⇥] Focus released. 'scran -h' for help."),
+    [SCRAN_UI_KEYMAP_TEXT_FOCUS_RELEASED]         = INIT_KEYMAP_STRING(u"[⇥] Click tray icon to retake focus."),
 
 
     [SCRAN_UI_KEYMAP_TEXT_EMPTY]                  = INIT_KEYMAP_STRING(u""),
