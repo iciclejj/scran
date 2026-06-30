@@ -26,9 +26,9 @@ static inline const void * get_font_data() {
 }
 
 static const BLRgba32 keymap_colors[] = {
-    [SCRAN_UI_KEYMAP_COLOR_DEFAULT]       = { 0xE0DDDDDD },
-    [SCRAN_UI_KEYMAP_COLOR_MOD]           = { 0xE0FFFFAA },
-    [SCRAN_UI_KEYMAP_COLOR_ALT]           = { 0xE0888888 },
+    [SCRAN_UI_KEYMAP_COLOR_DEFAULT]       = { 0xFFDDDDDD },
+    [SCRAN_UI_KEYMAP_COLOR_MOD]           = { 0xFFFFFFAA },
+    [SCRAN_UI_KEYMAP_COLOR_ALT]           = { 0xFF888888 },
     [SCRAN_UI_KEYMAP_COLOR_VIDEO_CAPTURE] = SCRAN_SELECTION_BORDER_COLOR_VIDEO_CAPTURE,
 };
 static_assert( sizeof(keymap_colors) / sizeof(keymap_colors[0]) == SCRAN_UI_KEYMAP_N_COLORS,
@@ -92,7 +92,10 @@ redraw_keymap_image(
         BLRgba32 _color = color;
         blrgba32_scale_colors(&_color, 0.64f); // dim the color
         bl_context_fill_utf16_text_i_rgba32(
-            &ui_ctx->bl_ctx, &origin_shadow, &ui_ctx->font, string->str, string->strlen, _color.value
+            &ui_ctx->bl_ctx, &origin_shadow, &ui_ctx->font, string->str, string->strlen, SCRAN_SELECTION_SHADOW_COLOR.value
+        );
+        bl_context_fill_utf16_text_i_rgba32(
+            &ui_ctx->bl_ctx, &origin       , &ui_ctx->font, string->str, string->strlen, _color.value
         );
     } else if (pressed) {
         bl_context_fill_utf16_text_i_rgba32(
