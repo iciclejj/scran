@@ -24,23 +24,23 @@ enum {
 _Static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "This file assumes an XMM register holds 4 RGBA32 pixels.");
 
 
-// Y coefficients are split across a and b coefficient arrays, since we cannot
-// fit them as 8bit signed ints. We use the sum of multiplying with each array
-// to get the correct result.
 // Target: 77,150,29
 //
-// NOTE: We also keep the combined values as low as possible within these
-// constraints, so that it also won't overflow the 16-bit ints after
-// multiplication.
-//   I.e. this (RGB):        77, 23,29,0  0,127,0,0
-//   Instead of this (RGB):  77,127,29,0  0, 23,0,0
+// Similar drill as in get_yuv_u_rbga_coefficients. (We can't simply flip the
+// sign here, since 150 won't fit on either side of 0 in signed i8, and we need
+// to use maddubs/VPMADDUBSW, which treats one of its operands as signed (i.e.
+// these coefficients) as signed.
+//
+// RBGA (as opposed to RGBA) simplifies the calculation, since A (Alpha) will
+// always be multiplied by zero, and so does not care about the
+// "pairwise coeffiecients" values
 static inline __m128i
-get_yuv_y_rbga_coefficients_a() {
-    return _mm_setr_epi8(77,29,23,0,  77,29,23,0,  77,29,23,0,  77,29,23,0);
+get_yuv_y_rbga_coefficients() {
+    return _mm_setr_epi8(77,29,1,0,  77,29,1,0,  77,29,1,0,  77,29,1,0);
 }
 static inline __m128i
-get_yuv_y_rbga_coefficients_b() {
-    return _mm_setr_epi8(0,0,127,0,   0,0,127,0,   0,0,127,0,   0,0,127,0);
+get_yuv_y_pairwise_rbga_coefficients() {
+    return _mm_setr_epi16(1,150,   1,150,   1,150,   1,150);
 }
 
 static inline __m128i
@@ -90,25 +90,20 @@ get_yuv_v_pairwise_rbga_coefficients(void) {
 //           );
 // }
 
-// Same as non-x2 function, but takes two coefficient arrays. Intended to be
-// used when the coefficient values don't fit within signed 8-bit.
-// Coefficient arrays a,b are treated as one array a+b (element-wise sum)
 static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2(
+convert_rgba32_to_yuv_y_32bpp(
     const __m128i *const rgba_in,
-    const __m128i *const coefficients_a,
-    const __m128i *const coefficients_b,
+    const __m128i *const coefficients,
+    // coefficients for adjacent byte pairs, after the PMADDUBSW pairings
+    // See get_yuv_y_rbga_coefficients for more info.
+    const __m128i *const pairwise_coefficients,
     // any reasonable 8-bit y spec will want 8, but if we e.g. halve the gamut, we will need to shift by 7
     const uint8_t shr
 ) {
-    return _mm_srai_epi32( // Y32 := [_Y32>>shr] => Y32 == [y32, ...]
-              _mm_add_epi32(
-                  m128i_pairwise_sum_i16_to_i32(
-                      _mm_maddubs_epi16(*rgba_in, *coefficients_a)
-                  ),
-                  m128i_pairwise_sum_i16_to_i32(
-                      _mm_maddubs_epi16(*rgba_in, *coefficients_b)
-                  )
+    return _mm_srai_epi32(
+              _mm_madd_epi16(
+                  _mm_maddubs_epi16(*rgba_in, *coefficients),
+                  *pairwise_coefficients
               ),
               shr
           );
@@ -188,28 +183,28 @@ convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
 static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 convert_16px_rgba32_to_yuv_8bpp(
     const __m128i rgba_in[static 4],
-    const __m128i *const coefficients_a,
-    const __m128i *const coefficients_b,
+    const __m128i *const coefficients,
+    const __m128i *const pairwise_coefficients,
     const uint8_t shr
 ) {
     // TODO: Function to get the intermediate A32 value
 
     return _mm_packus_epi16( // Y8 := [Y16 & 0xFF, Y16_1 & 0xFF] => Y8 == [y8, ...]
               packus_epi32_ssse3_assume_0_to_i16max( // Y16 := [Y32 & 0xFFFF, Y32_1 & 0xFFFF] => Y16 == [y16, ...]
-                  convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32 == [y32, ...]
-                      &rgba_in[0], coefficients_a, coefficients_b, shr
+                  convert_rgba32_to_yuv_y_32bpp( // Y32 == [y32, ...]
+                      &rgba_in[0], coefficients, pairwise_coefficients, shr
                   ),
-                  convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32_1
-                      &rgba_in[1], coefficients_a, coefficients_b, shr
+                  convert_rgba32_to_yuv_y_32bpp( // Y32_1
+                      &rgba_in[1], coefficients, pairwise_coefficients, shr
                   )
               ),
 
               packus_epi32_ssse3_assume_0_to_i16max( // A16_1
-                  convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32_2
-                      &rgba_in[2], coefficients_a, coefficients_b, shr
+                  convert_rgba32_to_yuv_y_32bpp( // Y32_2
+                      &rgba_in[2], coefficients, pairwise_coefficients, shr
                   ),
-                  convert_rgba32_to_yuv_plane_32bpp_unsigned_coefficients_x2( // Y32_3
-                      &rgba_in[3], coefficients_a, coefficients_b, shr
+                  convert_rgba32_to_yuv_y_32bpp( // Y32_3
+                      &rgba_in[3], coefficients, pairwise_coefficients, shr
                   )
               )
           );
@@ -233,10 +228,10 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_270(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "270 kernel assumes 32x32 RGBA32 tiles.");
 
-    const __m128i y_coefficients_a = get_yuv_y_rbga_coefficients_a();
-    const __m128i y_coefficients_b = get_yuv_y_rbga_coefficients_b();
-    const __m128i u_coefficients   = get_yuv_u_rbga_coefficients();
-    const __m128i v_coefficients   = get_yuv_v_rbga_coefficients();
+    const __m128i y_coefficients          = get_yuv_y_rbga_coefficients();
+    const __m128i u_coefficients          = get_yuv_u_rbga_coefficients();
+    const __m128i v_coefficients          = get_yuv_v_rbga_coefficients();
+    const __m128i y_pairwise_coefficients = get_yuv_y_pairwise_rbga_coefficients();
     const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_rbga_coefficients();
     const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_rbga_coefficients();
 
@@ -284,8 +279,8 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_270(
                             },
                         };
 
-                        y_8bpp_final[j+0] = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, 8);
-                        y_8bpp_final[j+1] = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, 8);
+                        y_8bpp_final[j+0] = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients, &y_pairwise_coefficients, 8);
+                        y_8bpp_final[j+1] = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients, &y_pairwise_coefficients, 8);
 
                         // We average the two rows before converting, to reduce required calculation
                         const __m128i rgba_32bpp_rows_avg[4] = {
@@ -378,10 +373,10 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_180(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "180 kernel assumes 32x32 RGBA32 tiles.");
 
-    const __m128i y_coefficients_a = get_yuv_y_rbga_coefficients_a();
-    const __m128i y_coefficients_b = get_yuv_y_rbga_coefficients_b();
-    const __m128i u_coefficients   = get_yuv_u_rbga_coefficients();
-    const __m128i v_coefficients   = get_yuv_v_rbga_coefficients();
+    const __m128i y_coefficients          = get_yuv_y_rbga_coefficients();
+    const __m128i u_coefficients          = get_yuv_u_rbga_coefficients();
+    const __m128i v_coefficients          = get_yuv_v_rbga_coefficients();
+    const __m128i y_pairwise_coefficients = get_yuv_y_pairwise_rbga_coefficients();
     const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_rbga_coefficients();
     const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_rbga_coefficients();
 
@@ -434,8 +429,8 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_180(
 
                         // Store Y
                         {
-                            const __m128i y_8bpp_final_0 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, 8);
-                            const __m128i y_8bpp_final_1 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, 8);
+                            const __m128i y_8bpp_final_0 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients, &y_pairwise_coefficients, 8);
+                            const __m128i y_8bpp_final_1 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients, &y_pairwise_coefficients, 8);
 
                             scranrot_sse2_storeu_m128i(dst_y, y_8bpp_final_0);
                             dst_y -= y_stride;
@@ -514,10 +509,10 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_90(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "90 kernel assumes 32x32 RGBA32 tiles.");
 
-    const __m128i y_coefficients_a = get_yuv_y_rbga_coefficients_a();
-    const __m128i y_coefficients_b = get_yuv_y_rbga_coefficients_b();
-    const __m128i u_coefficients   = get_yuv_u_rbga_coefficients();
-    const __m128i v_coefficients   = get_yuv_v_rbga_coefficients();
+    const __m128i y_coefficients          = get_yuv_y_rbga_coefficients();
+    const __m128i u_coefficients          = get_yuv_u_rbga_coefficients();
+    const __m128i v_coefficients          = get_yuv_v_rbga_coefficients();
+    const __m128i y_pairwise_coefficients = get_yuv_y_pairwise_rbga_coefficients();
     const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_rbga_coefficients();
     const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_rbga_coefficients();
 
@@ -568,8 +563,8 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_90(
                         };
 
 
-                        y_8bpp_final[j+0] = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, 8);
-                        y_8bpp_final[j+1] = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, 8);
+                        y_8bpp_final[j+0] = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients, &y_pairwise_coefficients, 8);
+                        y_8bpp_final[j+1] = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients, &y_pairwise_coefficients, 8);
 
                         // We average the two rows before converting, to reduce required calculation
                         const __m128i rgba_32bpp_rows_avg[4] = {
@@ -662,10 +657,10 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_0(
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "0 kernel assumes 32x32 RGBA32 tiles.");
 
-    const __m128i y_coefficients_a = get_yuv_y_rbga_coefficients_a();
-    const __m128i y_coefficients_b = get_yuv_y_rbga_coefficients_b();
-    const __m128i u_coefficients   = get_yuv_u_rbga_coefficients();
-    const __m128i v_coefficients   = get_yuv_v_rbga_coefficients();
+    const __m128i y_coefficients          = get_yuv_y_rbga_coefficients();
+    const __m128i u_coefficients          = get_yuv_u_rbga_coefficients();
+    const __m128i v_coefficients          = get_yuv_v_rbga_coefficients();
+    const __m128i y_pairwise_coefficients = get_yuv_y_pairwise_rbga_coefficients();
     const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_rbga_coefficients();
     const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_rbga_coefficients();
 
@@ -708,8 +703,8 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_0(
 
                         // Store Y
                         {
-                            const __m128i y_8bpp_final_0 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients_a, &y_coefficients_b, 8);
-                            const __m128i y_8bpp_final_1 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients_a, &y_coefficients_b, 8);
+                            const __m128i y_8bpp_final_0 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[0][0], &y_coefficients, &y_pairwise_coefficients, 8);
+                            const __m128i y_8bpp_final_1 = convert_16px_rgba32_to_yuv_8bpp(&rgba_32bpp[1][0], &y_coefficients, &y_pairwise_coefficients, 8);
                             scranrot_sse2_storeu_m128i(dst_y, y_8bpp_final_0);
                             dst_y += y_stride;
                             scranrot_sse2_storeu_m128i(dst_y, y_8bpp_final_1);
