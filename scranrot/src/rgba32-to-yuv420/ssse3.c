@@ -45,16 +45,34 @@ get_yuv_y_coefficients_b() {
 
 static inline __m128i
 get_yuv_u_coefficients() {
-    return _mm_setr_epi8(-43,-84,127,0, -43,-84,127,0, -43,-84,127,0, -43,-84,127,0);
+    // Target: -43,-85,128.
+    // 128 cannot be represented in a signed i8, so encode 128 (b) as -128 for
+    // _mm_maddubs_epi16(), then fold the resulting pairwise i16 products as
+    // (r+g)-(b+a), instead of (r+g)+(b+a).
+    return _mm_setr_epi8(-43,-85,-128,0, -43,-85,-128,0, -43,-85,-128,0, -43,-85,-128,0);
 }
 static inline __m128i
 get_yuv_v_coefficients() {
-    return _mm_setr_epi8(127,-106,-21,0, 127,-106,-21,0, 127,-106,-21,0, 127,-106,-21,0);
+    // Target: 128,-107,-21.
+    // See comment in get_yuv_u_coefficients. (We only had to flip one sign
+    // there, because b was paired with a==0; here we have non-zero r/g
+    // coefficients.)
+    return _mm_setr_epi8(-128,107,-21,0, -128,107,-21,0, -128,107,-21,0, -128,107,-21,0);
 }
 
 static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 m128i_pairwise_sum_i16_to_i32(__m128i val) {
     return _mm_madd_epi16(val, _mm_set1_epi16(1));
+}
+
+static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+get_yuv_u_pairwise_coefficients(void) {
+    return _mm_setr_epi16(1, -1, 1, -1, 1, -1, 1, -1);
+}
+
+static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
+get_yuv_v_pairwise_coefficients(void) {
+    return _mm_setr_epi16(-1, 1, -1, 1, -1, 1, -1, 1);
 }
 
 // TODO: Use unrolled loops for all the transpose and rotation functions.
@@ -102,18 +120,21 @@ static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
     const __m128i *const rgba_in,
     const __m128i *const coefficients,
+    // coefficients for r,g and b,a pairs, after the VPMADDUBSW pairings
+    // See get_yuv_u_coefficients for more info.
+    const __m128i *const pairwise_coefficients,
     // any reasonable 8-bit y spec will want 8, but if we e.g. halve the gamut, we will need to shift by 7
     const uint8_t shr
 ) {
     // We need to represent our values as signed, so we normalize them by adding
-    // the max signed absolute value, to take the (post-shr) range from -127:128 -> 0:255
-    // TODO: Can we alter our coefficients instead?
+    // the max signed absolute value, to take the (post-shr) range to 0:255.
     const __m128i uv_s_to_us_offset_epi32 = _mm_set1_epi32((128 << 8) + 128);
 
     return _mm_srai_epi32( // Y32 := [_Y32>>shr] => Y32 == [y32, ...]
                _mm_add_epi32( // Y32 := uv_s_to_us_offset(Y32)
-                   m128i_pairwise_sum_i16_to_i32(
-                       _mm_maddubs_epi16(*rgba_in, *coefficients)
+                   _mm_madd_epi16(
+                       _mm_maddubs_epi16(*rgba_in, *coefficients),
+                       *pairwise_coefficients
                    ),
                    uv_s_to_us_offset_epi32
                ),
@@ -133,6 +154,7 @@ static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
     const __m128i rgba_in[static 4],
     const __m128i *const coefficients,
+    const __m128i *const pairwise_coefficients,
     const uint8_t shr
 ) {
     // Returns: [ (i16)(a0+a1)/2, (i16)(a2+a3)/2, ...]
@@ -142,10 +164,10 @@ convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                    m128i_pairwise_sum_i16_to_i32(
                        packus_epi32_ssse3_assume_0_to_i16max( // V16_avg(y)
                            convert_rgba32_to_yuv_plane_32bpp_signed_coefficients( // V32_yavg
-                               &rgba_in[0], coefficients, shr
+                               &rgba_in[0], coefficients, pairwise_coefficients, shr
                            ),
                            convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
-                               &rgba_in[1], coefficients, shr
+                               &rgba_in[1], coefficients, pairwise_coefficients, shr
                            )
                        )
                    ),
@@ -153,10 +175,10 @@ convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
                    m128i_pairwise_sum_i16_to_i32(
                        packus_epi32_ssse3_assume_0_to_i16max(
                            convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
-                               &rgba_in[2], coefficients, shr
+                               &rgba_in[2], coefficients, pairwise_coefficients, shr
                            ),
                            convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
-                               &rgba_in[3], coefficients, shr
+                               &rgba_in[3], coefficients, pairwise_coefficients, shr
                            )
                        )
                    )
@@ -214,6 +236,8 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_270(
     const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
     const __m128i u_coefficients   = get_yuv_u_coefficients();
     const __m128i v_coefficients   = get_yuv_v_coefficients();
+    const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_coefficients();
+    const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_coefficients();
 
     const int dst_height_px = src_width_px;
     uint8_t *dst_y_start = scranrot_yuv420_y_last_row_start( y_plane, dst_height_px, y_stride);
@@ -273,11 +297,11 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_270(
                         // U
                         const uint8_t j_yavg = j/2;
                         u_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba_32bpp_rows_avg, &u_coefficients, 8
+                                                            rgba_32bpp_rows_avg, &u_coefficients, &u_pairwise_coefficients, 8
                                                         );
                         // V
                         v_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba_32bpp_rows_avg, &v_coefficients, 8
+                                                            rgba_32bpp_rows_avg, &v_coefficients, &v_pairwise_coefficients, 8
                                                         );
                     }
 
@@ -355,6 +379,8 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_180(
     const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
     const __m128i u_coefficients   = get_yuv_u_coefficients();
     const __m128i v_coefficients   = get_yuv_v_coefficients();
+    const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_coefficients();
+    const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_coefficients();
 
     uint8_t *dst_y_start = scranrot_yuv420_y_last_row_end( y_plane, src_width_px, src_height_px, y_stride)
                            - sizeof(__m128i);
@@ -425,11 +451,11 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_180(
                         // U
                         const uint8_t j_yavg = j/2;
                         u_i16_8bpp_xyavg[j_yavg][_xi_reversed] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                                     rgba_32bpp_rows_avg, &u_coefficients, 8
+                                                                     rgba_32bpp_rows_avg, &u_coefficients, &u_pairwise_coefficients, 8
                                                                  );
                         // V
                         v_i16_8bpp_xyavg[j_yavg][_xi_reversed] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                                     rgba_32bpp_rows_avg, &v_coefficients, 8
+                                                                     rgba_32bpp_rows_avg, &v_coefficients, &v_pairwise_coefficients, 8
                                                                  );
                     }
                 }
@@ -485,6 +511,8 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_90(
     const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
     const __m128i u_coefficients   = get_yuv_u_coefficients();
     const __m128i v_coefficients   = get_yuv_v_coefficients();
+    const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_coefficients();
+    const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_coefficients();
 
     const int dst_width_px = src_height_px;
     uint8_t *dst_y_start = scranrot_yuv420_y_row_end( y_plane, dst_width_px)
@@ -547,11 +575,11 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_90(
                         // U
                         const uint8_t j_yavg = j/2;
                         u_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba_32bpp_rows_avg, &u_coefficients, 8
+                                                            rgba_32bpp_rows_avg, &u_coefficients, &u_pairwise_coefficients, 8
                                                         );
                         // V
                         v_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba_32bpp_rows_avg, &v_coefficients, 8
+                                                            rgba_32bpp_rows_avg, &v_coefficients, &v_pairwise_coefficients, 8
                                                         );
                     }
 
@@ -627,6 +655,8 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_0(
     const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
     const __m128i u_coefficients   = get_yuv_u_coefficients();
     const __m128i v_coefficients   = get_yuv_v_coefficients();
+    const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_coefficients();
+    const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_coefficients();
 
 
     for (int y = 0; y < src_height_px; y += 32) {
@@ -685,10 +715,10 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_0(
 
                         const uint8_t j_yavg = j/2;
                         u_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba_32bpp_rows_avg, &u_coefficients, 8
+                                                            rgba_32bpp_rows_avg, &u_coefficients, &u_pairwise_coefficients, 8
                                                         );
                         v_i16_8bpp_xyavg[j_yavg][_xi] = convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
-                                                            rgba_32bpp_rows_avg, &v_coefficients, 8
+                                                            rgba_32bpp_rows_avg, &v_coefficients, &v_pairwise_coefficients, 8
                                                         );
                     }
                 }
