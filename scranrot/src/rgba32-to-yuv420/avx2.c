@@ -20,7 +20,7 @@ enum {
     MIN_TILE_WIDTH_PX  = KERNEL_TILE_WIDTH_PX,
     MIN_TILE_HEIGHT_PX = KERNEL_TILE_HEIGHT_PX,
 };
-_Static_assert(RGBA32_PIXELS_PER_YMM * RGBA32_PIXEL_STRIDE == sizeof(__m256i), "This file assumes an XMM register holds 4 RGBA32 pixels.");
+_Static_assert(RGBA32_PIXELS_PER_YMM * RGBA32_PIXEL_STRIDE == sizeof(__m256i), "This file assumes a YMM register holds 8 RGBA32 pixels.");
 
 
 static inline __m256i SCRANROT_TARGET_AVX2 SCRANROT_ALWAYS_INLINE
@@ -363,9 +363,9 @@ transpose_inplace_32x32_8bpp(__m256i arg[static 32])
 //     const __m256i *const coefficients,
 //     const uint8_t shr
 // ) {
-//     return _mm_srai_epi32( // Y32 := [_Y32>>shr] => Y32 == [y32, ...]
-//               m256i_i16_pairwise_sum(
-//                   _mm_maddubs_epi16(*rgba_in, *coefficients)
+//     return _mm256_srai_epi32( // Y32 := [_Y32>>shr] => Y32 == [y32, ...]
+//               m256i_pairwise_sum_i16_to_i32(
+//                   _mm256_maddubs_epi16(*rgba_in, *coefficients)
 //               ),
 //               shr
 //           );
@@ -668,7 +668,7 @@ transform_framebuffer_to_yuv420__avx2_unaligned__rotate_180(
     uint8_t *restrict v_plane, int v_stride,
     const uint32_t rgba32_shuffle_mask
 ) {
-    _Static_assert(KERNEL_TILE_WIDTH_PX == 64 && KERNEL_TILE_HEIGHT_PX >= 2, "0 kernel uses 2x64 RGBA32 tiles.");
+    _Static_assert(KERNEL_TILE_WIDTH_PX == 64 && KERNEL_TILE_HEIGHT_PX >= 2, "180 kernel uses 2x64 RGBA32 tiles.");
 
     const __m256i rgba32_shuffle_mask_256 = rotate_180_get_modified_rgba_shuffle_256(
         rgba32_shuffle_to_m256i(

@@ -2,7 +2,7 @@
 
 
 #include <emmintrin.h> // SSE2
-#include <tmmintrin.h> // SSE3
+#include <tmmintrin.h> // SSSE3
 #include <stddef.h>
 
 #include "scranrot.h"
@@ -131,7 +131,7 @@ rotate_tile_90(
 static void SCRANROT_TARGET_SSSE3
 transform_framebuffer__ssse3_unaligned__rotate_270(
     const uint8_t *restrict src,
-    const int src_width_px, // Stride of the entire capture source
+    const int src_width_px, // Width of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
     uint8_t *restrict dst,
@@ -223,7 +223,7 @@ transform_framebuffer__ssse3_unaligned__rotate_180(
 static void SCRANROT_TARGET_SSSE3
 transform_framebuffer__ssse3_unaligned__rotate_90(
     const uint8_t *restrict src,
-    const int src_width_px, // Stride of the entire capture source
+    const int src_width_px, // Width of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
     uint8_t *restrict dst,

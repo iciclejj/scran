@@ -83,7 +83,7 @@ get_yuv_v_pairwise_rbga_coefficients(void) {
 //     const uint8_t shr
 // ) {
 //     return _mm_srai_epi32( // Y32 := [_Y32>>shr] => Y32 == [y32, ...]
-//               m128i_i16_pairwise_sum(
+//               m128i_pairwise_sum_i16_to_i32(
 //                   _mm_maddubs_epi16(*rgba_in, *coefficients)
 //               ),
 //               shr
@@ -123,8 +123,8 @@ convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
     // the max signed absolute value, to take the (post-shr) range to 0:255.
     const __m128i uv_s_to_us_offset_epi32 = _mm_set1_epi32((128 << 8) + 128);
 
-    return _mm_srai_epi32( // Y32 := [_Y32>>shr] => Y32 == [y32, ...]
-               _mm_add_epi32( // Y32 := uv_s_to_us_offset(Y32)
+    return _mm_srai_epi32( // UV32 := [UV32>>shr] => UV32 == [uv32, ...]
+               _mm_add_epi32( // UV32 := uv_s_to_us_offset(UV32)
                    _mm_madd_epi16(
                        _mm_maddubs_epi16(*rgba_in, *coefficients),
                        *pairwise_coefficients
@@ -152,11 +152,11 @@ convert_16px_rgba32_to_yuv_uv_xpairavg_i16_8bpp(
 ) {
     // Returns: [ (i16)(a0+a1)/2, (i16)(a2+a3)/2, ...]
 
-    return _mm_srai_epi16( // V16_avg([y,x])
-               packus_epi32_ssse3_assume_0_to_i16max( // V16_avg(y+x)
+    return _mm_srai_epi16( // UV16_avg([y,x])
+               packus_epi32_ssse3_assume_0_to_i16max( // UV16_avg(y+x)
                    m128i_pairwise_sum_i16_to_i32(
-                       packus_epi32_ssse3_assume_0_to_i16max( // V16_avg(y)
-                           convert_rgba32_to_yuv_plane_32bpp_signed_coefficients( // V32_yavg
+                       packus_epi32_ssse3_assume_0_to_i16max( // UV16_avg(y)
+                           convert_rgba32_to_yuv_plane_32bpp_signed_coefficients( // UV32_yavg
                                &rgba_in[0], coefficients, pairwise_coefficients, shr
                            ),
                            convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
@@ -187,7 +187,7 @@ convert_16px_rgba32_to_yuv_8bpp(
     const __m128i *const pairwise_coefficients,
     const uint8_t shr
 ) {
-    // TODO: Function to get the intermediate A32 value
+    // TODO: Function to get the intermediate Y32 value
 
     return _mm_packus_epi16( // Y8 := [Y16 & 0xFF, Y16_1 & 0xFF] => Y8 == [y8, ...]
               packus_epi32_ssse3_assume_0_to_i16max( // Y16 := [Y32 & 0xFFFF, Y32_1 & 0xFFFF] => Y16 == [y16, ...]
@@ -199,7 +199,7 @@ convert_16px_rgba32_to_yuv_8bpp(
                   )
               ),
 
-              packus_epi32_ssse3_assume_0_to_i16max( // A16_1
+              packus_epi32_ssse3_assume_0_to_i16max( // Y16_1
                   convert_rgba32_to_yuv_y_32bpp( // Y32_2
                       &rgba_in[2], coefficients, pairwise_coefficients, shr
                   ),

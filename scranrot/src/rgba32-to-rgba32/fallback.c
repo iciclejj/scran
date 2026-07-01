@@ -39,7 +39,7 @@ get_rgba32_shift_mask(uint32_t rgba32_shuffle_mask) {
 static void SCRANROT_TARGET_FALLBACK
 transform_framebuffer__fallback__rotate_270(
     const uint8_t *const restrict src,
-    const int src_width_px, // Stride of the entire capture source
+    const int src_width_px, // Width of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
     uint8_t *const restrict dst,
@@ -97,7 +97,7 @@ transform_framebuffer__fallback__rotate_270(
 static void SCRANROT_TARGET_FALLBACK
 transform_framebuffer__fallback__rotate_180(
     const uint8_t *const restrict src,
-    const int src_width_px, // Stride of the entire capture source
+    const int src_width_px, // Width of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
     uint8_t *const restrict dst,
@@ -132,7 +132,7 @@ transform_framebuffer__fallback__rotate_180(
 static void SCRANROT_TARGET_FALLBACK
 transform_framebuffer__fallback__rotate_90(
     const uint8_t *const restrict src,
-    const int src_width_px, // Stride of the entire capture source
+    const int src_width_px, // Width of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
     uint8_t *const restrict dst,
@@ -190,7 +190,7 @@ transform_framebuffer__fallback__rotate_90(
 static void SCRANROT_TARGET_FALLBACK
 transform_framebuffer__fallback__rotate_0(
     const uint8_t *const restrict src,
-    const int src_width_px, // Stride of the entire capture source
+    const int src_width_px, // Width of the entire capture source
     const int src_height_px,
     const int src_stride_bytes,
     uint8_t *const restrict dst,
