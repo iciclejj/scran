@@ -27,9 +27,18 @@ static struct {
 
     bool         StatusNotifierItem_name_registered;         // Name registered with DBus
     bool         StatusNotifierItem_registered_with_watcher; // Item registered with StatusNotifierWatcher
-    sd_bus_slot *StatusNotifierItem_vtable_slot;
-    sd_bus_slot *StatusNotifierItem_current_callback_slot;
+    sd_bus_slot *StatusNotifierItem_slot_vtable;
+    sd_bus_slot *StatusNotifierItem_slot_RequestName_callback;
+    sd_bus_slot *StatusNotifierWatcher_slot_RegisterStatusNotifierItem_callback;
+    sd_bus_slot *StatusNotifierWatcher_slot_NameOwnerChanged_match;
 } m_dbus = { .fd = -1 };
+
+static inline void
+set_StatusNotifierItem_registered_with_watcher(bool registered)
+{
+    m_dbus.StatusNotifierItem_registered_with_watcher = registered;
+    update_focus_released_keymap_text(registered);
+}
 
 
 static inline void
@@ -205,6 +214,45 @@ scran_portal_notify_file_saved(const char *saved_file_path)
     return;
 }
 
+static bool register_StatusNotifierItem_with_watcher(void);
+
+static int
+Dbus_NameOwnerChanged_callback__StatusNotifierWatcher(
+    sd_bus_message *message,
+    void *data,
+    sd_bus_error *ret_error
+) {
+    const char *error_name = NULL;
+    if (sd_bus_message_is_method_error(message, error_name)) {
+        const sd_bus_error *error = sd_bus_message_get_error(message);
+        log_sd_bus_error(error, "DBus::NameOwnerChanged (for StatusNotifierItem)");
+        return 0;
+    }
+
+    int ret;
+    const char *name;
+    const char *old_owner;
+    const char *new_owner;
+
+    if (0 > (ret = sd_bus_message_read(message, "sss", &name, &old_owner, &new_owner))) {
+        return ret;
+    }
+
+    if (old_owner[0] != '\0') { // Previous owner lost ownership
+        set_StatusNotifierItem_registered_with_watcher(false);
+        m_dbus.StatusNotifierWatcher_slot_RegisterStatusNotifierItem_callback = sd_bus_slot_unref(
+            m_dbus.StatusNotifierWatcher_slot_RegisterStatusNotifierItem_callback
+        );
+    }
+
+    if (new_owner[0] != '\0') { // New owner exists
+        if (m_dbus.StatusNotifierItem_name_registered) {
+            register_StatusNotifierItem_with_watcher(); // Try to re-register with new owner
+        }
+    }
+
+    return 0;
+}
 
 static int
 Notification_ActionInvoked_callback(
@@ -436,14 +484,36 @@ StatusNotifierWatcher_RegisterStatusNotifierItem_callback(
         goto fail;
     }
 
-    m_dbus.StatusNotifierItem_registered_with_watcher = true;
-
+    set_StatusNotifierItem_registered_with_watcher(true);
     DEBUG("RegisterStatusNotifierItem reply without error.\n");
     return 0;
+
 fail:
-    scran_dbus_destroy_StatusNotifierItem();
+    eprintf("Failed to register tray icon.\n");
+    set_StatusNotifierItem_registered_with_watcher(false);
     return 0;
 }
+
+
+static bool
+register_StatusNotifierItem_with_watcher() {
+    m_dbus.StatusNotifierWatcher_slot_RegisterStatusNotifierItem_callback = sd_bus_slot_unref(m_dbus.StatusNotifierWatcher_slot_RegisterStatusNotifierItem_callback);
+    int ret = sd_bus_call_method_async(
+        m_dbus.bus, &m_dbus.StatusNotifierWatcher_slot_RegisterStatusNotifierItem_callback,
+        "org.kde.StatusNotifierWatcher", "/StatusNotifierWatcher",
+        "org.kde.StatusNotifierWatcher", "RegisterStatusNotifierItem",
+        StatusNotifierWatcher_RegisterStatusNotifierItem_callback, NULL,
+        "s",
+          m_StatusNotifierItem_name
+    );
+    if (ret < 0) {
+        log_sd_bus_ret_error(ret, "Failed to call RegisterStatusNotifierItem");
+        return false;
+    }
+
+    return true;
+}
+
 
 static int
 Dbus_RequestName_callback__StatusNotifierItem(
@@ -479,17 +549,7 @@ Dbus_RequestName_callback__StatusNotifierItem(
 
     m_dbus.StatusNotifierItem_name_registered = true;
 
-    m_dbus.StatusNotifierItem_current_callback_slot = sd_bus_slot_unref(m_dbus.StatusNotifierItem_current_callback_slot);
-    ret = sd_bus_call_method_async(
-        m_dbus.bus, &m_dbus.StatusNotifierItem_current_callback_slot,
-        "org.kde.StatusNotifierWatcher", "/StatusNotifierWatcher",
-        "org.kde.StatusNotifierWatcher", "RegisterStatusNotifierItem",
-        StatusNotifierWatcher_RegisterStatusNotifierItem_callback, NULL,
-        "s",
-          m_StatusNotifierItem_name
-    );
-    if (ret < 0) {
-        log_sd_bus_ret_error(ret, "Failed to call RegisterStatusNotifierItem");
+    if (!register_StatusNotifierItem_with_watcher()) {
         goto fail;
     }
 
@@ -567,6 +627,7 @@ static const sd_bus_vtable m_StatusNotifierItem_vtable[] = {
     SD_BUS_VTABLE_END
 };
 
+// Register tray icon
 static bool
 register_StatusNotifierItem()
 {
@@ -574,12 +635,30 @@ register_StatusNotifierItem()
     assert(m_dbus.bus != NULL);
 
     ret = sd_bus_add_object_vtable(
-        m_dbus.bus, &m_dbus.StatusNotifierItem_vtable_slot,
+        m_dbus.bus, &m_dbus.StatusNotifierItem_slot_vtable,
         "/StatusNotifierItem", "org.kde.StatusNotifierItem",
         m_StatusNotifierItem_vtable, &m_StatusNotifierItem_data
     );
     if (ret < 0) {
         log_sd_bus_ret_error(ret, "Failed to add sd-bus vtable for StatusNotifierItem");
+        goto fail;
+    }
+
+    // We add this *before* actually registering, to avoid potential race conditions.
+    ret = sd_bus_add_match_async(
+        m_dbus.bus, &m_dbus.StatusNotifierWatcher_slot_NameOwnerChanged_match,
+        "type='signal',"
+        "sender='org.freedesktop.DBus',"
+        "path='/org/freedesktop/DBus',"
+        "interface='org.freedesktop.DBus',"
+        "member='NameOwnerChanged',"
+        "arg0='org.kde.StatusNotifierWatcher'",
+        Dbus_NameOwnerChanged_callback__StatusNotifierWatcher,
+        Dbus_AddMatch_callback,
+        NULL // TODO: Send name/description of current signal to the generic Dbus_AddMatch_callback?
+    );
+    if (ret < 0) {
+        log_sd_bus_ret_error(ret, "Failed to add signal match for DBus.NameOwnerChanged for StatusNotifierWatcher");
         goto fail;
     }
 
@@ -592,9 +671,9 @@ register_StatusNotifierItem()
         m_StatusNotifierItem_name[i++] = '1';
         m_StatusNotifierItem_name[i++] = '\0';
     }
-    m_dbus.StatusNotifierItem_current_callback_slot = sd_bus_slot_unref(m_dbus.StatusNotifierItem_current_callback_slot);
+    m_dbus.StatusNotifierItem_slot_RequestName_callback = sd_bus_slot_unref(m_dbus.StatusNotifierItem_slot_RequestName_callback);
     ret = sd_bus_request_name_async(
-        m_dbus.bus, &m_dbus.StatusNotifierItem_current_callback_slot,
+        m_dbus.bus, &m_dbus.StatusNotifierItem_slot_RequestName_callback,
         m_StatusNotifierItem_name,
         SD_BUS_NAME_ALLOW_REPLACEMENT | SD_BUS_NAME_REPLACE_EXISTING,
         Dbus_RequestName_callback__StatusNotifierItem, NULL
@@ -732,12 +811,17 @@ scran_dbus_have_tray_icon()
 void
 scran_dbus_destroy_StatusNotifierItem()
 {
-    if (m_dbus.StatusNotifierItem_vtable_slot != NULL) {
-        m_dbus.StatusNotifierItem_vtable_slot = sd_bus_slot_unref(m_dbus.StatusNotifierItem_vtable_slot);
+    if (m_dbus.StatusNotifierItem_slot_vtable != NULL) {
+        m_dbus.StatusNotifierItem_slot_vtable = sd_bus_slot_unref(m_dbus.StatusNotifierItem_slot_vtable);
     }
-
-    if (m_dbus.StatusNotifierItem_current_callback_slot != NULL) {
-        m_dbus.StatusNotifierItem_current_callback_slot = sd_bus_slot_unref(m_dbus.StatusNotifierItem_current_callback_slot);
+    if (m_dbus.StatusNotifierWatcher_slot_NameOwnerChanged_match != NULL) {
+        m_dbus.StatusNotifierWatcher_slot_NameOwnerChanged_match = sd_bus_slot_unref(m_dbus.StatusNotifierWatcher_slot_NameOwnerChanged_match);
+    }
+    if (m_dbus.StatusNotifierItem_slot_RequestName_callback != NULL) {
+        m_dbus.StatusNotifierItem_slot_RequestName_callback = sd_bus_slot_unref(m_dbus.StatusNotifierItem_slot_RequestName_callback);
+    }
+    if (m_dbus.StatusNotifierWatcher_slot_RegisterStatusNotifierItem_callback != NULL) {
+        m_dbus.StatusNotifierWatcher_slot_RegisterStatusNotifierItem_callback = sd_bus_slot_unref(m_dbus.StatusNotifierWatcher_slot_RegisterStatusNotifierItem_callback);
     }
 
     if (m_dbus.bus != NULL) {

@@ -28,6 +28,7 @@ bool set_selection_freeze_size(struct scran_output *st_output);
 void start_grabbing_focus(void);
 void start_grabbing_focus_for_output(struct scran_output *st_output);
 void stop_grabbing_focus(void);
+void update_focus_released_keymap_text(bool have_tray_icon);
 
 
 #endif
