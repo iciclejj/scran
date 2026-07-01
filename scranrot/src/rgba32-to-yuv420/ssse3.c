@@ -32,32 +32,30 @@ _Static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "
 // NOTE: We also keep the combined values as low as possible within these
 // constraints, so that it also won't overflow the 16-bit ints after
 // multiplication.
-//   I.e. this:        77, 23,29,0  0,127,0,0
-//   Instead of this:  77,127,29,0  0, 23,0,0
+//   I.e. this (RGB):        77, 23,29,0  0,127,0,0
+//   Instead of this (RGB):  77,127,29,0  0, 23,0,0
 static inline __m128i
-get_yuv_y_coefficients_a() {
-    return _mm_setr_epi8(77,23,29,0,  77,23,29,0,  77,23,29,0,  77,23,29,0);
+get_yuv_y_rbga_coefficients_a() {
+    return _mm_setr_epi8(77,29,23,0,  77,29,23,0,  77,29,23,0,  77,29,23,0);
 }
 static inline __m128i
-get_yuv_y_coefficients_b() {
-    return _mm_setr_epi8(0,127,0,0,   0,127,0,0,   0,127,0,0,   0,127,0,0);
+get_yuv_y_rbga_coefficients_b() {
+    return _mm_setr_epi8(0,0,127,0,   0,0,127,0,   0,0,127,0,   0,0,127,0);
 }
 
 static inline __m128i
-get_yuv_u_coefficients() {
-    // Target: -43,-85,128.
-    // 128 cannot be represented in a signed i8, so encode 128 (b) as -128 for
-    // _mm_maddubs_epi16(), then fold the resulting pairwise i16 products as
-    // (r+g)-(b+a), instead of (r+g)+(b+a).
-    return _mm_setr_epi8(-43,-85,-128,0, -43,-85,-128,0, -43,-85,-128,0, -43,-85,-128,0);
+get_yuv_u_rbga_coefficients() {
+    // Target (RGB): -43,-85,128.
+    // b (128) cannot be represented in a signed i8, so flip the sign on it and
+    // its _mm_maddubs_epi16()-paired coefficient, then fold the resulting
+    // pairwise i16 products as -(r+b)+(g+a), instead of (r+b)+(g+a).
+    return _mm_setr_epi8(+43,-128,-85,0, +43,-128,-85,0, +43,-128,-85,0, +43,-128,-85,0);
 }
 static inline __m128i
-get_yuv_v_coefficients() {
-    // Target: 128,-107,-21.
-    // See comment in get_yuv_u_coefficients. (We only had to flip one sign
-    // there, because b was paired with a==0; here we have non-zero r/g
-    // coefficients.)
-    return _mm_setr_epi8(-128,107,-21,0, -128,107,-21,0, -128,107,-21,0, -128,107,-21,0);
+get_yuv_v_rbga_coefficients() {
+    // Target (RGB): 128,-107,-21.
+    // See comment in get_yuv_u_rbga_coefficients.
+    return _mm_setr_epi8(-128,+21,-107,0, -128,+21,-107,0, -128,+21,-107,0, -128,+21,-107,0);
 }
 
 static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
@@ -66,12 +64,12 @@ m128i_pairwise_sum_i16_to_i32(__m128i val) {
 }
 
 static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-get_yuv_u_pairwise_coefficients(void) {
-    return _mm_setr_epi16(1, -1, 1, -1, 1, -1, 1, -1);
+get_yuv_u_pairwise_rbga_coefficients(void) {
+    return _mm_setr_epi16(-1, 1, -1, 1, -1, 1, -1, 1);
 }
 
 static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
-get_yuv_v_pairwise_coefficients(void) {
+get_yuv_v_pairwise_rbga_coefficients(void) {
     return _mm_setr_epi16(-1, 1, -1, 1, -1, 1, -1, 1);
 }
 
@@ -120,8 +118,8 @@ static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE
 convert_rgba32_to_yuv_plane_32bpp_signed_coefficients(
     const __m128i *const rgba_in,
     const __m128i *const coefficients,
-    // coefficients for r,g and b,a pairs, after the VPMADDUBSW pairings
-    // See get_yuv_u_coefficients for more info.
+    // coefficients for adjacent byte pairs, after the PMADDUBSW pairings
+    // See get_yuv_u_rbga_coefficients for more info.
     const __m128i *const pairwise_coefficients,
     // any reasonable 8-bit y spec will want 8, but if we e.g. halve the gamut, we will need to shift by 7
     const uint8_t shr
@@ -228,16 +226,19 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_270(
     uint8_t *restrict v_plane, int v_stride,
     const uint32_t rgba32_shuffle_mask
 ) {
-    const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba32_shuffle_mask);
+    const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(
+        // See comment in get_yuv_y_rbga_coefficients
+        rgba32_shuffle_to_rbga32_shuffle(rgba32_shuffle_mask)
+    );
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "270 kernel assumes 32x32 RGBA32 tiles.");
 
-    const __m128i y_coefficients_a = get_yuv_y_coefficients_a();
-    const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
-    const __m128i u_coefficients   = get_yuv_u_coefficients();
-    const __m128i v_coefficients   = get_yuv_v_coefficients();
-    const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_coefficients();
-    const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_coefficients();
+    const __m128i y_coefficients_a = get_yuv_y_rbga_coefficients_a();
+    const __m128i y_coefficients_b = get_yuv_y_rbga_coefficients_b();
+    const __m128i u_coefficients   = get_yuv_u_rbga_coefficients();
+    const __m128i v_coefficients   = get_yuv_v_rbga_coefficients();
+    const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_rbga_coefficients();
+    const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_rbga_coefficients();
 
     const int dst_height_px = src_width_px;
     uint8_t *dst_y_start = scranrot_yuv420_y_last_row_start( y_plane, dst_height_px, y_stride);
@@ -370,17 +371,19 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_180(
     const uint32_t rgba32_shuffle_mask
 ) {
     const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rotate_180_get_modified_rgba_shuffle(
-        scranrot_sse2_rgba_shuffle_to_m128i(rgba32_shuffle_mask)
+        scranrot_sse2_rgba_shuffle_to_m128i(
+            rgba32_shuffle_to_rbga32_shuffle(rgba32_shuffle_mask)
+        )
     );
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "180 kernel assumes 32x32 RGBA32 tiles.");
 
-    const __m128i y_coefficients_a = get_yuv_y_coefficients_a();
-    const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
-    const __m128i u_coefficients   = get_yuv_u_coefficients();
-    const __m128i v_coefficients   = get_yuv_v_coefficients();
-    const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_coefficients();
-    const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_coefficients();
+    const __m128i y_coefficients_a = get_yuv_y_rbga_coefficients_a();
+    const __m128i y_coefficients_b = get_yuv_y_rbga_coefficients_b();
+    const __m128i u_coefficients   = get_yuv_u_rbga_coefficients();
+    const __m128i v_coefficients   = get_yuv_v_rbga_coefficients();
+    const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_rbga_coefficients();
+    const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_rbga_coefficients();
 
     uint8_t *dst_y_start = scranrot_yuv420_y_last_row_end( y_plane, src_width_px, src_height_px, y_stride)
                            - sizeof(__m128i);
@@ -503,16 +506,20 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_90(
     uint8_t *restrict v_plane, int v_stride,
     const uint32_t rgba32_shuffle_mask
 ) {
-    const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba32_shuffle_mask);
+    const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(
+        // See comment in get_yuv_y_rbga_coefficients
+        rgba32_shuffle_to_rbga32_shuffle(rgba32_shuffle_mask)
+    );
+
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "90 kernel assumes 32x32 RGBA32 tiles.");
 
-    const __m128i y_coefficients_a = get_yuv_y_coefficients_a();
-    const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
-    const __m128i u_coefficients   = get_yuv_u_coefficients();
-    const __m128i v_coefficients   = get_yuv_v_coefficients();
-    const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_coefficients();
-    const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_coefficients();
+    const __m128i y_coefficients_a = get_yuv_y_rbga_coefficients_a();
+    const __m128i y_coefficients_b = get_yuv_y_rbga_coefficients_b();
+    const __m128i u_coefficients   = get_yuv_u_rbga_coefficients();
+    const __m128i v_coefficients   = get_yuv_v_rbga_coefficients();
+    const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_rbga_coefficients();
+    const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_rbga_coefficients();
 
     const int dst_width_px = src_height_px;
     uint8_t *dst_y_start = scranrot_yuv420_y_row_end( y_plane, dst_width_px)
@@ -647,16 +654,20 @@ transform_framebuffer_to_yuv420__ssse3_unaligned__rotate_0(
     uint8_t *restrict v_plane, int v_stride,
     const uint32_t rgba32_shuffle_mask
 ) {
-    const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(rgba32_shuffle_mask);
+    const __m128i rgba32_shuffle_mask_128 = scranrot_sse2_rgba_shuffle_to_m128i(
+        // See comment in get_yuv_y_rbga_coefficients
+        rgba32_shuffle_to_rbga32_shuffle(rgba32_shuffle_mask)
+    );
+
 
     _Static_assert(KERNEL_TILE_WIDTH_PX == 32 && KERNEL_TILE_HEIGHT_PX == 32, "0 kernel assumes 32x32 RGBA32 tiles.");
 
-    const __m128i y_coefficients_a = get_yuv_y_coefficients_a();
-    const __m128i y_coefficients_b = get_yuv_y_coefficients_b();
-    const __m128i u_coefficients   = get_yuv_u_coefficients();
-    const __m128i v_coefficients   = get_yuv_v_coefficients();
-    const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_coefficients();
-    const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_coefficients();
+    const __m128i y_coefficients_a = get_yuv_y_rbga_coefficients_a();
+    const __m128i y_coefficients_b = get_yuv_y_rbga_coefficients_b();
+    const __m128i u_coefficients   = get_yuv_u_rbga_coefficients();
+    const __m128i v_coefficients   = get_yuv_v_rbga_coefficients();
+    const __m128i u_pairwise_coefficients = get_yuv_u_pairwise_rbga_coefficients();
+    const __m128i v_pairwise_coefficients = get_yuv_v_pairwise_rbga_coefficients();
 
 
     for (int y = 0; y < src_height_px; y += 32) {

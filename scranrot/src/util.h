@@ -25,6 +25,16 @@ scranrot_pack_4xU8(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
     );
 }
 
+static inline uint32_t
+rgba32_shuffle_to_rbga32_shuffle(uint32_t rgba32_shuffle) {
+    return scranrot_pack_4xU8(
+        (rgba32_shuffle >>  0) & 0xff, // R
+        (rgba32_shuffle >> 16) & 0xff, // B
+        (rgba32_shuffle >>  8) & 0xff, // G
+        (rgba32_shuffle >> 24) & 0xff  // A
+    );
+}
+
 // load unaligned
 static inline uint32_t
 scranrot_loadu_u32(const void *src)
