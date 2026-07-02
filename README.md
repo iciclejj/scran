@@ -213,8 +213,8 @@ cmake --install build && ldconfig
   Arrow keys           Move selection by one pixel
 
   Tab                  Release focus (stop capturing inputs)
-                         SIGUSR1 to retake focus - see Signals section and
-                         sway config examples.
+                         Click tray icon or send SIGUSR1 to scran to retake focus.
+                         See Signals section and config examples.
 
   Escape               Exit scran, or stop video capture if in progress
 ```
