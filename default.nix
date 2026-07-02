@@ -50,6 +50,7 @@ stdenv.mkDerivation {
 
   inherit hardeningDisable;
   mesonBuildType = _target;
+  doCheck = true;
 
   desktopItems = [
     # TODO: Change this
