@@ -45,12 +45,17 @@ rgba32_shuffle_to_m256i(uint32_t rgba32_shuffle_mask)
     return _mm256_broadcastsi128_si256(mask128);
 }
 
+// BT.709 Y'CbCr coefficients.
+//
 // NOTE: Pre-shuffling the coefficients in order to not need to shuffle the
-// rgba loads benchmarks slower, so we do this
-// Target: 77,150,29
+// rgba loads benchmarks slower.
+//
+// Target: 55,183,19
+// NOTE: R rounds 54.4 up to 55 so the coefficients sum to 257. This offsets
+// the final >> 8 truncation's ~-0.5 mean error.
 //
 // Similar drill as in get_yuv_u_rbga_coefficients_256. (We can't simply flip
-// the sign here, since 150 won't fit on either side of 0 in signed i8, and we
+// the sign here, since 183 won't fit on either side of 0 in signed i8, and we
 // need to use VPMADDUBSW, which treats one of its operands as signed (i.e.
 // these coefficients) as signed.
 //
@@ -59,25 +64,25 @@ rgba32_shuffle_to_m256i(uint32_t rgba32_shuffle_mask)
 // "pairwise coefficients" values
 static inline __m256i SCRANROT_TARGET_AVX2 SCRANROT_ALWAYS_INLINE
 get_yuv_y_rbga_coefficients_256(void) {
-    return _mm256_set1_epi32(scranrot_pack_4xU8(77, 29, 1, 0));
+    return _mm256_set1_epi32(scranrot_pack_4xU8(55, 19, 1, 0));
 }
 static inline __m256i SCRANROT_TARGET_AVX2 SCRANROT_ALWAYS_INLINE
 get_yuv_y_pairwise_rbga_coefficients_256(void) {
-    return _mm256_setr_epi16(1, 150, 1, 150, 1, 150, 1, 150, 1, 150, 1, 150, 1, 150, 1, 150);
+    return _mm256_setr_epi16(1, 183, 1, 183, 1, 183, 1, 183, 1, 183, 1, 183, 1, 183, 1, 183);
 }
 static inline __m256i SCRANROT_TARGET_AVX2 SCRANROT_ALWAYS_INLINE
 get_yuv_u_rbga_coefficients_256(void) {
-    // Target (RGB): -43,-85,128.
+    // Target (RGB): -29,-99,128.
     // b (128) cannot be represented in a signed i8, so flip the sign on it and
     // its _mm256_maddubs_epi16()-paired coefficient, then fold the resulting
     // pairwise i16 products as -(r+b)+(g+a), instead of (r+b)+(g+a).
-    return _mm256_set1_epi32(scranrot_pack_4xU8(+43, -128, -85, 0));
+    return _mm256_set1_epi32(scranrot_pack_4xU8(+29, -128, -99, 0));
 }
 static inline __m256i SCRANROT_TARGET_AVX2 SCRANROT_ALWAYS_INLINE
 get_yuv_v_rbga_coefficients_256(void) {
-    // Target (RGB): 128,-107,-21.
+    // Target (RGB): 128,-116,-12.
     // See comment in get_yuv_u_rbga_coefficients_256.
-    return _mm256_set1_epi32(scranrot_pack_4xU8(-128, +21, -107, 0));
+    return _mm256_set1_epi32(scranrot_pack_4xU8(-128, +12, -116, 0));
 }
 
 

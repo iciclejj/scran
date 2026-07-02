@@ -247,12 +247,16 @@ init_ffmpeg(struct scran_output *st_output)
 
 
     // AVFrame (converted, ready to be fed to encoder)
-    ffmpeg_ctx->av_frame_to_encode              = av_frame_alloc();
-    ffmpeg_ctx->av_frame_to_encode->width       = width_px_to_encode;
-    ffmpeg_ctx->av_frame_to_encode->height      = height_px_to_encode;
-    ffmpeg_ctx->av_frame_to_encode->format      = av_pixel_format_to_encode;
-    // NOTE: Color range must be set according to scranrot's color range!
-    ffmpeg_ctx->av_frame_to_encode->color_range = AVCOL_RANGE_JPEG; // XXX TODO: Don't hardcode this value. Make a #define in scranrot.
+    ffmpeg_ctx->av_frame_to_encode                  = av_frame_alloc();
+    ffmpeg_ctx->av_frame_to_encode->width           = width_px_to_encode;
+    ffmpeg_ctx->av_frame_to_encode->height          = height_px_to_encode;
+    ffmpeg_ctx->av_frame_to_encode->format          = av_pixel_format_to_encode;
+    // scranrot outputs full-range BT.709 Y'CbCr. The capture source is desktop
+    // RGB, so we use BT.709 video metadata for broad playback compatibility.
+    ffmpeg_ctx->av_frame_to_encode->color_range     = AVCOL_RANGE_JPEG;
+    ffmpeg_ctx->av_frame_to_encode->colorspace      = AVCOL_SPC_BT709;
+    ffmpeg_ctx->av_frame_to_encode->color_primaries = AVCOL_PRI_BT709;
+    ffmpeg_ctx->av_frame_to_encode->color_trc       = AVCOL_TRC_BT709;
 
 
     // AVCodec
@@ -310,16 +314,19 @@ init_ffmpeg(struct scran_output *st_output)
         ffmpeg_ctx->av_codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
     }
     // -- Values tied to encoder input/environment --
-    ffmpeg_ctx->av_codec_ctx->width       = ffmpeg_ctx->av_frame_to_encode->width;
-    ffmpeg_ctx->av_codec_ctx->height      = ffmpeg_ctx->av_frame_to_encode->height;
-    ffmpeg_ctx->av_codec_ctx->pix_fmt     = ffmpeg_ctx->av_frame_to_encode->format;
-    ffmpeg_ctx->av_codec_ctx->color_range = ffmpeg_ctx->av_frame_to_encode->color_range;
-    ffmpeg_ctx->av_codec_ctx->framerate   = av_framerate_captured;
-    ffmpeg_ctx->av_codec_ctx->time_base   = av_time_base_captured;
+    ffmpeg_ctx->av_codec_ctx->width           = ffmpeg_ctx->av_frame_to_encode->width;
+    ffmpeg_ctx->av_codec_ctx->height          = ffmpeg_ctx->av_frame_to_encode->height;
+    ffmpeg_ctx->av_codec_ctx->pix_fmt         = ffmpeg_ctx->av_frame_to_encode->format;
+    ffmpeg_ctx->av_codec_ctx->color_range     = ffmpeg_ctx->av_frame_to_encode->color_range;
+    ffmpeg_ctx->av_codec_ctx->colorspace      = ffmpeg_ctx->av_frame_to_encode->colorspace;
+    ffmpeg_ctx->av_codec_ctx->color_primaries = ffmpeg_ctx->av_frame_to_encode->color_primaries;
+    ffmpeg_ctx->av_codec_ctx->color_trc       = ffmpeg_ctx->av_frame_to_encode->color_trc;
+    ffmpeg_ctx->av_codec_ctx->framerate       = av_framerate_captured;
+    ffmpeg_ctx->av_codec_ctx->time_base       = av_time_base_captured;
     // -- Values to be tweaked (may depend on encoder/format) --
     // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
-    ffmpeg_ctx->av_codec_ctx->max_b_frames = 2;
-    ffmpeg_ctx->av_codec_ctx->gop_size     = 120;
+    ffmpeg_ctx->av_codec_ctx->max_b_frames    = 2;
+    ffmpeg_ctx->av_codec_ctx->gop_size        = 120;
     AVDictionary *codec_opts = NULL;
     av_dict_set(&codec_opts, "crf"   , "20"       , 0);
     av_dict_set(&codec_opts, "preset", "superfast", 0);
@@ -599,4 +606,3 @@ image_capture_start(struct scran_output *st_output)
 
     return true;
 }
-

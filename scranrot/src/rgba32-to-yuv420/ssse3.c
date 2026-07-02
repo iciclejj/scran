@@ -24,10 +24,14 @@ enum {
 _Static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "This file assumes an XMM register holds 4 RGBA32 pixels.");
 
 
-// Target: 77,150,29
+// BT.709 Y'CbCr coefficients.
+//
+// Target: 55,183,19
+// NOTE: This rounds 54.4 up to 55 so the coefficients sum to 257. This offsets
+// the final >> 8 truncation's ~-0.5 mean error.
 //
 // Similar drill as in get_yuv_u_rbga_coefficients. (We can't simply flip the
-// sign here, since 150 won't fit on either side of 0 in signed i8, and we need
+// sign here, since 183 won't fit on either side of 0 in signed i8, and we need
 // to use maddubs/VPMADDUBSW, which treats one of its operands as signed (i.e.
 // these coefficients) as signed.
 //
@@ -36,26 +40,26 @@ _Static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "
 // "pairwise coeffiecients" values
 static inline __m128i
 get_yuv_y_rbga_coefficients() {
-    return _mm_setr_epi8(77,29,1,0,  77,29,1,0,  77,29,1,0,  77,29,1,0);
+    return _mm_setr_epi8(55,19,1,0,  55,19,1,0,  55,19,1,0,  55,19,1,0);
 }
 static inline __m128i
 get_yuv_y_pairwise_rbga_coefficients() {
-    return _mm_setr_epi16(1,150,   1,150,   1,150,   1,150);
+    return _mm_setr_epi16(1,183,   1,183,   1,183,   1,183);
 }
 
 static inline __m128i
 get_yuv_u_rbga_coefficients() {
-    // Target (RGB): -43,-85,128.
+    // Target (RGB): -29,-99,128.
     // b (128) cannot be represented in a signed i8, so flip the sign on it and
     // its _mm_maddubs_epi16()-paired coefficient, then fold the resulting
     // pairwise i16 products as -(r+b)+(g+a), instead of (r+b)+(g+a).
-    return _mm_setr_epi8(+43,-128,-85,0, +43,-128,-85,0, +43,-128,-85,0, +43,-128,-85,0);
+    return _mm_setr_epi8(+29,-128,-99,0, +29,-128,-99,0, +29,-128,-99,0, +29,-128,-99,0);
 }
 static inline __m128i
 get_yuv_v_rbga_coefficients() {
-    // Target (RGB): 128,-107,-21.
+    // Target (RGB): 128,-116,-12.
     // See comment in get_yuv_u_rbga_coefficients.
-    return _mm_setr_epi8(-128,+21,-107,0, -128,+21,-107,0, -128,+21,-107,0, -128,+21,-107,0);
+    return _mm_setr_epi8(-128,+12,-116,0, -128,+12,-116,0, -128,+12,-116,0, -128,+12,-116,0);
 }
 
 static inline __m128i SCRANROT_TARGET_SSSE3 SCRANROT_ALWAYS_INLINE

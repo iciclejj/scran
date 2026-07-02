@@ -19,7 +19,7 @@ static const uint32_t SCRANROT_TEST_SEED_RGBA32 = 0x12345678u;
 static const uint32_t SCRANROT_TEST_SEED_YUV420 = 0x87654321u;
 
 enum {
-    // The reference uses exact rounded BT.601/JFIF coefficients; production
+    // The reference uses exact rounded BT.709 coefficients; production
     // intentionally uses fast /256 fixed-point approximations.
     SCRANROT_TEST_YUV420_Y_TOLERANCE  = 1,
     SCRANROT_TEST_YUV420_UV_TOLERANCE = 1,
@@ -242,7 +242,7 @@ compare_yuv420(
     const int uv_width  = reference_uv_width(dimensions);
     const int uv_height = reference_uv_height(dimensions);
 
-    // The production paths use fast approximations of the true BT.601/JFIF
+    // The production paths use fast approximations of the true BT.709
     // reference, so we allow some small tolerances.
     if (!compare_yuv420_plane(
             got.y, got.y_stride, reference.y, reference.y_stride,

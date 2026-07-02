@@ -28,7 +28,9 @@ extract_rgb(
 
 static inline uint8_t SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 compute_yuv_y(int r, int g, int b) {
-    return (77 * r + 150 * g + 29 * b) >> 8;
+    // NOTE: This rounds 54.4 up to 55 so the coefficients sum to 257. This
+    // offsets the final >> 8 truncation's ~-0.5 mean error.
+    return (55 * r + 183 * g + 19 * b) >> 8;
 }
 
 static inline uint8_t SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
@@ -38,22 +40,20 @@ saturate_uv_0_to_256_to_u8(int value) {
     return (uint8_t)(value - (value >> 8));
 }
 
-// Fast /256 fixed-point approximation of full-range BT.601/JFIF Y'CbCr.
-// Source: ITU-T T.871 | ISO/IEC 10918-5, section 7:
-// https://www.itu.int/rec/T-REC-T.871
+// Fast /256 fixed-point approximation of full-range BT.709 Y'CbCr.
 //
 // 131584 == 32896 * 4. Offset and division by 4 are merged into a single >>10.
 static inline uint8_t SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 compute_yuv_u(int sum_r, int sum_g, int sum_b) {
     return saturate_uv_0_to_256_to_u8(
-        (-43 * sum_r -  85 * sum_g + 128 * sum_b + 131584) >> 10
+        (-29 * sum_r -  99 * sum_g + 128 * sum_b + 131584) >> 10
     );
 }
 
 static inline uint8_t SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 compute_yuv_v(int sum_r, int sum_g, int sum_b) {
     return saturate_uv_0_to_256_to_u8(
-        (128 * sum_r - 107 * sum_g -  21 * sum_b + 131584) >> 10
+        (128 * sum_r - 116 * sum_g -  12 * sum_b + 131584) >> 10
     );
 }
 

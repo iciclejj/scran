@@ -12,14 +12,12 @@
 #include "../test-util.h"
 
 
-// Full-range BT.601/JFIF Y'CbCr reference conversion.
-// Source: ITU-T T.871 | ISO/IEC 10918-5, section 7:
-// https://www.itu.int/rec/T-REC-T.871
+// Full-range BT.709 Y'CbCr reference conversion.
 //
 // The coefficients below are exact rational forms of:
-//   Y  =  0.299 R + 0.587 G + 0.114 B
-//   Cb = (B - Y) / (2 - 2 * 0.114) + 128
-//   Cr = (R - Y) / (2 - 2 * 0.299) + 128
+//   Y  =  0.2126 R + 0.7152 G + 0.0722 B
+//   Cb = (B - Y) / (2 - 2 * 0.0722) + 128
+//   Cr = (R - Y) / (2 - 2 * 0.2126) + 128
 //
 // Chroma is computed from the average RGB value of each 2x2 YUV420 block,
 // then rounded to nearest integer.
@@ -37,21 +35,21 @@ reference_yuv_clamp_to_u8(int value) {
 static inline uint8_t
 reference_rgba32_to_yuv_y(int r, int g, int b) {
     return reference_yuv_clamp_to_u8(
-        (299 * r + 587 * g + 114 * b + 500) / 1000
+        (2126 * r + 7152 * g + 722 * b + 5000) / 10000
     );
 }
 static inline uint8_t
 reference_rgba32_to_yuv_u(int sum_r, int sum_g, int sum_b) {
-    enum { DENOMINATOR = 1772 * 4 };
+    enum { DENOMINATOR = 18556 * 4 };
     return reference_yuv_clamp_to_u8(
-        (128 * DENOMINATOR - 299 * sum_r - 587 * sum_g + 886 * sum_b + DENOMINATOR / 2) / DENOMINATOR
+        (128 * DENOMINATOR - 2126 * sum_r - 7152 * sum_g + 9278 * sum_b + DENOMINATOR / 2) / DENOMINATOR
     );
 }
 static inline uint8_t
 reference_rgba32_to_yuv_v(int sum_r, int sum_g, int sum_b) {
-    enum { DENOMINATOR = 1402 * 4 };
+    enum { DENOMINATOR = 15748 * 4 };
     return reference_yuv_clamp_to_u8(
-        (128 * DENOMINATOR + 701 * sum_r - 587 * sum_g - 114 * sum_b + DENOMINATOR / 2) / DENOMINATOR
+        (128 * DENOMINATOR + 7874 * sum_r - 7152 * sum_g - 722 * sum_b + DENOMINATOR / 2) / DENOMINATOR
     );
 }
 
