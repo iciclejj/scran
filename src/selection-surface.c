@@ -313,56 +313,51 @@ draw_selection_and_damage_buffer(
     const BLBoxI capture_area_border_outline_last_used_in_any_buffer     = blboxi_get_inflated(capture_area_border_inline_last_used_in_any_buffer    , SCRAN_SELECTION_BORDER_THICKNESS_PX);
     const BLBoxI capture_area_border_outline_last_used_in_current_buffer = blboxi_get_inflated(capture_area_border_inline_last_used_in_current_buffer, SCRAN_SELECTION_BORDER_THICKNESS_PX);
 
-    // TODO: Just do redraw/damage directly whenever we need to redraw, rather
-    // than doing it here with a flag.
-    if (st_buffer->force_redraw) { // TODO: unlikely()
-        // Draw background dim
-        const BLRectI damage_region_everything = blboxi_to_blrecti(capture_area_bounds);
-        draw_and_damage_background(      selection_surface, st_buffer, capture_area_bounds        , capture_area_border_outline, &damage_region_everything,       &damage_region_everything,       1);
+    // Draw background dim
+    {
+        int n_damage_regions;
+        BLRectI damage_regions_wayland[8];
+        BLRectI damage_regions_buffer[8];
 
-        // Draw keymap
-        draw_and_damage_keymap(selection_surface, st_buffer, capture_area_border_outline);
-
-        // Draw selection border
-        BLRectI damage_regions_selection_border[4];
-        blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions_selection_border);
-        draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline , damage_regions_selection_border, damage_regions_selection_border, 4);
-
-        st_buffer->force_redraw = false;
-    } else {
-        // Draw background dim
-        {
-            BLRectI damage_regions_wayland[8];
-            BLRectI damage_regions_buffer[8];
-
+        // TODO: Just do redraw/damage directly whenever we need to redraw, rather than
+        // needing to branch within this function?
+        if (st_buffer->force_redraw) {
+            const BLRectI damage_region_everything = blboxi_to_blrecti(capture_area_bounds);
+            damage_regions_wayland[0] = damage_region_everything;
+            damage_regions_buffer[0] = damage_region_everything;
+            n_damage_regions = 1;
+        } else {
             static const int i_background_diffs = 0;
             blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_outline                           , damage_regions_wayland + i_background_diffs);
             blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_outline                           , damage_regions_buffer  + i_background_diffs);
-
             static const int i_old_border_diffs = 4;
             blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_inline_last_used_in_any_buffer    , damage_regions_wayland + i_old_border_diffs);
             blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_inline_last_used_in_current_buffer, damage_regions_buffer  + i_old_border_diffs);
-
-            draw_and_damage_background(selection_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, 8);
-
-            // Draw keymap
-            draw_and_damage_keymap(selection_surface, st_buffer, capture_area_border_outline);
+            n_damage_regions = 8;
         }
 
-        // Draw selection border
-        {
-            BLRectI damage_regions[4];
-
-            blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
-
-            draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
-        }
+        draw_and_damage_background(selection_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, n_damage_regions);
     }
+
+    // Draw keymap
+    //   Must be drawn after/on top of background
+    draw_and_damage_keymap(selection_surface, st_buffer, capture_area_border_outline);
+
+    // Draw selection border
+    {
+        BLRectI damage_regions[4];
+        blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
+        draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
+    }
+
 
     // NOTE: Don't reset the BLContext here, unless intending to fully
     // re-initialize it. Its state is initialized outside of this ::frame
     // event loop. Shouldn't need flushing either unless doing async.
     bl_context_flush(&st_buffer->bl_ctx, BL_CONTEXT_FLUSH_NO_FLAGS);
+
+    // Assumes force-redraw logic was fully handled above
+    st_buffer->force_redraw = false;
 }
 
 static inline void
