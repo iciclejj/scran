@@ -28,8 +28,11 @@ extract_rgb(
 
 static inline uint8_t SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE
 compute_yuv_y(int r, int g, int b) {
-    // NOTE: This rounds 54.4 up to 55 so the coefficients sum to 257. This
-    // offsets the final >> 8 truncation's ~-0.5 mean error.
+    // BT.709 Y' target (RGB):   0.2126, 0.7152, 0.0722
+    // Fixed-point /256 (RGB):   55,     183,    19
+    //
+    //   This rounds 54.4 up to 55 so the coefficients sum to 257. This
+    //   offsets the final >> 8 truncation's ~-0.5 mean error.
     return (55 * r + 183 * g + 19 * b) >> 8;
 }
 
@@ -41,6 +44,12 @@ saturate_uv_0_to_256_to_u8(int value) {
 }
 
 // Fast /256 fixed-point approximation of full-range BT.709 Y'CbCr.
+//
+// Cb target (RGB):             -0.1146, -0.3854,  0.5000
+// Fixed-point /256 (RGB):      -29,     -99,      128
+//
+// Cr target (RGB):              0.5000, -0.4542, -0.0458
+// Fixed-point /256 (RGB):       128,    -116,     -12
 //
 // 131584 == 32896 * 4. Offset and division by 4 are merged into a single >>10.
 static inline uint8_t SCRANROT_TARGET_FALLBACK SCRANROT_ALWAYS_INLINE

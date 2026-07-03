@@ -26,9 +26,14 @@ _Static_assert(RGBA32_PIXELS_PER_XMM * RGBA32_PIXEL_STRIDE == sizeof(__m128i), "
 
 // BT.709 Y'CbCr coefficients.
 //
-// Target: 55,183,19
-// NOTE: This rounds 54.4 up to 55 so the coefficients sum to 257. This offsets
-// the final >> 8 truncation's ~-0.5 mean error.
+// Reference and fixed-point values in comments are RGB order.
+// Vectors returned below are RBGA order.
+//
+// Y' target (RGB):             0.2126, 0.7152, 0.0722
+// Fixed-point /256 (RGB):      55,     183,    19
+//
+//   This rounds 54.4 up to 55 so the coefficients sum to 257. This offsets
+//   the final >> 8 truncation's ~-0.5 mean error.
 //
 // Similar drill as in get_yuv_u_rbga_coefficients. (We can't simply flip the
 // sign here, since 183 won't fit on either side of 0 in signed i8, and we need
@@ -49,7 +54,9 @@ get_yuv_y_pairwise_rbga_coefficients() {
 
 static inline __m128i
 get_yuv_u_rbga_coefficients() {
-    // Target (RGB): -29,-99,128.
+    // Cb target (RGB):        -0.1146, -0.3854, 0.5000
+    // Fixed-point /256 (RGB): -29,     -99,     128
+    //
     // b (128) cannot be represented in a signed i8, so flip the sign on it and
     // its _mm_maddubs_epi16()-paired coefficient, then fold the resulting
     // pairwise i16 products as -(r+b)+(g+a), instead of (r+b)+(g+a).
@@ -57,7 +64,9 @@ get_yuv_u_rbga_coefficients() {
 }
 static inline __m128i
 get_yuv_v_rbga_coefficients() {
-    // Target (RGB): 128,-116,-12.
+    // Cr target (RGB):         0.5000, -0.4542, -0.0458
+    // Fixed-point /256 (RGB):  128,    -116,     -12
+    //
     // See comment in get_yuv_u_rbga_coefficients.
     return _mm_setr_epi8(-128,+12,-116,0, -128,+12,-116,0, -128,+12,-116,0, -128,+12,-116,0);
 }
