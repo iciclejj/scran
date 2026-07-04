@@ -281,6 +281,22 @@ static const struct {
     [SCRAN_UI_KEYMAP_ITEM_I_EXTRA] = { SCRAN_UI_TEXT_EMPTY        , SCRAN_UI_COLOR_DEFAULT },
 };
 
+static inline void
+init_scran_ui_pre_selection_textline(
+    struct scran_ui_textline *textline,
+    int n_textline_items
+) {
+    for (int i = 0; i < n_textline_items; ++i) {
+        struct scran_ui_textline_item *item = &textline->items[i];
+
+        bl_image_init(&item->bl_img);
+
+        assert(item->locked == false);
+        item->live_state.text  = m_pre_selection_keymap_items[i].text;
+        item->live_state.color = m_pre_selection_keymap_items[i].color;
+    }
+}
+
 bool
 init_scran_ui_pre_selection(
     struct scran_ui_context *ui_ctx,
@@ -289,15 +305,7 @@ init_scran_ui_pre_selection(
     bl_font_init(&ui_ctx->font);
     bl_context_init(&ui_ctx->bl_ctx);
 
-    for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        struct scran_ui_textline_item *keymap_item = &ui_ctx->ui_keymap.items[i];
-
-        bl_image_init(&keymap_item->bl_img);
-
-        assert(keymap_item->locked == false);
-        keymap_item->live_state.text  = m_pre_selection_keymap_items[i].text;
-        keymap_item->live_state.color = m_pre_selection_keymap_items[i].color;
-    }
+    init_scran_ui_pre_selection_textline(&ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_N_ITEMS);
 
     reinit_scran_ui(ui_ctx, scale);
 
