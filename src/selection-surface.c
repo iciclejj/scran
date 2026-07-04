@@ -121,50 +121,39 @@ get_total_textline_width_px(
     return total_width_px;
 }
 
+
+static inline bool
+textline_surface_state_changed(
+    struct scran_ui_textline_surface_state *prev,
+    struct scran_ui_textline_surface_state *new
+) {
+    return !blpointi_are_equal(prev->origin, new->origin)
+        || prev->total_width_px != new->total_width_px;
+}
+
 static inline void
-draw_and_damage_ui(
+draw_and_damage_ui_textline(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
-    BLBoxI capture_area_border_outline
+    BLBoxI capture_area_border_outline,
+    struct scran_ui_textline *textline,
+    // XXX: Maybe just put this into the textline struct, even if it's a static value?
+    int n_textline_items,
+    int textline_item_spacing_px,
+    struct scran_ui_textline_surface_state *state_prev,
+    struct scran_ui_textline_surface_state *state_prev_any_buffer,
+    struct scran_ui_textline_surface_state *state_new,
+    bool force_redraw
 ) {
-    struct scran_ui_context  *ui_ctx = &selection_surface->ui_ctx;
-    struct scran_ui_textline *keymap = &selection_surface->ui_ctx.ui_keymap;
-
-    bool ui_was_dirty = ui_ctx->dirty;
-
-    if (ui_was_dirty) {
-        scran_ui_redraw_elements(ui_ctx);
-        assert(ui_ctx->dirty == false);
-    }
-
-    const int item_spacing_px = 3 * ui_ctx->fixed_width_font_glyph_width_px;
-    const int total_width_px = get_total_textline_width_px(keymap, SCRAN_UI_KEYMAP_N_ITEMS, item_spacing_px);
-
-    struct scran_ui_textline_surface_state *state_prev            = &st_buffer->ui_keymap_state_currently_drawn;
-    struct scran_ui_textline_surface_state *state_prev_any_buffer = &selection_surface->ui_keymap_state_last_drawn;
-    struct scran_ui_textline_surface_state  state_new = {
-        .origin         = {
-            .x = capture_area_border_outline.x0,
-            .y = capture_area_border_outline.y1,
-        },
-        .total_width_px = total_width_px,
-    };
-
-    bool should_redraw =
-        st_buffer->force_redraw
-        || ui_was_dirty
-        || !blpointi_are_equal(state_prev->origin, state_new.origin)
-        || state_prev->total_width_px != state_new.total_width_px
-    ;
-    if (!should_redraw) {
+    if ( !(force_redraw || textline_surface_state_changed(state_prev, state_new))) {
         return;
     }
 
     // Clamp to buffer width
-    if (state_new.origin.x < 0) {
-        state_new.origin.x = 0;
-    } else if ((state_new.origin.x + state_new.total_width_px) > selection_surface->surface.width_px_buffer) {
-        state_new.origin.x = selection_surface->surface.width_px_buffer - state_new.total_width_px;
+    if (state_new->origin.x < 0) {
+        state_new->origin.x = 0;
+    } else if ((state_new->origin.x + state_new->total_width_px) > selection_surface->surface.width_px_buffer) {
+        state_new->origin.x = selection_surface->surface.width_px_buffer - state_new->total_width_px;
     }
 
     // Clear out old ui
@@ -181,14 +170,14 @@ draw_and_damage_ui(
             .x = state_prev->origin.x,
             .y = state_prev->origin.y,
             .w = state_prev->total_width_px,
-            .h = keymap->meta.height_px,
+            .h = textline->meta.height_px,
         };
 
         BLRectI text_rect_prev_any_buffer = {
             .x = state_prev_any_buffer->origin.x,
             .y = state_prev_any_buffer->origin.y,
             .w = state_prev_any_buffer->total_width_px,
-            .h = keymap->meta.height_px,
+            .h = textline->meta.height_px,
         };
 
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, SCRAN_SELECTION_BACKGROUND_COLOR.value);
@@ -224,12 +213,14 @@ draw_and_damage_ui(
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, prev_fill_style_rgba32);
     }
 
-    // Blit new ui
-    BLPointI _origin_new_curr_item = state_new.origin;
-    for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        struct scran_ui_textline_item *keymap_item = &keymap->items[i];
+    struct scran_ui_context *ui_ctx = &selection_surface->ui_ctx;
 
-        const int width_px  = keymap_item->width_px;
+    // Blit new ui
+    BLPointI _origin_new_curr_item = state_new->origin;
+    for (int i = 0; i < n_textline_items; ++i) {
+        struct scran_ui_textline_item *item = &textline->items[i];
+
+        const int width_px  = item->width_px;
         const int height_px = ui_ctx->font_height_px;
 
         if (width_px != 0) {
@@ -240,25 +231,62 @@ draw_and_damage_ui(
                 .w = width_px,
                 .h = height_px,
             };
-            bl_context_blit_image_i(&st_buffer->bl_ctx, &_origin_new_curr_item, &keymap_item->bl_img, &area);
-            _origin_new_curr_item.x += width_px + item_spacing_px;
+            bl_context_blit_image_i(&st_buffer->bl_ctx, &_origin_new_curr_item, &item->bl_img, &area);
+            _origin_new_curr_item.x += width_px + textline_item_spacing_px;
         }
     }
-
     // See get_total_textline_width_px()
     assert(_origin_new_curr_item.x != 0);
-    assert((_origin_new_curr_item.x - state_new.origin.x) - item_spacing_px == total_width_px);
+    assert((_origin_new_curr_item.x - state_new->origin.x) - textline_item_spacing_px == state_new->total_width_px);
 
     wl_surface_damage_buffer(
         selection_surface->surface.wl_surface,
-        state_new.origin.x,
-        state_new.origin.y,
-        state_new.total_width_px,
-        keymap->meta.height_px
+        state_new->origin.x,
+        state_new->origin.y,
+        state_new->total_width_px,
+        textline->meta.height_px
     );
 
-    selection_surface->ui_keymap_state_last_drawn = state_new;
-    st_buffer->ui_keymap_state_currently_drawn    = state_new;
+    *state_prev            = *state_new;
+    *state_prev_any_buffer = *state_new;
+}
+
+static inline void
+draw_and_damage_ui(
+    struct scran_output_selectionSurface *selection_surface,
+    struct scran_output_selectionSurface_buffer *st_buffer,
+    BLBoxI capture_area_border_outline
+) {
+    struct scran_ui_context  *ui_ctx = &selection_surface->ui_ctx;
+
+    bool ui_was_dirty = ui_ctx->dirty;
+
+    if (ui_was_dirty) {
+        scran_ui_redraw_elements(ui_ctx);
+        assert(ui_ctx->dirty == false);
+    }
+
+    const bool force_redraw    = ui_was_dirty || st_buffer->force_redraw;
+    const int  item_spacing_px = 3 * ui_ctx->fixed_width_font_glyph_width_px;
+
+    draw_and_damage_ui_textline(
+        selection_surface,
+        st_buffer,
+        capture_area_border_outline,
+        &ui_ctx->ui_keymap,
+        SCRAN_UI_KEYMAP_N_ITEMS,
+        item_spacing_px,
+        &st_buffer->ui_keymap_state_currently_drawn,
+        &selection_surface->ui_keymap_state_last_drawn,
+        &(struct scran_ui_textline_surface_state){
+            .origin = {
+                .x = capture_area_border_outline.x0,
+                .y = capture_area_border_outline.y1,
+            },
+            .total_width_px = get_total_textline_width_px(&ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_N_ITEMS, item_spacing_px),
+        },
+        force_redraw
+    );
 }
 
 // We trunc/ceil like this to make sure that fractionally scaled displays
