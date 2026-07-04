@@ -329,6 +329,16 @@ scran_ui_set_selection_stage_defaults(
     return true;
 }
 
+static inline void
+destroy_textline(
+    struct scran_ui_textline *textline,
+    int n_textline_items
+) {
+    for (int i = 0; i < n_textline_items; ++i) {
+        bl_image_destroy(&textline->items[i].bl_img);
+    }
+}
+
 void
 destroy_scran_ui(
     struct scran_ui_context *ui_ctx
@@ -336,7 +346,5 @@ destroy_scran_ui(
     bl_font_destroy(&ui_ctx->font);
     bl_context_destroy(&ui_ctx->bl_ctx);
 
-    for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        bl_image_destroy(&ui_ctx->ui_keymap.items[i].bl_img);
-    }
+    destroy_textline(&ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_N_ITEMS);
 }
