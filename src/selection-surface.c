@@ -133,8 +133,8 @@ draw_and_damage_keymap(
     bool ui_was_dirty = ui_ctx->dirty;
 
     if (ui_was_dirty) {
-        redraw_keymap(ui_ctx);
-        ui_ctx->dirty = false;
+        scran_ui_redraw_elements(ui_ctx);
+        assert(ui_ctx->dirty == false);
     }
 
     const int item_spacing_px = 3 * ui_ctx->fixed_width_font_glyph_width_px;

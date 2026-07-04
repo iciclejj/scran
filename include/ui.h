@@ -95,7 +95,8 @@ bool init_scran_ui_pre_selection(struct scran_ui_context *ui_ctx, double scale);
  void destroy_scran_ui(struct scran_ui_context *ui_ctx);
 bool scran_ui_set_selection_stage_defaults( struct scran_ui_context *ui_ctx);
 bool reinit_scran_ui(struct scran_ui_context *ui_ctx, double scale);
-void redraw_keymap(struct scran_ui_context *ui_ctx);
+// Clears ui_ctx->dirty
+void scran_ui_redraw_elements(struct scran_ui_context *ui_ctx);
 
 
 static inline void

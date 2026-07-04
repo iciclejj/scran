@@ -130,13 +130,13 @@ redraw_textline(
 }
 
 void
-redraw_keymap(
+scran_ui_redraw_elements(
     struct scran_ui_context *ui_ctx
 ) {
-    struct scran_ui_textline *keymap = &ui_ctx->ui_keymap;
-    redraw_textline(ui_ctx, &keymap->meta, keymap->items, SCRAN_UI_KEYMAP_N_ITEMS);
-}
+    redraw_textline(ui_ctx, &ui_ctx->ui_keymap.meta, ui_ctx->ui_keymap.items, SCRAN_UI_KEYMAP_N_ITEMS);
 
+    ui_ctx->dirty = false;
+}
 
 static inline struct BLTextMetrics
 get_bl_text_metrics(
@@ -256,7 +256,7 @@ reinit_scran_ui(
         reinit_textline(&ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_N_ITEMS, width_px_max, font_height_px);
     }
 
-    redraw_keymap(ui_ctx);
+    scran_ui_redraw_elements(ui_ctx);
 
     return true;
 }
