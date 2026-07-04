@@ -192,6 +192,7 @@ draw_and_damage_keymap(
 
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, SCRAN_SELECTION_BACKGROUND_COLOR.value);
 
+        // Uncovered, i.e. minus parts that intrude into capture area/border
         BLRectI text_rect_prev_uncovered[4];
         blboxi_get_difference_as_4_rects(blrecti_to_blboxi(text_rect_prev), capture_area_border_outline, text_rect_prev_uncovered);
         // XXX: idk if this one is actually worth doing
@@ -203,7 +204,7 @@ draw_and_damage_keymap(
                 &st_buffer->bl_ctx,
                 &text_rect_prev_uncovered[i]
             );
-            // See _draw_and_damage_region() comment for why we damage a different
+            // See draw_and_damage_region() comment for why we damage a different
             // region than we blit.
             wl_surface_damage_buffer(
                 selection_surface->surface.wl_surface,
