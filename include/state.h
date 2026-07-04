@@ -133,6 +133,7 @@ struct scran_output_selectionSurface_buffer {
     BLBoxI box_currently_drawn;
 
     struct scran_ui_textline_surface_state ui_keymap_state_currently_drawn;
+    struct scran_ui_textline_surface_state ui_statusline_keymap_state_currently_drawn;
 
     bool busy;
     bool force_redraw;
@@ -149,6 +150,7 @@ struct scran_output_selectionSurface {
     // in set_selection_surface_theme(). TODO: Redraw hack is gone now.
     BLBoxI box_last_drawn;
     struct scran_ui_textline_surface_state ui_keymap_state_last_drawn;
+    struct scran_ui_textline_surface_state ui_statusline_keymap_state_last_drawn;
 
     bool awaiting_frame_callback;
     bool frame_callbacks_disabled;

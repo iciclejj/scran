@@ -23,11 +23,17 @@ enum scran_ui_keymap_item_index {
     SCRAN_UI_KEYMAP_N_ITEMS,
 };
 
+enum scran_ui_statusline_keymap_item_index {
+    SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME,
+    SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS,
+};
+
 enum scran_ui_color {
     SCRAN_UI_COLOR_DEFAULT,
     SCRAN_UI_COLOR_KEYMAP_MOD,
     SCRAN_UI_COLOR_KEYMAP_ALT,
     SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE,
+    SCRAN_UI_COLOR_KEYMAP_FREEZEFRAME,
     SCRAN_UI_N_COLORS,
 };
 
@@ -43,6 +49,9 @@ enum scran_ui_text {
     SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT,
     SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY,
     SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP,
+
+    SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_ON,
+    SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_OFF,
 
     SCRAN_UI_TEXT_EMPTY,
     SCRAN_UI_N_TEXTS,
@@ -76,6 +85,7 @@ struct scran_ui_textline {
 
 struct scran_ui_context {
     struct scran_ui_textline ui_keymap;
+    struct scran_ui_textline ui_statusline_keymap;
 
     // Must be cached per output in case of different scale factors.
     int cached_text_widths_px[SCRAN_UI_N_TEXTS];

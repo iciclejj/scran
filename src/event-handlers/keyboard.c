@@ -116,17 +116,24 @@ handle_keyboard_key(
         switch(xkb_key) {
         case XKB_KEY_Return:
             scran_ui_textline_item_set_pressed(ui_ctx, &ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, false);
-            request_selection_surface_frame_callback(st_output);
             break;
         case XKB_KEY_space:
             scran_ui_textline_item_set_pressed(ui_ctx, &ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
-            request_selection_surface_frame_callback(st_output);
             break;
         case XKB_KEY_Tab:
             scran_ui_textline_item_set_pressed(ui_ctx, &ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, false);
-            request_selection_surface_frame_callback(st_output);
             break;
+        case XKB_KEY_z:
+        case XKB_KEY_Z:
+            if (state->options.freezeframe) {
+                scran_ui_textline_item_set_pressed(ui_ctx, &ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME, false);
+            }
+            break;
+        default:
+            return;
         }
+
+        request_selection_surface_frame_callback(st_output);
         return;
     }
 
@@ -155,6 +162,12 @@ handle_keyboard_key(
     case XKB_KEY_Z:
         if (!state->options.freezeframe) {
             break;
+        }
+
+        {
+            struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
+            scran_ui_textline_item_set_pressed(ui_ctx, &ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME, true);
+            request_selection_surface_frame_callback(st_output);
         }
 
         bool pretend_all_hidden = true;

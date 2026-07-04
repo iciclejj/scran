@@ -114,9 +114,7 @@ get_total_textline_width_px(
         }
     }
 
-    // Switch to if statement if no-text scenarios will be possible in the future.
-    assert(total_width_px != 0);
-    total_width_px -= item_spacing_px;
+    total_width_px -= (total_width_px == 0) ? 0 : item_spacing_px;
 
     return total_width_px;
 }
@@ -235,9 +233,6 @@ draw_and_damage_ui_textline(
             _origin_new_curr_item.x += width_px + textline_item_spacing_px;
         }
     }
-    // See get_total_textline_width_px()
-    assert(_origin_new_curr_item.x != 0);
-    assert((_origin_new_curr_item.x - state_new->origin.x) - textline_item_spacing_px == state_new->total_width_px);
 
     wl_surface_damage_buffer(
         selection_surface->surface.wl_surface,
@@ -284,6 +279,25 @@ draw_and_damage_ui(
                 .y = capture_area_border_outline.y1,
             },
             .total_width_px = get_total_textline_width_px(&ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_N_ITEMS, item_spacing_px),
+        },
+        force_redraw
+    );
+
+    draw_and_damage_ui_textline(
+        selection_surface,
+        st_buffer,
+        capture_area_border_outline,
+        &ui_ctx->ui_statusline_keymap,
+        SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS,
+        item_spacing_px,
+        &st_buffer->ui_statusline_keymap_state_currently_drawn,
+        &selection_surface->ui_statusline_keymap_state_last_drawn,
+        &(struct scran_ui_textline_surface_state){
+            .origin = {
+                .x = capture_area_border_outline.x0,
+                .y = capture_area_border_outline.y0 - ui_ctx->font_height_px,
+            },
+            .total_width_px = get_total_textline_width_px(&ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS, item_spacing_px),
         },
         force_redraw
     );

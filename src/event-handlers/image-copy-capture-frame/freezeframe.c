@@ -9,6 +9,7 @@
 #include "freezeframe.h"
 #include "event-handlers.h"
 #include "print.h"
+#include "ui.h"
 #include "util/lib-interop.h"
 
 
@@ -118,6 +119,11 @@ display_freezeframe(
     );
     wl_surface_commit(freezeframe->subsurface.wl_surface);
     freezeframe->showing = true;
+    {
+        struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
+        scran_ui_textline_item_set_text(ui_ctx, &ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_OFF);
+        scran_ui_textline_item_set_color(ui_ctx, &ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_COLOR_KEYMAP_FREEZEFRAME);
+    }
 
     continue_after_showing_freezeframe(st_output);
 }

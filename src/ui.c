@@ -29,6 +29,7 @@ static const BLRgba32 ui_colors[] = {
     [SCRAN_UI_COLOR_DEFAULT]              = { 0xFFDDDDDD },
     [SCRAN_UI_COLOR_KEYMAP_MOD]           = { 0xFFFFFFAA },
     [SCRAN_UI_COLOR_KEYMAP_ALT]           = { 0xFF888888 },
+    [SCRAN_UI_COLOR_KEYMAP_FREEZEFRAME]   = { 0XFF6BE7FF },
     [SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE] = SCRAN_SELECTION_BORDER_COLOR_VIDEO_CAPTURE,
 };
 static_assert(sizeof(ui_colors) / sizeof(ui_colors[0]) == SCRAN_UI_N_COLORS,
@@ -45,19 +46,22 @@ static const struct ui_string ui_texts[] = {
     //      The top margin is fine already.
     //      Somewhat of a HACK, but shouldn't cause any issues unless we change
     //      the font or origin point.
-    [SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT] = INIT_UI_STRING(u" Click and drag to make selection"),
+    [SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT]          = INIT_UI_STRING(u" Click and drag to make selection"),
 
-    [SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT]          = INIT_UI_STRING(u"[↵] Image & Exit"),
-    [SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD]              = INIT_UI_STRING(u"[↵] Image       "),
+    [SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT]                   = INIT_UI_STRING(u"[↵] Image & Exit"),
+    [SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD]                       = INIT_UI_STRING(u"[↵] Image       "),
 
-    [SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT]          = INIT_UI_STRING(u"[␣] Video \uf028"),
-    [SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD]              = INIT_UI_STRING(u"[␣] Video \uf026"),
+    [SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT]                   = INIT_UI_STRING(u"[␣] Video \uf028"),
+    [SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD]                       = INIT_UI_STRING(u"[␣] Video \uf026"),
 
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT]          = INIT_UI_STRING(u"[⇥] Release focus"),
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY]    = INIT_UI_STRING(u"[⇥] Click tray icon to retake focus."),
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP]    = INIT_UI_STRING(u"[⇥] Focus released. 'scran -h' for help."),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT]                   = INIT_UI_STRING(u"[⇥] Release focus"),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY]             = INIT_UI_STRING(u"[⇥] Click tray icon to retake focus."),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP]             = INIT_UI_STRING(u"[⇥] Focus released. 'scran -h' for help."),
 
-    [SCRAN_UI_TEXT_EMPTY]                         = INIT_UI_STRING(u""),
+    [SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_ON]  = INIT_UI_STRING(u"[Z] Freeze screen"),
+    [SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_OFF] = INIT_UI_STRING(u"[Z] Unfreeze screen"),
+
+    [SCRAN_UI_TEXT_EMPTY]                                  = INIT_UI_STRING(u""),
 };
 static_assert(sizeof(ui_texts) / sizeof(ui_texts[0]) == SCRAN_UI_N_TEXTS,
               "ui_texts[] length must exactly cover all text enum values.");
@@ -134,6 +138,7 @@ scran_ui_redraw_elements(
     struct scran_ui_context *ui_ctx
 ) {
     redraw_textline(ui_ctx, &ui_ctx->ui_keymap.meta, ui_ctx->ui_keymap.items, SCRAN_UI_KEYMAP_N_ITEMS);
+    redraw_textline(ui_ctx, &ui_ctx->ui_statusline_keymap.meta, ui_ctx->ui_statusline_keymap.items, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS);
 
     ui_ctx->dirty = false;
 }
@@ -253,7 +258,8 @@ reinit_scran_ui(
 
         assert(width_px_max != 0);
 
-        reinit_textline(&ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_N_ITEMS, width_px_max, font_height_px);
+        reinit_textline(&ui_ctx->ui_keymap,     SCRAN_UI_KEYMAP_N_ITEMS,     width_px_max, font_height_px);
+        reinit_textline(&ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS, width_px_max, font_height_px);
     }
 
     scran_ui_redraw_elements(ui_ctx);
@@ -305,7 +311,8 @@ init_scran_ui_pre_selection(
     bl_font_init(&ui_ctx->font);
     bl_context_init(&ui_ctx->bl_ctx);
 
-    init_scran_ui_pre_selection_textline(&ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_N_ITEMS);
+    init_scran_ui_pre_selection_textline(&ui_ctx->ui_keymap,     SCRAN_UI_KEYMAP_N_ITEMS);
+    init_scran_ui_pre_selection_textline(&ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS);
 
     reinit_scran_ui(ui_ctx, scale);
 
@@ -346,5 +353,6 @@ destroy_scran_ui(
     bl_font_destroy(&ui_ctx->font);
     bl_context_destroy(&ui_ctx->bl_ctx);
 
-    destroy_textline(&ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_N_ITEMS);
+    destroy_textline(&ui_ctx->ui_keymap,            SCRAN_UI_KEYMAP_N_ITEMS);
+    destroy_textline(&ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS);
 }
