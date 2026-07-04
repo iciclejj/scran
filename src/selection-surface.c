@@ -122,7 +122,7 @@ get_total_textline_width_px(
 }
 
 static inline void
-draw_and_damage_keymap(
+draw_and_damage_ui(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
     BLBoxI capture_area_border_outline
@@ -344,7 +344,7 @@ draw_selection_and_damage_buffer(
 
     // Draw keymap
     //   Must be drawn after/on top of background
-    draw_and_damage_keymap(selection_surface, st_buffer, capture_area_border_outline);
+    draw_and_damage_ui(selection_surface, st_buffer, capture_area_border_outline);
 
     // Draw selection border
     {
