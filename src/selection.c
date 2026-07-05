@@ -145,12 +145,12 @@ start_grabbing_focus_for_output(
     {
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
         for (int i = 0; i < SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS; ++i) {
-            scran_ui_textline_item_set_disabled(ui_ctx, &ui_ctx->ui_statusline_keymap, i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, false);
+            scran_ui_textline_item_set_disabled(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, false);
         }
         for (int i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-            scran_ui_textline_item_set_disabled(ui_ctx, &ui_ctx->ui_keymap, i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, false);
+            scran_ui_textline_item_set_disabled(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, false);
         }
-        scran_ui_textline_item_set_text(ui_ctx, &ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT);
+        scran_ui_textline_item_set_text(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FOCUS, SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT);
     }
 
     // TODO: Make arm_selection_surface_frame_callback externally callable, so
@@ -191,7 +191,7 @@ update_focus_released_keymap_text(bool have_tray_icon)
 
         typeof(focus_item->disable_reason_mask) released_focus_bit = 1U << SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS;
         if ((focus_item->disable_reason_mask & released_focus_bit) != 0) {
-            scran_ui_textline_item_set_text(ui_ctx, &ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, text);
+            scran_ui_textline_item_set_text(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FOCUS, text);
             request_selection_surface_frame_callback(st_output);
         }
     }
@@ -236,12 +236,12 @@ stop_grabbing_focus()
         {
             struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
             for (int i = 0; i < SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS; ++i) {
-                scran_ui_textline_item_set_disabled(ui_ctx, &ui_ctx->ui_statusline_keymap, i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, true);
+                scran_ui_textline_item_set_disabled(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, true);
             }
             for (int i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-                scran_ui_textline_item_set_disabled(ui_ctx, &ui_ctx->ui_keymap, i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, true);
+                scran_ui_textline_item_set_disabled(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, true);
             }
-            scran_ui_textline_item_set_text(ui_ctx, &ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, focus_released_keymap_text);
+            scran_ui_textline_item_set_text(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FOCUS, focus_released_keymap_text);
             request_selection_surface_frame_callback(st_output);
         }
     }

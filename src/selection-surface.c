@@ -101,14 +101,13 @@ draw_and_damage_background(
 
 static inline int
 get_total_textline_width_px(
-    struct scran_ui_textline *textline,
-    int n_textline_items,
+    struct scran_ui_textline_view textline,
     int item_spacing_px
 ) {
     int total_width_px = 0;
 
-    for (int i = 0; i < n_textline_items; ++i) {
-        struct scran_ui_textline_item *item = &textline->items[i];
+    for (int i = 0; i < textline.n_items; ++i) {
+        struct scran_ui_textline_item *item = &textline.items[i];
         if (item->width_px != 0) {
             total_width_px += item->width_px + item_spacing_px;
         }
@@ -134,9 +133,7 @@ draw_and_damage_ui_textline(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
     BLBoxI capture_area_border_outline,
-    struct scran_ui_textline *textline,
-    // XXX: Maybe just put this into the textline struct, even if it's a static value?
-    int n_textline_items,
+    struct scran_ui_textline_view textline,
     int textline_item_spacing_px,
     struct scran_ui_textline_surface_state *state_prev,
     struct scran_ui_textline_surface_state *state_prev_any_buffer,
@@ -161,14 +158,14 @@ draw_and_damage_ui_textline(
             .x = state_prev->origin.x,
             .y = state_prev->origin.y,
             .w = state_prev->total_width_px,
-            .h = textline->meta.height_px,
+            .h = textline.meta->height_px,
         };
 
         BLRectI text_rect_prev_any_buffer = {
             .x = state_prev_any_buffer->origin.x,
             .y = state_prev_any_buffer->origin.y,
             .w = state_prev_any_buffer->total_width_px,
-            .h = textline->meta.height_px,
+            .h = textline.meta->height_px,
         };
 
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, SCRAN_SELECTION_BACKGROUND_COLOR.value);
@@ -208,8 +205,8 @@ draw_and_damage_ui_textline(
 
     // Blit new ui
     BLPointI _origin_new_curr_item = state_new->origin;
-    for (int i = 0; i < n_textline_items; ++i) {
-        struct scran_ui_textline_item *item = &textline->items[i];
+    for (int i = 0; i < textline.n_items; ++i) {
+        struct scran_ui_textline_item *item = &textline.items[i];
 
         const int width_px  = item->width_px;
         const int height_px = ui_ctx->font_height_px;
@@ -232,7 +229,7 @@ draw_and_damage_ui_textline(
         state_new->origin.x,
         state_new->origin.y,
         state_new->total_width_px,
-        textline->meta.height_px
+        textline.meta->height_px
     );
 
     *state_prev            = *state_new;
@@ -279,15 +276,14 @@ draw_and_damage_ui(
                 .x = capture_area_border_outline.x0,
                 .y = capture_area_border_outline.y1,
             },
-            .total_width_px = get_total_textline_width_px(&ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_N_ITEMS, item_spacing_px),
+            .total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), item_spacing_px),
         };
         clamp_textline_surface_state(&state_new_keymap, 0, selection_surface->surface.width_px_buffer);
         draw_and_damage_ui_textline(
             selection_surface,
             st_buffer,
             capture_area_border_outline,
-            &ui_ctx->ui_keymap,
-            SCRAN_UI_KEYMAP_N_ITEMS,
+            SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),
             item_spacing_px,
             &st_buffer->ui_keymap_state_currently_drawn,
             &selection_surface->ui_keymap_state_last_drawn,
@@ -299,8 +295,8 @@ draw_and_damage_ui(
 
     // Draw above-selection statusline-keymap & statusline
     {
-        int statusline_total_width_px        = get_total_textline_width_px(&ui_ctx->ui_statusline,        SCRAN_UI_STATUSLINE_N_ITEMS,        item_spacing_px);
-        int statusline_keymap_total_width_px = get_total_textline_width_px(&ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS, item_spacing_px);
+        int statusline_total_width_px        = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),        item_spacing_px);
+        int statusline_keymap_total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), item_spacing_px);
 
         struct scran_ui_textline_surface_state state_new_statusline = {
             .origin = {
@@ -340,8 +336,7 @@ draw_and_damage_ui(
             selection_surface,
             st_buffer,
             capture_area_border_outline,
-            &ui_ctx->ui_statusline_keymap,
-            SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS,
+            SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap),
             item_spacing_px,
             &st_buffer->ui_statusline_keymap_state_currently_drawn,
             &selection_surface->ui_statusline_keymap_state_last_drawn,
@@ -352,8 +347,7 @@ draw_and_damage_ui(
             selection_surface,
             st_buffer,
             capture_area_border_outline,
-            &ui_ctx->ui_statusline,
-            SCRAN_UI_STATUSLINE_N_ITEMS,
+            SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),
             item_spacing_px,
             &st_buffer->ui_statusline_state_currently_drawn,
             &selection_surface->ui_statusline_state_last_drawn,
@@ -559,4 +553,3 @@ init_selection_surface_content(
     set_force_redraw_selection_surface_buffers(st_output);
     wl_surface_commit(selection_surface->surface.wl_surface);
 }
-

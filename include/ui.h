@@ -7,6 +7,7 @@
 
 #include <blend2d/blend2d.h>
 #include <util/blend2d.h>
+#include <util/util.h>
 
 #include "print.h"
 
@@ -85,16 +86,36 @@ struct scran_ui_textline_item {
 static_assert(sizeof((struct scran_ui_textline_item){}.disable_reason_mask) * CHAR_BIT >= SCRAN_UI_N_DISABLE_REASONS,
               ".disable_reason_mask must fit all possible disable reasons.");
 
-struct scran_ui_textline {
+struct scran_ui_textline_view {
+    struct scran_ui_textline_metadata *meta;
+    struct scran_ui_textline_item     *items;
+    int                                n_items;
+};
+#define SCRAN_UI_TEXTLINE_VIEW(textline) (          \
+    (struct scran_ui_textline_view){                \
+        .meta = &(textline).meta,                   \
+        .items = (textline).items,                  \
+        .n_items = ARRAY_LENGTH((textline).items),  \
+    }                                               \
+)
+
+struct scran_ui_keymap_textline {
     struct scran_ui_textline_metadata meta;
-    // FIXME: Array sizing
-    struct scran_ui_textline_item     items[MAX( MAX((int)SCRAN_UI_KEYMAP_N_ITEMS, (int)SCRAN_UI_STATUSLINE_N_ITEMS), SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS)];
+    struct scran_ui_textline_item     items[SCRAN_UI_KEYMAP_N_ITEMS];
+};
+struct scran_ui_statusline_textline {
+    struct scran_ui_textline_metadata meta;
+    struct scran_ui_textline_item     items[SCRAN_UI_STATUSLINE_N_ITEMS];
+};
+struct scran_ui_statusline_keymap_textline {
+    struct scran_ui_textline_metadata meta;
+    struct scran_ui_textline_item     items[SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS];
 };
 
 struct scran_ui_context {
-    struct scran_ui_textline ui_keymap;
-    struct scran_ui_textline ui_statusline;
-    struct scran_ui_textline ui_statusline_keymap;
+    struct scran_ui_keymap_textline            ui_keymap;
+    struct scran_ui_statusline_textline        ui_statusline;
+    struct scran_ui_statusline_keymap_textline ui_statusline_keymap;
 
     // Must be cached per output in case of different scale factors.
     int cached_text_widths_px[SCRAN_UI_N_TEXTS];
@@ -121,11 +142,11 @@ void scran_ui_redraw_elements(struct scran_ui_context *ui_ctx);
 static inline void
 scran_ui_textline_item_set_color(
     struct scran_ui_context *ui_ctx,
-    struct scran_ui_textline *textline,
+    struct scran_ui_textline_view textline,
     int item_index,
     enum scran_ui_color color
 ) {
-    struct scran_ui_textline_item *item = &textline->items[item_index];
+    struct scran_ui_textline_item *item = &textline.items[item_index];
 
     item->live_state.color = color;
 
@@ -137,11 +158,11 @@ scran_ui_textline_item_set_color(
 static inline void
 scran_ui_textline_item_set_text(
     struct scran_ui_context *ui_ctx,
-    struct scran_ui_textline *textline,
+    struct scran_ui_textline_view textline,
     int item_index,
     enum scran_ui_text text
 ) {
-    struct scran_ui_textline_item *item = &textline->items[item_index];
+    struct scran_ui_textline_item *item = &textline.items[item_index];
 
     item->live_state.text = text;
 
@@ -153,16 +174,16 @@ scran_ui_textline_item_set_text(
 static inline void
 scran_ui_textline_item_set_pressed(
     struct scran_ui_context *ui_ctx,
-    struct scran_ui_textline *textline,
+    struct scran_ui_textline_view textline,
     int item_index,
     bool pressed
 ) {
-    typeof(textline->meta.pressed_items_mask) bit = 1U << item_index;
+    typeof(textline.meta->pressed_items_mask) bit = 1U << item_index;
 
     if (pressed) {
-        textline->meta.pressed_items_mask |=  bit;
+        textline.meta->pressed_items_mask |=  bit;
     } else {
-        textline->meta.pressed_items_mask &= ~bit;
+        textline.meta->pressed_items_mask &= ~bit;
     }
 
     ui_ctx->dirty = true;
@@ -171,12 +192,12 @@ scran_ui_textline_item_set_pressed(
 static inline void
 scran_ui_textline_item_set_disabled(
     struct scran_ui_context *ui_ctx,
-    struct scran_ui_textline *textline,
+    struct scran_ui_textline_view textline,
     int item_index,
     enum scran_ui_disable_reason reason,
     bool disabled
 ) {
-    struct scran_ui_textline_item *item = &textline->items[item_index];
+    struct scran_ui_textline_item *item = &textline.items[item_index];
 
     typeof(item->disable_reason_mask) bit = 1U << reason;
 
@@ -192,11 +213,11 @@ scran_ui_textline_item_set_disabled(
 static inline void
 scran_ui_textline_item_set_locked(
     struct scran_ui_context *ui_ctx,
-    struct scran_ui_textline *textline,
+    struct scran_ui_textline_view textline,
     int item_index,
     bool locked
 ) {
-    struct scran_ui_textline_item *item = &textline->items[item_index];
+    struct scran_ui_textline_item *item = &textline.items[item_index];
 
     if (locked && item->locked) {
         eprintf("ERROR: Tried to lock already-locked key state. THIS IS A BUG, please open an issue.\n");

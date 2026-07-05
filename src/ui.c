@@ -124,13 +124,11 @@ redraw_textline_item_image(
 static inline void
 redraw_textline(
     struct scran_ui_context *ui_ctx,
-    struct scran_ui_textline_metadata *meta,
-    struct scran_ui_textline_item *items,
-    int n_items
+    struct scran_ui_textline_view textline
 ) {
-    for (int i = 0; i < n_items; ++i) {
-        bool pressed = meta->pressed_items_mask & (1U << i);
-        redraw_textline_item_image(ui_ctx, &items[i], pressed);
+    for (int i = 0; i < textline.n_items; ++i) {
+        bool pressed = textline.meta->pressed_items_mask & (1U << i);
+        redraw_textline_item_image(ui_ctx, &textline.items[i], pressed);
     }
 }
 
@@ -138,9 +136,9 @@ void
 scran_ui_redraw_elements(
     struct scran_ui_context *ui_ctx
 ) {
-    redraw_textline(ui_ctx, &ui_ctx->ui_keymap.meta,            ui_ctx->ui_keymap.items,            SCRAN_UI_KEYMAP_N_ITEMS);
-    redraw_textline(ui_ctx, &ui_ctx->ui_statusline.meta,        ui_ctx->ui_statusline.items,        SCRAN_UI_STATUSLINE_N_ITEMS);
-    redraw_textline(ui_ctx, &ui_ctx->ui_statusline_keymap.meta, ui_ctx->ui_statusline_keymap.items, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS);
+    redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap));
+    redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline));
+    redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap));
 
     ui_ctx->dirty = false;
 }
@@ -178,17 +176,16 @@ calculate_bl_text_width_px(
 
 static inline void
 reinit_textline(
-    struct scran_ui_textline *textline,
-    int n_items,
+    struct scran_ui_textline_view textline,
     int w_px, int h_px
 ) {
-    for (int i = 0; i < n_items; ++i) {
-        struct scran_ui_textline_item *item = &textline->items[i];
+    for (int i = 0; i < textline.n_items; ++i) {
+        struct scran_ui_textline_item *item = &textline.items[i];
         bl_image_reset(&item->bl_img);
         bl_image_create(&item->bl_img, w_px, h_px, wl_shm_format_to_blend2d(SURFACE_SHM_FORMAT));
     }
 
-    textline->meta.height_px = h_px;
+    textline.meta->height_px = h_px;
 }
 
 // Should be called on scale changes to resize fonts etc.
@@ -260,9 +257,9 @@ reinit_scran_ui(
 
         assert(width_px_max != 0);
 
-        reinit_textline(&ui_ctx->ui_keymap,            SCRAN_UI_KEYMAP_N_ITEMS,            width_px_max, font_height_px);
-        reinit_textline(&ui_ctx->ui_statusline,        SCRAN_UI_STATUSLINE_N_ITEMS,        width_px_max, font_height_px);
-        reinit_textline(&ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS, width_px_max, font_height_px);
+        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),            width_px_max, font_height_px);
+        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),        width_px_max, font_height_px);
+        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), width_px_max, font_height_px);
     }
 
     scran_ui_redraw_elements(ui_ctx);
@@ -301,12 +298,14 @@ static_assert(ARRAY_LENGTH(m_keymap_defaults_post_selection)           == SCRAN_
 
 static inline void
 assign_textline_defaults(
-    struct scran_ui_textline *textline,
+    struct scran_ui_textline_view textline,
     const struct default_textline_values *defaults,
-    int n_items
+    int n_defaults
 ) {
-    for (int i = 0; i < n_items; ++i) {
-        struct scran_ui_textline_item *item = &textline->items[i];
+    assert(textline.n_items == n_defaults);
+
+    for (int i = 0; i < textline.n_items; ++i) {
+        struct scran_ui_textline_item *item = &textline.items[i];
         assert(item->locked == false);
         item->live_state.text  = defaults[i].text;
         item->live_state.color = defaults[i].color;
@@ -315,15 +314,17 @@ assign_textline_defaults(
 
 static inline void
 init_textline(
-    struct scran_ui_textline *textline,
+    struct scran_ui_textline_view textline,
     const struct default_textline_values *defaults,
-    int n_items
+    int n_defaults
 ) {
-    for (int i = 0; i < n_items; ++i) {
-        struct scran_ui_textline_item *item = &textline->items[i];
+    assert(textline.n_items == n_defaults);
+
+    for (int i = 0; i < textline.n_items; ++i) {
+        struct scran_ui_textline_item *item = &textline.items[i];
         bl_image_init(&item->bl_img);
     }
-    assign_textline_defaults(textline, defaults, n_items);
+    assign_textline_defaults(textline, defaults, n_defaults);
 }
 
 bool
@@ -334,9 +335,9 @@ init_scran_ui_pre_selection(
     bl_font_init(&ui_ctx->font);
     bl_context_init(&ui_ctx->bl_ctx);
 
-    init_textline(&ui_ctx->ui_keymap,            m_keymap_defaults_pre_selection,            SCRAN_UI_KEYMAP_N_ITEMS);
-    init_textline(&ui_ctx->ui_statusline,        m_statusline_defaults_pre_selection,        SCRAN_UI_STATUSLINE_N_ITEMS);
-    init_textline(&ui_ctx->ui_statusline_keymap, m_statusline_keymap_defaults_pre_selection, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS);
+    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),            m_keymap_defaults_pre_selection,            ARRAY_LENGTH(m_keymap_defaults_pre_selection));
+    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),        m_statusline_defaults_pre_selection,        ARRAY_LENGTH(m_statusline_defaults_pre_selection));
+    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), m_statusline_keymap_defaults_pre_selection, ARRAY_LENGTH(m_statusline_keymap_defaults_pre_selection));
 
     reinit_scran_ui(ui_ctx, scale);
 
@@ -347,7 +348,7 @@ bool
 scran_ui_set_selection_stage_defaults(
     struct scran_ui_context *ui_ctx
 ) {
-    assign_textline_defaults(&ui_ctx->ui_keymap, m_keymap_defaults_post_selection, SCRAN_UI_KEYMAP_N_ITEMS);
+    assign_textline_defaults(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), m_keymap_defaults_post_selection, ARRAY_LENGTH(m_keymap_defaults_post_selection));
 
     ui_ctx->dirty = true;
 
@@ -356,11 +357,10 @@ scran_ui_set_selection_stage_defaults(
 
 static inline void
 destroy_textline(
-    struct scran_ui_textline *textline,
-    int n_textline_items
+    struct scran_ui_textline_view textline
 ) {
-    for (int i = 0; i < n_textline_items; ++i) {
-        bl_image_destroy(&textline->items[i].bl_img);
+    for (int i = 0; i < textline.n_items; ++i) {
+        bl_image_destroy(&textline.items[i].bl_img);
     }
 }
 
@@ -371,7 +371,7 @@ destroy_scran_ui(
     bl_font_destroy(&ui_ctx->font);
     bl_context_destroy(&ui_ctx->bl_ctx);
 
-    destroy_textline(&ui_ctx->ui_keymap,            SCRAN_UI_KEYMAP_N_ITEMS);
-    destroy_textline(&ui_ctx->ui_statusline,        SCRAN_UI_STATUSLINE_N_ITEMS);
-    destroy_textline(&ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS);
+    destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap));
+    destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline));
+    destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap));
 }
