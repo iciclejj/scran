@@ -259,9 +259,11 @@ draw_and_damage_ui(
 ) {
     struct scran_ui_context  *ui_ctx = &selection_surface->ui_ctx;
 
-    const bool ui_was_dirty    = scran_ui_redraw_elements(ui_ctx);
-    const bool force_redraw    = ui_was_dirty || st_buffer->force_redraw;
-    const int  item_spacing_px = 3 * ui_ctx->fixed_width_font_glyph_width_px;
+    const uint32_t redrawn_textline_mask          = scran_ui_redraw_elements(ui_ctx);
+    const bool     force_redraw_keymap            = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_KEYMAP);
+    const bool     force_redraw_statusline        = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE);
+    const bool     force_redraw_statusline_keymap = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE_KEYMAP);
+    const int      item_spacing_px                = 3 * ui_ctx->fixed_width_font_glyph_width_px;
 
     // Draw below-selection keymap
     {
@@ -282,7 +284,7 @@ draw_and_damage_ui(
             &st_buffer->ui_keymap_state_currently_drawn,
             &selection_surface->ui_keymap_state_last_drawn,
             &state_new_keymap,
-            force_redraw
+            force_redraw_keymap
         );
     }
 
@@ -335,7 +337,7 @@ draw_and_damage_ui(
             &st_buffer->ui_statusline_keymap_state_currently_drawn,
             &selection_surface->ui_statusline_keymap_state_last_drawn,
             &state_new_statusline_keymap,
-            force_redraw
+            force_redraw_statusline_keymap
         );
         draw_and_damage_ui_textline(
             selection_surface,
@@ -346,7 +348,7 @@ draw_and_damage_ui(
             &st_buffer->ui_statusline_state_currently_drawn,
             &selection_surface->ui_statusline_state_last_drawn,
             &state_new_statusline,
-            force_redraw
+            force_redraw_statusline
         );
     }
 }

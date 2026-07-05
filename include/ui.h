@@ -130,11 +130,19 @@ struct scran_ui_context {
 };
 
 
+
 bool init_scran_ui_pre_selection(struct scran_ui_context *ui_ctx, double scale);
  void destroy_scran_ui(struct scran_ui_context *ui_ctx);
 bool scran_ui_set_selection_stage_defaults( struct scran_ui_context *ui_ctx);
 bool reinit_scran_ui(struct scran_ui_context *ui_ctx, double scale);
-bool scran_ui_redraw_elements(struct scran_ui_context *ui_ctx);
+
+enum scran_ui_redrawn_textline_mask {
+    SCRAN_UI_REDREW_KEYMAP            = 1U << 0,
+    SCRAN_UI_REDREW_STATUSLINE        = 1U << 1,
+    SCRAN_UI_REDREW_STATUSLINE_KEYMAP = 1U << 2,
+};
+// Returns scran_ui_redrawn_textline_mask-valued mask
+uint32_t scran_ui_redraw_elements(struct scran_ui_context *ui_ctx);
 
 
 static inline uint32_t

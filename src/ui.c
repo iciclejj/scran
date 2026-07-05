@@ -141,18 +141,23 @@ redraw_textline(
     return redrew;
 }
 
-// Returns true if anything was actually redrawn, else false.
-bool
+uint32_t
 scran_ui_redraw_elements(
     struct scran_ui_context *ui_ctx
 ) {
-    bool redrew = false;
+    uint32_t redrawn_textline_mask = 0;
 
-    redrew |= redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap));
-    redrew |= redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline));
-    redrew |= redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap));
+    if (redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap))) {
+        redrawn_textline_mask |= SCRAN_UI_REDREW_KEYMAP;
+    }
+    if (redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline))) {
+        redrawn_textline_mask |= SCRAN_UI_REDREW_STATUSLINE;
+    }
+    if (redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap))) {
+        redrawn_textline_mask |= SCRAN_UI_REDREW_STATUSLINE_KEYMAP;
+    }
 
-    return redrew;
+    return redrawn_textline_mask;
 }
 
 static inline struct BLTextMetrics
