@@ -6,6 +6,7 @@
 #include <limits.h>
 
 #include <blend2d/blend2d.h>
+#include <util/blend2d.h>
 
 #include "print.h"
 
@@ -86,7 +87,8 @@ static_assert(sizeof((struct scran_ui_textline_item){}.disable_reason_mask) * CH
 
 struct scran_ui_textline {
     struct scran_ui_textline_metadata meta;
-    struct scran_ui_textline_item     items[SCRAN_UI_KEYMAP_N_ITEMS];
+    // FIXME: Array sizing
+    struct scran_ui_textline_item     items[MAX( MAX((int)SCRAN_UI_KEYMAP_N_ITEMS, (int)SCRAN_UI_STATUSLINE_N_ITEMS), SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS)];
 };
 
 struct scran_ui_context {
