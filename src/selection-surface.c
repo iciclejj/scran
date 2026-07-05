@@ -259,13 +259,7 @@ draw_and_damage_ui(
 ) {
     struct scran_ui_context  *ui_ctx = &selection_surface->ui_ctx;
 
-    bool ui_was_dirty = ui_ctx->dirty;
-
-    if (ui_was_dirty) {
-        scran_ui_redraw_elements(ui_ctx);
-        assert(ui_ctx->dirty == false);
-    }
-
+    const bool ui_was_dirty    = scran_ui_redraw_elements(ui_ctx);
     const bool force_redraw    = ui_was_dirty || st_buffer->force_redraw;
     const int  item_spacing_px = 3 * ui_ctx->fixed_width_font_glyph_width_px;
 

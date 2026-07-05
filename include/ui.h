@@ -68,6 +68,7 @@ enum scran_ui_text {
 struct scran_ui_textline_metadata {
     int height_px;
     uint32_t pressed_items_mask;
+    uint32_t dirty_items_mask;
 };
 struct scran_ui_textline_item_lockable_state {
     uint8_t text;
@@ -126,8 +127,6 @@ struct scran_ui_context {
     int ascent_px;
     int font_height_px;
     int fixed_width_font_glyph_width_px;
-
-    bool dirty; // TODO: Track dirty per ui item.
 };
 
 
@@ -135,9 +134,61 @@ bool init_scran_ui_pre_selection(struct scran_ui_context *ui_ctx, double scale);
  void destroy_scran_ui(struct scran_ui_context *ui_ctx);
 bool scran_ui_set_selection_stage_defaults( struct scran_ui_context *ui_ctx);
 bool reinit_scran_ui(struct scran_ui_context *ui_ctx, double scale);
-// Clears ui_ctx->dirty
-void scran_ui_redraw_elements(struct scran_ui_context *ui_ctx);
+bool scran_ui_redraw_elements(struct scran_ui_context *ui_ctx);
 
+
+static inline uint32_t
+scran_ui_textline_all_items_mask(
+    struct scran_ui_textline_view textline
+) {
+    assert(0 <= textline.n_items && textline.n_items <= 31);
+    return (1U << textline.n_items) - 1U;
+}
+static inline void
+scran_ui_textline_set_all_items_dirty(
+    struct scran_ui_textline_view textline
+) {
+    textline.meta->dirty_items_mask |= scran_ui_textline_all_items_mask(textline);
+}
+static inline bool
+scran_ui_textline_get_items_mask_bit(
+    uint32_t mask,
+    int item_index
+) {
+    return mask & (1U << item_index);
+}
+static inline void
+scran_ui_textline_set_items_mask_bit(
+    uint32_t *mask,
+    int item_index,
+    const bool bit_value
+) {
+    const uint32_t bit = 1U << item_index;
+    if (bit_value == 1) {
+        *mask |=  bit;
+    } else {
+        *mask &= ~bit;
+    }
+}
+
+static inline void
+scran_ui_textline_item_set_dirty(
+    struct scran_ui_textline_view textline,
+    int item_index
+) {
+    scran_ui_textline_set_items_mask_bit(&textline.meta->dirty_items_mask, item_index, true);
+}
+
+static inline void
+scran_ui_textline_item_set_pressed(
+    struct scran_ui_context *ui_ctx,
+    struct scran_ui_textline_view textline,
+    int item_index,
+    bool pressed
+) {
+    scran_ui_textline_set_items_mask_bit(&textline.meta->pressed_items_mask, item_index, pressed);
+    scran_ui_textline_item_set_dirty(textline, item_index);
+}
 
 static inline void
 scran_ui_textline_item_set_color(
@@ -151,7 +202,7 @@ scran_ui_textline_item_set_color(
     item->live_state.color = color;
 
     if (!item->locked) {
-        ui_ctx->dirty = true;
+        scran_ui_textline_item_set_dirty(textline, item_index);
     }
 }
 
@@ -167,26 +218,8 @@ scran_ui_textline_item_set_text(
     item->live_state.text = text;
 
     if (!item->locked) {
-        ui_ctx->dirty = true;
+        scran_ui_textline_item_set_dirty(textline, item_index);
     }
-}
-
-static inline void
-scran_ui_textline_item_set_pressed(
-    struct scran_ui_context *ui_ctx,
-    struct scran_ui_textline_view textline,
-    int item_index,
-    bool pressed
-) {
-    typeof(textline.meta->pressed_items_mask) bit = 1U << item_index;
-
-    if (pressed) {
-        textline.meta->pressed_items_mask |=  bit;
-    } else {
-        textline.meta->pressed_items_mask &= ~bit;
-    }
-
-    ui_ctx->dirty = true;
 }
 
 static inline void
@@ -207,7 +240,7 @@ scran_ui_textline_item_set_disabled(
         item->disable_reason_mask &= ~bit;
     }
 
-    ui_ctx->dirty = true;
+    scran_ui_textline_item_set_dirty(textline, item_index);
 }
 
 static inline void
@@ -226,7 +259,7 @@ scran_ui_textline_item_set_locked(
     item->locked_state = item->live_state;
     item->locked = locked;
 
-    ui_ctx->dirty = true;
+    scran_ui_textline_item_set_dirty(textline, item_index);
 }
 
 

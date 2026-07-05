@@ -121,26 +121,38 @@ redraw_textline_item_image(
 }
 
 
-static inline void
+static inline bool
 redraw_textline(
     struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_view textline
 ) {
+    bool redrew = false;
+
     for (int i = 0; i < textline.n_items; ++i) {
-        bool pressed = textline.meta->pressed_items_mask & (1U << i);
-        redraw_textline_item_image(ui_ctx, &textline.items[i], pressed);
+        bool item_dirty = scran_ui_textline_get_items_mask_bit(textline.meta->dirty_items_mask, i);
+        if (item_dirty) {
+            bool pressed = scran_ui_textline_get_items_mask_bit(textline.meta->pressed_items_mask, i);
+            redraw_textline_item_image(ui_ctx, &textline.items[i], pressed);
+            redrew |= item_dirty;
+        }
     }
+    textline.meta->dirty_items_mask = 0;
+
+    return redrew;
 }
 
-void
+// Returns true if anything was actually redrawn, else false.
+bool
 scran_ui_redraw_elements(
     struct scran_ui_context *ui_ctx
 ) {
-    redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap));
-    redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline));
-    redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap));
+    bool redrew = false;
 
-    ui_ctx->dirty = false;
+    redrew |= redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap));
+    redrew |= redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline));
+    redrew |= redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap));
+
+    return redrew;
 }
 
 static inline struct BLTextMetrics
@@ -184,6 +196,7 @@ reinit_textline(
         bl_image_reset(&item->bl_img);
         bl_image_create(&item->bl_img, w_px, h_px, wl_shm_format_to_blend2d(SURFACE_SHM_FORMAT));
     }
+    scran_ui_textline_set_all_items_dirty(textline);
 
     textline.meta->height_px = h_px;
 }
@@ -309,6 +322,7 @@ assign_textline_defaults(
         assert(item->locked == false);
         item->live_state.text  = defaults[i].text;
         item->live_state.color = defaults[i].color;
+        scran_ui_textline_item_set_dirty(textline, i);
     }
 }
 
@@ -349,9 +363,6 @@ scran_ui_set_selection_stage_defaults(
     struct scran_ui_context *ui_ctx
 ) {
     assign_textline_defaults(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), m_keymap_defaults_post_selection, ARRAY_LENGTH(m_keymap_defaults_post_selection));
-
-    ui_ctx->dirty = true;
-
     return true;
 }
 
