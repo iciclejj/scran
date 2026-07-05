@@ -137,7 +137,8 @@ void
 scran_ui_redraw_elements(
     struct scran_ui_context *ui_ctx
 ) {
-    redraw_textline(ui_ctx, &ui_ctx->ui_keymap.meta, ui_ctx->ui_keymap.items, SCRAN_UI_KEYMAP_N_ITEMS);
+    redraw_textline(ui_ctx, &ui_ctx->ui_keymap.meta,            ui_ctx->ui_keymap.items,            SCRAN_UI_KEYMAP_N_ITEMS);
+    redraw_textline(ui_ctx, &ui_ctx->ui_statusline.meta,        ui_ctx->ui_statusline.items,        SCRAN_UI_STATUSLINE_N_ITEMS);
     redraw_textline(ui_ctx, &ui_ctx->ui_statusline_keymap.meta, ui_ctx->ui_statusline_keymap.items, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS);
 
     ui_ctx->dirty = false;
@@ -258,7 +259,8 @@ reinit_scran_ui(
 
         assert(width_px_max != 0);
 
-        reinit_textline(&ui_ctx->ui_keymap,     SCRAN_UI_KEYMAP_N_ITEMS,     width_px_max, font_height_px);
+        reinit_textline(&ui_ctx->ui_keymap,            SCRAN_UI_KEYMAP_N_ITEMS,            width_px_max, font_height_px);
+        reinit_textline(&ui_ctx->ui_statusline,        SCRAN_UI_STATUSLINE_N_ITEMS,        width_px_max, font_height_px);
         reinit_textline(&ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS, width_px_max, font_height_px);
     }
 
@@ -311,7 +313,8 @@ init_scran_ui_pre_selection(
     bl_font_init(&ui_ctx->font);
     bl_context_init(&ui_ctx->bl_ctx);
 
-    init_scran_ui_pre_selection_textline(&ui_ctx->ui_keymap,     SCRAN_UI_KEYMAP_N_ITEMS);
+    init_scran_ui_pre_selection_textline(&ui_ctx->ui_keymap,            SCRAN_UI_KEYMAP_N_ITEMS);
+    init_scran_ui_pre_selection_textline(&ui_ctx->ui_statusline,        SCRAN_UI_STATUSLINE_N_ITEMS);
     init_scran_ui_pre_selection_textline(&ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS);
 
     reinit_scran_ui(ui_ctx, scale);
@@ -323,12 +326,19 @@ bool
 scran_ui_set_selection_stage_defaults(
     struct scran_ui_context *ui_ctx
 ) {
+    // XXX TODO: Add defaults-structs for all the elements
+
     for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
         struct scran_ui_textline_item *keymap_item = &ui_ctx->ui_keymap.items[i];
-
         keymap_item->locked = false;
         keymap_item->live_state.text  = m_post_selection_keymap_items[i].text;
         keymap_item->live_state.color = m_post_selection_keymap_items[i].color;
+    }
+
+    for (enum scran_ui_statusline_item_index i = 0; i < SCRAN_UI_STATUSLINE_N_ITEMS; ++i) {
+        struct scran_ui_textline_item *statusline_item = &ui_ctx->ui_statusline.items[i];
+        statusline_item->live_state.text  = SCRAN_UI_TEXT_EMPTY;
+        statusline_item->live_state.color = SCRAN_UI_COLOR_DEFAULT;
     }
 
     ui_ctx->dirty = true;
@@ -354,5 +364,6 @@ destroy_scran_ui(
     bl_context_destroy(&ui_ctx->bl_ctx);
 
     destroy_textline(&ui_ctx->ui_keymap,            SCRAN_UI_KEYMAP_N_ITEMS);
+    destroy_textline(&ui_ctx->ui_statusline,        SCRAN_UI_STATUSLINE_N_ITEMS);
     destroy_textline(&ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS);
 }

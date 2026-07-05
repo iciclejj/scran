@@ -147,13 +147,6 @@ draw_and_damage_ui_textline(
         return;
     }
 
-    // Clamp to buffer width
-    if (state_new->origin.x < 0) {
-        state_new->origin.x = 0;
-    } else if ((state_new->origin.x + state_new->total_width_px) > selection_surface->surface.width_px_buffer) {
-        state_new->origin.x = selection_surface->surface.width_px_buffer - state_new->total_width_px;
-    }
-
     // Clear out old ui
     {
         // TODO: Just store the fill styles in state
@@ -246,6 +239,21 @@ draw_and_damage_ui_textline(
     *state_prev_any_buffer = *state_new;
 }
 
+
+static inline void
+clamp_textline_surface_state(
+    struct scran_ui_textline_surface_state *state_new,
+    int min_px,
+    int max_px
+) {
+    // Clamp to buffer width
+    if (state_new->origin.x < min_px) {
+        state_new->origin.x = min_px;
+    } else if ((state_new->origin.x + state_new->total_width_px) > max_px) {
+        state_new->origin.x = max_px - state_new->total_width_px;
+    }
+}
+
 static inline void
 draw_and_damage_ui(
     struct scran_output_selectionSurface *selection_surface,
@@ -264,43 +272,95 @@ draw_and_damage_ui(
     const bool force_redraw    = ui_was_dirty || st_buffer->force_redraw;
     const int  item_spacing_px = 3 * ui_ctx->fixed_width_font_glyph_width_px;
 
-    draw_and_damage_ui_textline(
-        selection_surface,
-        st_buffer,
-        capture_area_border_outline,
-        &ui_ctx->ui_keymap,
-        SCRAN_UI_KEYMAP_N_ITEMS,
-        item_spacing_px,
-        &st_buffer->ui_keymap_state_currently_drawn,
-        &selection_surface->ui_keymap_state_last_drawn,
-        &(struct scran_ui_textline_surface_state){
+    // Draw below-selection keymap
+    {
+        struct scran_ui_textline_surface_state state_new_keymap = {
             .origin = {
                 .x = capture_area_border_outline.x0,
                 .y = capture_area_border_outline.y1,
             },
             .total_width_px = get_total_textline_width_px(&ui_ctx->ui_keymap, SCRAN_UI_KEYMAP_N_ITEMS, item_spacing_px),
-        },
-        force_redraw
-    );
+        };
+        clamp_textline_surface_state(&state_new_keymap, 0, selection_surface->surface.width_px_buffer);
+        draw_and_damage_ui_textline(
+            selection_surface,
+            st_buffer,
+            capture_area_border_outline,
+            &ui_ctx->ui_keymap,
+            SCRAN_UI_KEYMAP_N_ITEMS,
+            item_spacing_px,
+            &st_buffer->ui_keymap_state_currently_drawn,
+            &selection_surface->ui_keymap_state_last_drawn,
+            &state_new_keymap,
+            force_redraw
+        );
+    }
 
-    draw_and_damage_ui_textline(
-        selection_surface,
-        st_buffer,
-        capture_area_border_outline,
-        &ui_ctx->ui_statusline_keymap,
-        SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS,
-        item_spacing_px,
-        &st_buffer->ui_statusline_keymap_state_currently_drawn,
-        &selection_surface->ui_statusline_keymap_state_last_drawn,
-        &(struct scran_ui_textline_surface_state){
+
+    // Draw above-selection statusline-keymap & statusline
+    {
+        int statusline_total_width_px        = get_total_textline_width_px(&ui_ctx->ui_statusline,        SCRAN_UI_STATUSLINE_N_ITEMS,        item_spacing_px);
+        int statusline_keymap_total_width_px = get_total_textline_width_px(&ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS, item_spacing_px);
+
+        struct scran_ui_textline_surface_state state_new_statusline = {
+            .origin = {
+                .x = capture_area_border_outline.x1 - statusline_total_width_px,
+                .y = capture_area_border_outline.y0 - ui_ctx->font_height_px,
+            },
+            .total_width_px = statusline_total_width_px,
+        };
+        struct scran_ui_textline_surface_state state_new_statusline_keymap = {
             .origin = {
                 .x = capture_area_border_outline.x0,
                 .y = capture_area_border_outline.y0 - ui_ctx->font_height_px,
             },
-            .total_width_px = get_total_textline_width_px(&ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS, item_spacing_px),
-        },
-        force_redraw
-    );
+            .total_width_px = statusline_keymap_total_width_px,
+        };
+
+        // The left-aligned `statusline_keymap`s anchor has priority, but it should still
+        // make space for the right-aligned `statusline` when reaching the far-right of
+        // the screen.
+        // Also add enough spacing between them so *at least their logical boxes* don't
+        // overlap and start clearing each other out.
+        int ui_element_spacing_px = (statusline_total_width_px == 0 || statusline_keymap_total_width_px == 0) ? 0 : item_spacing_px;
+        clamp_textline_surface_state(
+            &state_new_statusline_keymap,
+            0,
+            // Don't overlap the right-aligned statusline, which is clamped to buffer width
+            selection_surface->surface.width_px_buffer - (statusline_total_width_px + ui_element_spacing_px)
+        );
+        clamp_textline_surface_state(
+            &state_new_statusline,
+            // Don't overlap the left-aligned statusline_keymap
+            state_new_statusline_keymap.origin.x + (statusline_keymap_total_width_px + ui_element_spacing_px),
+            selection_surface->surface.width_px_buffer
+        );
+
+        draw_and_damage_ui_textline(
+            selection_surface,
+            st_buffer,
+            capture_area_border_outline,
+            &ui_ctx->ui_statusline_keymap,
+            SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS,
+            item_spacing_px,
+            &st_buffer->ui_statusline_keymap_state_currently_drawn,
+            &selection_surface->ui_statusline_keymap_state_last_drawn,
+            &state_new_statusline_keymap,
+            force_redraw
+        );
+        draw_and_damage_ui_textline(
+            selection_surface,
+            st_buffer,
+            capture_area_border_outline,
+            &ui_ctx->ui_statusline,
+            SCRAN_UI_STATUSLINE_N_ITEMS,
+            item_spacing_px,
+            &st_buffer->ui_statusline_state_currently_drawn,
+            &selection_surface->ui_statusline_state_last_drawn,
+            &state_new_statusline,
+            force_redraw
+        );
+    }
 }
 
 // We trunc/ceil like this to make sure that fractionally scaled displays

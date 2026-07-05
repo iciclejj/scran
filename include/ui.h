@@ -23,6 +23,12 @@ enum scran_ui_keymap_item_index {
     SCRAN_UI_KEYMAP_N_ITEMS,
 };
 
+enum scran_ui_statusline_item_index {
+    SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE,
+    SCRAN_UI_STATUSLINE_ITEM_I_TIMER,
+    SCRAN_UI_STATUSLINE_N_ITEMS,
+};
+
 enum scran_ui_statusline_keymap_item_index {
     SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME,
     SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS,
@@ -85,6 +91,7 @@ struct scran_ui_textline {
 
 struct scran_ui_context {
     struct scran_ui_textline ui_keymap;
+    struct scran_ui_textline ui_statusline;
     struct scran_ui_textline ui_statusline_keymap;
 
     // Must be cached per output in case of different scale factors.
