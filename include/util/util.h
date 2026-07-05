@@ -8,6 +8,9 @@
 #include <wayland-client-protocol.h>
 
 
+#define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(*arr))
+
+
 bool scran_full_write(int fd, const char *src, size_t n_bytes);
 
 static inline bool

@@ -9,6 +9,7 @@
 #include "selection-surface.h"
 #include "util/blend2d.h"
 #include "util/lib-interop.h"
+#include "util/util.h"
 
 
 #define SCRAN_SELECTION_SHADOW_OFFSET_PX 1
@@ -269,40 +270,60 @@ reinit_scran_ui(
     return true;
 }
 
-static const struct {
-    enum scran_ui_text text;
+struct default_textline_values {
+    enum scran_ui_text  text;
     enum scran_ui_color color;
-} m_pre_selection_keymap_items[] = {
-    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE] = { SCRAN_UI_TEXT_EMPTY                 , SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO] = { SCRAN_UI_TEXT_EMPTY                 , SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS] = { SCRAN_UI_TEXT_EMPTY                 , SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA] = { SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT, SCRAN_UI_COLOR_DEFAULT },
 };
-
-static const struct {
-    enum scran_ui_text text;
-    enum scran_ui_color color;
-} m_post_selection_keymap_items[] = {
-    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE] = { SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT, SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO] = { SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT, SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS] = { SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT, SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA] = { SCRAN_UI_TEXT_EMPTY        , SCRAN_UI_COLOR_DEFAULT },
+static const struct default_textline_values m_statusline_keymap_defaults_pre_selection[] = {
+    [SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME] = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
 };
+static const struct default_textline_values m_statusline_defaults_pre_selection[] = {
+    [SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE]     = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_STATUSLINE_ITEM_I_TIMER]              = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
+};
+static const struct default_textline_values m_keymap_defaults_pre_selection[] = {
+    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE]                  = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO]                  = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS]                  = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
+    // We use the pre-selection keymap textline to draw the splash text.
+    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA]                  = { SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT, SCRAN_UI_COLOR_DEFAULT },
+};
+static const struct default_textline_values m_keymap_defaults_post_selection[] = {
+    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE]                  = { SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT,          SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO]                  = { SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT,          SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS]                  = { SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT,          SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA]                  = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
+};
+static_assert(ARRAY_LENGTH(m_statusline_keymap_defaults_pre_selection) == SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS, "");
+static_assert(ARRAY_LENGTH(m_statusline_defaults_pre_selection)        == SCRAN_UI_STATUSLINE_N_ITEMS,        "");
+static_assert(ARRAY_LENGTH(m_keymap_defaults_pre_selection)            == SCRAN_UI_KEYMAP_N_ITEMS,            "");
+static_assert(ARRAY_LENGTH(m_keymap_defaults_post_selection)           == SCRAN_UI_KEYMAP_N_ITEMS,            "");
 
 static inline void
-init_scran_ui_pre_selection_textline(
+assign_textline_defaults(
     struct scran_ui_textline *textline,
-    int n_textline_items
+    const struct default_textline_values *defaults,
+    int n_items
 ) {
-    for (int i = 0; i < n_textline_items; ++i) {
+    for (int i = 0; i < n_items; ++i) {
         struct scran_ui_textline_item *item = &textline->items[i];
-
-        bl_image_init(&item->bl_img);
-
         assert(item->locked == false);
-        item->live_state.text  = m_pre_selection_keymap_items[i].text;
-        item->live_state.color = m_pre_selection_keymap_items[i].color;
+        item->live_state.text  = defaults[i].text;
+        item->live_state.color = defaults[i].color;
     }
+}
+
+static inline void
+init_textline(
+    struct scran_ui_textline *textline,
+    const struct default_textline_values *defaults,
+    int n_items
+) {
+    for (int i = 0; i < n_items; ++i) {
+        struct scran_ui_textline_item *item = &textline->items[i];
+        bl_image_init(&item->bl_img);
+    }
+    assign_textline_defaults(textline, defaults, n_items);
 }
 
 bool
@@ -313,9 +334,9 @@ init_scran_ui_pre_selection(
     bl_font_init(&ui_ctx->font);
     bl_context_init(&ui_ctx->bl_ctx);
 
-    init_scran_ui_pre_selection_textline(&ui_ctx->ui_keymap,            SCRAN_UI_KEYMAP_N_ITEMS);
-    init_scran_ui_pre_selection_textline(&ui_ctx->ui_statusline,        SCRAN_UI_STATUSLINE_N_ITEMS);
-    init_scran_ui_pre_selection_textline(&ui_ctx->ui_statusline_keymap, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS);
+    init_textline(&ui_ctx->ui_keymap,            m_keymap_defaults_pre_selection,            SCRAN_UI_KEYMAP_N_ITEMS);
+    init_textline(&ui_ctx->ui_statusline,        m_statusline_defaults_pre_selection,        SCRAN_UI_STATUSLINE_N_ITEMS);
+    init_textline(&ui_ctx->ui_statusline_keymap, m_statusline_keymap_defaults_pre_selection, SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS);
 
     reinit_scran_ui(ui_ctx, scale);
 
@@ -326,20 +347,7 @@ bool
 scran_ui_set_selection_stage_defaults(
     struct scran_ui_context *ui_ctx
 ) {
-    // XXX TODO: Add defaults-structs for all the elements
-
-    for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        struct scran_ui_textline_item *keymap_item = &ui_ctx->ui_keymap.items[i];
-        keymap_item->locked = false;
-        keymap_item->live_state.text  = m_post_selection_keymap_items[i].text;
-        keymap_item->live_state.color = m_post_selection_keymap_items[i].color;
-    }
-
-    for (enum scran_ui_statusline_item_index i = 0; i < SCRAN_UI_STATUSLINE_N_ITEMS; ++i) {
-        struct scran_ui_textline_item *statusline_item = &ui_ctx->ui_statusline.items[i];
-        statusline_item->live_state.text  = SCRAN_UI_TEXT_EMPTY;
-        statusline_item->live_state.color = SCRAN_UI_COLOR_DEFAULT;
-    }
+    assign_textline_defaults(&ui_ctx->ui_keymap, m_keymap_defaults_post_selection, SCRAN_UI_KEYMAP_N_ITEMS);
 
     ui_ctx->dirty = true;
 
