@@ -16,6 +16,7 @@
 #include "dbus.h"
 #include "selection.h"
 #include "print.h"
+#include "util/util.h"
 
 
 extern struct scran g_state;
@@ -310,32 +311,6 @@ Dbus_AddMatch_callback(
 
     DEBUG("AddMatch reply without error.\n");
     return 0;
-}
-
-static inline void
-advance_itoa_7(
-    int integer,
-    char *restrict ascii,
-    ssize_t *restrict i_ascii
-) {
-    assert(integer <= 9999999);
-
-    int lo4     = integer % 10000;
-    int hi3     = integer / 10000;
-
-    int lo4_lo2 = lo4 % 100;
-    int lo4_hi2 = lo4 / 100;
-
-    int hi3_lo2 = hi3 % 100;
-    int hi3_hi1 = hi3 / 100;
-
-    ascii[(*i_ascii)++] = '0' + hi3_hi1;
-    ascii[(*i_ascii)++] = '0' + hi3_lo2 / 10;
-    ascii[(*i_ascii)++] = '0' + hi3_lo2 % 10;
-    ascii[(*i_ascii)++] = '0' + lo4_hi2 / 10;
-    ascii[(*i_ascii)++] = '0' + lo4_hi2 % 10;
-    ascii[(*i_ascii)++] = '0' + lo4_lo2 / 10;
-    ascii[(*i_ascii)++] = '0' + lo4_lo2 % 10;
 }
 
 #define STATUS_NOTIFIER_ITEM_NAME_BASE "org.kde.StatusNotifierItem-"
