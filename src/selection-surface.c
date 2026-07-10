@@ -367,7 +367,7 @@ arm_selection_surface_frame_callback(
 ) {
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
 
-    if (selection_surface->awaiting_frame_callback == false) {
+    if (!selection_surface->awaiting_frame_callback && !selection_surface->frame_callbacks_disabled) {
         wl_callback_add_listener(
             wl_surface_frame(selection_surface->surface.wl_surface),
             &selection_surface_frame_callback_listener,
