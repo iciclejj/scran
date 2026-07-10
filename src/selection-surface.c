@@ -2,6 +2,7 @@
 
 #include <blend2d/blend2d.h>
 
+#include "selection.h"
 #include "state.h"
 #include "selection-surface.h"
 #include "init.h"
@@ -405,9 +406,28 @@ init_selection_surface_content(
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
     struct BLBoxI                         initial_box       =  st_output->initial_selection;
 
+    const bool no_initial_selection = blboxi_are_equal(initial_box, SCRAN_INITIAL_SELECTION_NONE);
+
+    if (no_initial_selection) {
+        // We want to draw the splash text in the top left corner.
+        initial_box = (BLBoxI){0};
+        st_output->selection_ctx.box_px = initial_box;
+        set_selection_surface_theme(st_output, SURFACE_THEME_PRE_SELECTION);
+    } else {
+        // This must be set prior to set_selection_initialized()
+        st_output->selection_ctx.box_px = initial_box;
+        // These are usually called at "runtime"/main-loop-time, so call these
+        // AFTER init_postmem__selection(), to ensure all relevant runtime
+        // state has been set up.
+        // ALSO make sure it's called somewhere that the freezeframe init path
+        // (and potential future alternate init paths) will reach.
+        scran_ui_set_selection_stage_defaults(&selection_surface->ui_ctx);
+        set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+        set_selection_initialized(st_output);
+    }
+
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
         struct scran_output_selectionSurface_buffer *st_buffer = &selection_surface->double_buffer[i];
-
         // Initialized as busy; reset them now.
         //   See init_premem__selection() for more info
         assert(st_buffer->busy == true);
@@ -418,8 +438,6 @@ init_selection_surface_content(
             initial_box
         );
     }
-
-    st_output->selection_ctx.box_px = initial_box;
 
     struct scran_output_selectionSurface_buffer *initial_buffer = &selection_surface->double_buffer[0];
     initial_buffer->busy = true;

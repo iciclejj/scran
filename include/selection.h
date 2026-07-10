@@ -1,6 +1,8 @@
 #ifndef SCRAN_SELECTION_H
 #define SCRAN_SELECTION_H
 
+#include <blend2d/blend2d.h>
+
 #include "state.h"
 
 
@@ -8,6 +10,8 @@
 #define SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_UNFOCUSED ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE
 
 #define SCRAN_BTN_NONE 0 // linux/input-event-codes.h: #define KEY_RESERVED 0
+
+#define SCRAN_INITIAL_SELECTION_NONE ((BLBoxI){ -1, -1, -1, -1 })
 
 
 enum surface_theme {

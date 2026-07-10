@@ -576,7 +576,7 @@ init_postmem()
     struct scran_output *custom_initial_selection_output = NULL;
 
     if (g_state.options.have_custom_initial_selection) {
-        struct BLRectI      custom_initial_selection_rect;
+        struct BLRectI custom_initial_selection_rect;
         global_logical_rect_to_selection(
             g_state.options.custom_initial_selection_global_coordinates,
             &custom_initial_selection_rect,
@@ -587,11 +587,7 @@ init_postmem()
             eprintf("Error: Top left corner of geometry string is not within any detected output.\n");
             return false;
         }
-
         custom_initial_selection = blrecti_to_blboxi(custom_initial_selection_rect);
-
-        scran_ui_set_selection_stage_defaults(&custom_initial_selection_output->selection_surface.ui_ctx);
-        set_selection_initialized(custom_initial_selection_output);
     }
 
     FOR_EACH_OUTPUT(i, st_output) {

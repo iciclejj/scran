@@ -134,13 +134,10 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
         );
         bl_context_init_as(&st_buffer->bl_ctx, &st_buffer->bl_img, NULL);
     }
-
     bl_path_init(&selection_surface->bl_path);
 
-    enum surface_theme theme             = (custom_initial_selection != NULL) ? SURFACE_THEME_DEFAULT : SURFACE_THEME_PRE_SELECTION;
-    BLBoxI             initial_selection = (custom_initial_selection != NULL) ? *custom_initial_selection : (BLBoxI){ };
-    st_output->initial_selection = initial_selection;
-    set_selection_surface_theme(st_output, theme);
+    // Must be set prior to init_selection_surface_content().
+    st_output->initial_selection = (custom_initial_selection != NULL) ? *custom_initial_selection : SCRAN_INITIAL_SELECTION_NONE;
 
     // If we freezeframe, then we must initialize the selection surface from
     // within the freezeframe callback, to make sure we don't "freeze" an
