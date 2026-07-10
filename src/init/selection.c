@@ -182,6 +182,10 @@ init_postmem__selection__destroy(struct scran_output *st_output)
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
     (void)selection_ctx;
 
+    // Neutralize pending surface callbacks/callback requests
+    selection_surface->frame_callbacks_disabled = true;
+    selection_surface->awaiting_frame_callback = false;
+
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
         struct scran_output_selectionSurface_buffer *st_buffer = &selection_surface->double_buffer[i];
 
