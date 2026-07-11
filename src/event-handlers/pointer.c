@@ -6,6 +6,7 @@
 #include "state.h"
 #include "state-util.h"
 #include "selection-surface.h"
+#include "ui.h"
 #include "util/blend2d.h"
 #include "event-handlers.h"
 #include "selection.h"
@@ -132,9 +133,13 @@ handle_pointer_motion(
         selection_ctx->box_px.x1 = x_px;
         selection_ctx->box_px.y1 = y_px;
 
+        // TODO: Merge most of this logic with SELECTION_RESIZING?
+
         // XXX: Kinda redundant since we must also clamp on finishing selection
         clamp_to_transformed_output_width(&selection_ctx->box_px.x1, st_output);
         clamp_to_transformed_output_height(&selection_ctx->box_px.y1, st_output);
+
+        scran_ui_statusline_set_selection_size(&st_output->selection_surface.ui_ctx.ui_statusline, blboxi_to_blrecti(selection_ctx->box_px));
 
         request_selection_surface_frame_callback(st_output);
         break;
@@ -216,6 +221,7 @@ handle_pointer_motion(
                 break;
             }
         }
+        scran_ui_statusline_set_selection_size(&st_output->selection_surface.ui_ctx.ui_statusline, blboxi_to_blrecti(selection_ctx->box_px));
         request_selection_surface_frame_callback(st_output);
         break;
     }

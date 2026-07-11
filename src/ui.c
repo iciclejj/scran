@@ -40,7 +40,7 @@ struct ui_string {
     const char16_t *str;
     const size_t strlen;
 };
-#define INIT_UI_STRING(s) { .str = (s), .strlen = CHAR16_STRLEN(s) }
+#define INIT_UI_STRING(s) ((struct ui_string){ .str = (s), .strlen = CHAR16_STRLEN(s) })
 
 static const struct ui_string ui_texts[] = {
     // XXX: Leading space so it doesn't hug the edge when drawn at x=0,y=0.
@@ -62,6 +62,11 @@ static const struct ui_string ui_texts[] = {
     [SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_ON]  = INIT_UI_STRING(u"[Z] Freeze screen"),
     [SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_OFF] = INIT_UI_STRING(u"[Z] Unfreeze screen"),
 
+    // Placeholders for calculating metadata (currently just max pixel widths)
+    // - actual text is dynamic for these.
+    [SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY]        = INIT_UI_STRING(u"WWWWWxHHHHH"),
+    [SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY]                 = INIT_UI_STRING(u"00:00:00"),
+
     [SCRAN_UI_TEXT_EMPTY]                                  = INIT_UI_STRING(u""),
 };
 static_assert(sizeof(ui_texts) / sizeof(ui_texts[0]) == SCRAN_UI_N_TEXTS,
@@ -72,13 +77,10 @@ static inline void
 redraw_textline_item_image(
     struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_item *item,
+    struct scran_ui_textline_item_lockable_state lockable_state,
+    const struct ui_string *string,
     bool pressed
 ) {
-    const struct scran_ui_textline_item_lockable_state lockable_state =
-        item->locked ? item->locked_state : item->live_state;
-
-    const struct ui_string *string = &ui_texts[lockable_state.text];
-
     bl_context_begin(&ui_ctx->bl_ctx, &item->bl_img, NULL);
 
     BLPointI origin = {
@@ -122,7 +124,7 @@ redraw_textline_item_image(
 
 
 static inline bool
-redraw_textline(
+redraw_static_textline(
     struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_view textline
 ) {
@@ -130,14 +132,135 @@ redraw_textline(
 
     for (int i = 0; i < textline.n_items; ++i) {
         if (scran_ui_textline_item_is_dirty(textline, i)) {
-            redraw_textline_item_image(
-                ui_ctx,
-                &textline.items[i],
-                scran_ui_textline_item_is_pressed(textline, i)
-            );
+            struct scran_ui_textline_item                *item      = &textline.items[i];
+            struct scran_ui_textline_item_lockable_state  state     = item->locked ? item->locked_state : item->live_state;
+            bool                                          pressed   = scran_ui_textline_item_is_pressed(textline, i);
+            const struct ui_string                       *ui_string = &ui_texts[state.text];
+
+            redraw_textline_item_image(ui_ctx, item, state, ui_string, pressed);
+
             redrew = true;
         }
     }
+    textline.meta->dirty_items_mask = 0;
+
+    return redrew;
+}
+
+static inline void
+fill_char16(char16_t *str, int n, char16_t char_) {
+    for (int i = 0; i < n; ++i) {
+        str[i] = char_;
+    }
+}
+
+// Returns final cursor location
+static inline char16_t *
+prepend_char16_uint(char16_t *left_bound, char16_t *start, uint32_t uint_) {
+    do {
+        *(--start) = u'0' + uint_ % 10;
+        uint_ /= 10;
+    } while (uint_ && left_bound < start);
+
+    return start;
+}
+
+static inline char16_t *
+prepend_char16_uint_two_digits(char16_t *start, uint32_t uint_) {
+    *(--start) = u'0' + uint_ % 10;
+    *(--start) = u'0' + uint_ / 10;
+    return start;
+}
+
+static const size_t TIMER_STRLEN          = ui_texts[SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY].strlen;
+static const size_t SELECTION_SIZE_STRLEN = ui_texts[SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY].strlen;
+
+static inline void
+get_timer_string(
+    char16_t string_char16[static TIMER_STRLEN],
+    int seconds
+) {
+    fill_char16(string_char16, TIMER_STRLEN, u' ');
+    char16_t *cursor = string_char16 + TIMER_STRLEN;
+
+    int hours_   =  seconds / 3600;
+    int minutes_ = (seconds / 60) % 60;
+    int seconds_ =  seconds % 60;
+
+    assert(seconds_ >= 0); // XXX TODO: Ensure this better or handle it here?
+    cursor = prepend_char16_uint_two_digits(cursor, seconds_);
+    *(--cursor) = ':';
+    cursor = prepend_char16_uint_two_digits(cursor, minutes_);
+
+    if (hours_) {
+        *(--cursor) = ':';
+        cursor = prepend_char16_uint_two_digits(cursor, hours_);
+    }
+}
+
+static inline void
+get_selection_size_string(
+    char16_t string_char16[static SELECTION_SIZE_STRLEN],
+    BLRectI size
+) {
+    fill_char16(string_char16, SELECTION_SIZE_STRLEN, u' ');
+    char16_t *cursor = string_char16 + SELECTION_SIZE_STRLEN;
+
+    cursor = prepend_char16_uint(string_char16, cursor, abs(size.h)); // Rightmost value
+    *(--cursor) = u'x';
+    cursor = prepend_char16_uint(string_char16, cursor, abs(size.w)); // Leftmost value
+}
+
+static inline void
+redraw_statusline_textline_item_image(
+    struct scran_ui_context *ui_ctx,
+    struct scran_ui_textline_view textline,
+    enum scran_ui_statusline_item_index i,
+    const struct ui_string *ui_string
+) {
+    struct scran_ui_textline_item                *item      = &textline.items[i];
+    struct scran_ui_textline_item_lockable_state  state     = item->locked ? item->locked_state : item->live_state;
+    bool                                          pressed   = scran_ui_textline_item_is_pressed(textline, i);
+
+    redraw_textline_item_image(ui_ctx, item, state, ui_string, pressed);
+}
+
+static inline bool
+redraw_statusline_textline(
+    struct scran_ui_context *ui_ctx,
+    struct scran_ui_textline_view textline,
+    struct scran_ui_statusline_textline *statusline
+) {
+    bool redrew = false;
+
+    assert(textline.n_items == SCRAN_UI_STATUSLINE_N_ITEMS);
+    assert(textline.items[SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE].live_state.text == SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY);
+    assert(textline.items[SCRAN_UI_STATUSLINE_ITEM_I_TIMER].live_state.text          == SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY);
+
+    if (scran_ui_textline_item_is_dirty(textline, SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE)) {
+        char16_t selection_size_string[SELECTION_SIZE_STRLEN];
+        get_selection_size_string(selection_size_string, statusline->selection_size);
+        redraw_statusline_textline_item_image(
+            ui_ctx,
+            textline,
+            SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE,
+            &(struct ui_string){ .str = selection_size_string, .strlen = SELECTION_SIZE_STRLEN }
+        );
+        redrew = true;
+    }
+
+    if (scran_ui_textline_item_is_dirty(textline, SCRAN_UI_STATUSLINE_ITEM_I_TIMER)) {
+        char16_t timer_string[SELECTION_SIZE_STRLEN];
+        get_timer_string(timer_string, statusline->timer_seconds);
+        redraw_statusline_textline_item_image(
+            ui_ctx,
+            textline,
+            SCRAN_UI_STATUSLINE_ITEM_I_TIMER,
+            &(struct ui_string){ .str = timer_string, .strlen = TIMER_STRLEN }
+        );
+        redrew = true;
+    }
+
     textline.meta->dirty_items_mask = 0;
 
     return redrew;
@@ -149,13 +272,13 @@ scran_ui_redraw_elements(
 ) {
     uint32_t redrawn_textline_mask = 0;
 
-    if (redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap))) {
+    if (redraw_static_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap))) {
         redrawn_textline_mask |= SCRAN_UI_REDREW_KEYMAP;
     }
-    if (redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline))) {
+    if (redraw_statusline_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline), &ui_ctx->ui_statusline)) {
         redrawn_textline_mask |= SCRAN_UI_REDREW_STATUSLINE;
     }
-    if (redraw_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap))) {
+    if (redraw_static_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap))) {
         redrawn_textline_mask |= SCRAN_UI_REDREW_STATUSLINE_KEYMAP;
     }
 
@@ -295,21 +418,21 @@ static const struct default_textline_values m_statusline_keymap_defaults_pre_sel
     [SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME] = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
 };
 static const struct default_textline_values m_statusline_defaults_pre_selection[] = {
-    [SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE]     = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_STATUSLINE_ITEM_I_TIMER]              = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE]     = { SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY, SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_STATUSLINE_ITEM_I_TIMER]              = { SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY,          SCRAN_UI_COLOR_DEFAULT },
 };
 static const struct default_textline_values m_keymap_defaults_pre_selection[] = {
-    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE]                  = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO]                  = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS]                  = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE]                  = { SCRAN_UI_TEXT_EMPTY,                           SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO]                  = { SCRAN_UI_TEXT_EMPTY,                           SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS]                  = { SCRAN_UI_TEXT_EMPTY,                           SCRAN_UI_COLOR_DEFAULT },
     // We use the pre-selection keymap textline to draw the splash text.
-    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA]                  = { SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT, SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA]                  = { SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT,   SCRAN_UI_COLOR_DEFAULT },
 };
 static const struct default_textline_values m_keymap_defaults_post_selection[] = {
-    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE]                  = { SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT,          SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO]                  = { SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT,          SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS]                  = { SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT,          SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA]                  = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE]                  = { SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO]                  = { SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS]                  = { SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA]                  = { SCRAN_UI_TEXT_EMPTY,                           SCRAN_UI_COLOR_DEFAULT },
 };
 static_assert(ARRAY_LENGTH(m_statusline_keymap_defaults_pre_selection) == SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS, "");
 static_assert(ARRAY_LENGTH(m_statusline_defaults_pre_selection)        == SCRAN_UI_STATUSLINE_N_ITEMS,        "");

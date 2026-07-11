@@ -516,6 +516,7 @@ init_selection_surface_content(
         // ALSO make sure it's called somewhere that the freezeframe init path
         // (and potential future alternate init paths) will reach.
         scran_ui_set_selection_stage_defaults(&selection_surface->ui_ctx);
+        scran_ui_statusline_set_selection_size(&selection_surface->ui_ctx.ui_statusline, blboxi_to_blrecti(initial_box));
         set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
         set_selection_initialized(st_output);
     }

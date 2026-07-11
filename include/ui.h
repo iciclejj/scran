@@ -58,6 +58,9 @@ enum scran_ui_text {
     SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY,
     SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP,
 
+    SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY,
+    SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY,
+
     SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_ON,
     SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_OFF,
 
@@ -107,6 +110,8 @@ struct scran_ui_keymap_textline {
 struct scran_ui_statusline_textline {
     struct scran_ui_textline_metadata meta;
     struct scran_ui_textline_item     items[SCRAN_UI_STATUSLINE_N_ITEMS];
+    int timer_seconds;
+    BLRectI selection_size;
 };
 struct scran_ui_statusline_keymap_textline {
     struct scran_ui_textline_metadata meta;
@@ -201,6 +206,28 @@ scran_ui_textline_item_is_pressed(
     int item_index
 ) {
     return scran_ui_textline_get_items_mask_bit(textline.meta->pressed_items_mask, item_index);
+}
+
+static inline void
+scran_ui_statusline_set_selection_size(
+    struct scran_ui_statusline_textline *statusline,
+    BLRectI selection_size
+) {
+    if (!blrecti_are_equal(statusline->selection_size, selection_size)) {
+        statusline->selection_size = selection_size;
+        scran_ui_textline_item_set_dirty(SCRAN_UI_TEXTLINE_VIEW(*statusline), SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE);
+    }
+}
+
+static inline void
+scran_ui_statusline_set_timer(
+    struct scran_ui_statusline_textline *statusline,
+    int total_elapsed_seconds
+) {
+    if (statusline->timer_seconds != total_elapsed_seconds) {
+        statusline->timer_seconds = total_elapsed_seconds;
+        scran_ui_textline_item_set_dirty(SCRAN_UI_TEXTLINE_VIEW(*statusline), SCRAN_UI_STATUSLINE_ITEM_I_TIMER);
+    }
 }
 
 static inline void

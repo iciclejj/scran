@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <assert.h>
+#include <uchar.h>
 #include <sys/types.h>
 
 #include <wayland-client-protocol.h>
@@ -74,6 +75,27 @@ advance_itoa_6(
 }
 
 static inline void
+advance_itoa_5(
+    int integer,
+    char *restrict ascii,
+    ssize_t *restrict i_ascii
+) {
+    assert(integer <= 99999);
+
+    int lo2 = integer % 100;
+    int hi4 = integer / 100;
+
+    int hi4_lo = hi4 % 100;
+    int hi4_hi = hi4 / 100;
+
+    ascii[(*i_ascii)++] = '0' + hi4_hi;
+    ascii[(*i_ascii)++] = '0' + hi4_lo / 10;
+    ascii[(*i_ascii)++] = '0' + hi4_lo % 10;
+    ascii[(*i_ascii)++] = '0' + lo2 / 10;
+    ascii[(*i_ascii)++] = '0' + lo2 % 10;
+}
+
+static inline void
 advance_itoa_4(
     int integer,
     char *restrict ascii,
@@ -91,6 +113,22 @@ advance_itoa_4(
 }
 
 static inline void
+advance_itoa_3(
+    int integer,
+    char *restrict ascii,
+    ssize_t *restrict i_ascii
+) {
+    assert(integer <= 999);
+
+    int lo = integer % 100;
+    int hi = integer / 100;
+
+    ascii[(*i_ascii)++] = '0' + hi;
+    ascii[(*i_ascii)++] = '0' + lo / 10;
+    ascii[(*i_ascii)++] = '0' + lo % 10;
+}
+
+static inline void
 advance_itoa_2(
     int integer,
     char *restrict ascii,
@@ -103,6 +141,17 @@ advance_itoa_2(
 
     ascii[(*i_ascii)++] = '0' + hi;
     ascii[(*i_ascii)++] = '0' + lo;
+}
+
+static inline void
+ascii_to_char16(
+    char     *ascii,
+    char16_t *char16,
+    ssize_t strlen
+) {
+    for (ssize_t i = 0; i < strlen; ++i) {
+        char16[i] = ascii[i];
+    }
 }
 
 

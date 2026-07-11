@@ -13,6 +13,7 @@
 
 #include "scranrot.h"
 
+#include "selection-surface.h"
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
@@ -107,11 +108,12 @@ handle_image_copy_capture_frame_ready__video_capture(
     struct capture_frame_context *frame_ctx  = data;
     struct ffmpeg_context        *ffmpeg_ctx = &frame_ctx->ffmpeg_ctx;
 
+    // XXX TODO: Just pass st_output to this handler.
+    struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
+    struct scran_output         *const st_output  = wl_container_of(st_capture, st_output, capture);
+
     // Crop and convert
     {
-        // XXX TODO: Just pass st_output to this handler.
-        struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
-        struct scran_output         *const st_output  = wl_container_of(st_capture, st_output, capture);
 
         uint8_t *const area_start_addr = capture_get_area_start_address(frame_ctx);
         // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be divisible by 2.
@@ -171,6 +173,9 @@ handle_image_copy_capture_frame_ready__video_capture(
     }
 
     av_packet_unref(ffmpeg_ctx->av_packet);
+
+    scran_ui_statusline_set_timer(&st_output->selection_surface.ui_ctx.ui_statusline, frame_ctx->presentation_time_nsec / NSEC_PER_SEC);
+    request_selection_surface_frame_callback(st_output);
 
     // NOTE: We do this check *after* writing the incoming frame. This ensures
     // that the video will not be cut short at the end if we're only capturing
