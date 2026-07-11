@@ -179,12 +179,28 @@ scran_ui_textline_set_items_mask_bit(
     }
 }
 
+static inline bool
+scran_ui_textline_item_is_dirty(
+    struct scran_ui_textline_view textline,
+    int item_index
+) {
+    return scran_ui_textline_get_items_mask_bit(textline.meta->dirty_items_mask, item_index);
+}
+
 static inline void
 scran_ui_textline_item_set_dirty(
     struct scran_ui_textline_view textline,
     int item_index
 ) {
     scran_ui_textline_set_items_mask_bit(&textline.meta->dirty_items_mask, item_index, true);
+}
+
+static inline bool
+scran_ui_textline_item_is_pressed(
+    struct scran_ui_textline_view textline,
+    int item_index
+) {
+    return scran_ui_textline_get_items_mask_bit(textline.meta->pressed_items_mask, item_index);
 }
 
 static inline void

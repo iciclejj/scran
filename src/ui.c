@@ -129,11 +129,13 @@ redraw_textline(
     bool redrew = false;
 
     for (int i = 0; i < textline.n_items; ++i) {
-        bool item_dirty = scran_ui_textline_get_items_mask_bit(textline.meta->dirty_items_mask, i);
-        if (item_dirty) {
-            bool pressed = scran_ui_textline_get_items_mask_bit(textline.meta->pressed_items_mask, i);
-            redraw_textline_item_image(ui_ctx, &textline.items[i], pressed);
-            redrew |= item_dirty;
+        if (scran_ui_textline_item_is_dirty(textline, i)) {
+            redraw_textline_item_image(
+                ui_ctx,
+                &textline.items[i],
+                scran_ui_textline_item_is_pressed(textline, i)
+            );
+            redrew = true;
         }
     }
     textline.meta->dirty_items_mask = 0;
