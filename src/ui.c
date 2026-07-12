@@ -67,11 +67,13 @@ static const struct ui_string ui_texts[] = {
     [SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY]        = INIT_UI_STRING(u"WWWWWxHHHHH"),
     [SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY]                 = INIT_UI_STRING(u"00:00:00"),
 
+    [SCRAN_UI_TEXT_ATLAS_DIGITS]                           = INIT_UI_STRING(u"0123456789"),
+    [SCRAN_UI_TEXT_ATLAS_SEPARATORS]                       = INIT_UI_STRING(u":x"),
+
     [SCRAN_UI_TEXT_EMPTY]                                  = INIT_UI_STRING(u""),
 };
 static_assert(sizeof(ui_texts) / sizeof(ui_texts[0]) == SCRAN_UI_N_TEXTS,
               "ui_texts[] length must exactly cover all text enum values.");
-
 
 static inline void
 redraw_textline_item_image_impl(
@@ -134,6 +136,163 @@ redraw_textline_item_image(
     item->width_px = ui_ctx->cached_text_widths_px[lockable_state.text];
 }
 
+// Need to make more space than just the advance for the atlas image itself, to ensure adjecent glyphs don't overlap the shadow
+static inline int
+get_glyph_atlas_advance_px(struct scran_ui_context *ui_ctx) {
+    return ceil(ui_ctx->font_advance_fixed_width) + SCRAN_SELECTION_SHADOW_OFFSET_PX;
+}
+// We manually enforce exact-pixel advances in the blit destination as well, to
+// prevent resampling or imperfect slice offsets.
+static inline int
+get_glyph_atlas_dst_advance_px(struct scran_ui_context *ui_ctx) {
+    return ceil(ui_ctx->font_advance_fixed_width);
+}
+
+static inline void
+blit_atlas_glyph(
+    struct scran_ui_context *ui_ctx,
+    BLContextCore *bl_ctx_destination,
+    char glyph,
+    BLPointI *origin
+) {
+    BLImageCore *bl_img_atlas;
+    int atlas_glyph_i = 0;
+
+    switch (glyph) {
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+            bl_img_atlas       = &ui_ctx->glyph_atlas.digits.items[0].bl_img;
+            atlas_glyph_i      = glyph - '0';
+            break;
+
+        // These could be made more clever if we'll have more options in the future.
+        case ':':
+            bl_img_atlas       = &ui_ctx->glyph_atlas.separators.items[0].bl_img;
+            atlas_glyph_i      = 0;
+            break;
+        case 'x':
+            bl_img_atlas       = &ui_ctx->glyph_atlas.separators.items[0].bl_img;
+            atlas_glyph_i      = 1;
+            break;
+
+        default:
+            assert(false && "Unexpected atlas glyph");
+            return;
+    };
+
+    int const advance_px = get_glyph_atlas_advance_px(ui_ctx);
+    bl_context_blit_image_i(
+        bl_ctx_destination,
+        origin,
+        bl_img_atlas,
+        &(BLRectI){
+            .x = atlas_glyph_i * advance_px,
+            .y = 0,
+            .w = advance_px,
+            .h = round(ui_ctx->font_height), // XXX TODO: More robust way of getting full height here?
+        }
+    );
+};
+
+// TODO: Better name for this function, or combine with the old
+// redraw_textline_item_image() function?
+static inline void
+redraw_textline_item_image_using_atlas(
+    struct scran_ui_context *ui_ctx,
+    struct scran_ui_textline_view textline,
+    enum scran_ui_statusline_item_index i,
+    const struct ui_string *ui_string
+) {
+    struct scran_ui_textline_item *item = &textline.items[i];
+    int const advance_px = get_glyph_atlas_dst_advance_px(ui_ctx);
+    int       pen_position_px = 0;
+
+    bl_context_begin(&ui_ctx->bl_ctx, &item->bl_img, NULL);
+    bl_context_clear_all(&ui_ctx->bl_ctx);
+
+    for (size_t i = 0; i < ui_string->strlen; ++i) {
+        char16_t glyph = ui_string->str[i];
+
+        if (glyph != u' ') {
+            blit_atlas_glyph(
+                ui_ctx,
+                &ui_ctx->bl_ctx,
+                glyph,
+                &(BLPointI){
+                    .x = pen_position_px,
+                    .y = 0,
+                }
+            );
+        }
+
+        pen_position_px += advance_px;
+    }
+
+    bl_context_end(&ui_ctx->bl_ctx);
+
+    item->width_px = pen_position_px == 0
+                   ? 0
+                   : pen_position_px + SCRAN_SELECTION_SHADOW_OFFSET_PX;
+}
+
+static inline void
+redraw_glyph_atlas_item_image(
+    struct scran_ui_context *ui_ctx,
+    struct scran_ui_textline_item *item,
+    struct scran_ui_textline_item_lockable_state lockable_state,
+    const struct ui_string *string,
+    bool pressed
+) {
+    const int cell_width_px = get_glyph_atlas_advance_px(ui_ctx);
+    BLRgba32 color = ui_colors[lockable_state.color];
+
+    bl_context_begin(&ui_ctx->bl_ctx, &item->bl_img, NULL);
+    bl_context_clear_all(&ui_ctx->bl_ctx);
+
+    BLPointI origin_current = {
+        .x = 0,
+        .y = round(ui_ctx->font_ascent),
+    };
+    struct ui_string string_current = {
+        .str = string->str,
+        .strlen = 1,
+    };
+
+    for (size_t i = 0; i < string->strlen; ++i) {
+        redraw_textline_item_image_impl(ui_ctx, &ui_ctx->bl_ctx, item, &string_current, origin_current, color, pressed);
+        origin_current.x   += cell_width_px;
+        string_current.str += 1;
+    }
+
+    bl_context_end(&ui_ctx->bl_ctx);
+
+    item->width_px = string->strlen * cell_width_px;
+}
+
+static inline void
+redraw_glyph_atlas_textline(
+    struct scran_ui_context *ui_ctx,
+    struct scran_ui_textline_view textline
+) {
+    for (int i = 0; i < textline.n_items; ++i) {
+        if (scran_ui_textline_item_is_dirty(textline, i)) {
+            struct scran_ui_textline_item                *item      = &textline.items[i];
+            struct scran_ui_textline_item_lockable_state  state     = item->locked ? item->locked_state : item->live_state;
+            bool                                          pressed   = scran_ui_textline_item_is_pressed(textline, i);
+            const struct ui_string                       *ui_string = &ui_texts[state.text];
+            redraw_glyph_atlas_item_image(ui_ctx, item, state, ui_string, pressed);
+        }
+    }
+    textline.meta->dirty_items_mask = 0;
+}
 
 static inline bool
 redraw_static_textline(
@@ -223,20 +382,6 @@ get_selection_size_string(
     cursor = prepend_char16_uint(string_char16, cursor, abs(size.w)); // Leftmost value
 }
 
-static inline void
-redraw_statusline_textline_item_image(
-    struct scran_ui_context *ui_ctx,
-    struct scran_ui_textline_view textline,
-    enum scran_ui_statusline_item_index i,
-    const struct ui_string *ui_string
-) {
-    struct scran_ui_textline_item                *item      = &textline.items[i];
-    struct scran_ui_textline_item_lockable_state  state     = item->locked ? item->locked_state : item->live_state;
-    bool                                          pressed   = scran_ui_textline_item_is_pressed(textline, i);
-
-    redraw_textline_item_image(ui_ctx, item, state, ui_string, pressed);
-}
-
 static inline bool
 redraw_statusline_textline(
     struct scran_ui_context *ui_ctx,
@@ -252,7 +397,7 @@ redraw_statusline_textline(
     if (scran_ui_textline_item_is_dirty(textline, SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE)) {
         char16_t selection_size_string[SELECTION_SIZE_STRLEN];
         get_selection_size_string(selection_size_string, statusline->selection_size);
-        redraw_statusline_textline_item_image(
+        redraw_textline_item_image_using_atlas(
             ui_ctx,
             textline,
             SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE,
@@ -264,7 +409,7 @@ redraw_statusline_textline(
     if (scran_ui_textline_item_is_dirty(textline, SCRAN_UI_STATUSLINE_ITEM_I_TIMER)) {
         char16_t timer_string[SELECTION_SIZE_STRLEN];
         get_timer_string(timer_string, statusline->timer_seconds);
-        redraw_statusline_textline_item_image(
+        redraw_textline_item_image_using_atlas(
             ui_ctx,
             textline,
             SCRAN_UI_STATUSLINE_ITEM_I_TIMER,
@@ -409,14 +554,30 @@ reinit_scran_ui(
             ui_ctx->cached_text_widths_px[i] = width_px;
         }
 
+        {
+            int atlas_advance_px = get_glyph_atlas_advance_px(ui_ctx);
+            int atlas_width_px_max = MAX(
+                ui_texts[SCRAN_UI_TEXT_ATLAS_DIGITS].strlen * atlas_advance_px,
+                ui_texts[SCRAN_UI_TEXT_ATLAS_SEPARATORS].strlen * atlas_advance_px
+            );
+            width_px_max = MAX(width_px_max, atlas_width_px_max);
+        }
+
         assert(width_px_max != 0);
 
+        // Redraw the glyph atlas first, since it's used by the other UI elements.
+        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.digits),         width_px_max, height_px_max);
+        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators),     width_px_max, height_px_max);
+        redraw_glyph_atlas_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.digits));
+        redraw_glyph_atlas_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators));
+
+        // TODO: Fix the need to manually list each textline here, in init and in redraw?
         reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),            width_px_max, height_px_max);
         reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),        width_px_max, height_px_max);
         reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), width_px_max, height_px_max);
-    }
+        scran_ui_redraw_elements(ui_ctx);
 
-    scran_ui_redraw_elements(ui_ctx);
+    }
 
     return true;
 }
@@ -445,10 +606,18 @@ static const struct default_textline_values m_keymap_defaults_post_selection[] =
     [SCRAN_UI_KEYMAP_ITEM_I_FOCUS]                  = { SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
     [SCRAN_UI_KEYMAP_ITEM_I_EXTRA]                  = { SCRAN_UI_TEXT_EMPTY,                           SCRAN_UI_COLOR_DEFAULT },
 };
-static_assert(ARRAY_LENGTH(m_statusline_keymap_defaults_pre_selection) == SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS, "");
-static_assert(ARRAY_LENGTH(m_statusline_defaults_pre_selection)        == SCRAN_UI_STATUSLINE_N_ITEMS,        "");
-static_assert(ARRAY_LENGTH(m_keymap_defaults_pre_selection)            == SCRAN_UI_KEYMAP_N_ITEMS,            "");
-static_assert(ARRAY_LENGTH(m_keymap_defaults_post_selection)           == SCRAN_UI_KEYMAP_N_ITEMS,            "");
+static const struct default_textline_values m_atlas_digits_defaults[] = {
+    [SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME] = { SCRAN_UI_TEXT_ATLAS_DIGITS,                    SCRAN_UI_COLOR_DEFAULT },
+};
+static const struct default_textline_values m_atlas_separators_defaults[] = {
+    [SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME] = { SCRAN_UI_TEXT_ATLAS_SEPARATORS,                SCRAN_UI_COLOR_DEFAULT },
+};
+static_assert(ARRAY_LENGTH(m_statusline_keymap_defaults_pre_selection) == SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS,           "");
+static_assert(ARRAY_LENGTH(m_statusline_defaults_pre_selection)        == SCRAN_UI_STATUSLINE_N_ITEMS,                  "");
+static_assert(ARRAY_LENGTH(m_keymap_defaults_pre_selection)            == SCRAN_UI_KEYMAP_N_ITEMS,                      "");
+static_assert(ARRAY_LENGTH(m_keymap_defaults_post_selection)           == SCRAN_UI_KEYMAP_N_ITEMS,                      "");
+static_assert(ARRAY_LENGTH(m_atlas_digits_defaults)                    == ARRAY_LENGTH((struct glyph_atlas){}.digits.items),     "");
+static_assert(ARRAY_LENGTH(m_atlas_separators_defaults)                == ARRAY_LENGTH((struct glyph_atlas){}.separators.items), "");
 
 static inline void
 assign_textline_defaults(
@@ -490,9 +659,11 @@ init_scran_ui_pre_selection(
     bl_font_init(&ui_ctx->font);
     bl_context_init(&ui_ctx->bl_ctx);
 
-    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),            m_keymap_defaults_pre_selection,            ARRAY_LENGTH(m_keymap_defaults_pre_selection));
-    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),        m_statusline_defaults_pre_selection,        ARRAY_LENGTH(m_statusline_defaults_pre_selection));
-    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), m_statusline_keymap_defaults_pre_selection, ARRAY_LENGTH(m_statusline_keymap_defaults_pre_selection));
+    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),             m_keymap_defaults_pre_selection,            ARRAY_LENGTH(m_keymap_defaults_pre_selection));
+    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),         m_statusline_defaults_pre_selection,        ARRAY_LENGTH(m_statusline_defaults_pre_selection));
+    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap),  m_statusline_keymap_defaults_pre_selection, ARRAY_LENGTH(m_statusline_keymap_defaults_pre_selection));
+    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.digits),    m_atlas_digits_defaults,                    ARRAY_LENGTH(m_atlas_digits_defaults));
+    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators),m_atlas_separators_defaults,                ARRAY_LENGTH(m_atlas_separators_defaults));
 
     reinit_scran_ui(ui_ctx, scale);
 
@@ -526,4 +697,6 @@ destroy_scran_ui(
     destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap));
     destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline));
     destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap));
+    destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.digits));
+    destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators));
 }

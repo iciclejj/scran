@@ -64,6 +64,9 @@ enum scran_ui_text {
     SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_ON,
     SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_OFF,
 
+    SCRAN_UI_TEXT_ATLAS_DIGITS,
+    SCRAN_UI_TEXT_ATLAS_SEPARATORS,
+
     SCRAN_UI_TEXT_EMPTY,
     SCRAN_UI_N_TEXTS,
 };
@@ -103,6 +106,17 @@ struct scran_ui_textline_view {
     }                                               \
 )
 
+struct glyph_atlas {
+    struct {
+        struct scran_ui_textline_metadata meta;
+        struct scran_ui_textline_item     items[1];
+    } digits;
+    struct {
+        struct scran_ui_textline_metadata meta;
+        struct scran_ui_textline_item     items[1];
+    } separators;
+};
+
 struct scran_ui_keymap_textline {
     struct scran_ui_textline_metadata meta;
     struct scran_ui_textline_item     items[SCRAN_UI_KEYMAP_N_ITEMS];
@@ -123,6 +137,8 @@ struct scran_ui_context {
     struct scran_ui_statusline_textline        ui_statusline;
     struct scran_ui_statusline_keymap_textline ui_statusline_keymap;
 
+    struct glyph_atlas glyph_atlas;
+
     // Must be cached per output in case of different scale factors.
     int cached_text_widths_px[SCRAN_UI_N_TEXTS];
 
@@ -133,7 +149,6 @@ struct scran_ui_context {
     float font_height;
     float font_advance_fixed_width;
 };
-
 
 
 bool init_scran_ui_pre_selection(struct scran_ui_context *ui_ctx, double scale);
