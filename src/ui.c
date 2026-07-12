@@ -85,11 +85,11 @@ redraw_textline_item_image(
 
     BLPointI origin = {
         .x = 0,
-        .y = ui_ctx->ascent_px,
+        .y = round(ui_ctx->font_ascent),
     };
     BLPointI origin_shadow = {
-        .x = 0                 + SCRAN_SELECTION_SHADOW_OFFSET_PX,
-        .y = ui_ctx->ascent_px + SCRAN_SELECTION_SHADOW_OFFSET_PX,
+        .x = 0        + SCRAN_SELECTION_SHADOW_OFFSET_PX,
+        .y = origin.y + SCRAN_SELECTION_SHADOW_OFFSET_PX,
     };
 
     BLRgba32 color = ui_colors[lockable_state.color];
@@ -361,32 +361,31 @@ reinit_scran_ui(
         bl_font_face_destroy(&font_face);
     }
 
-    int ascent_px;
-    int font_height_px;
+    float font_ascent;
+    float font_height;
     {
         BLFontMetrics font_metrics;
         bl_font_get_metrics(font, &font_metrics);
-
-        int descent_px = ceil(font_metrics.descent);
-        ascent_px      = ceil(font_metrics.ascent);
-        font_height_px = ascent_px + descent_px + SCRAN_SELECTION_SHADOW_OFFSET_PX;
+        font_ascent = font_metrics.ascent;
+        font_height = font_ascent + font_metrics.descent + SCRAN_SELECTION_SHADOW_OFFSET_PX;
     }
 
-    int fixed_width_font_glyph_width_px;
+    float font_advance_fixed_width;
     {
         static const char16_t single_glyph[] = u"W";
         BLTextMetrics text_metrics = get_bl_text_metrics(font, single_glyph, CHAR16_STRLEN(single_glyph));
-        fixed_width_font_glyph_width_px = ceil(text_metrics.advance.x);
+        font_advance_fixed_width = text_metrics.advance.x;
     }
 
-    ui_ctx->ascent_px = ascent_px;
-    ui_ctx->font_height_px = font_height_px;
-    ui_ctx->fixed_width_font_glyph_width_px = fixed_width_font_glyph_width_px;
+    ui_ctx->font_ascent = font_ascent;
+    ui_ctx->font_height = font_height;
+    ui_ctx->font_advance_fixed_width = font_advance_fixed_width;
 
     // - Allocate a buffer that fits the largest possible string for all text images
     // - Pre-calculate the pixel-widths of each text
     {
-        int width_px_max   = 0;
+        int height_px_max = ceil(font_height);
+        int width_px_max  = 0;
 
         // Some of this could be done at compile-time, but would require some ugly macros...
         for (enum scran_ui_text i = 0; i < SCRAN_UI_N_TEXTS; ++i) {
@@ -400,9 +399,9 @@ reinit_scran_ui(
 
         assert(width_px_max != 0);
 
-        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),            width_px_max, font_height_px);
-        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),        width_px_max, font_height_px);
-        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), width_px_max, font_height_px);
+        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),            width_px_max, height_px_max);
+        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),        width_px_max, height_px_max);
+        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), width_px_max, height_px_max);
     }
 
     scran_ui_redraw_elements(ui_ctx);

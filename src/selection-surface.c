@@ -209,7 +209,7 @@ draw_and_damage_ui_textline(
         struct scran_ui_textline_item *item = &textline.items[i];
 
         const int width_px  = item->width_px;
-        const int height_px = ui_ctx->font_height_px;
+        const int height_px = round(ui_ctx->font_height);
 
         if (width_px != 0) {
             // Allocated BLImage dimensions may be larger than its current contents.
@@ -263,7 +263,7 @@ draw_and_damage_ui(
     const bool     force_redraw_keymap            = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_KEYMAP);
     const bool     force_redraw_statusline        = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE);
     const bool     force_redraw_statusline_keymap = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE_KEYMAP);
-    const int      item_spacing_px                = 3 * ui_ctx->fixed_width_font_glyph_width_px;
+    const int      item_spacing_px                = round(3 * ui_ctx->font_advance_fixed_width);
 
     // Draw below-selection keymap
     {
@@ -297,14 +297,14 @@ draw_and_damage_ui(
         struct scran_ui_textline_surface_state state_new_statusline = {
             .origin = {
                 .x = capture_area_border_outline.x1 - statusline_total_width_px,
-                .y = capture_area_border_outline.y0 - ui_ctx->font_height_px,
+                .y = capture_area_border_outline.y0 - round(ui_ctx->font_height),
             },
             .total_width_px = statusline_total_width_px,
         };
         struct scran_ui_textline_surface_state state_new_statusline_keymap = {
             .origin = {
                 .x = capture_area_border_outline.x0,
-                .y = capture_area_border_outline.y0 - ui_ctx->font_height_px,
+                .y = capture_area_border_outline.y0 - round(ui_ctx->font_height),
             },
             .total_width_px = statusline_keymap_total_width_px,
         };

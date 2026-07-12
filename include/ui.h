@@ -129,9 +129,9 @@ struct scran_ui_context {
     BLContextCore bl_ctx;
     BLFontCore font;
 
-    int ascent_px;
-    int font_height_px;
-    int fixed_width_font_glyph_width_px;
+    float font_ascent;
+    float font_height;
+    float font_advance_fixed_width;
 };
 
 
