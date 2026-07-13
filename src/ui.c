@@ -74,26 +74,19 @@ static_assert(sizeof(ui_texts) / sizeof(ui_texts[0]) == SCRAN_UI_N_TEXTS,
 
 
 static inline void
-redraw_textline_item_image(
+redraw_textline_item_image_impl(
     struct scran_ui_context *ui_ctx,
+    BLContextCore *bl_ctx,
     struct scran_ui_textline_item *item,
-    struct scran_ui_textline_item_lockable_state lockable_state,
     const struct ui_string *string,
+    const BLPointI origin,
+    const BLRgba32 color,
     bool pressed
 ) {
-    bl_context_begin(&ui_ctx->bl_ctx, &item->bl_img, NULL);
-
-    BLPointI origin = {
-        .x = 0,
-        .y = round(ui_ctx->font_ascent),
-    };
     BLPointI origin_shadow = {
-        .x = 0        + SCRAN_SELECTION_SHADOW_OFFSET_PX,
+        .x = origin.x + SCRAN_SELECTION_SHADOW_OFFSET_PX,
         .y = origin.y + SCRAN_SELECTION_SHADOW_OFFSET_PX,
     };
-
-    BLRgba32 color = ui_colors[lockable_state.color];
-    bl_context_clear_all(&ui_ctx->bl_ctx);
 
     if (item->disable_reason_mask != 0U) {
         BLRgba32 _color = color;
@@ -116,9 +109,28 @@ redraw_textline_item_image(
             &ui_ctx->bl_ctx, &origin       , &ui_ctx->font, string->str, string->strlen, color.value
         );
     }
+}
+
+static inline void
+redraw_textline_item_image(
+    struct scran_ui_context *ui_ctx,
+    struct scran_ui_textline_item *item,
+    struct scran_ui_textline_item_lockable_state lockable_state,
+    const struct ui_string *string,
+    bool pressed
+) {
+    BLPointI origin = {
+        .x = 0,
+        .y = round(ui_ctx->font_ascent),
+    };
+    BLRgba32 color = ui_colors[lockable_state.color];
+
+    bl_context_begin(&ui_ctx->bl_ctx, &item->bl_img, NULL);
+    bl_context_clear_all(&ui_ctx->bl_ctx);
+
+    redraw_textline_item_image_impl(ui_ctx, &ui_ctx->bl_ctx, item, string, origin, color, pressed);
 
     bl_context_end(&ui_ctx->bl_ctx);
-
     item->width_px = ui_ctx->cached_text_widths_px[lockable_state.text];
 }
 
