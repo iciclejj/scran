@@ -234,7 +234,8 @@ scran_ui_statusline_set_selection_size(
     }
 }
 
-static inline void
+// Returns true if a redraw is required.
+static inline bool
 scran_ui_statusline_set_timer(
     struct scran_ui_statusline_textline *statusline,
     int total_elapsed_seconds
@@ -242,7 +243,9 @@ scran_ui_statusline_set_timer(
     if (statusline->timer_seconds != total_elapsed_seconds) {
         statusline->timer_seconds = total_elapsed_seconds;
         scran_ui_textline_item_set_dirty(SCRAN_UI_TEXTLINE_VIEW(*statusline), SCRAN_UI_STATUSLINE_ITEM_I_TIMER);
+        return true;
     }
+    return false;
 }
 
 static inline void

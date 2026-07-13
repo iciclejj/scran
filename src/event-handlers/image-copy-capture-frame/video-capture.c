@@ -174,8 +174,15 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     av_packet_unref(ffmpeg_ctx->av_packet);
 
-    scran_ui_statusline_set_timer(&st_output->selection_surface.ui_ctx.ui_statusline, frame_ctx->presentation_time_nsec / NSEC_PER_SEC);
-    request_selection_surface_frame_callback(st_output);
+
+    bool ui_dirtied = scran_ui_statusline_set_timer(
+        &st_output->selection_surface.ui_ctx.ui_statusline,
+        frame_ctx->presentation_time_nsec / NSEC_PER_SEC
+    );
+    if (ui_dirtied) {
+        request_selection_surface_frame_callback(st_output);
+    }
+
 
     // NOTE: We do this check *after* writing the incoming frame. This ensures
     // that the video will not be cut short at the end if we're only capturing
