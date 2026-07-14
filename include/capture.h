@@ -2,6 +2,7 @@
 #define SCRAN_CAPTURE_H
 
 #include <stdbool.h>
+#include <time.h>
 
 #include <libavutil/rational.h>
 
@@ -71,6 +72,16 @@ capture_get_area_start_address(
     return frame_ctx->st_buffer.data
          + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
          + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
+}
+
+static inline int64_t
+capture_clock_gettime_nsec() {
+    // image-copy-capture protocol guarantees we get presentation time based
+    // on system monotonic time.
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    // XXX: Will overflow at tv_sec > ~584.9 years...
+    return ts.tv_sec * NSEC_PER_SEC + ts.tv_nsec;
 }
 
 

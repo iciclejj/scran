@@ -439,12 +439,7 @@ video_capture_start(struct scran_output *st_output)
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
     request_selection_surface_frame_callback(st_output);
 
-    // image-copy-capture protocol guarantees we get presentation time based
-    // on system monotonic time.
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    // XXX: Will overflow at tv_sec > ~584.9 years...
-    st_output->capture.frame_ctx.presentation_time_nsec_start = ts.tv_sec * NSEC_PER_SEC + ts.tv_nsec;
+    st_output->capture.frame_ctx.presentation_time_nsec_start = capture_clock_gettime_nsec();
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
