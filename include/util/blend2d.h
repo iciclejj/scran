@@ -78,6 +78,12 @@ blboxi_flip_x_coordinates(struct BLBoxI *box, uint32_t width) {
 #endif /* __has_include(<wayland-client.h>) */
 
 static inline bool
+blboxi_is_empty(BLBoxI box) {
+    return box.x0 == box.x1
+        || box.y0 == box.y1;
+}
+
+static inline bool
 blboxi_is_inverted_or_empty(BLBoxI box) {
     return box.x1 <= box.x0 || box.y1 <= box.y0;
 }
@@ -277,6 +283,19 @@ blboxi_shift(BLBoxI *box, int x_shift, int y_shift) {
 }
 
 static inline BLBoxI
+blboxi_bounding_box(BLBoxI a, BLBoxI b) {
+    blboxi_deinvert(&a);
+    blboxi_deinvert(&b);
+
+    return (BLBoxI) {
+        .x0 = MIN(a.x0, b.x0),
+        .y0 = MIN(a.y0, b.y0),
+        .x1 = MAX(a.x1, b.x1),
+        .y1 = MAX(a.y1, b.y1),
+    };
+}
+
+static inline BLBoxI
 blboxi_intersection_raw(
     BLBoxI a,
     BLBoxI b
@@ -301,6 +320,12 @@ blboxi_intersection(
     }
 
     return intersection;
+}
+
+static inline bool
+blboxi_intersects(BLBoxI a, BLBoxI b)
+{
+    return !blboxi_is_empty(blboxi_intersection(a, b));
 }
 
 // Operation: a - b
