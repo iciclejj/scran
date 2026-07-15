@@ -111,36 +111,18 @@ capture_update_area_with_selection(
     assert(st_output->capture.frame_ctx.capture_area_px.y1 <= st_output->mode.height_px);
 }
 
-void
-video_capture_request_frame(
-    struct capture_frame_context *frame_ctx,
-    int32_t damage_x,
-    int32_t damage_y,
-    int32_t damage_w,
-    int32_t damage_h
+struct ext_image_copy_capture_frame_v1 *
+video_capture_create_frame(
+    struct capture_frame_context *frame_ctx
 ) {
-    frame_ctx->frame = ext_image_copy_capture_session_v1_create_frame(
-        frame_ctx->wl_capture_session
-    );
+    struct ext_image_copy_capture_frame_v1 *frame =
+        ext_image_copy_capture_session_v1_create_frame(frame_ctx->wl_capture_session);
 
-    ext_image_copy_capture_frame_v1_attach_buffer(
-        frame_ctx->frame,
-        frame_ctx->st_buffer.wl_buffer
-    );
-    ext_image_copy_capture_frame_v1_damage_buffer(
-        frame_ctx->frame,
-        damage_x, damage_y, damage_w, damage_h
-    );
-    ext_image_copy_capture_frame_v1_add_listener(
-        frame_ctx->frame,
-        &image_copy_capture_frame_listener__video_capture,
-        frame_ctx
-    );
-    ext_image_copy_capture_frame_v1_capture(
-        frame_ctx->frame
-    );
+    ext_image_copy_capture_frame_v1_attach_buffer(frame, frame_ctx->st_buffer.wl_buffer);
+    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__video_capture, frame_ctx);
+
+    return frame;
 }
-
 
 static inline bool
 destroy_ffmpeg_audio(struct scran_output *st_output)
@@ -443,11 +425,11 @@ video_capture_start(struct scran_output *st_output)
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
-    video_capture_request_frame(
-        &st_output->capture.frame_ctx,
-        // Ensure the first frame is fully rendered
-        0, 0, st_output->mode.width_px, st_output->mode.height_px
-    );
+    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture.frame_ctx);
+    // Ensure the first frame is fully rendered
+    ext_image_copy_capture_frame_v1_damage_buffer(frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px);
+    ext_image_copy_capture_frame_v1_capture(frame);
+    st_output->capture.frame_ctx.frame = frame;
 
     if (st_output->capture.frame_ctx.audio_active) {
         scran_pipewire_connect();
@@ -462,16 +444,23 @@ video_capture_start(struct scran_output *st_output)
 void
 video_capture_request_stop(struct scran_output *st_output)
 {
+    ext_image_copy_capture_frame_v1_destroy(st_output->capture.frame_ctx.frame);
+
     // Ensure one last frame is triggered as soon as possible, even if
     // no damage has been reported by the compositor. This ensures
     // variable framerate recordings will end at an appropriate
     // timestamp. This also lets the frame listener finalize the
     // recording and clean up as soon as possible.
-    ext_image_copy_capture_frame_v1_destroy(st_output->capture.frame_ctx.frame);
-    video_capture_request_frame(
-        &st_output->capture.frame_ctx,
-        0, 0, st_output->mode.width_px, st_output->mode.height_px
-    );
+
+    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture.frame_ctx);
+    // XXX: This damage request is probably normally redundant with
+    // capture_force_next_frame(), but should stay regardless, in case the
+    // initial frame was interrupted before it came back (i.e. making it a
+    // 1-frame video, once this frame is processed), since the first frame
+    // in a session should always have full damage. .
+    ext_image_copy_capture_frame_v1_damage_buffer(frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px);
+    ext_image_copy_capture_frame_v1_capture(frame);
+    st_output->capture.frame_ctx.frame = frame;
 
     capture_force_next_frame(st_output);
 

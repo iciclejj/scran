@@ -6,6 +6,7 @@
 
 #include <libavutil/rational.h>
 
+#include "ext-image-copy-capture-v1.h"
 #include "state.h"
 
 
@@ -34,7 +35,7 @@ bool video_capture_start(struct scran_output *st_output);
 // locations, rather than calling video_capture_finish() directly.
 void video_capture_request_stop(struct scran_output *st_output);
 void video_capture_finish(struct scran_output *st_output);
-void video_capture_request_frame(struct capture_frame_context *frame_ctx, int32_t damage_x, int32_t damage_y, int32_t damage_w, int32_t damage_h);
+struct ext_image_copy_capture_frame_v1 * video_capture_create_frame(struct capture_frame_context *frame_ctx);
 void video_capture_write_audio_packet(struct capture_frame_context *frame_ctx, AVPacket *av_packet);
 void video_capture_destroy_ffmpeg(struct scran_output *st_output);
 

@@ -101,9 +101,9 @@ end_capture(
 static void
 handle_image_copy_capture_frame_ready__video_capture(
     void *data,
-    struct ext_image_copy_capture_frame_v1 *frame
+    struct ext_image_copy_capture_frame_v1 *this_frame
 ) {
-    ext_image_copy_capture_frame_v1_destroy(frame);
+    ext_image_copy_capture_frame_v1_destroy(this_frame);
 
     struct capture_frame_context *frame_ctx  = data;
     struct ffmpeg_context        *ffmpeg_ctx = &frame_ctx->ffmpeg_ctx;
@@ -178,7 +178,7 @@ handle_image_copy_capture_frame_ready__video_capture(
     // that the video will not be cut short at the end if we're only capturing
     // frames on demand (with variable framerate) and nothing has changed for
     // the last x amount of time.
-    // Calling capture_frame::damage_buffer() when signaling to end the capture
+    // Forcing some compositor/surface damage when signaling to end the capture
     // should trigger the necessary final frame.
     //
     // TODO: Go through uses of capturing_video to check for redundancy now
@@ -190,13 +190,9 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     // TODO: avio_flush ?
 
-    video_capture_request_frame(
-        frame_ctx,
-        // TODO: Only damage what the capture area will be on next capture,
-        // somehow? Will not be possible to determine from here, though,
-        // at least not portably.
-        0, 0, frame_ctx->source_width_px, frame_ctx->source_height_px
-    );
+    struct ext_image_copy_capture_frame_v1 *next_frame = video_capture_create_frame(frame_ctx);
+    ext_image_copy_capture_frame_v1_capture(next_frame);
+    st_output->capture.frame_ctx.frame = next_frame;
 }
 
 
