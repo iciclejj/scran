@@ -44,17 +44,17 @@ void image_capture_request_frame(struct scran_output *st_output);
 
 // HACK
 //
-// Client-requested damage does *not* necessarily trigger a new ::ready from
-// the compositor, if no actual damage has occurred. Sway, for example, ignores
-// it, and forces us to wait for an indefinite amount of time for the capture to
-// end, if no movement has happened on screen.
+// Client-requested *capture-buffer* damage does *not* necessarily trigger a new
+// ::ready from the compositor, if no actual damage has occurred. Sway, for
+// example, ignores it, and forces us to wait for an indefinite amount of time
+// for the capture to end, if no movement has happened on screen.
 //
 // The optimal solution might be to handle this internally anyways, either
 // manually duplicating it or (in the case of video recording) changing the
 // frame duration retroactively.
 //
-// For now, just force/fake some compositor damage to effectively force the
-// compositor to send us another capture frame...
+// For now, just force/fake some *compositor/surface-buffer* damage to
+// effectively force the compositor to send us another capture frame...
 static inline void
 capture_force_next_frame(
     struct scran_output *st_output
