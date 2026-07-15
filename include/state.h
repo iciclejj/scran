@@ -354,6 +354,8 @@ struct capture_frame_context {
     //        compositors, like COSMIC, are not neatly ordered like this
     //        internally (at time of writing).
     struct BLBoxI capture_area_px; // NOTE: Transform should be reversed.
+    // Contains *at least* the union of frame::damage-reported damage
+    struct BLBoxI damage_area_px;
     // TODO: Get this through output.mode if we both end up pointing to it here,
     //       AND it is still asserted to be equal to session::buffer_size's
     //       width arg.

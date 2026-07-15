@@ -427,7 +427,7 @@ video_capture_start(struct scran_output *st_output)
     // frame::ready, similar to the wl_surface callback event loop
     struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture.frame_ctx);
     // Ensure the first frame is fully rendered
-    ext_image_copy_capture_frame_v1_damage_buffer(frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px);
+    video_capture_damage_buffer(&st_output->capture.frame_ctx, frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px);
     ext_image_copy_capture_frame_v1_capture(frame);
     st_output->capture.frame_ctx.frame = frame;
 
@@ -458,7 +458,7 @@ video_capture_request_stop(struct scran_output *st_output)
     // initial frame was interrupted before it came back (i.e. making it a
     // 1-frame video, once this frame is processed), since the first frame
     // in a session should always have full damage. .
-    ext_image_copy_capture_frame_v1_damage_buffer(frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px);
+    video_capture_damage_buffer(&st_output->capture.frame_ctx, frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px);
     ext_image_copy_capture_frame_v1_capture(frame);
     st_output->capture.frame_ctx.frame = frame;
 

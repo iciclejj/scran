@@ -8,6 +8,7 @@
 
 #include "ext-image-copy-capture-v1.h"
 #include "state.h"
+#include "util/blend2d.h"
 
 
 #define NSEC_PER_SEC 1000000000
@@ -67,6 +68,35 @@ capture_force_next_frame(
     // it has a transparent buffer attached, at least on Hyprland.
     wl_surface_damage_buffer(st_output->selection_surface.surface.wl_surface, 0, 0, 1, 1);
     wl_surface_commit(st_output->selection_surface.surface.wl_surface);
+}
+
+static inline void
+video_capture_grow_tracked_damage(
+    struct capture_frame_context *frame_ctx,
+    int32_t x, int32_t y, int32_t w, int32_t h
+) {
+    // TODO: Keep multiple rects to represent the union of damage slightly more
+    // accurately. Probably at least 2 is worthwhile, to be able to separately
+    // track at least 1 window + 1 cursor.
+
+    BLBoxI incoming_damage = blrecti_to_blboxi( (BLRectI){ x, y, w, h } );
+    BLBoxI tracked_damage  = frame_ctx->damage_area_px;
+
+    if (blboxi_is_empty(tracked_damage)) {
+        frame_ctx->damage_area_px = incoming_damage;
+    } else {
+        frame_ctx->damage_area_px = blboxi_bounding_box(incoming_damage, tracked_damage);
+    }
+}
+
+static inline void
+video_capture_damage_buffer(
+    struct capture_frame_context *frame_ctx,
+    struct ext_image_copy_capture_frame_v1 *frame,
+    int32_t x, int32_t y, int32_t w, int32_t h
+) {
+    ext_image_copy_capture_frame_v1_damage_buffer(frame, x, y, w, h);
+    video_capture_grow_tracked_damage(frame_ctx, x, y, w, h);
 }
 
 static inline uint8_t *
