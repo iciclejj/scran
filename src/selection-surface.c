@@ -408,8 +408,12 @@ draw_selection_and_damage_buffer(
     const BLBoxI capture_area_border_outline_last_used_in_any_buffer     = blboxi_get_inflated(capture_area_border_inline_last_used_in_any_buffer    , SCRAN_SELECTION_BORDER_THICKNESS_PX);
     const BLBoxI capture_area_border_outline_last_used_in_current_buffer = blboxi_get_inflated(capture_area_border_inline_last_used_in_current_buffer, SCRAN_SELECTION_BORDER_THICKNESS_PX);
 
+    bool selection_changed =
+        !blboxi_are_equal(capture_area, st_buffer->box_currently_drawn)
+        || !blboxi_are_equal(capture_area, selection_surface->box_last_drawn);
+
     // Draw background dim
-    {
+    if (selection_changed || st_buffer->force_redraw) {
         int n_damage_regions;
         BLRectI damage_regions_wayland[8];
         BLRectI damage_regions_buffer[8];
@@ -439,7 +443,7 @@ draw_selection_and_damage_buffer(
     draw_and_damage_ui(selection_surface, st_buffer, capture_area_border_outline);
 
     // Draw selection border
-    {
+    if (selection_changed || st_buffer->force_redraw) {
         BLRectI damage_regions[4];
         blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
         draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
