@@ -13,7 +13,6 @@
 
 #include "scranrot.h"
 
-#include "selection-surface.h"
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
