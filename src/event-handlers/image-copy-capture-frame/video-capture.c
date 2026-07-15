@@ -147,7 +147,7 @@ do_handle_frame(
             return false;
         }
 
-        video_capture_write_frame(frame_ctx, ffmpeg_ctx->av_packet);
+        video_capture_write_video_packet(frame_ctx, ffmpeg_ctx->av_packet);
 
         // INFO: packet gets unreferenced at start of loop by avcodec_receive_packet
     }
