@@ -358,6 +358,13 @@ get_timer_string(
     int minutes_ = (seconds / 60) % 60;
     int seconds_ =  seconds % 60;
 
+    // XXX: The image buffer is fixed-size, allowing max 2 digits per time unit.
+    // We let seconds keep ticking, to show some signs of life.
+    if (hours_ > 99) {
+        hours_   = 99;
+        minutes_ = 59;
+    }
+
     assert(seconds_ >= 0); // XXX TODO: Ensure this better or handle it here?
     cursor = prepend_char16_uint_two_digits(cursor, seconds_);
     *(--cursor) = ':';
