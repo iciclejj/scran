@@ -331,14 +331,12 @@ Send SIGUSR1 to the running scran to start grabbing inputs again after releasing
 
 ## TODOs (*not comprehensive*)
 - GPU-accelerated video capture
-  - planned for after the CPU pipeline is more optimized (primarily improving performance for rotated displays).
 - More configuration
   - Specify output file formats, encoding, etc.
   - Customizable keybindings
     - Config file?
   - UI customization, for example:
     - Custom colors
-    - Option to display current selection size
 - Cross-display capture
     - Already handles separate simultaneous video capture per individual display
 
