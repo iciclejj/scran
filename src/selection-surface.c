@@ -12,6 +12,9 @@
 #include "print.h"
 
 
+extern struct scran g_state;
+
+
 static inline void
 draw_and_damage_region(
     struct scran_output_selectionSurface *selection_surface,
@@ -377,6 +380,12 @@ draw_selection_and_damage_buffer(
     struct scran_output_selectionSurface_buffer *st_buffer,
     struct BLBoxI capture_area
 ) {
+    if (g_state.options.hide_ui_level >= SCRAN_OPT_HIDE_UI_EVERYTHING) {
+        // XXX: Slightly spaghetti, but required for updating the capture area.
+        st_buffer->box_currently_drawn = capture_area;
+        return;
+    }
+
     // TODO: Assert bl_ctx has already begun
 
     // What the compositor has to overwrite:
@@ -438,9 +447,11 @@ draw_selection_and_damage_buffer(
         draw_and_damage_background(selection_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, n_damage_regions);
     }
 
-    // Draw keymap
-    //   Must be drawn after/on top of background
-    draw_and_damage_ui(selection_surface, st_buffer, capture_area_border_outline);
+    if (g_state.options.hide_ui_level < SCRAN_OPT_HIDE_UI_ITEMS) {
+        // Draw keymap
+        //   Must be drawn after/on top of background
+        draw_and_damage_ui(selection_surface, st_buffer, capture_area_border_outline);
+    }
 
     // Draw selection border
     if (selection_changed || st_buffer->force_redraw) {

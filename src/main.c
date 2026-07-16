@@ -682,6 +682,11 @@ get_smallest_timeout(int a, int b)
 static inline void
 update_video_timers(int *timeout_ms_)
 {
+    if (g_state.options.hide_ui_level >= SCRAN_OPT_HIDE_UI_ITEMS) {
+        *timeout_ms_ = -1;
+        return;
+    }
+
     int timeout_ms = INT_MAX;
     int64_t now_ns = capture_clock_gettime_nsec();
 

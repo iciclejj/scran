@@ -420,6 +420,12 @@ struct scran_output {
     char name[SCRAN_STATE_OUTPUT_NAME_SIZE]; // output::name
 };
 
+enum scran_opt_hide_ui_level {
+    SCRAN_OPT_HIDE_UI_NONE,
+    SCRAN_OPT_HIDE_UI_ITEMS,
+    SCRAN_OPT_HIDE_UI_EVERYTHING,
+};
+
 // TODO: Isolate this from scran state?
 struct scran_options {
     char *output_path_filename_pointer; // TODO: Use offset instead
@@ -435,6 +441,7 @@ struct scran_options {
     bool produce_slurp;                 // output slurp-style geometry string
     bool no_notifications;
     bool have_custom_initial_selection; // output slurp-style geometry string
+    enum scran_opt_hide_ui_level hide_ui_level;
     struct BLRectI custom_initial_selection_global_coordinates;
 };
 

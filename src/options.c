@@ -448,6 +448,8 @@ static const char help_string[] =
     "         The area is clamped to the output containing the top-left corner.\n"
     "           Subject to change if/when scran will support cross-output capture.\n"
     "  -N   disable notifications\n"
+    "  -U   hide UI (partial)\n"
+    "  -UU  hide UI (full)\n"
     "  -v   show version and exit\n"
     "  -h   show this help message and exit\n"
     "\n"
@@ -467,7 +469,7 @@ scran_handle_args(int argc, char *const *argv)
     char *opt_output_directory = NULL;
 
     int opt;
-    while ((opt = getopt(argc, argv, "f:d:peACBzsg:Nvh")) != -1) {
+    while ((opt = getopt(argc, argv, "f:d:peACBzsg:NvhU")) != -1) {
         switch (opt) {
         case 'f': opt_filename                                          = optarg; break;
         case 'd': opt_output_directory                                  = optarg; break;
@@ -478,6 +480,7 @@ scran_handle_args(int argc, char *const *argv)
         case 'B': g_state.options.no_keepalive                          = true;   break;
         case 'z': g_state.options.freezeframe                           = true;   break;
         case 's': g_state.options.produce_slurp                         = true;   break;
+        case 'U': g_state.options.hide_ui_level                         += 1;     break;
         case 'g':
             {
                 char consumable_slurp[SLURP_STRING_SIZE];
