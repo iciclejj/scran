@@ -329,6 +329,35 @@ shm_open_anonymous(void)
     return fd;
 }
 
+static inline void
+init_wl_shm_buffer(
+    struct scran_arena_context *shm_arena,
+    struct wl_shm_pool *wl_shm_pool,
+    struct scran_wl_buffer *buffer,
+    int32_t width_px,
+    int32_t height_px,
+    int32_t stride_bytes,
+    uint32_t shm_format,
+    struct wl_buffer_listener *listener,
+    void *listener_userdata
+) {
+    assert(buffer->data != NULL);
+    assert(shm_arena->addr != NULL);
+    assert(wl_shm_pool != NULL);
+
+    const ptrdiff_t wl_shm_pool_offset = buffer->data - shm_arena->addr;
+    buffer->wl_buffer = wl_shm_pool_create_buffer(
+        wl_shm_pool, wl_shm_pool_offset,
+        width_px, height_px, stride_bytes, shm_format
+    );
+
+    if (listener != NULL) {
+        wl_buffer_add_listener(
+            buffer->wl_buffer, listener, listener_userdata
+        );
+    }
+}
+
 // TODO:
 //  - Add --slim/--no-video arg that skips allocating video-only requirements,
 //    extra frame buffers, etc.
@@ -355,13 +384,17 @@ init_meminit(
             return false;
         }
 
+        struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+        const size_t selection_surface_buf_size = get_surface_buf_size_padded(&selection_surface->surface);
         for (int i_buffer = 0; i_buffer < SELECTION_SURFACE_BUF_COUNT; i_buffer++) {
-            const size_t _surface_buf_size = get_surface_buf_size_padded(&st_output->selection_surface.surface);
+            struct scran_output_selectionSurface_buffer *buffer = &selection_surface->double_buffer[i_buffer];
             scran_arena_add_block(
                 shm_arena,
-                _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->selection_surface.double_buffer[i_buffer].scran_wl_buffer.data
+                selection_surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &buffer->scran_wl_buffer.data
             );
         };
+
+        const size_t capture_buf_size = get_capture_buf_size(st_output);
 
         if (g_state.options.freezeframe) {
             if (st_output->freezeframe.shm_format == SCRAN_SHM_FORMAT_UNSET) {
@@ -372,36 +405,31 @@ init_meminit(
             // XXX: We use a separate capture buffer and surface buffer due to
             // wl_surface::set_buffer_transform not working as expected in
             // Hyprland (#14441).
-            const size_t _capture_buf_size = get_capture_buf_size(st_output);
             scran_arena_add_block(
                 shm_arena,
-                _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.capture_buffer.scran_wl_buffer.data
+                capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.capture_buffer.scran_wl_buffer.data
             );
             scran_arena_add_block(
                 shm_arena,
-                _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.scran_wl_buffer.data
+                capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.scran_wl_buffer.data
             );
         }
 
-        const size_t _capture_buf_size = get_capture_buf_size(st_output);
         scran_arena_add_block(
             shm_arena,
-            _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.scran_wl_buffer.data
+            capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.scran_wl_buffer.data
         );
-
-        const size_t _capture_buf_2_size = get_capture_buf_size(st_output);
         scran_arena_add_block(
             private_arena,
-            _capture_buf_2_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.img_data_2
+            capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.img_data_2
         );
     }
     // Not per-output:
     {
-        // single-pixel buffer
-        const size_t _transparent_buf_size = RGBA32_PIXEL_STRIDE;
+        const size_t transparent_buf_size = RGBA32_PIXEL_STRIDE; // single-pixel buffer
         scran_arena_add_block(
             shm_arena,
-            _transparent_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &g_state.transparent_single_pixel_buffer.data
+            transparent_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &g_state.transparent_single_pixel_buffer.data
         );
     }
 
@@ -447,96 +475,77 @@ init_meminit(
     // Create wayland buffers
     //
     FOR_EACH_OUTPUT(i, st_output) {
-        struct scran_output_selectionSurface *_selection_surface = &st_output->selection_surface;
+        struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+
         for (int i_buffer = 0; i_buffer < SELECTION_SURFACE_BUF_COUNT; i_buffer++) {
-            struct scran_output_selectionSurface_buffer *_st_buffer = &_selection_surface->double_buffer[i_buffer];
-
-            assert(_st_buffer->scran_wl_buffer.data != NULL);
-            const ptrdiff_t _surface_buffer_offset = _st_buffer->scran_wl_buffer.data - shm_arena->addr;
-            _st_buffer->scran_wl_buffer.wl_buffer = wl_shm_pool_create_buffer(
+            struct scran_output_selectionSurface_buffer *buffer = &selection_surface->double_buffer[i_buffer];
+            init_wl_shm_buffer(
+                shm_arena,
                 global_pool_wl,
-                _surface_buffer_offset,
-                _selection_surface->surface.width_px_buffer,
-                _selection_surface->surface.height_px_buffer,
-                _selection_surface->surface.width_px_buffer * SURFACE_PIXEL_STRIDE,
-                SURFACE_SHM_FORMAT
-            );
-
-            wl_buffer_add_listener(
-                _st_buffer->scran_wl_buffer.wl_buffer,
+                &buffer->scran_wl_buffer,
+                selection_surface->surface.width_px_buffer,
+                selection_surface->surface.height_px_buffer,
+                selection_surface->surface.width_px_buffer * SURFACE_PIXEL_STRIDE,
+                SURFACE_SHM_FORMAT,
                 &selectionSurface_buffer_listener,
-                _st_buffer
+                buffer
             );
         }
 
         if (g_state.options.freezeframe) {
-            struct scran_output_freezeframe *_freezeframe_surface = &st_output->freezeframe;
+            struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
 
-            struct scran_freezeframe_buffer *_capture_buffer = &_freezeframe_surface->capture_buffer;
-            const ptrdiff_t _capture_buffer_offset = _capture_buffer->scran_wl_buffer.data - shm_arena->addr;
-            _capture_buffer->scran_wl_buffer.wl_buffer = wl_shm_pool_create_buffer(
+            struct scran_freezeframe_buffer *capture_buffer = &freezeframe->capture_buffer;
+            init_wl_shm_buffer(
+                shm_arena,
                 global_pool_wl,
-                _capture_buffer_offset,
+                &capture_buffer->scran_wl_buffer,
                 st_output->mode.width_px,
                 st_output->mode.height_px,
                 get_capture_stride(st_output),
-                _freezeframe_surface->shm_format
-            );
-            wl_buffer_add_listener(
-                _capture_buffer->scran_wl_buffer.wl_buffer,
+                freezeframe->shm_format,
                 &freezeframe_buffer_listener,
-                _capture_buffer
+                capture_buffer
             );
 
-            struct scran_freezeframe_buffer *_surface_buffer = &_freezeframe_surface->surface_buffer;
-            const ptrdiff_t _surface_buffer_offset = _surface_buffer->scran_wl_buffer.data - shm_arena->addr;
-            _surface_buffer->scran_wl_buffer.wl_buffer = wl_shm_pool_create_buffer(
+            struct scran_freezeframe_buffer *surface_buffer = &freezeframe->surface_buffer;
+            init_wl_shm_buffer(
+                shm_arena,
                 global_pool_wl,
-                _surface_buffer_offset,
-                _freezeframe_surface->subsurface.width_px_buffer,
-                _freezeframe_surface->subsurface.height_px_buffer,
-                _freezeframe_surface->subsurface.width_px_buffer * SURFACE_PIXEL_STRIDE,
-                _freezeframe_surface->shm_format
-            );
-            wl_buffer_add_listener(
-                _surface_buffer->scran_wl_buffer.wl_buffer,
+                &surface_buffer->scran_wl_buffer,
+                freezeframe->subsurface.width_px_buffer,
+                freezeframe->subsurface.height_px_buffer,
+                freezeframe->subsurface.width_px_buffer * SURFACE_PIXEL_STRIDE,
+                freezeframe->shm_format,
                 &freezeframe_buffer_listener,
-                _surface_buffer
+                surface_buffer
             );
         }
 
-        assert(st_output->capture.frame_ctx.scran_wl_buffer.data != NULL);
-        const ptrdiff_t _capture_buffer_offset = st_output->capture.frame_ctx.scran_wl_buffer.data - shm_arena->addr;
-        st_output->capture.frame_ctx.scran_wl_buffer.wl_buffer = wl_shm_pool_create_buffer(
+        struct scran_output_capture *capture = &st_output->capture;
+        init_wl_shm_buffer(
+            shm_arena,
             global_pool_wl,
-            _capture_buffer_offset,
+            &capture->frame_ctx.scran_wl_buffer,
             st_output->mode.width_px,
             st_output->mode.height_px,
             get_capture_stride(st_output),
-            st_output->capture.shm_format
-        );
-
-        wl_buffer_add_listener(
-            st_output->capture.frame_ctx.scran_wl_buffer.wl_buffer,
+            capture->shm_format,
             &capture_buffer_listener,
-            &st_output->capture.frame_ctx.scran_wl_buffer
+            &capture->frame_ctx.scran_wl_buffer
         );
     }
     // Not per-output:
     {
-        struct scran_wl_buffer *_transparent_buffer = &g_state.transparent_single_pixel_buffer;
-        const ptrdiff_t _transparent_buffer_offset = _transparent_buffer->data - shm_arena->addr;
-        _transparent_buffer->wl_buffer = wl_shm_pool_create_buffer(
+        struct scran_wl_buffer *transparent_buffer = &g_state.transparent_single_pixel_buffer;
+        init_wl_shm_buffer(
+            shm_arena,
             global_pool_wl,
-            _transparent_buffer_offset,
-            // single-pixel buffer
-            1, 1, SURFACE_PIXEL_STRIDE,
-            // TODO: Assert this has alpha channel? Though we have bigger
-            // problems if that ever fails...
-            SURFACE_SHM_FORMAT
+            transparent_buffer, 1, 1, SURFACE_PIXEL_STRIDE, SURFACE_SHM_FORMAT,
+            // Don't need a listener for this, since it's effectively a const buffer.
+            //   TODO: Make the data pointer const?
+            NULL, NULL
         );
-        // Don't need listener for this, since it's effectively a const buffer.
-        //   TODO: Make the data pointer const?
     }
 
     // (wayland's mmaps and fd references live on)
