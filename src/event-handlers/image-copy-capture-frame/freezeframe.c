@@ -85,8 +85,8 @@ display_freezeframe(
         size_t dst_stride = 0;
         // See comments referencing #14441 for why we scranrot instead of just ::set_buffer_transform().
         if (scranrot_transform_framebuffer(
-                capture_buffer->data, st_output->mode.width_px, st_output->mode.height_px, st_output->mode.width_px * RGBA32_PIXEL_STRIDE,
-                surface_buffer->data,
+                capture_buffer->scran_wl_buffer.data, st_output->mode.width_px, st_output->mode.height_px, st_output->mode.width_px * RGBA32_PIXEL_STRIDE,
+                surface_buffer->scran_wl_buffer.data,
                 RGBA32_SHUFFLE_NO_CHANGE, (enum scranrot_transform)scranrot_transform,
                 &dst_stride)
         ) {
@@ -104,7 +104,7 @@ display_freezeframe(
 
     wl_surface_attach(
         freezeframe->subsurface.wl_surface,
-        final_buffer->wl_buffer,
+        final_buffer->scran_wl_buffer.wl_buffer,
         0, 0
     );
     final_buffer->busy = true;

@@ -156,7 +156,7 @@ video_capture_create_frame(
     struct ext_image_copy_capture_frame_v1 *frame =
         ext_image_copy_capture_session_v1_create_frame(frame_ctx->wl_capture_session);
 
-    ext_image_copy_capture_frame_v1_attach_buffer(frame, frame_ctx->st_buffer.wl_buffer);
+    ext_image_copy_capture_frame_v1_attach_buffer(frame, frame_ctx->scran_wl_buffer.wl_buffer);
     ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__video_capture, frame_ctx);
 
     return frame;
@@ -571,7 +571,7 @@ image_capture_request_frame(struct scran_output *st_output)
 
     ext_image_copy_capture_frame_v1_attach_buffer(
         frame,
-        st_output->capture.frame_ctx.st_buffer.wl_buffer
+        st_output->capture.frame_ctx.scran_wl_buffer.wl_buffer
     );
     ext_image_copy_capture_frame_v1_damage_buffer(
         frame,

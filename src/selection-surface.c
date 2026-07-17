@@ -552,7 +552,7 @@ init_selection_surface_content(
     struct scran_output_selectionSurface_buffer *initial_buffer = &selection_surface->double_buffer[0];
     initial_buffer->busy = true;
     wl_surface_attach(
-        selection_surface->surface.wl_surface, initial_buffer->wl_buffer, 0, 0
+        selection_surface->surface.wl_surface, initial_buffer->scran_wl_buffer.wl_buffer, 0, 0
     );
     wl_surface_damage_buffer(
         selection_surface->surface.wl_surface,

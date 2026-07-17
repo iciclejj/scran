@@ -55,6 +55,7 @@
 // length (nor for actual name to be equal to the underlying DRM name).
 #define SCRAN_STATE_OUTPUT_NAME_SIZE DRM_CONNECTOR_NAME_LEN
 
+
 struct scran_globals {
     struct wl_display *display;
     struct wl_registry *registry;
@@ -74,6 +75,11 @@ struct scran_globals {
     struct zcosmic_output_manager_v1 *cosmic_output_manager;
     struct wp_viewporter *viewporter;
     struct hyprland_surface_manager_v1 *hypr_surface_manager;
+};
+
+struct scran_wl_buffer {
+    struct wl_buffer *wl_buffer;
+    void *data;
 };
 
 struct scran_output_subsurface {
@@ -123,8 +129,7 @@ struct scran_ui_textline_surface_state {
 };
 
 struct scran_output_selectionSurface_buffer {
-    struct wl_buffer *wl_buffer;
-    void *data;
+    struct scran_wl_buffer scran_wl_buffer;
 
     BLContextCore bl_ctx;
     BLImageCore bl_img;
@@ -162,8 +167,7 @@ struct scran_output;
 typedef void (*freezeframe_callback)(struct scran_output *) ;
 
 struct scran_freezeframe_buffer {
-    struct wl_buffer *wl_buffer;
-    void *data;
+    struct scran_wl_buffer scran_wl_buffer;
     freezeframe_callback release_callback;
     bool busy;
 };
@@ -304,11 +308,6 @@ struct scran_output_selectionContext {
     int pointer_before_changes_y_px;
 };
 
-struct scran_capture_buffer {
-    struct wl_buffer *wl_buffer;
-    void *data;
-};
-
 struct ffmpeg_context {
     // Video
     AVFormatContext *av_format_ctx;
@@ -328,7 +327,7 @@ struct ffmpeg_context {
 struct capture_frame_context {
     struct ext_image_copy_capture_frame_v1 *frame;
 
-    struct scran_capture_buffer st_buffer;
+    struct scran_wl_buffer scran_wl_buffer;
     // Extra buffer for copying/intermediate operations
     // TODO: Rename this
     void *img_data_2;

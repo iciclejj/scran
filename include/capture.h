@@ -103,7 +103,7 @@ static inline uint8_t *
 capture_get_area_start_address(
     struct capture_frame_context *frame_ctx
 ) {
-    return frame_ctx->st_buffer.data
+    return frame_ctx->scran_wl_buffer.data
          + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
          + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
 }

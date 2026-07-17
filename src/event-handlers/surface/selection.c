@@ -98,7 +98,7 @@ selection_surface_frame_callback_handler(
     );
     st_output->selection_surface.box_last_drawn = capture_area;
 
-    wl_surface_attach(st_output->selection_surface.surface.wl_surface, st_buffer->wl_buffer, 0, 0);
+    wl_surface_attach(st_output->selection_surface.surface.wl_surface, st_buffer->scran_wl_buffer.wl_buffer, 0, 0);
     wp_presentation_feedback_add_listener(
         wp_presentation_feedback(g_state.globals.presentation, st_output->selection_surface.surface.wl_surface),
         &presentation_feedback_listener__selection,

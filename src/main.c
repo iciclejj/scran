@@ -359,7 +359,7 @@ init_meminit(
             const size_t _surface_buf_size = get_surface_buf_size_padded(&st_output->selection_surface.surface);
             scran_arena_add_block(
                 shm_arena,
-                _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->selection_surface.double_buffer[i_buffer].data
+                _surface_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->selection_surface.double_buffer[i_buffer].scran_wl_buffer.data
             );
         };
 
@@ -375,25 +375,25 @@ init_meminit(
             const size_t _capture_buf_size = get_capture_buf_size(st_output);
             scran_arena_add_block(
                 shm_arena,
-                _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.capture_buffer.data
+                _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.capture_buffer.scran_wl_buffer.data
             );
             scran_arena_add_block(
                 shm_arena,
-                _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.data
+                _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.scran_wl_buffer.data
             );
 
             // single-pixel buffer
             const size_t _transparent_buf_size = RGBA32_PIXEL_STRIDE;
             scran_arena_add_block(
                 shm_arena,
-                _transparent_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.transparent_single_pixel_buffer.data
+                _transparent_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.transparent_single_pixel_buffer.scran_wl_buffer.data
             );
         }
 
         const size_t _capture_buf_size = get_capture_buf_size(st_output);
         scran_arena_add_block(
             shm_arena,
-            _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.st_buffer.data
+            _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.scran_wl_buffer.data
         );
 
         const size_t _capture_buf_2_size = get_capture_buf_size(st_output);
@@ -449,9 +449,9 @@ init_meminit(
         for (int i_buffer = 0; i_buffer < SELECTION_SURFACE_BUF_COUNT; i_buffer++) {
             struct scran_output_selectionSurface_buffer *_st_buffer = &_selection_surface->double_buffer[i_buffer];
 
-            assert(_st_buffer->data != NULL);
-            const ptrdiff_t _surface_buffer_offset = _st_buffer->data - shm_arena->addr;
-            _st_buffer->wl_buffer = wl_shm_pool_create_buffer(
+            assert(_st_buffer->scran_wl_buffer.data != NULL);
+            const ptrdiff_t _surface_buffer_offset = _st_buffer->scran_wl_buffer.data - shm_arena->addr;
+            _st_buffer->scran_wl_buffer.wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
                 _surface_buffer_offset,
                 _selection_surface->surface.width_px_buffer,
@@ -461,7 +461,7 @@ init_meminit(
             );
 
             wl_buffer_add_listener(
-                _st_buffer->wl_buffer,
+                _st_buffer->scran_wl_buffer.wl_buffer,
                 &selectionSurface_buffer_listener,
                 _st_buffer
             );
@@ -471,8 +471,8 @@ init_meminit(
             struct scran_output_freezeframe *_freezeframe_surface = &st_output->freezeframe;
 
             struct scran_freezeframe_buffer *_capture_buffer = &_freezeframe_surface->capture_buffer;
-            const ptrdiff_t _capture_buffer_offset = _capture_buffer->data - shm_arena->addr;
-            _capture_buffer->wl_buffer = wl_shm_pool_create_buffer(
+            const ptrdiff_t _capture_buffer_offset = _capture_buffer->scran_wl_buffer.data - shm_arena->addr;
+            _capture_buffer->scran_wl_buffer.wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
                 _capture_buffer_offset,
                 st_output->mode.width_px,
@@ -481,14 +481,14 @@ init_meminit(
                 _freezeframe_surface->shm_format
             );
             wl_buffer_add_listener(
-                _capture_buffer->wl_buffer,
+                _capture_buffer->scran_wl_buffer.wl_buffer,
                 &freezeframe_buffer_listener,
                 _capture_buffer
             );
 
             struct scran_freezeframe_buffer *_surface_buffer = &_freezeframe_surface->surface_buffer;
-            const ptrdiff_t _surface_buffer_offset = _surface_buffer->data - shm_arena->addr;
-            _surface_buffer->wl_buffer = wl_shm_pool_create_buffer(
+            const ptrdiff_t _surface_buffer_offset = _surface_buffer->scran_wl_buffer.data - shm_arena->addr;
+            _surface_buffer->scran_wl_buffer.wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
                 _surface_buffer_offset,
                 _freezeframe_surface->subsurface.width_px_buffer,
@@ -497,14 +497,14 @@ init_meminit(
                 _freezeframe_surface->shm_format
             );
             wl_buffer_add_listener(
-                _surface_buffer->wl_buffer,
+                _surface_buffer->scran_wl_buffer.wl_buffer,
                 &freezeframe_buffer_listener,
                 _surface_buffer
             );
 
             struct scran_freezeframe_buffer *_transparent_buffer = &_freezeframe_surface->transparent_single_pixel_buffer;
-            const ptrdiff_t _transparent_buffer_offset = _transparent_buffer->data - shm_arena->addr;
-            _transparent_buffer->wl_buffer = wl_shm_pool_create_buffer(
+            const ptrdiff_t _transparent_buffer_offset = _transparent_buffer->scran_wl_buffer.data - shm_arena->addr;
+            _transparent_buffer->scran_wl_buffer.wl_buffer = wl_shm_pool_create_buffer(
                 global_pool_wl,
                 _transparent_buffer_offset,
                 // single-pixel buffer
@@ -517,9 +517,9 @@ init_meminit(
             //   TODO: Make the data pointer const?
         }
 
-        assert(st_output->capture.frame_ctx.st_buffer.data != NULL);
-        const ptrdiff_t _capture_buffer_offset = st_output->capture.frame_ctx.st_buffer.data - shm_arena->addr;
-        st_output->capture.frame_ctx.st_buffer.wl_buffer = wl_shm_pool_create_buffer(
+        assert(st_output->capture.frame_ctx.scran_wl_buffer.data != NULL);
+        const ptrdiff_t _capture_buffer_offset = st_output->capture.frame_ctx.scran_wl_buffer.data - shm_arena->addr;
+        st_output->capture.frame_ctx.scran_wl_buffer.wl_buffer = wl_shm_pool_create_buffer(
             global_pool_wl,
             _capture_buffer_offset,
             st_output->mode.width_px,
@@ -529,9 +529,9 @@ init_meminit(
         );
 
         wl_buffer_add_listener(
-            st_output->capture.frame_ctx.st_buffer.wl_buffer,
+            st_output->capture.frame_ctx.scran_wl_buffer.wl_buffer,
             &capture_buffer_listener,
-            &st_output->capture.frame_ctx.st_buffer
+            &st_output->capture.frame_ctx.scran_wl_buffer
         );
     }
 
@@ -552,18 +552,15 @@ init_meminit__destroy(
     FOR_EACH_OUTPUT(i, st_output) {
         for (int i_buf = 0; i_buf < SELECTION_SURFACE_BUF_COUNT; i_buf++) {
             struct scran_output_selectionSurface_buffer *selection_surface_buffer = &st_output->selection_surface.double_buffer[i_buf];
-            wl_buffer_destroy(selection_surface_buffer->wl_buffer);
+            wl_buffer_destroy(selection_surface_buffer->scran_wl_buffer.wl_buffer);
         }
 
-        {
-            struct scran_capture_buffer *capture_buffer = &st_output->capture.frame_ctx.st_buffer;
-            wl_buffer_destroy(capture_buffer->wl_buffer);
-        }
+        wl_buffer_destroy(st_output->capture.frame_ctx.scran_wl_buffer.wl_buffer);
 
         if (g_state.options.freezeframe) {
-            wl_buffer_destroy(st_output->freezeframe.capture_buffer.wl_buffer);
-            wl_buffer_destroy(st_output->freezeframe.surface_buffer.wl_buffer);
-            wl_buffer_destroy(st_output->freezeframe.transparent_single_pixel_buffer.wl_buffer);
+            wl_buffer_destroy(st_output->freezeframe.capture_buffer.scran_wl_buffer.wl_buffer);
+            wl_buffer_destroy(st_output->freezeframe.surface_buffer.scran_wl_buffer.wl_buffer);
+            wl_buffer_destroy(st_output->freezeframe.transparent_single_pixel_buffer.scran_wl_buffer.wl_buffer);
         }
     }
 
