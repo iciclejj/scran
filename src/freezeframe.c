@@ -145,13 +145,12 @@ freezeframe_hide_surface(struct scran_output *st_output)
 void
 freezeframe_hide_selection_surface(struct scran_output *st_output)
 {
-    struct scran_output_surface     *st_surface  = &st_output->selection_surface.surface;
-    struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
+    struct scran_output_surface *st_surface  = &st_output->selection_surface.surface;
 
     assert(SURFACE_SHM_FORMAT == WL_SHM_FORMAT_ARGB8888); // Alpha channel must not be ignored.
     wl_surface_attach(
         st_surface->wl_surface,
-        freezeframe->transparent_single_pixel_buffer.scran_wl_buffer.wl_buffer, 0, 0
+        g_state.transparent_single_pixel_buffer.wl_buffer, 0, 0
     );
     wp_viewport_set_source(
         st_surface->viewport,

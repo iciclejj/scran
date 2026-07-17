@@ -381,13 +381,6 @@ init_meminit(
                 shm_arena,
                 _capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.scran_wl_buffer.data
             );
-
-            // single-pixel buffer
-            const size_t _transparent_buf_size = RGBA32_PIXEL_STRIDE;
-            scran_arena_add_block(
-                shm_arena,
-                _transparent_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.transparent_single_pixel_buffer.scran_wl_buffer.data
-            );
         }
 
         const size_t _capture_buf_size = get_capture_buf_size(st_output);
@@ -400,6 +393,15 @@ init_meminit(
         scran_arena_add_block(
             private_arena,
             _capture_buf_2_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.img_data_2
+        );
+    }
+    // Not per-output:
+    {
+        // single-pixel buffer
+        const size_t _transparent_buf_size = RGBA32_PIXEL_STRIDE;
+        scran_arena_add_block(
+            shm_arena,
+            _transparent_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &g_state.transparent_single_pixel_buffer.data
         );
     }
 
@@ -501,20 +503,6 @@ init_meminit(
                 &freezeframe_buffer_listener,
                 _surface_buffer
             );
-
-            struct scran_freezeframe_buffer *_transparent_buffer = &_freezeframe_surface->transparent_single_pixel_buffer;
-            const ptrdiff_t _transparent_buffer_offset = _transparent_buffer->scran_wl_buffer.data - shm_arena->addr;
-            _transparent_buffer->scran_wl_buffer.wl_buffer = wl_shm_pool_create_buffer(
-                global_pool_wl,
-                _transparent_buffer_offset,
-                // single-pixel buffer
-                1, 1, SURFACE_PIXEL_STRIDE,
-                // TODO: Assert this has alpha channel? Though we have bigger
-                // problems if that ever fails...
-                SURFACE_SHM_FORMAT
-            );
-            // Don't need listener for this, since it's effectively a const buffer.
-            //   TODO: Make the data pointer const?
         }
 
         assert(st_output->capture.frame_ctx.scran_wl_buffer.data != NULL);
@@ -533,6 +521,22 @@ init_meminit(
             &capture_buffer_listener,
             &st_output->capture.frame_ctx.scran_wl_buffer
         );
+    }
+    // Not per-output:
+    {
+        struct scran_wl_buffer *_transparent_buffer = &g_state.transparent_single_pixel_buffer;
+        const ptrdiff_t _transparent_buffer_offset = _transparent_buffer->data - shm_arena->addr;
+        _transparent_buffer->wl_buffer = wl_shm_pool_create_buffer(
+            global_pool_wl,
+            _transparent_buffer_offset,
+            // single-pixel buffer
+            1, 1, SURFACE_PIXEL_STRIDE,
+            // TODO: Assert this has alpha channel? Though we have bigger
+            // problems if that ever fails...
+            SURFACE_SHM_FORMAT
+        );
+        // Don't need listener for this, since it's effectively a const buffer.
+        //   TODO: Make the data pointer const?
     }
 
     // (wayland's mmaps and fd references live on)
@@ -560,9 +564,9 @@ init_meminit__destroy(
         if (g_state.options.freezeframe) {
             wl_buffer_destroy(st_output->freezeframe.capture_buffer.scran_wl_buffer.wl_buffer);
             wl_buffer_destroy(st_output->freezeframe.surface_buffer.scran_wl_buffer.wl_buffer);
-            wl_buffer_destroy(st_output->freezeframe.transparent_single_pixel_buffer.scran_wl_buffer.wl_buffer);
         }
     }
+    wl_buffer_destroy(g_state.transparent_single_pixel_buffer.wl_buffer);
 
     assert(shm_arena->addr != NULL && private_arena->addr != NULL);
     munmap(shm_arena->addr, shm_arena->size);

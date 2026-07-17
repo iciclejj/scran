@@ -190,7 +190,6 @@ struct scran_output_freezeframe {
     // some compositors, at least on Sway.
     struct scran_freezeframe_buffer capture_buffer;
     struct scran_freezeframe_buffer surface_buffer;
-    struct scran_freezeframe_buffer transparent_single_pixel_buffer;
 };
 
 struct scran_seat_pointerContext {
@@ -464,6 +463,7 @@ struct scran {
 
     // Used for releasing focus
     struct wl_region *empty_wl_region;
+    struct scran_wl_buffer transparent_single_pixel_buffer;
     sig_atomic_t sig_focus_requested;
 
     // TODO: Probably allocate this dynamically, after all.
