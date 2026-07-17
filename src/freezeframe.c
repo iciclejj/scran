@@ -35,7 +35,7 @@ freezeframe_capture_start_assume_callback_set(struct scran_output *st_output) {
 
     ext_image_copy_capture_frame_v1_attach_buffer(
         frame,
-        capture_buffer->wl_buffer
+        capture_buffer->scran_wl_buffer.wl_buffer
     );
     ext_image_copy_capture_frame_v1_damage_buffer(
         frame,
@@ -151,7 +151,7 @@ freezeframe_hide_selection_surface(struct scran_output *st_output)
     assert(SURFACE_SHM_FORMAT == WL_SHM_FORMAT_ARGB8888); // Alpha channel must not be ignored.
     wl_surface_attach(
         st_surface->wl_surface,
-        freezeframe->transparent_single_pixel_buffer.wl_buffer, 0, 0
+        freezeframe->transparent_single_pixel_buffer.scran_wl_buffer.wl_buffer, 0, 0
     );
     wp_viewport_set_source(
         st_surface->viewport,
@@ -183,7 +183,7 @@ freezeframe_unhide_selection_surface(
     // the viewport.
     wl_surface_attach(
         selection_surface->surface.wl_surface,
-        selection_buffer->wl_buffer,
+        selection_buffer->scran_wl_buffer.wl_buffer,
         0, 0
     );
     selection_buffer->busy = true;

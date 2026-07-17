@@ -27,8 +27,8 @@ struct wl_buffer_listener selectionSurface_buffer_listener = {
 static void
 handle_capture_buffer_release(void *data, struct wl_buffer *buffer)
 {
-    struct scran_capture_buffer *st_capture_buffer = data;
-    (void)st_capture_buffer;
+    struct scran_wl_buffer *scran_wl_buffer = data;
+    (void)scran_wl_buffer;
 
     // Don't need to do anything at the moment...
 }
