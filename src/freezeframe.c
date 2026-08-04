@@ -77,7 +77,6 @@ freezeframe_capture_start(
 //   2    Capture the output
 //   3.1  Show the capture as our new freezeframe
 //   3.2  Restore our selection surface
-//          Must be done after 3.1, since they both use the same layer/z-index
 void
 freezeframe_capture_refresh(
     struct scran_output *st_output,
