@@ -561,7 +561,7 @@ video_capture_finish(struct scran_output *st_output)
 }
 
 
-void
+static void
 image_capture_request_frame(struct scran_output *st_output)
 {
     struct ext_image_copy_capture_frame_v1 *frame =

@@ -41,7 +41,6 @@ void video_capture_write_audio_packet(struct capture_frame_context *frame_ctx, A
 void video_capture_destroy_ffmpeg(struct scran_output *st_output);
 
 bool image_capture_start(struct scran_output *st_output);
-void image_capture_request_frame(struct scran_output *st_output);
 
 
 // HACK
