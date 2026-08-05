@@ -128,6 +128,7 @@ handle_pointer_motion(
 
     switch (selection_ctx->selection_state) {
     case SELECTION_NONE:
+    case SELECTION_NONE_FREEZE_SIZE:
         break;
     case SELECTION_INITIALIZING:
         selection_ctx->box_px.x1 = x_px;
@@ -294,6 +295,8 @@ handle_pointer_button(
     switch (button) {
     case BTN_LEFT:
         switch(selection_ctx->selection_state) {
+        case SELECTION_NONE_FREEZE_SIZE:
+            break;
         case SELECTION_NONE:
             {
                 const struct BLBoxI initial_selection_area = {

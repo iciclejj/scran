@@ -29,6 +29,7 @@ enum {
 
 
 void capture_update_area_with_selection(struct scran_output *st_output, BLBoxI selection_box);
+void end_fullscreen_capture(struct scran_output *st_output);
 
 void video_capture_write_video_packet(struct capture_frame_context *frame_ctx, AVPacket *pkt);
 bool video_capture_start(struct scran_output *st_output);
