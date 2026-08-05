@@ -170,11 +170,10 @@ hide_selection_surface_then(
 
     // Need to prevent any new or in-flight frame callbacks from cancelling out
     // our surface hiding
-    selection_surface->frame_callbacks_disabled = true;
+    selection_surface->frame_callback_disable_reason |= SCRAN_FRAME_CALLBACK_DISABLE_REASON_HIDDEN_SELECTION;
 
     hide_selection_surface(st_output);
 }
-
 
 void
 unhide_selection_surface(struct scran_output *st_output)
@@ -183,6 +182,8 @@ unhide_selection_surface(struct scran_output *st_output)
     // TODO: Get a free buffer instead, and handle the case where can't?
     //         See wl_surface::get_release() (as of wayland 1.25.0, 2026-03-19).
     struct scran_output_selectionSurface_buffer *selection_buffer = &selection_surface->double_buffer[0];
+
+    selection_surface->frame_callback_disable_reason &= ~SCRAN_FRAME_CALLBACK_DISABLE_REASON_HIDDEN_SELECTION;
 
     // Need to attach a correctly-sized buffer back again before re-setting
     // the viewport.

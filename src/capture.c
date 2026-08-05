@@ -500,6 +500,19 @@ start_fullscreen_capture(
 }
 
 void
+end_fullscreen_capture(
+    struct scran_output *st_output
+) {
+    // If !=SELECTION_NONE becomes possible in the future, then just do
+    // update_capture_area_with_selection() when !=SELECTION_NONE.
+    assert(st_output->selection_ctx.selection_state == SELECTION_NONE);
+    st_output->capture.frame_ctx.capture_area_px = (BLBoxI){ };
+
+    st_output->capture.frame_ctx.fullscreen_capture = false;
+    unhide_selection_surface(st_output);
+}
+
+void
 video_capture_start_fullscreen(struct scran_output *st_output)
 {
     start_fullscreen_capture(st_output, &presentation_feedback_listener__selection_transparent_for_fullscreen_video_capture);
@@ -584,14 +597,7 @@ video_capture_finish(struct scran_output *st_output)
     unset_selection_freeze_size(st_output);
 
     if (frame_ctx->fullscreen_capture) {
-        frame_ctx->fullscreen_capture = false;
-        // If !=SELECTION_NONE becomes possible in the future, then just do
-        // update_capture_area_with_selection() when !=SELECTION_NONE.
-        assert(st_output->selection_ctx.selection_state == SELECTION_NONE);
-        frame_ctx->capture_area_px = (BLBoxI){ };
-        // TODO: Make a shared function with freezeframe for this duplicated logic.
-        st_output->selection_surface.frame_callbacks_disabled = false;
-        unhide_selection_surface(st_output);
+        end_fullscreen_capture(st_output);
     }
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);

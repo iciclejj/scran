@@ -59,8 +59,17 @@ handle_image_copy_capture_frame_presentation_time__image_capture(
     // No-op
 }
 
+// TODO: Make the generic end_capture logic shared between image and video
 static inline void
-end_capture() {
+end_capture(struct scran_output *st_output)
+{
+    if (st_output->capture.frame_ctx.fullscreen_capture
+        // We don't want to flash a frame of selection/background dim if we're exiting anyways
+        && !st_output->capture.exit_after_capture
+    ) {
+        end_fullscreen_capture(st_output);
+    }
+
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 }
 
@@ -95,12 +104,6 @@ handle_image_copy_capture_frame_ready__image_capture(
     int capture_area_px_h;
 
     if (frame_ctx->fullscreen_capture) {
-        frame_ctx->fullscreen_capture = false;
-        if (!st_output->capture.exit_after_capture) {
-            // TODO: Make a shared function with freezeframe for this duplicated logic.
-            st_output->selection_surface.frame_callbacks_disabled = false;
-            unhide_selection_surface(st_output);
-        }
         capture_area_px_w = st_output->mode.width_px;
         capture_area_px_h = st_output->mode.height_px;
     } else {
@@ -233,7 +236,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     bl_array_destroy(&bl_array_img_encoded);
 
 end_capture:
-    end_capture();
+    end_capture(st_output);
     frame_ctx->capture_area_px = original_capture_area_px;
 }
 
@@ -246,7 +249,9 @@ handle_image_copy_capture_frame_failed__image_capture(
 ) {
     ext_image_copy_capture_frame_v1_destroy(frame);
 
-    end_capture();
+    struct scran_output *st_output = data;
+
+    end_capture(st_output);
 }
 
 

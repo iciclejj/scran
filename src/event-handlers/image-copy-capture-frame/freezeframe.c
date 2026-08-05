@@ -40,8 +40,6 @@ continue_after_showing_freezeframe(
 ) {
     struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
 
-    st_output->selection_surface.frame_callbacks_disabled = false;
-
     if (freezeframe->unhide_after_capture) {
         unhide_selection_surface(st_output);
         freezeframe->unhide_after_capture = false;
