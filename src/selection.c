@@ -4,6 +4,9 @@
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 
+#include "presentation-time.h"
+#include "viewporter.h"
+
 #include "state.h"
 #include "state-util.h"
 #include "selection.h"
@@ -115,6 +118,96 @@ unset_selection_freeze_size(struct scran_output *st_output)
             assert("UNEXPECTED: unset_selection_freeze() called without frozen selection state");
             break;
     }
+}
+
+static void
+hide_selection_surface(struct scran_output *st_output)
+{
+    struct scran_output_surface *st_surface  = &st_output->selection_surface.surface;
+
+    assert(SURFACE_SHM_FORMAT == WL_SHM_FORMAT_ARGB8888); // Alpha channel must not be ignored.
+    wl_surface_attach(
+        st_surface->wl_surface,
+        g_state.transparent_single_pixel_buffer.wl_buffer, 0, 0
+    );
+    wp_viewport_set_source(
+        st_surface->viewport,
+        wl_fixed_from_int(0), wl_fixed_from_int(0), wl_fixed_from_int(1), wl_fixed_from_int(1)
+    );
+    wl_surface_damage_buffer(
+        st_surface->wl_surface,
+        0, 0, 1, 1
+    );
+    wl_surface_commit(
+        st_surface->wl_surface
+    );
+}
+
+void
+hide_selection_surface_then(
+    struct scran_output *st_output,
+    struct wp_presentation_feedback_listener *listener
+) {
+    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+
+    // Once the ::presented event has verified that the selection surface was
+    // hidden, we start the capture from within there.
+    wp_presentation_feedback_add_listener(
+        wp_presentation_feedback(g_state.globals.presentation, selection_surface->surface.wl_surface),
+        listener,
+        st_output
+    );
+
+    // Need to prevent any new or in-flight frame callbacks from cancelling out
+    // our surface hiding
+    selection_surface->frame_callbacks_disabled = true;
+
+    hide_selection_surface(st_output);
+}
+
+
+void
+unhide_selection_surface(struct scran_output *st_output)
+{
+    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+    // TODO: Get a free buffer instead, and handle the case where can't?
+    //         See wl_surface::get_release() (as of wayland 1.25.0, 2026-03-19).
+    struct scran_output_selectionSurface_buffer *selection_buffer = &selection_surface->double_buffer[0];
+
+    // Need to attach a correctly-sized buffer back again before re-setting
+    // the viewport.
+    wl_surface_attach(
+        selection_surface->surface.wl_surface,
+        selection_buffer->scran_wl_buffer.wl_buffer,
+        0, 0
+    );
+    selection_buffer->busy = true;
+    wl_surface_damage_buffer(
+        selection_surface->surface.wl_surface,
+        0, 0,
+        selection_surface->surface.width_px_buffer,
+        selection_surface->surface.height_px_buffer
+    );
+    // Make sure the viewport is set appropriately. The (re-)freezeframe
+    // pipeline sets it to 1x1 for the transparent buffer.
+    //   TODO: Revisit the postmem init functions now and maybe call
+    //   update_surface_scale_bufsize_viewport() here instead.
+    wp_viewport_set_source(
+        selection_surface->surface.viewport,
+        wl_fixed_from_int(0),
+        wl_fixed_from_int(0),
+        wl_fixed_from_int(selection_surface->surface.width_px_buffer),
+        wl_fixed_from_int(selection_surface->surface.height_px_buffer)
+    );
+    set_force_redraw_selection_surface_buffers(st_output);
+    // XXX: This commit is currently redundant in practice, but keeping it here
+    // so this function makes more sense on its own.
+    //
+    // TODO: Refactor the entire freezeframe_capture_refresh() chain so that we
+    // avoid all the redundant commits. Maybe move the hiding/unhiding
+    // responsibility out of any freezeframe.c function entirely, and have the
+    // caller ensure pre/post-recapture state like this manually.
+    wl_surface_commit(selection_surface->surface.wl_surface);
 }
 
 // We need an output-specific function since freezeframe will need to call back

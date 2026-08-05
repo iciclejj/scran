@@ -3,6 +3,8 @@
 
 #include <blend2d/blend2d.h>
 
+#include "presentation-time.h"
+
 #include "state.h"
 
 
@@ -28,6 +30,8 @@ void set_selection_surface_theme(struct scran_output *st_output, enum surface_th
 void set_selection_initialized(struct scran_output *st_output);
 bool set_selection_freeze_size(struct scran_output *st_output);
  void unset_selection_freeze_size(struct scran_output *st_output);
+void hide_selection_surface_then(struct scran_output *st_output, struct wp_presentation_feedback_listener *listener);
+ void unhide_selection_surface(struct scran_output *st_output);
 
 void start_grabbing_focus(void);
 void start_grabbing_focus_for_output(struct scran_output *st_output);
