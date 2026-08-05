@@ -6,6 +6,7 @@
 #include <ext-image-copy-capture-v1.h>
 
 #include "dbus.h"
+#include "selection.h"
 #include "state.h"
 #include "state-util.h" // TODO: Move this into util/ ?
 #include "util/util.h"
@@ -84,13 +85,29 @@ handle_image_copy_capture_frame_ready__image_capture(
 
     DEBUG("CAPTURING IMAGE:\n");
     DEBUG_BLBOXI(frame_ctx->capture_area_px);
-
     // XXX: Capturing image during video capture not implemented yet...
     assert(!frame_ctx->capturing_video);
     assert(g_state.n_captures_in_progress >= 1);
 
-    const int capture_area_px_w = blboxi_width_abs_unsafe(frame_ctx->capture_area_px);
-    const int capture_area_px_h = blboxi_height_abs_unsafe(frame_ctx->capture_area_px);
+
+    const BLBoxI original_capture_area_px = frame_ctx->capture_area_px;
+    int capture_area_px_w;
+    int capture_area_px_h;
+
+    if (frame_ctx->fullscreen_capture) {
+        frame_ctx->fullscreen_capture = false;
+        if (!st_output->capture.exit_after_capture) {
+            // TODO: Make a shared function with freezeframe for this duplicated logic.
+            st_output->selection_surface.frame_callbacks_disabled = false;
+            unhide_selection_surface(st_output);
+        }
+        capture_area_px_w = st_output->mode.width_px;
+        capture_area_px_h = st_output->mode.height_px;
+    } else {
+        capture_area_px_w = blboxi_width_abs_unsafe(frame_ctx->capture_area_px);
+        capture_area_px_h = blboxi_height_abs_unsafe(frame_ctx->capture_area_px);
+    }
+
     const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
     // XXX TODO: Either separate buffer from video capture OR double-check that
     // the shared buffer doesn't cause issues + add robust checks/asserts.
@@ -217,6 +234,7 @@ handle_image_copy_capture_frame_ready__image_capture(
 
 end_capture:
     end_capture();
+    frame_ctx->capture_area_px = original_capture_area_px;
 }
 
 

@@ -104,11 +104,18 @@ handle_keyboard_key(
         key + 8 // See wl_keyboard::keymap_format
     );
 
-    // TODO: Add custom pre-init actions.
-    if (st_output->selection_ctx.selection_state == SELECTION_NONE
-        && xkb_key != XKB_KEY_Escape // Allow exit
-    ) {
-        return;
+    bool fullscreen_image_capture = false;
+
+    if (st_output->selection_ctx.selection_state == SELECTION_NONE) {
+        switch(xkb_key) {
+        case XKB_KEY_Escape: // Allow exit
+            break;
+        case XKB_KEY_Return:
+            fullscreen_image_capture = true;
+            break;
+        default:
+            return;
+        }
     }
 
     // TODO: Nested switch for released/pressed
@@ -216,14 +223,17 @@ z_done:
         if (st_output->capture.frame_ctx.capturing_video) {
             eprintf("Screenshot during video capture not implemented yet, try again later :(\n");
         } else {
-            image_capture_start(st_output);
-
             if (!xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE)) {
-                state->exit_requested = true;
+                st_output->capture.exit_after_capture = true;
             }
 
-            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
-            request_selection_surface_frame_callback(st_output);
+            if (fullscreen_image_capture) {
+                image_capture_start_fullscreen(st_output);
+            } else {
+                image_capture_start(st_output);
+                scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
+                request_selection_surface_frame_callback(st_output);
+            }
         }
 
         break;

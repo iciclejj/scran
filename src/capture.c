@@ -620,16 +620,23 @@ image_capture_start(struct scran_output *st_output)
 
     if (g_state.options.produce_slurp) {
         print_slurp_string(st_output);
-        return true;
+    } else {
+        image_capture_request_frame(
+            st_output,
+            &image_copy_capture_frame_listener__image_capture,
+            frame_ctx->wl_capture_session,
+            frame_ctx->scran_wl_buffer.wl_buffer
+        );
+        atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
     }
 
-    image_capture_request_frame(
-        st_output,
-        &image_copy_capture_frame_listener__image_capture,
-        frame_ctx->wl_capture_session,
-        frame_ctx->scran_wl_buffer.wl_buffer
-    );
-    atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
-
+    g_state.exit_requested |= st_output->capture.exit_after_capture;
     return true;
+}
+
+void
+image_capture_start_fullscreen(struct scran_output *st_output)
+{
+    st_output->capture.frame_ctx.fullscreen_capture = true;
+    hide_selection_surface_then(st_output, &presentation_feedback_listener__selection_transparent_for_fullscreen_capture);
 }
