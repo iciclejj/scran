@@ -182,7 +182,7 @@ handle_keyboard_key(
         }
 
         // XXX TODO: Make this a bit cleaner responsibility-wise.
-        //             See also refactor-TODO in freezeframe_unhide_selection_surface().
+        //             See also refactor-TODO in unhide_selection_surface().
         //           Also, maybe make this the only (default) way to toggle freezeframe,
         //           and don't let refocus automatically re-freeze?
         if (pretend_all_hidden) {

@@ -6,7 +6,7 @@
 
 #include "state.h"
 #include "state-util.h"
-#include "freezeframe.h"
+#include "selection.h"
 #include "event-handlers.h"
 #include "print.h"
 #include "ui.h"
@@ -43,7 +43,7 @@ continue_after_showing_freezeframe(
     st_output->selection_surface.frame_callbacks_disabled = false;
 
     if (freezeframe->unhide_after_capture) {
-        freezeframe_unhide_selection_surface(st_output);
+        unhide_selection_surface(st_output);
         freezeframe->unhide_after_capture = false;
     }
 

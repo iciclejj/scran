@@ -561,29 +561,27 @@ video_capture_finish(struct scran_output *st_output)
 }
 
 
-static void
-image_capture_request_frame(struct scran_output *st_output)
-{
+void
+image_capture_request_frame(
+    struct scran_output *st_output,
+    struct ext_image_copy_capture_frame_v1_listener *listener,
+    struct ext_image_copy_capture_session_v1 *session,
+    struct wl_buffer *buffer
+) {
     struct ext_image_copy_capture_frame_v1 *frame =
-        ext_image_copy_capture_session_v1_create_frame(
-            st_output->capture.frame_ctx.wl_capture_session
-        );
+        ext_image_copy_capture_session_v1_create_frame(session);
 
-    ext_image_copy_capture_frame_v1_attach_buffer(
-        frame,
-        st_output->capture.frame_ctx.scran_wl_buffer.wl_buffer
-    );
-    ext_image_copy_capture_frame_v1_damage_buffer(
-        frame,
-        0, 0, st_output->mode.width_px, st_output->mode.height_px
-    );
-    ext_image_copy_capture_frame_v1_add_listener(
-        frame,
-        &image_copy_capture_frame_listener__image_capture, st_output
-    );
-    ext_image_copy_capture_frame_v1_capture(
-        frame
-    );
+    ext_image_copy_capture_frame_v1_attach_buffer(frame, buffer);
+    ext_image_copy_capture_frame_v1_damage_buffer(frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px);
+    ext_image_copy_capture_frame_v1_add_listener(frame, listener, st_output);
+    ext_image_copy_capture_frame_v1_capture(frame);
+
+    // Force some output damage, since some compositors (like Hyprland on rapid
+    // consecutive freezeframe refreshes) may wait indefinitely for the next
+    // capture frame if no damage is detected.
+    //
+    // Mainly needed for freezeframe/hide_selection_surface_then() captures.
+    capture_force_next_frame(st_output);
 }
 
 
@@ -615,15 +613,22 @@ print_slurp_string(struct scran_output *st_output)
 bool
 image_capture_start(struct scran_output *st_output)
 {
+    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+
     // See TODO at call site
-    assert(!st_output->capture.frame_ctx.capturing_video);
+    assert(!frame_ctx->capturing_video);
 
     if (g_state.options.produce_slurp) {
         print_slurp_string(st_output);
         return true;
     }
 
-    image_capture_request_frame(st_output);
+    image_capture_request_frame(
+        st_output,
+        &image_copy_capture_frame_listener__image_capture,
+        frame_ctx->wl_capture_session,
+        frame_ctx->scran_wl_buffer.wl_buffer
+    );
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     return true;
