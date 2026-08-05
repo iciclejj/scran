@@ -269,6 +269,7 @@ struct scran_seat {
 
 enum selection_state {
     SELECTION_NONE,
+    SELECTION_NONE_FREEZE_SIZE, // Prevents starting a selection during fullscreen capture
     SELECTION_INITIALIZING,
     SELECTION_COMPLETE,
     SELECTION_COMPLETE_FREEZE_SIZE,

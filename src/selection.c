@@ -92,12 +92,21 @@ set_selection_freeze_size(struct scran_output *st_output)
 {
     enum selection_state *selection_state = &st_output->selection_ctx.selection_state;
     switch(*selection_state) {
-        case SELECTION_REBASING: *selection_state = SELECTION_REBASING_FREEZE_SIZE; break;
-        case SELECTION_COMPLETE: *selection_state = SELECTION_COMPLETE_FREEZE_SIZE; break;
+        case SELECTION_NONE:
+            assert(st_output->capture.frame_ctx.fullscreen_capture == true);
+            *selection_state = SELECTION_NONE_FREEZE_SIZE;
+            break;
+        case SELECTION_REBASING:
+            *selection_state = SELECTION_REBASING_FREEZE_SIZE;
+            break;
+        case SELECTION_COMPLETE:
+            *selection_state = SELECTION_COMPLETE_FREEZE_SIZE;
+            break;
         case SELECTION_RESIZING:
             // Incompatible state; neutralize button.
             g_state.seat.pointer_ctx.active_button = SCRAN_BTN_NONE;
-            *selection_state = SELECTION_COMPLETE_FREEZE_SIZE; break;
+            *selection_state = SELECTION_COMPLETE_FREEZE_SIZE;
+            break;
         default:
             eprintf("Can't freeze selection size in current selection state. (SELECTION_STATE=%d)\n", *selection_state);
             return false;
@@ -112,6 +121,7 @@ unset_selection_freeze_size(struct scran_output *st_output)
     enum selection_state *selection_state = &st_output->selection_ctx.selection_state;
 
     switch(*selection_state) {
+        case SELECTION_NONE_FREEZE_SIZE:     *selection_state = SELECTION_NONE;     break;
         case SELECTION_COMPLETE_FREEZE_SIZE: *selection_state = SELECTION_COMPLETE; break;
         case SELECTION_REBASING_FREEZE_SIZE: *selection_state = SELECTION_REBASING; break;
         default:

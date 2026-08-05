@@ -32,6 +32,7 @@ void capture_update_area_with_selection(struct scran_output *st_output, BLBoxI s
 
 void video_capture_write_video_packet(struct capture_frame_context *frame_ctx, AVPacket *pkt);
 bool video_capture_start(struct scran_output *st_output);
+void video_capture_start_fullscreen(struct scran_output *st_output);
 // Call video_capture_request_stop() to initiate graceful finish from arbitrary
 // locations, rather than calling video_capture_finish() directly.
 void video_capture_request_stop(struct scran_output *st_output);

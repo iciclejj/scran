@@ -436,13 +436,24 @@ video_capture_start(struct scran_output *st_output)
         return false;
     }
 
-    assert(( st_output->selection_ctx.selection_state == SELECTION_COMPLETE_FREEZE_SIZE
-             || st_output->selection_ctx.selection_state == SELECTION_REBASING_FREEZE_SIZE)
-           && st_output->selection_ctx.box_px.x1
-           && st_output->selection_ctx.box_px.y1
-           // TODO: Assert box is within output dimensions
-           // TODO: Assert box is not inverted
-    );
+    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+
+    if (frame_ctx->fullscreen_capture) {
+        frame_ctx->capture_area_px = (BLBoxI){
+            .x0 = 0,
+            .y0 = 0,
+            .x1 = st_output->mode.width_px,
+            .y1 = st_output->mode.height_px,
+        };
+    } else {
+        assert(( st_output->selection_ctx.selection_state == SELECTION_COMPLETE_FREEZE_SIZE
+                 || st_output->selection_ctx.selection_state == SELECTION_REBASING_FREEZE_SIZE)
+               && st_output->selection_ctx.box_px.x1
+               && st_output->selection_ctx.box_px.y1
+               // TODO: Assert box is within output dimensions
+               // TODO: Assert box is not inverted
+        );
+    }
 
     if (!init_ffmpeg(st_output)) {
         eprintf("Error: Failed to initialize ffmpeg libraries.\n");
@@ -477,6 +488,21 @@ video_capture_start(struct scran_output *st_output)
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     return true;
+}
+
+static inline void
+start_fullscreen_capture(
+    struct scran_output *st_output,
+    struct wp_presentation_feedback_listener *listener
+) {
+    st_output->capture.frame_ctx.fullscreen_capture = true;
+    hide_selection_surface_then(st_output, listener);
+}
+
+void
+video_capture_start_fullscreen(struct scran_output *st_output)
+{
+    start_fullscreen_capture(st_output, &presentation_feedback_listener__selection_transparent_for_fullscreen_video_capture);
 }
 
 void
@@ -556,6 +582,17 @@ video_capture_finish(struct scran_output *st_output)
     request_selection_surface_frame_callback(st_output);
 
     unset_selection_freeze_size(st_output);
+
+    if (frame_ctx->fullscreen_capture) {
+        frame_ctx->fullscreen_capture = false;
+        // If !=SELECTION_NONE becomes possible in the future, then just do
+        // update_capture_area_with_selection() when !=SELECTION_NONE.
+        assert(st_output->selection_ctx.selection_state == SELECTION_NONE);
+        frame_ctx->capture_area_px = (BLBoxI){ };
+        // TODO: Make a shared function with freezeframe for this duplicated logic.
+        st_output->selection_surface.frame_callbacks_disabled = false;
+        unhide_selection_surface(st_output);
+    }
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 }
@@ -637,6 +674,5 @@ image_capture_start(struct scran_output *st_output)
 void
 image_capture_start_fullscreen(struct scran_output *st_output)
 {
-    st_output->capture.frame_ctx.fullscreen_capture = true;
-    hide_selection_surface_then(st_output, &presentation_feedback_listener__selection_transparent_for_fullscreen_capture);
+    start_fullscreen_capture(st_output, &presentation_feedback_listener__selection_transparent_for_fullscreen_image_capture);
 }
