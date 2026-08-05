@@ -104,14 +104,17 @@ handle_keyboard_key(
         key + 8 // See wl_keyboard::keymap_format
     );
 
-    bool fullscreen_image_capture = false;
+    bool fullscreen_capture = false;
 
-    if (st_output->selection_ctx.selection_state == SELECTION_NONE) {
+    if (st_output->selection_ctx.selection_state == SELECTION_NONE
+     || st_output->selection_ctx.selection_state == SELECTION_NONE_FREEZE_SIZE
+    ) {
         switch(xkb_key) {
         case XKB_KEY_Escape: // Allow exit
             break;
         case XKB_KEY_Return:
-            fullscreen_image_capture = true;
+        case XKB_KEY_space:
+            fullscreen_capture = true;
             break;
         default:
             return;
@@ -227,7 +230,7 @@ z_done:
                 st_output->capture.exit_after_capture = true;
             }
 
-            if (fullscreen_image_capture) {
+            if (fullscreen_capture) {
                 image_capture_start_fullscreen(st_output);
             } else {
                 image_capture_start(st_output);
@@ -248,7 +251,9 @@ z_done:
                 set_selection_initialized(st_output);
             }
 
-            if (!video_capture_start(st_output)) {
+            if (fullscreen_capture) {
+                video_capture_start_fullscreen(st_output);
+            } else if (!video_capture_start(st_output)) {
                 // TODO: Fire a notification instead?
                 video_button_got_jammed = true; // :(
                 eprintf("Failed to start video capture.\n");
@@ -298,7 +303,9 @@ handle_keyboard_modifiers(
 
     struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, selection_surface);
 
-    if (st_output->selection_ctx.selection_state == SELECTION_NONE) {
+    if (st_output->selection_ctx.selection_state == SELECTION_NONE
+     || st_output->selection_ctx.selection_state == SELECTION_NONE_FREEZE_SIZE
+    ) {
         return;
     }
 
