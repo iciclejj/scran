@@ -67,52 +67,6 @@ freezeframe_capture_start(
     freezeframe_capture_start_assume_callback_set(st_output);
 }
 
-// NOTE: This function starts a chain of wayland events that must happen
-// strictly sequentially (which is why it is in the form of a chain of events).
-// Follow the listeners to see where each step takes you...
-//
-// Conceptually, we just need to:
-//   1    Hide all our surfaces (selection surface, old freezeframe)
-//          Prevents them appearing in our captured/"frozen" frame
-//   2    Capture the output
-//   3.1  Show the capture as our new freezeframe
-//   3.2  Restore our selection surface
-void
-freezeframe_capture_refresh(
-    struct scran_output *st_output,
-    freezeframe_callback callback
-) {
-    struct scran_output_freezeframe      *freezeframe       = &st_output->freezeframe;
-    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
-
-    if (freezeframe->callback != NULL) {
-        eprintf("Freezeframe already in progress.\n");
-        return;
-    }
-    assert(callback != NULL);
-    freezeframe->callback = callback;
-
-    // We will have to empty out, and then re-initialize our selection, so that
-    // we don't also capture/"freeze" our selection surface. The freezeframe
-    // capture_frame::ready handler calls the regular surface init function.
-
-    // Old freezeframe is not necessarily already hidden, since this function
-    // can be triggered without releasing focus first.
-    freezeframe_hide_surface(st_output);
-    // Once the ::presented event has verified that the selection surface was
-    // hidden, we start the capture from within there.
-    wp_presentation_feedback_add_listener(
-        wp_presentation_feedback(g_state.globals.presentation, selection_surface->surface.wl_surface),
-        &presentation_feedback_listener__selection_transparent_for_freezeframe,
-        st_output
-    );
-    freezeframe_hide_selection_surface(st_output);
-    freezeframe->unhide_after_capture = true;
-    // Need to prevent any new or in-flight frame callbacks from cancelling out
-    // our surface hiding
-    selection_surface->frame_callbacks_disabled = true;
-}
-
 void
 freezeframe_hide_surface(struct scran_output *st_output)
 {
@@ -141,7 +95,7 @@ freezeframe_hide_surface(struct scran_output *st_output)
     }
 }
 
-void
+static void
 freezeframe_hide_selection_surface(struct scran_output *st_output)
 {
     struct scran_output_surface *st_surface  = &st_output->selection_surface.surface;
@@ -211,6 +165,52 @@ freezeframe_unhide_selection_surface(
     // responsibility out of any freezeframe.c function entirely, and have the
     // caller ensure pre/post-recapture state like this manually.
     wl_surface_commit(selection_surface->surface.wl_surface);
+}
+
+// NOTE: This function starts a chain of wayland events that must happen
+// strictly sequentially (which is why it is in the form of a chain of events).
+// Follow the listeners to see where each step takes you...
+//
+// Conceptually, we just need to:
+//   1    Hide all our surfaces (selection surface, old freezeframe)
+//          Prevents them appearing in our captured/"frozen" frame
+//   2    Capture the output
+//   3.1  Show the capture as our new freezeframe
+//   3.2  Restore our selection surface
+void
+freezeframe_capture_refresh(
+    struct scran_output *st_output,
+    freezeframe_callback callback
+) {
+    struct scran_output_freezeframe      *freezeframe       = &st_output->freezeframe;
+    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+
+    if (freezeframe->callback != NULL) {
+        eprintf("Freezeframe already in progress.\n");
+        return;
+    }
+    assert(callback != NULL);
+    freezeframe->callback = callback;
+
+    // We will have to empty out, and then re-initialize our selection, so that
+    // we don't also capture/"freeze" our selection surface. The freezeframe
+    // capture_frame::ready handler calls the regular surface init function.
+
+    // Old freezeframe is not necessarily already hidden, since this function
+    // can be triggered without releasing focus first.
+    freezeframe_hide_surface(st_output);
+    // Once the ::presented event has verified that the selection surface was
+    // hidden, we start the capture from within there.
+    wp_presentation_feedback_add_listener(
+        wp_presentation_feedback(g_state.globals.presentation, selection_surface->surface.wl_surface),
+        &presentation_feedback_listener__selection_transparent_for_freezeframe,
+        st_output
+    );
+    freezeframe_hide_selection_surface(st_output);
+    freezeframe->unhide_after_capture = true;
+    // Need to prevent any new or in-flight frame callbacks from cancelling out
+    // our surface hiding
+    selection_surface->frame_callbacks_disabled = true;
 }
 
 void
