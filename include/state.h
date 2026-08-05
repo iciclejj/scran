@@ -364,6 +364,7 @@ struct capture_frame_context {
     bool capturing_video;
     bool audio_active;
     bool audio_disable_modifier_active;
+    bool fullscreen_capture;
 };
 
 struct scran_output_capture {
@@ -372,6 +373,7 @@ struct scran_output_capture {
     struct ext_image_capture_source_v1 *source;
 
     uint32_t shm_format;
+    bool exit_after_capture;
 };
 
 struct scran_output_mode {
