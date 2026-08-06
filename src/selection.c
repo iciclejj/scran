@@ -92,6 +92,10 @@ set_selection_freeze_size(struct scran_output *st_output)
 {
     enum selection_state *selection_state = &st_output->selection_ctx.selection_state;
     switch(*selection_state) {
+        case SELECTION_NONE_FREEZE_SIZE:
+        case SELECTION_REBASING_FREEZE_SIZE:
+        case SELECTION_COMPLETE_FREEZE_SIZE:
+            break;
         case SELECTION_NONE:
             assert(st_output->capture.frame_ctx.fullscreen_capture == true);
             *selection_state = SELECTION_NONE_FREEZE_SIZE;
@@ -125,7 +129,6 @@ unset_selection_freeze_size(struct scran_output *st_output)
         case SELECTION_COMPLETE_FREEZE_SIZE: *selection_state = SELECTION_COMPLETE; break;
         case SELECTION_REBASING_FREEZE_SIZE: *selection_state = SELECTION_REBASING; break;
         default:
-            assert("UNEXPECTED: unset_selection_freeze() called without frozen selection state");
             break;
     }
 }
