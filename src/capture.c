@@ -496,6 +496,7 @@ start_fullscreen_capture(
     struct wp_presentation_feedback_listener *listener
 ) {
     st_output->capture.frame_ctx.fullscreen_capture = true;
+    set_selection_freeze_size(st_output);
     hide_selection_surface_then(st_output, listener);
 }
 
@@ -503,12 +504,14 @@ void
 end_fullscreen_capture(
     struct scran_output *st_output
 ) {
+    unset_selection_freeze_size(st_output);
     // If !=SELECTION_NONE becomes possible in the future, then just do
     // update_capture_area_with_selection() when !=SELECTION_NONE.
     assert(st_output->selection_ctx.selection_state == SELECTION_NONE);
     st_output->capture.frame_ctx.capture_area_px = (BLBoxI){ };
 
     st_output->capture.frame_ctx.fullscreen_capture = false;
+
     unhide_selection_surface(st_output);
 }
 
