@@ -78,6 +78,14 @@ blboxi_flip_x_coordinates(struct BLBoxI *box, uint32_t width) {
 #endif /* __has_include(<wayland-client.h>) */
 
 static inline bool
+blboxi_is_zero(BLBoxI box) {
+    return box.x0 == 0
+        && box.y0 == 0
+        && box.x1 == 0
+        && box.y1 == 0;
+}
+
+static inline bool
 blboxi_is_empty(BLBoxI box) {
     return box.x0 == box.x1
         || box.y0 == box.y1;
