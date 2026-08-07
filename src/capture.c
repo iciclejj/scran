@@ -436,24 +436,9 @@ video_capture_start(struct scran_output *st_output)
         return false;
     }
 
-    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
-
-    if (frame_ctx->fullscreen_capture) {
-        frame_ctx->capture_area_px = (BLBoxI){
-            .x0 = 0,
-            .y0 = 0,
-            .x1 = st_output->mode.width_px,
-            .y1 = st_output->mode.height_px,
-        };
-    } else {
-        assert(( st_output->selection_ctx.selection_state == SELECTION_COMPLETE_FREEZE_SIZE
-                 || st_output->selection_ctx.selection_state == SELECTION_REBASING_FREEZE_SIZE)
-               && st_output->selection_ctx.box_px.x1
-               && st_output->selection_ctx.box_px.y1
-               // TODO: Assert box is within output dimensions
-               // TODO: Assert box is not inverted
-        );
-    }
+    // TODO: Assert box is within output dimensions
+    //       Assert box is not inverted
+    assert(!blboxi_is_empty(st_output->selection_ctx.box_px));
 
     if (!init_ffmpeg(st_output)) {
         eprintf("Error: Failed to initialize ffmpeg libraries.\n");
@@ -496,8 +481,25 @@ start_fullscreen_capture(
     struct wp_presentation_feedback_listener *listener
 ) {
     st_output->capture.frame_ctx.fullscreen_capture = true;
+
     set_selection_freeze_size(st_output);
     hide_selection_surface_then(st_output, listener);
+
+    // If !=SELECTION_NONE becomes possible in the future, then we will
+    // need to save/restore the previous selection.
+    assert(st_output->selection_ctx.selection_state == SELECTION_NONE
+        || st_output->selection_ctx.selection_state == SELECTION_NONE_FREEZE_SIZE
+    );
+    assert(blboxi_is_zero(st_output->capture.frame_ctx.capture_area_px));
+    assert(blboxi_is_zero(st_output->selection_ctx.box_px));
+    BLBoxI fullscreen_selection = {
+        .x0 = 0,
+        .y0 = 0,
+        .x1 = get_transformed_output_width(st_output),
+        .y1 = get_transformed_output_height(st_output),
+    };
+    st_output->selection_ctx.box_px = fullscreen_selection;
+    capture_update_area_with_selection(st_output, fullscreen_selection);
 }
 
 void
@@ -505,10 +507,14 @@ end_fullscreen_capture(
     struct scran_output *st_output
 ) {
     unset_selection_freeze_size(st_output);
+
     // If !=SELECTION_NONE becomes possible in the future, then just do
     // update_capture_area_with_selection() when !=SELECTION_NONE.
-    assert(st_output->selection_ctx.selection_state == SELECTION_NONE);
-    st_output->capture.frame_ctx.capture_area_px = (BLBoxI){ };
+    assert(st_output->selection_ctx.selection_state == SELECTION_NONE
+        || st_output->selection_ctx.selection_state == SELECTION_NONE_FREEZE_SIZE
+    );
+    st_output->selection_ctx.box_px = (BLBoxI){0};
+    st_output->capture.frame_ctx.capture_area_px = (BLBoxI){0};
 
     st_output->capture.frame_ctx.fullscreen_capture = false;
 
