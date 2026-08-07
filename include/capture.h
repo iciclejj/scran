@@ -33,7 +33,7 @@ void end_fullscreen_capture(struct scran_output *st_output);
 
 void video_capture_write_video_packet(struct capture_frame_context *frame_ctx, AVPacket *pkt);
 bool video_capture_start(struct scran_output *st_output);
-void video_capture_start_fullscreen(struct scran_output *st_output);
+bool video_capture_start_fullscreen(struct scran_output *st_output);
 // Call video_capture_request_stop() to initiate graceful finish from arbitrary
 // locations, rather than calling video_capture_finish() directly.
 void video_capture_request_stop(struct scran_output *st_output);
@@ -43,7 +43,7 @@ void video_capture_write_audio_packet(struct capture_frame_context *frame_ctx, A
 void video_capture_destroy_ffmpeg(struct scran_output *st_output);
 
 bool image_capture_start(struct scran_output *st_output);
-void image_capture_start_fullscreen(struct scran_output *st_output);
+bool image_capture_start_fullscreen(struct scran_output *st_output);
 void image_capture_request_frame(struct scran_output *st_output, struct ext_image_copy_capture_frame_v1_listener *listener, struct ext_image_copy_capture_session_v1 *session, struct wl_buffer *buffer);
 
 

@@ -251,11 +251,16 @@ z_done:
                 set_selection_initialized(st_output);
             }
 
+            bool video_capture_started;
+
             if (fullscreen_capture) {
-                video_capture_start_fullscreen(st_output);
-            } else if (!video_capture_start(st_output)) {
+                video_capture_started = video_capture_start_fullscreen(st_output);
+            } else {
+                video_capture_started = video_capture_start(st_output);
+            }
+
+            if (!video_capture_started) {
                 // TODO: Fire a notification instead?
-                video_button_got_jammed = true; // :(
                 eprintf("Failed to start video capture.\n");
             }
         }

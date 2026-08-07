@@ -475,11 +475,16 @@ video_capture_start(struct scran_output *st_output)
     return true;
 }
 
-static inline void
+static inline bool
 start_fullscreen_capture(
     struct scran_output *st_output,
     struct wp_presentation_feedback_listener *listener
 ) {
+    if (st_output->capture.frame_ctx.fullscreen_capture) {
+        DEBUG("Fullscreen capture already in progress\n");
+        return false;
+    }
+
     st_output->capture.frame_ctx.fullscreen_capture = true;
 
     set_selection_freeze_size(st_output);
@@ -500,6 +505,8 @@ start_fullscreen_capture(
     };
     st_output->selection_ctx.box_px = fullscreen_selection;
     capture_update_area_with_selection(st_output, fullscreen_selection);
+
+    return true;
 }
 
 void
@@ -521,10 +528,10 @@ end_fullscreen_capture(
     unhide_selection_surface(st_output);
 }
 
-void
+bool
 video_capture_start_fullscreen(struct scran_output *st_output)
 {
-    start_fullscreen_capture(st_output, &presentation_feedback_listener__selection_transparent_for_fullscreen_video_capture);
+    return start_fullscreen_capture(st_output, &presentation_feedback_listener__selection_transparent_for_fullscreen_video_capture);
 }
 
 void
@@ -686,8 +693,8 @@ image_capture_start(struct scran_output *st_output)
     return true;
 }
 
-void
+bool
 image_capture_start_fullscreen(struct scran_output *st_output)
 {
-    start_fullscreen_capture(st_output, &presentation_feedback_listener__selection_transparent_for_fullscreen_image_capture);
+    return start_fullscreen_capture(st_output, &presentation_feedback_listener__selection_transparent_for_fullscreen_image_capture);
 }
