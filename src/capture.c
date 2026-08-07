@@ -648,14 +648,23 @@ image_capture_request_frame(
 }
 
 
-static inline void
-print_slurp_string(struct scran_output *st_output)
+static void
+print_slurp_string(struct scran_output *st_output, BLRectI rect)
+{
+    // TODO: Assert nothing else was sent to stdout?
+    fprintf(stdout, "%d,%d %dx%d\n", rect.x, rect.y, rect.w, rect.h);
+    fflush(stdout);
+}
+
+static void
+print_slurp_string_selection(struct scran_output *st_output)
 {
     const double scale = st_output->selection_surface.surface.final_scale_factor_normalized;
     const struct scran_output_xdg_geometry geometry = st_output->xdg_geometry;
     const struct BLBoxI box_px = st_output->selection_ctx.box_px;
 
     assert(!blboxi_is_inverted(box_px));
+
     const struct BLRectI rect_logical = {
         .x = round(  box_px.x0              / scale),
         .y = round(  box_px.y0              / scale),
@@ -663,14 +672,28 @@ print_slurp_string(struct scran_output *st_output)
         .h = round( (box_px.y1 - box_px.y0) / scale),
     };
 
-    // TODO: Assert nothing else was sent to stdout?
-    fprintf(stdout, "%d,%d %dx%d\n",
-            geometry.x_logical + rect_logical.x,
-            geometry.y_logical + rect_logical.y,
-            rect_logical.w,
-            rect_logical.h
+    const struct BLRectI rect_logical_global = {
+        .x = geometry.x_logical + rect_logical.x,
+        .y = geometry.y_logical + rect_logical.y,
+        .w = rect_logical.w,
+        .h = rect_logical.h
+    };
+
+    print_slurp_string(st_output, rect_logical_global);
+}
+
+static void
+print_slurp_string_fullscreen(struct scran_output *st_output)
+{
+    print_slurp_string(
+        st_output,
+        (BLRectI){
+            .x = st_output->xdg_geometry.x_logical,
+            .y = st_output->xdg_geometry.y_logical,
+            .w = st_output->xdg_geometry.w_logical,
+            .h = st_output->xdg_geometry.h_logical,
+        }
     );
-    fflush(stdout);
 }
 
 bool
@@ -682,7 +705,7 @@ image_capture_start(struct scran_output *st_output)
     assert(!frame_ctx->capturing_video);
 
     if (g_state.options.produce_slurp) {
-        print_slurp_string(st_output);
+        print_slurp_string_selection(st_output);
     } else {
         image_capture_request_frame(
             st_output,
@@ -693,6 +716,7 @@ image_capture_start(struct scran_output *st_output)
         atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
     }
 
+    // XXX TODO: Put this in a generic end_capture() function.
     g_state.exit_requested |= st_output->capture.exit_after_capture;
     return true;
 }
@@ -700,5 +724,12 @@ image_capture_start(struct scran_output *st_output)
 bool
 image_capture_start_fullscreen(struct scran_output *st_output)
 {
+    if (g_state.options.produce_slurp) {
+        print_slurp_string_fullscreen(st_output);
+        // XXX TODO: Put this in a generic end_capture() function.
+        g_state.exit_requested |= st_output->capture.exit_after_capture;
+        return true;
+    }
+
     return start_fullscreen_capture(st_output, &presentation_feedback_listener__selection_transparent_for_fullscreen_image_capture);
 }
