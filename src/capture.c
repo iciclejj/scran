@@ -557,6 +557,10 @@ video_capture_request_stop(struct scran_output *st_output)
 
     capture_force_next_frame(st_output);
 
+    // FIXME: This is used as a way to signal to the frame::ready handler that
+    // we should stop after the current frame, but it also creates an opening
+    // for re-entry into the video capture loop, e.g. in keyboard.c.
+    // We should not be coupling both checks to this one variable.
     st_output->capture.frame_ctx.capturing_video = false;
 }
 
