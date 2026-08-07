@@ -7,6 +7,7 @@
 
 #include "state.h"
 #include "state-util.h"
+#include "seat.h"
 #include "freezeframe.h"
 #include "event-handlers.h"
 #include "capture.h"
@@ -60,10 +61,13 @@ handle_keyboard_enter (
     void *data,
     struct wl_keyboard *wl_keyboard,
     uint32_t serial,
-    struct wl_surface *surface,
+    struct wl_surface *surface_entered,
     struct wl_array *keys
 ) {
-    // TODO
+    struct scran *state = data;
+    struct scran_seat_keyboard *keyboard_ctx = &state->seat.keyboard;
+
+    seat_update_focused_selection_surface(&keyboard_ctx->focused_selection_surface, surface_entered);
 }
 
 
@@ -74,7 +78,10 @@ handle_keyboard_leave (
     uint32_t serial,
     struct wl_surface *surface
 ) {
-    // TODO
+    struct scran *state = data;
+    struct scran_seat_keyboard *keyboard_ctx = &state->seat.keyboard;
+
+    keyboard_ctx->focused_selection_surface = NULL;
 }
 
 
@@ -88,7 +95,7 @@ handle_keyboard_key(
     enum wl_keyboard_key_state key_state
 ) {
     struct scran *state = data;
-    struct scran_output_selectionSurface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
+    struct scran_output_selectionSurface *focused_selection_surface = state->seat.keyboard.focused_selection_surface;
 
     if (focused_selection_surface == NULL) {
         return;
@@ -300,7 +307,7 @@ handle_keyboard_modifiers(
         group
     );
 
-    struct scran_output_selectionSurface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
+    struct scran_output_selectionSurface *focused_selection_surface = state->seat.keyboard.focused_selection_surface;
 
     if (focused_selection_surface == NULL) {
         return;

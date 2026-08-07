@@ -218,13 +218,7 @@ struct scran_seat_pointerContext {
     bool use_presses_only;
 
     uint32_t last_enter_serial;
-
-    // Fulloutput => covers entire output's area/resolution.
-    //   (Named this way to prevent any conflation with other uses of the term
-    //   "fullscreen" in Wayland/XDG protocols/etc.
-    //   TODO: Should this be for the entire seat, and not just pointer?
-    //             Both keyboard and pointer have ::enter events.
-    struct scran_output_selectionSurface *focused_fulloutput_selection_surface;
+    struct scran_output_selectionSurface *focused_selection_surface;
 
     struct wp_cursor_shape_device_v1 *cursor_shape_device;
 };
@@ -233,6 +227,8 @@ struct scran_seat_keyboard {
     struct xkb_context *xkb_context;
     struct xkb_keymap *xkb_keymap;
     struct xkb_state *xkb_state;
+
+    struct scran_output_selectionSurface *focused_selection_surface;
 };
 
 // TODO Isolate from rest of state.
