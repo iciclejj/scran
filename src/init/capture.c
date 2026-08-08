@@ -30,8 +30,6 @@ init_premem__capture(
     st_output->capture.frame_ctx.wl_capture_session = ext_image_copy_capture_manager_v1_create_session(
         globals->image_copy_capture_manager,
         st_output->capture.source,
-        // TODO: Not a big deal, but cursor doesn't seem in sync with area
-        //       movement.
         g_state.options.disable_cursor_capture ? 0 : EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS
     );
 
