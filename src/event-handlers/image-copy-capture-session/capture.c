@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdlib.h>
 
 #include <wayland-client.h>
 
@@ -61,8 +62,11 @@ handle_image_copy_capture_session_stopped(
     struct scran_output *st_output = data;
 
     ext_image_copy_capture_session_v1_destroy(st_output->capture.frame_ctx.wl_capture_session);
+    st_output->capture.frame_ctx.wl_capture_session = NULL;
 
-    // TODO: Destroy dynamically allocated memory (e.g. libav objects)
+    // TODO: More graceful exit and/or attempt creating a new session
+    eprintf("Error: Capture session stopped unexpectedly.\n");
+    exit(EXIT_FAILURE);
 }
 
 

@@ -58,7 +58,9 @@ void
 init_premem__capture__destroy(struct scran_output *st_output)
 {
     ext_image_capture_source_v1_destroy(st_output->capture.source);
-    ext_image_copy_capture_session_v1_destroy(st_output->capture.frame_ctx.wl_capture_session);
+    if (st_output->capture.frame_ctx.wl_capture_session) {
+        ext_image_copy_capture_session_v1_destroy(st_output->capture.frame_ctx.wl_capture_session);
+    }
 
     bl_image_destroy(&st_output->capture.frame_ctx.bl_img_captured);
     bl_image_codec_destroy(&st_output->capture.frame_ctx.bl_imgcodec);
