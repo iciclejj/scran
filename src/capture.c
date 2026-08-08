@@ -707,7 +707,7 @@ print_slurp_string_fullscreen(struct scran_output *st_output)
 }
 
 bool
-image_capture_start(struct scran_output *st_output)
+image_capture_start(struct scran_output *st_output, bool exit_after_capture)
 {
     struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
 
@@ -727,19 +727,29 @@ image_capture_start(struct scran_output *st_output)
     }
 
     // XXX TODO: Put this in a generic end_capture() function.
-    g_state.exit_requested |= st_output->capture.exit_after_capture;
+    g_state.exit_requested |= exit_after_capture;
+
     return true;
 }
 
 bool
-image_capture_start_fullscreen(struct scran_output *st_output)
+image_capture_start_fullscreen(struct scran_output *st_output, bool exit_after_capture)
 {
+
     if (g_state.options.produce_slurp) {
         print_slurp_string_fullscreen(st_output);
         // XXX TODO: Put this in a generic end_capture() function.
-        g_state.exit_requested |= st_output->capture.exit_after_capture;
+        g_state.exit_requested |= exit_after_capture;
         return true;
     }
 
-    return start_fullscreen_capture(st_output, &presentation_feedback_listener__selection_transparent_for_fullscreen_image_capture);
+    if (start_fullscreen_capture(
+            st_output,
+            &presentation_feedback_listener__selection_transparent_for_fullscreen_image_capture)
+    ) {
+        st_output->capture.exit_after_capture = exit_after_capture;
+        return true;
+    }
+
+    return false;
 }

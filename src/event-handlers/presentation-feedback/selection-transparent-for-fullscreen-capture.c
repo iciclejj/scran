@@ -74,7 +74,7 @@ handle_presentation_feedback_presented__selection_transparent_for_fullscreen_ima
     DEBUG("::presented selection_transparent_for_fullscreen_capture\n");
 
     struct scran_output *st_output = data;
-    image_capture_start(st_output);
+    image_capture_start(st_output, st_output->capture.exit_after_capture);
 }
 
 static void
@@ -87,7 +87,7 @@ handle_presentation_feedback_discarded__selection_transparent_for_fullscreen_cap
 
     // TODO(?):
     struct scran_output *st_output = data;
-    image_capture_start(st_output);
+    image_capture_start(st_output, st_output->capture.exit_after_capture);
 }
 
 struct wp_presentation_feedback_listener presentation_feedback_listener__selection_transparent_for_fullscreen_image_capture = {

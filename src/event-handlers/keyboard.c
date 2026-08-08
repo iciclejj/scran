@@ -233,14 +233,12 @@ z_done:
         if (st_output->capture.frame_ctx.capturing_video) {
             eprintf("Screenshot during video capture not implemented yet, try again later :(\n");
         } else {
-            if (!xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE)) {
-                st_output->capture.exit_after_capture = true;
-            }
+            bool exit_after_capture = !xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
 
             if (fullscreen_capture) {
-                image_capture_start_fullscreen(st_output);
+                image_capture_start_fullscreen(st_output, exit_after_capture);
             } else {
-                image_capture_start(st_output);
+                image_capture_start(st_output, exit_after_capture);
                 scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
                 request_selection_surface_frame_callback(st_output);
             }

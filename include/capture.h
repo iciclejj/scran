@@ -42,8 +42,8 @@ struct ext_image_copy_capture_frame_v1 * video_capture_create_frame(struct captu
 void video_capture_write_audio_packet(struct capture_frame_context *frame_ctx, AVPacket *av_packet);
 void video_capture_destroy_ffmpeg(struct scran_output *st_output);
 
-bool image_capture_start(struct scran_output *st_output);
-bool image_capture_start_fullscreen(struct scran_output *st_output);
+bool image_capture_start(struct scran_output *st_output, bool exit_after_capture);
+bool image_capture_start_fullscreen(struct scran_output *st_output, bool exit_after_capture);
 void image_capture_request_frame(struct scran_output *st_output, struct ext_image_copy_capture_frame_v1_listener *listener, struct ext_image_copy_capture_session_v1 *session, struct wl_buffer *buffer);
 
 
