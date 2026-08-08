@@ -365,6 +365,7 @@ struct capture_frame_context {
     uint8_t pixel_stride;
 
     bool capturing_video;
+    bool video_end_requested;
     bool audio_active;
     bool audio_disable_modifier_active;
     bool fullscreen_capture;

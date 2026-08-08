@@ -75,13 +75,14 @@ static inline void
 end_capture(
     struct capture_frame_context *frame_ctx
 ) {
-    frame_ctx->capturing_video = false;
-
     {
         struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
         struct scran_output *const st_output = wl_container_of(st_capture, st_output, capture);
         video_capture_finish(st_output);
     }
+
+    frame_ctx->capturing_video = false;
+    frame_ctx->video_end_requested = false;
 
     DEBUG("FINISHED RECORDING.\n");
 }
@@ -181,7 +182,7 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     if (blboxi_intersects(frame_ctx->capture_area_px, frame_ctx->damage_area_px) ) {
         if (!do_handle_frame(frame_ctx, st_output)) {
-            frame_ctx->capturing_video = false;
+            frame_ctx->video_end_requested = true;
         }
     }
 
@@ -196,7 +197,7 @@ handle_image_copy_capture_frame_ready__video_capture(
     //
     // TODO: Go through uses of capturing_video to check for redundancy now
     // that we have a global state, with e.g. `.exit_requested`.
-    if (!frame_ctx->capturing_video || g_state.exit_requested) {
+    if (frame_ctx->video_end_requested || g_state.exit_requested) {
         end_capture(frame_ctx);
         return;
     }

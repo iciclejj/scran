@@ -549,6 +549,8 @@ video_capture_request_stop(struct scran_output *st_output)
 {
     ext_image_copy_capture_frame_v1_destroy(st_output->capture.frame_ctx.frame);
 
+    st_output->capture.frame_ctx.video_end_requested = true;
+
     // Ensure one last frame is triggered as soon as possible, even if
     // no damage has been reported by the compositor. This ensures
     // variable framerate recordings will end at an appropriate
@@ -566,12 +568,6 @@ video_capture_request_stop(struct scran_output *st_output)
     st_output->capture.frame_ctx.frame = frame;
 
     capture_force_next_frame(st_output);
-
-    // FIXME: This is used as a way to signal to the frame::ready handler that
-    // we should stop after the current frame, but it also creates an opening
-    // for re-entry into the video capture loop, e.g. in keyboard.c.
-    // We should not be coupling both checks to this one variable.
-    st_output->capture.frame_ctx.capturing_video = false;
 }
 
 // Should only be called once the video capture event loop is finished.
