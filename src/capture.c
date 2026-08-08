@@ -484,8 +484,12 @@ start_fullscreen_capture(
         DEBUG("Fullscreen capture already in progress\n");
         return false;
     }
-
     st_output->capture.frame_ctx.fullscreen_capture = true;
+
+    // HACK: Prevent exit while fullscreen capture is starting, despite the actual
+    // capture not having started yet. This adds a "fake" capture to the counter.
+    // TODO: Fix this when refactoring/merging the capture paths.
+    atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     set_selection_freeze_size(st_output);
     hide_selection_surface_then(st_output, listener);
@@ -525,7 +529,13 @@ end_fullscreen_capture(
 
     st_output->capture.frame_ctx.fullscreen_capture = false;
 
-    unhide_selection_surface(st_output);
+    // We don't want to flash a frame of selection/background dim if we're exiting anyways
+    if (!st_output->capture.exit_after_capture) {
+        unhide_selection_surface(st_output);
+    }
+
+    // HACK: See comment in start_fullscreen_capture().
+    atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 }
 
 bool

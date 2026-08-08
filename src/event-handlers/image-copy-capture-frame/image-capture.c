@@ -62,10 +62,7 @@ handle_image_copy_capture_frame_presentation_time__image_capture(
 static inline void
 end_capture(struct scran_output *st_output)
 {
-    if (st_output->capture.frame_ctx.fullscreen_capture
-        // We don't want to flash a frame of selection/background dim if we're exiting anyways
-        && !st_output->capture.exit_after_capture
-    ) {
+    if (st_output->capture.frame_ctx.fullscreen_capture) {
         end_fullscreen_capture(st_output);
     }
 
