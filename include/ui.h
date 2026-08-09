@@ -22,7 +22,6 @@ enum scran_ui_keymap_item_index {
     SCRAN_UI_KEYMAP_ITEM_I_VIDEO,
     SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME,
     SCRAN_UI_KEYMAP_ITEM_I_FOCUS,
-    SCRAN_UI_KEYMAP_ITEM_I_EXTRA,
     SCRAN_UI_KEYMAP_N_ITEMS,
 };
 
@@ -32,8 +31,8 @@ enum scran_ui_statusline_item_index {
     SCRAN_UI_STATUSLINE_N_ITEMS,
 };
 
-// XXX: Keeping empty unused keymap here for future use. Maybe just remove it now that it's empty.
 enum scran_ui_statusline_keymap_item_index {
+    SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_EXTRA,
     SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS,
 };
 
@@ -47,8 +46,6 @@ enum scran_ui_color {
 };
 
 enum scran_ui_text {
-    SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT,
-
     SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT,
     SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD,
 
@@ -64,6 +61,8 @@ enum scran_ui_text {
 
     SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY,
     SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY,
+
+    SCRAN_UI_TEXT_STATUSLINE_KEYMAP_EXTRA_PRE_INIT_DEFAULT,
 
     SCRAN_UI_TEXT_ATLAS_DIGITS,
     SCRAN_UI_TEXT_ATLAS_SEPARATORS,

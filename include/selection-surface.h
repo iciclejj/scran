@@ -28,5 +28,19 @@ set_force_redraw_selection_surface_buffers(
     }
 }
 
+static inline BLBoxI
+get_selection_surface_pre_selection_box(struct scran_output *st_output) {
+    float font_height = ceil(st_output->selection_surface.ui_ctx.font_height);
+    assert(font_height);
+
+    // Show all of the UI in the top left corner
+    return (BLBoxI){
+        .x0 = 0,
+        .y0 = font_height,
+        .x1 = 0,
+        .y1 = font_height,
+    };
+}
+
 
 #endif

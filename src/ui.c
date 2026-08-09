@@ -43,11 +43,7 @@ struct ui_string {
 #define INIT_UI_STRING(s) ((struct ui_string){ .str = (s), .strlen = CHAR16_STRLEN(s) })
 
 static const struct ui_string ui_texts[] = {
-    // XXX: Leading space so it doesn't hug the edge when drawn at x=0,y=0.
-    //      The top margin is fine already.
-    //      Somewhat of a HACK, but shouldn't cause any issues unless we change
-    //      the font or origin point.
-    [SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT]   = INIT_UI_STRING(u" Fullscreen capture. Click and drag to select a region."),
+    [SCRAN_UI_TEXT_STATUSLINE_KEYMAP_EXTRA_PRE_INIT_DEFAULT] = INIT_UI_STRING(u"Click and drag anywhere to select a custom region"),
 
     [SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT]            = INIT_UI_STRING(u"[↵] Image & Exit"),
     [SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD]                = INIT_UI_STRING(u"[↵] Image       "),
@@ -594,7 +590,8 @@ struct default_textline_values {
     enum scran_ui_color color;
 };
 static const struct default_textline_values m_statusline_keymap_defaults[] = {
-    // Empty...
+    // We use the pre-selection keymap textline to draw the splash text.
+    [SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_EXTRA]       = { SCRAN_UI_TEXT_STATUSLINE_KEYMAP_EXTRA_PRE_INIT_DEFAULT,   SCRAN_UI_COLOR_DEFAULT },
 };
 static const struct default_textline_values m_statusline_defaults[] = {
     [SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE]     = { SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY, SCRAN_UI_COLOR_DEFAULT },
@@ -606,8 +603,6 @@ static const struct default_textline_values m_keymap_defaults[] = {
     // Freezeframe init code enables this.
     [SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME]            = { SCRAN_UI_TEXT_EMPTY,                           SCRAN_UI_COLOR_DEFAULT },
     [SCRAN_UI_KEYMAP_ITEM_I_FOCUS]                  = { SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
-    // We use the pre-selection keymap textline to draw the splash text.
-    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA]                  = { SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT,   SCRAN_UI_COLOR_DEFAULT },
 };
 static const struct default_textline_values m_atlas_digits_defaults[] = {
     [0]                                             = { SCRAN_UI_TEXT_ATLAS_DIGITS,                    SCRAN_UI_COLOR_DEFAULT },
@@ -676,10 +671,8 @@ bool
 scran_ui_set_selection_stage_defaults(
     struct scran_ui_context *ui_ctx
 ) {
-    // assert(ui_ctx->ui_keymap
-
-    assert(ui_ctx->ui_keymap.items[SCRAN_UI_KEYMAP_ITEM_I_EXTRA].live_state.text == SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT);
-    scran_ui_textline_item_set_text(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_EXTRA, SCRAN_UI_TEXT_EMPTY);
+    assert(ui_ctx->ui_statusline_keymap.items[SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_EXTRA].live_state.text == SCRAN_UI_TEXT_STATUSLINE_KEYMAP_EXTRA_PRE_INIT_DEFAULT);
+    scran_ui_textline_item_set_text(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_EXTRA, SCRAN_UI_TEXT_EMPTY);
     return true;
 }
 

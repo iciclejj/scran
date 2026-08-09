@@ -280,22 +280,26 @@ handle_pointer_button(
         case SELECTION_NONE_FREEZE_SIZE:
             break;
         case SELECTION_NONE:
-            {
-                const struct BLBoxI initial_selection_area = {
-                    .x0 = x_px,
-                    .y0 = y_px,
-                    .x1 = x_px,
-                    .y1 = y_px,
-                };
-
-                selection_ctx->box_px = initial_selection_area;
-            }
+            ;
+            const struct BLBoxI initial_selection_area = {
+                .x0 = x_px,
+                .y0 = y_px,
+                .x1 = x_px,
+                .y1 = y_px,
+            };
+            selection_ctx->box_px = initial_selection_area;
             selection_ctx->selection_state = SELECTION_INITIALIZING;
 
             // TODO: Create set_selection_initializing()/set_selection_stage(),
             // analogous to current set_selection_initialized()?
             scran_ui_set_selection_stage_defaults(&st_output->selection_surface.ui_ctx);
+            scran_ui_statusline_set_selection_size(
+                &st_output->selection_surface.ui_ctx.ui_statusline,
+                blboxi_to_blrecti(initial_selection_area)
+            );
+
             set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+
             request_selection_surface_frame_callback(st_output);
 
             break;

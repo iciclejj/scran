@@ -6,6 +6,7 @@
 #include "presentation-time.h"
 
 #include "state.h"
+#include "state-util.h"
 
 
 #define SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED   ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE
@@ -37,6 +38,17 @@ void start_grabbing_focus(void);
 void start_grabbing_focus_for_output(struct scran_output *st_output);
 void stop_grabbing_focus(void);
 void update_focus_released_keymap_text(bool have_tray_icon);
+
+
+static inline BLBoxI
+get_fullscreen_selection_box(struct scran_output *st_output) {
+    return (BLBoxI){
+        .x0 = 0,
+        .y0 = 0,
+        .x1 = get_transformed_output_width(st_output),
+        .y1 = get_transformed_output_height(st_output),
+    };
+}
 
 
 #endif
