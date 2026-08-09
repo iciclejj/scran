@@ -47,30 +47,30 @@ static const struct ui_string ui_texts[] = {
     //      The top margin is fine already.
     //      Somewhat of a HACK, but shouldn't cause any issues unless we change
     //      the font or origin point.
-    [SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT]          = INIT_UI_STRING(u" Click and drag to make selection"),
+    [SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT]   = INIT_UI_STRING(u" Fullscreen capture. Click and drag to select a region."),
 
-    [SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT]                   = INIT_UI_STRING(u"[↵] Image & Exit"),
-    [SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD]                       = INIT_UI_STRING(u"[↵] Image       "),
+    [SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT]            = INIT_UI_STRING(u"[↵] Image & Exit"),
+    [SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD]                = INIT_UI_STRING(u"[↵] Image       "),
 
-    [SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT]                   = INIT_UI_STRING(u"[␣] Video \uf028"),
-    [SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD]                       = INIT_UI_STRING(u"[␣] Video \uf026"),
+    [SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT]            = INIT_UI_STRING(u"[␣] Video \uf028"),
+    [SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD]                = INIT_UI_STRING(u"[␣] Video \uf026"),
 
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT]                   = INIT_UI_STRING(u"[⇥] Release focus"),
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY]             = INIT_UI_STRING(u"[⇥] Click tray icon to retake focus."),
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP]             = INIT_UI_STRING(u"[⇥] Focus released. 'scran -h' for help."),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT]            = INIT_UI_STRING(u"[⇥] Release focus"),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY]      = INIT_UI_STRING(u"[⇥] Click tray icon to retake focus."),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP]      = INIT_UI_STRING(u"[⇥] Focus released. 'scran -h' for help."),
 
-    [SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_ON]  = INIT_UI_STRING(u"[Z] Freeze screen"),
-    [SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_OFF] = INIT_UI_STRING(u"[Z] Unfreeze screen"),
+    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON]      = INIT_UI_STRING(u"[Z] Freeze screen"),
+    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_OFF]     = INIT_UI_STRING(u"[Z] Unfreeze screen"),
 
     // Placeholders for calculating metadata (currently just max pixel widths)
     // - actual text is dynamic for these.
-    [SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY]        = INIT_UI_STRING(u"WWWWWxHHHHH"),
-    [SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY]                 = INIT_UI_STRING(u"00:00:00"),
+    [SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY] = INIT_UI_STRING(u"WWWWWxHHHHH"),
+    [SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY]          = INIT_UI_STRING(u"00:00:00"),
 
-    [SCRAN_UI_TEXT_ATLAS_DIGITS]                           = INIT_UI_STRING(u"0123456789"),
-    [SCRAN_UI_TEXT_ATLAS_SEPARATORS]                       = INIT_UI_STRING(u":x"),
+    [SCRAN_UI_TEXT_ATLAS_DIGITS]                    = INIT_UI_STRING(u"0123456789"),
+    [SCRAN_UI_TEXT_ATLAS_SEPARATORS]                = INIT_UI_STRING(u":x"),
 
-    [SCRAN_UI_TEXT_EMPTY]                                  = INIT_UI_STRING(u""),
+    [SCRAN_UI_TEXT_EMPTY]                           = INIT_UI_STRING(u""),
 };
 static_assert(sizeof(ui_texts) / sizeof(ui_texts[0]) == SCRAN_UI_N_TEXTS,
               "ui_texts[] length must exactly cover all text enum values.");
@@ -593,25 +593,21 @@ struct default_textline_values {
     enum scran_ui_text  text;
     enum scran_ui_color color;
 };
-static const struct default_textline_values m_statusline_keymap_defaults_pre_selection[] = {
-    [SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME] = { SCRAN_UI_TEXT_EMPTY,                         SCRAN_UI_COLOR_DEFAULT },
+static const struct default_textline_values m_statusline_keymap_defaults[] = {
+    // Empty...
 };
-static const struct default_textline_values m_statusline_defaults_pre_selection[] = {
+static const struct default_textline_values m_statusline_defaults[] = {
     [SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE]     = { SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY, SCRAN_UI_COLOR_DEFAULT },
     [SCRAN_UI_STATUSLINE_ITEM_I_TIMER]              = { SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY,          SCRAN_UI_COLOR_DEFAULT },
 };
-static const struct default_textline_values m_keymap_defaults_pre_selection[] = {
-    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE]                  = { SCRAN_UI_TEXT_EMPTY,                           SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO]                  = { SCRAN_UI_TEXT_EMPTY,                           SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS]                  = { SCRAN_UI_TEXT_EMPTY,                           SCRAN_UI_COLOR_DEFAULT },
-    // We use the pre-selection keymap textline to draw the splash text.
-    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA]                  = { SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT,   SCRAN_UI_COLOR_DEFAULT },
-};
-static const struct default_textline_values m_keymap_defaults_post_selection[] = {
+static const struct default_textline_values m_keymap_defaults[] = {
     [SCRAN_UI_KEYMAP_ITEM_I_IMAGE]                  = { SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
     [SCRAN_UI_KEYMAP_ITEM_I_VIDEO]                  = { SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
+    // Freezeframe init code enables this.
+    [SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME]            = { SCRAN_UI_TEXT_EMPTY,                           SCRAN_UI_COLOR_DEFAULT },
     [SCRAN_UI_KEYMAP_ITEM_I_FOCUS]                  = { SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA]                  = { SCRAN_UI_TEXT_EMPTY,                           SCRAN_UI_COLOR_DEFAULT },
+    // We use the pre-selection keymap textline to draw the splash text.
+    [SCRAN_UI_KEYMAP_ITEM_I_EXTRA]                  = { SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT,   SCRAN_UI_COLOR_DEFAULT },
 };
 static const struct default_textline_values m_atlas_digits_defaults[] = {
     [0]                                             = { SCRAN_UI_TEXT_ATLAS_DIGITS,                    SCRAN_UI_COLOR_DEFAULT },
@@ -619,12 +615,11 @@ static const struct default_textline_values m_atlas_digits_defaults[] = {
 static const struct default_textline_values m_atlas_separators_defaults[] = {
     [0]                                             = { SCRAN_UI_TEXT_ATLAS_SEPARATORS,                SCRAN_UI_COLOR_DEFAULT },
 };
-static_assert(ARRAY_LENGTH(m_statusline_keymap_defaults_pre_selection) == SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS,           "");
-static_assert(ARRAY_LENGTH(m_statusline_defaults_pre_selection)        == SCRAN_UI_STATUSLINE_N_ITEMS,                  "");
-static_assert(ARRAY_LENGTH(m_keymap_defaults_pre_selection)            == SCRAN_UI_KEYMAP_N_ITEMS,                      "");
-static_assert(ARRAY_LENGTH(m_keymap_defaults_post_selection)           == SCRAN_UI_KEYMAP_N_ITEMS,                      "");
-static_assert(ARRAY_LENGTH(m_atlas_digits_defaults)                    == ARRAY_LENGTH((struct glyph_atlas){}.digits.items),     "");
-static_assert(ARRAY_LENGTH(m_atlas_separators_defaults)                == ARRAY_LENGTH((struct glyph_atlas){}.separators.items), "");
+static_assert(ARRAY_LENGTH(m_statusline_keymap_defaults) == SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS,                    "");
+static_assert(ARRAY_LENGTH(m_statusline_defaults)        == SCRAN_UI_STATUSLINE_N_ITEMS,                           "");
+static_assert(ARRAY_LENGTH(m_keymap_defaults)            == SCRAN_UI_KEYMAP_N_ITEMS,                               "");
+static_assert(ARRAY_LENGTH(m_atlas_digits_defaults)      == ARRAY_LENGTH((struct glyph_atlas){}.digits.items),     "");
+static_assert(ARRAY_LENGTH(m_atlas_separators_defaults)  == ARRAY_LENGTH((struct glyph_atlas){}.separators.items), "");
 
 static inline void
 assign_textline_defaults(
@@ -666,11 +661,11 @@ init_scran_ui_pre_selection(
     bl_font_init(&ui_ctx->font);
     bl_context_init(&ui_ctx->bl_ctx);
 
-    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),             m_keymap_defaults_pre_selection,            ARRAY_LENGTH(m_keymap_defaults_pre_selection));
-    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),         m_statusline_defaults_pre_selection,        ARRAY_LENGTH(m_statusline_defaults_pre_selection));
-    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap),  m_statusline_keymap_defaults_pre_selection, ARRAY_LENGTH(m_statusline_keymap_defaults_pre_selection));
-    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.digits),    m_atlas_digits_defaults,                    ARRAY_LENGTH(m_atlas_digits_defaults));
-    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators),m_atlas_separators_defaults,                ARRAY_LENGTH(m_atlas_separators_defaults));
+    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),             m_keymap_defaults,            ARRAY_LENGTH(m_keymap_defaults));
+    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),         m_statusline_defaults,        ARRAY_LENGTH(m_statusline_defaults));
+    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap),  m_statusline_keymap_defaults, ARRAY_LENGTH(m_statusline_keymap_defaults));
+    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.digits),    m_atlas_digits_defaults,      ARRAY_LENGTH(m_atlas_digits_defaults));
+    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators),m_atlas_separators_defaults,  ARRAY_LENGTH(m_atlas_separators_defaults));
 
     reinit_scran_ui(ui_ctx, scale);
 
@@ -681,7 +676,10 @@ bool
 scran_ui_set_selection_stage_defaults(
     struct scran_ui_context *ui_ctx
 ) {
-    assign_textline_defaults(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), m_keymap_defaults_post_selection, ARRAY_LENGTH(m_keymap_defaults_post_selection));
+    // assert(ui_ctx->ui_keymap
+
+    assert(ui_ctx->ui_keymap.items[SCRAN_UI_KEYMAP_ITEM_I_EXTRA].live_state.text == SCRAN_UI_TEXT_KEYMAP_EXTRA_PRE_INIT_DEFAULT);
+    scran_ui_textline_item_set_text(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_EXTRA, SCRAN_UI_TEXT_EMPTY);
     return true;
 }
 
