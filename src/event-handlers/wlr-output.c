@@ -13,13 +13,11 @@
  */
 
 #include <wayland-client.h>
-#include "freezeframe.h"
 #include "wlr-output-management-unstable-v1.h"
 #include "cosmic-output-management-unstable-v1.h"
 
 #include "state.h"
 #include "state-util.h"
-#include "selection-surface.h"
 #include "print.h"
 
 
@@ -210,10 +208,7 @@ handle_wlr_output_manager_done(
         st_output->fractional_scale_cosmic_1000 = pending_head->fractional_scale_cosmic_1000;
         st_output->fractional_scale_wlr = pending_head->fractional_scale_wlr;
 
-        struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
-        update_surface_scale_bufsize_viewport(st_output);
-        reinit_scran_ui(&selection_surface->ui_ctx, selection_surface->surface.final_scale_factor_normalized);
-        request_selection_surface_frame_callback(st_output);
+        do_scale_updates(st_output);
     }
 }
 

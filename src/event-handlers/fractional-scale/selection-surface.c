@@ -3,8 +3,6 @@
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
-#include "selection-surface.h"
-#include "ui.h"
 
 
 // Wayland uses this for its ground truth to scale our layer surface.
@@ -28,9 +26,7 @@ handle_fractional_scale_preferred_scale__selection(
     if (st_surface->fractional_scale_wp_120 != scale) {
         st_surface->fractional_scale_wp_120 = scale;
 
-        update_surface_scale_bufsize_viewport(st_output);
-        reinit_scran_ui(&selection_surface->ui_ctx, selection_surface->surface.final_scale_factor_normalized);
-        request_selection_surface_frame_callback(st_output);
+        do_scale_updates(st_output);
     }
 }
 
