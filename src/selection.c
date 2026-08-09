@@ -159,7 +159,8 @@ hide_selection_surface(struct scran_output *st_output)
 void
 hide_selection_surface_then(
     struct scran_output *st_output,
-    struct wp_presentation_feedback_listener *listener
+    struct wp_presentation_feedback_listener *listener,
+    enum scran_selection_surface_disable_reason reason
 ) {
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
 
@@ -173,20 +174,17 @@ hide_selection_surface_then(
 
     // Need to prevent any new or in-flight frame callbacks from cancelling out
     // our surface hiding
-    selection_surface->frame_callback_disable_reason |= SCRAN_FRAME_CALLBACK_DISABLE_REASON_HIDDEN_SELECTION;
+    selection_surface->disable_reason_mask |= reason;
 
     hide_selection_surface(st_output);
 }
 
-void
-unhide_selection_surface(struct scran_output *st_output)
-{
+static inline void
+unhide_selection_surface(struct scran_output *st_output) {
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
     // TODO: Get a free buffer instead, and handle the case where can't?
     //         See wl_surface::get_release() (as of wayland 1.25.0, 2026-03-19).
     struct scran_output_selectionSurface_buffer *selection_buffer = &selection_surface->double_buffer[0];
-
-    selection_surface->frame_callback_disable_reason &= ~SCRAN_FRAME_CALLBACK_DISABLE_REASON_HIDDEN_SELECTION;
 
     // Need to attach a correctly-sized buffer back again before re-setting
     // the viewport.
@@ -222,6 +220,15 @@ unhide_selection_surface(struct scran_output *st_output)
     // responsibility out of any freezeframe.c function entirely, and have the
     // caller ensure pre/post-recapture state like this manually.
     wl_surface_commit(selection_surface->surface.wl_surface);
+}
+
+void
+release_selection_surface_hide(struct scran_output *st_output, enum scran_selection_surface_disable_reason reason)
+{
+    st_output->selection_surface.disable_reason_mask &= ~reason;
+    if (!st_output->selection_surface.disable_reason_mask) {
+        unhide_selection_surface(st_output);
+    }
 }
 
 // We need an output-specific function since freezeframe will need to call back

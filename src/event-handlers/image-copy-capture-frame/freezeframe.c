@@ -41,7 +41,7 @@ continue_after_showing_freezeframe(
     struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
 
     if (freezeframe->unhide_after_capture) {
-        unhide_selection_surface(st_output);
+        release_selection_surface_hide(st_output, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE);
         freezeframe->unhide_after_capture = false;
     }
 

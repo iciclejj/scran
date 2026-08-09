@@ -45,7 +45,7 @@ selection_surface_frame_callback_handler(
     struct scran_output                  *st_output         = data;
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
 
-    bool skip = selection_surface->frame_callback_disable_reason || !selection_surface->awaiting_frame_callback;
+    bool skip = selection_surface->disable_reason_mask || !selection_surface->awaiting_frame_callback;
     selection_surface->awaiting_frame_callback = false;
 
     if (skip) {

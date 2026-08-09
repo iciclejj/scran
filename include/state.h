@@ -145,10 +145,11 @@ struct scran_output_selectionSurface_buffer {
     bool force_redraw;
 };
 
-enum scran_frame_callback_disable_reason {
-    SCRAN_FRAME_CALLBACK_DISABLE_REASON_NONE              = 0,
-    SCRAN_FRAME_CALLBACK_DISABLE_REASON_HIDDEN_SELECTION  = 1 << 0,
-    SCRAN_FRAME_CALLBACK_DISABLE_REASON_UI_STAGE_FINISHED = 1 << 1,
+enum scran_selection_surface_disable_reason {
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_NONE              = 0,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE  = 1 << 0,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE   = 1 << 1,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED = 1 << 2,
 };
 
 struct scran_output_selectionSurface {
@@ -166,7 +167,8 @@ struct scran_output_selectionSurface {
     struct scran_ui_textline_surface_state ui_statusline_keymap_state_last_drawn;
 
     bool awaiting_frame_callback;
-    uint8_t frame_callback_disable_reason;
+    // Disables frame callbacks and hiding/unhiding.
+    uint8_t disable_reason_mask;
 };
 
 struct scran_output;
