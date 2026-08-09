@@ -499,14 +499,7 @@ start_fullscreen_capture(
     assert(st_output->selection_ctx.selection_state == SELECTION_NONE
         || st_output->selection_ctx.selection_state == SELECTION_NONE_FREEZE_SIZE
     );
-    assert(blboxi_is_zero(st_output->capture.frame_ctx.capture_area_px));
-    assert(blboxi_is_zero(st_output->selection_ctx.box_px));
-    BLBoxI fullscreen_selection = {
-        .x0 = 0,
-        .y0 = 0,
-        .x1 = get_transformed_output_width(st_output),
-        .y1 = get_transformed_output_height(st_output),
-    };
+    BLBoxI fullscreen_selection = get_fullscreen_selection_box(st_output);
     st_output->selection_ctx.box_px = fullscreen_selection;
     capture_update_area_with_selection(st_output, fullscreen_selection);
 
@@ -524,7 +517,7 @@ end_fullscreen_capture(
     assert(st_output->selection_ctx.selection_state == SELECTION_NONE
         || st_output->selection_ctx.selection_state == SELECTION_NONE_FREEZE_SIZE
     );
-    st_output->selection_ctx.box_px = (BLBoxI){0};
+    st_output->selection_ctx.box_px = get_selection_surface_pre_selection_box(st_output);
     st_output->capture.frame_ctx.capture_area_px = (BLBoxI){0};
 
     st_output->capture.frame_ctx.fullscreen_capture = false;

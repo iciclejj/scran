@@ -518,9 +518,16 @@ init_selection_surface_content(
     const bool no_initial_selection = blboxi_are_equal(initial_box, SCRAN_INITIAL_SELECTION_NONE);
 
     if (no_initial_selection) {
-        // We want to draw the splash text in the top left corner.
-        initial_box = (BLBoxI){0};
+        initial_box = get_selection_surface_pre_selection_box(st_output);
         st_output->selection_ctx.box_px = initial_box;
+
+        // Set fullscreen selection size.
+        // XXX TODO: Make this responsibility less disjointed
+        scran_ui_statusline_set_selection_size(
+            &selection_surface->ui_ctx.ui_statusline,
+            blboxi_to_blrecti(get_fullscreen_selection_box(st_output))
+        );
+
         set_selection_surface_theme(st_output, SURFACE_THEME_PRE_SELECTION);
     } else {
         // This must be set prior to set_selection_initialized()
