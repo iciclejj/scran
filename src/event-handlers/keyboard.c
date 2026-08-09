@@ -111,22 +111,9 @@ handle_keyboard_key(
         key + 8 // See wl_keyboard::keymap_format
     );
 
-    bool fullscreen_capture = false;
-
-    if (st_output->selection_ctx.selection_state == SELECTION_NONE
-     || st_output->selection_ctx.selection_state == SELECTION_NONE_FREEZE_SIZE
-    ) {
-        switch(xkb_key) {
-        case XKB_KEY_Escape: // Allow exit
-            break;
-        case XKB_KEY_Return:
-        case XKB_KEY_space:
-            fullscreen_capture = true;
-            break;
-        default:
-            return;
-        }
-    }
+    bool pre_selection = st_output->selection_ctx.selection_state == SELECTION_NONE ||
+                         st_output->selection_ctx.selection_state == SELECTION_NONE_FREEZE_SIZE;
+    bool fullscreen_capture = pre_selection;
 
     // TODO: Nested switch for released/pressed
     if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
@@ -143,7 +130,7 @@ handle_keyboard_key(
         case XKB_KEY_z:
         case XKB_KEY_Z:
             if (state->options.freezeframe) {
-                scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME, false);
+                scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, false);
             }
             break;
         default:
@@ -157,20 +144,28 @@ handle_keyboard_key(
     assert(key_state != WL_KEYBOARD_KEY_STATE_RELEASED);
     switch (xkb_key) {
     case XKB_KEY_Left:
-        blboxi_shift(&st_output->selection_ctx.box_px, -1,  0);
-        request_selection_surface_frame_callback(st_output);
+        if (!pre_selection) {
+            blboxi_shift(&st_output->selection_ctx.box_px, -1,  0);
+            request_selection_surface_frame_callback(st_output);
+        }
         break;
     case XKB_KEY_Right:
-        blboxi_shift(&st_output->selection_ctx.box_px, +1,  0);
-        request_selection_surface_frame_callback(st_output);
+        if (!pre_selection) {
+            blboxi_shift(&st_output->selection_ctx.box_px, +1,  0);
+            request_selection_surface_frame_callback(st_output);
+        }
         break;
     case XKB_KEY_Up:
-        blboxi_shift(&st_output->selection_ctx.box_px,  0, -1);
-        request_selection_surface_frame_callback(st_output);
+        if (!pre_selection) {
+            blboxi_shift(&st_output->selection_ctx.box_px,  0, -1);
+            request_selection_surface_frame_callback(st_output);
+        }
         break;
     case XKB_KEY_Down:
-        blboxi_shift(&st_output->selection_ctx.box_px,  0, +1);
-        request_selection_surface_frame_callback(st_output);
+        if (!pre_selection) {
+            blboxi_shift(&st_output->selection_ctx.box_px,  0, +1);
+            request_selection_surface_frame_callback(st_output);
+        }
         break;
     case XKB_KEY_Tab:
         stop_grabbing_focus();
@@ -183,7 +178,7 @@ handle_keyboard_key(
 
         {
             struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME, true);
+            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, true);
             request_selection_surface_frame_callback(st_output);
         }
 
@@ -312,12 +307,6 @@ handle_keyboard_modifiers(
     }
 
     struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, selection_surface);
-
-    if (st_output->selection_ctx.selection_state == SELECTION_NONE
-     || st_output->selection_ctx.selection_state == SELECTION_NONE_FREEZE_SIZE
-    ) {
-        return;
-    }
 
     bool mod_key_active = xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
 

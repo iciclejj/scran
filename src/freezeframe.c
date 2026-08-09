@@ -71,8 +71,8 @@ freezeframe_hide_surface(struct scran_output *st_output)
     freezeframe->showing = false;
     {
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        scran_ui_textline_item_set_text(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_ON);
-        scran_ui_textline_item_set_color(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_COLOR_DEFAULT);
+        scran_ui_textline_item_set_text( ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON);
+        scran_ui_textline_item_set_color(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_COLOR_DEFAULT);
         request_selection_surface_frame_callback(st_output);
     }
 }
