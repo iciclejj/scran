@@ -614,10 +614,10 @@ static const struct default_textline_values m_keymap_defaults_post_selection[] =
     [SCRAN_UI_KEYMAP_ITEM_I_EXTRA]                  = { SCRAN_UI_TEXT_EMPTY,                           SCRAN_UI_COLOR_DEFAULT },
 };
 static const struct default_textline_values m_atlas_digits_defaults[] = {
-    [SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME] = { SCRAN_UI_TEXT_ATLAS_DIGITS,                    SCRAN_UI_COLOR_DEFAULT },
+    [0]                                             = { SCRAN_UI_TEXT_ATLAS_DIGITS,                    SCRAN_UI_COLOR_DEFAULT },
 };
 static const struct default_textline_values m_atlas_separators_defaults[] = {
-    [SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME] = { SCRAN_UI_TEXT_ATLAS_SEPARATORS,                SCRAN_UI_COLOR_DEFAULT },
+    [0]                                             = { SCRAN_UI_TEXT_ATLAS_SEPARATORS,                SCRAN_UI_COLOR_DEFAULT },
 };
 static_assert(ARRAY_LENGTH(m_statusline_keymap_defaults_pre_selection) == SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS,           "");
 static_assert(ARRAY_LENGTH(m_statusline_defaults_pre_selection)        == SCRAN_UI_STATUSLINE_N_ITEMS,                  "");
