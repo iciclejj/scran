@@ -4,6 +4,7 @@
 #include "state-util.h"
 #include "freezeframe.h"
 #include "print.h"
+#include "selection-surface.h"
 
 
 extern struct scran g_state;
@@ -162,4 +163,12 @@ update_surface_scale_bufsize_viewport(
     if (g_state.options.freezeframe) {
         freezeframe_surface_update_scale_size_viewport(st_output);
     }
+}
+
+void
+do_scale_updates(struct scran_output *st_output)
+{
+    update_surface_scale_bufsize_viewport(st_output);
+    reinit_scran_ui(&st_output->selection_surface.ui_ctx, st_output->selection_surface.surface.final_scale_factor_normalized);
+    request_selection_surface_frame_callback(st_output);
 }
