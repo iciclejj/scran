@@ -180,7 +180,7 @@ init_postmem__selection__destroy(struct scran_output *st_output)
     (void)selection_ctx;
 
     // Neutralize pending surface callbacks/callback requests
-    selection_surface->frame_callback_disable_reason |= SCRAN_FRAME_CALLBACK_DISABLE_REASON_UI_STAGE_FINISHED;
+    selection_surface->disable_reason_mask |= SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED;
     selection_surface->awaiting_frame_callback = false;
 
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {

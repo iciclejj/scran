@@ -492,7 +492,7 @@ start_fullscreen_capture(
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     set_selection_freeze_size(st_output);
-    hide_selection_surface_then(st_output, listener);
+    hide_selection_surface_then(st_output, listener, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
 
     // If !=SELECTION_NONE becomes possible in the future, then we will
     // need to save/restore the previous selection.
@@ -531,7 +531,7 @@ end_fullscreen_capture(
 
     // We don't want to flash a frame of selection/background dim if we're exiting anyways
     if (!st_output->capture.exit_after_capture) {
-        unhide_selection_surface(st_output);
+        release_selection_surface_hide(st_output, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
     }
 
     // HACK: See comment in start_fullscreen_capture().
