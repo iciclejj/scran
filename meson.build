@@ -51,6 +51,7 @@ scran_sources = files(
   'src/main.c',
   'src/capture.c',
   'src/clipboard.c',
+  'src/cursor.c',
   'src/freezeframe.c',
   'src/options.c',
   'src/pipewires.c',
