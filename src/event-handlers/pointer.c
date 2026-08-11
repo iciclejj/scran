@@ -5,6 +5,7 @@
 
 #include "state.h"
 #include "state-util.h"
+#include "cursor.h"
 #include "seat.h"
 #include "selection-surface.h"
 #include "ui.h"
@@ -25,16 +26,17 @@ handle_pointer_enter(
     struct scran *state = data;
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
 
-    // "When a seat's focus enters a surface, the pointer image is undefined..."
-    wp_cursor_shape_device_v1_set_shape(
-        pointer_ctx->cursor_shape_device,
-        serial,
-        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR
-    );
-
     pointer_ctx->last_enter_serial = serial;
 
     seat_update_focused_selection_surface(&pointer_ctx->focused_selection_surface, surface_entered);
+
+    if (pointer_ctx->focused_selection_surface != NULL) {
+        struct scran_output *st_output = wl_container_of(
+            pointer_ctx->focused_selection_surface, st_output, selection_surface
+        );
+        // "When a seat's focus enters a surface, the pointer image is undefined..."
+        cursor_set_theme(st_output, st_output->cursor.theme);
+    }
 }
 
 
@@ -462,4 +464,3 @@ struct wl_pointer_listener pointer_listener = {
     .axis_stop = handle_axis_stop,
     .axis_value120 = handle_axis_value120,
 };
-

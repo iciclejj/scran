@@ -27,6 +27,7 @@
 #include "cosmic-output-management-unstable-v1.h"
 
 #include "ui.h"
+#include "cursor.h"
 
 #define MAX_OUTPUTS 64
 
@@ -80,6 +81,20 @@ struct scran_globals {
 struct scran_wl_buffer {
     struct wl_buffer *wl_buffer;
     void *data;
+};
+
+struct scran_cursor_buffer {
+    struct scran_wl_buffer scran_wl_buffer;
+    BLImageCore bl_img;
+};
+
+struct scran_cursor {
+    struct wl_surface *wl_surface;
+    struct wp_viewport *viewport;
+    struct scran_cursor_buffer buffers[SCRAN_CURSOR_N_THEMES];
+
+    int width_height_px;
+    enum scran_cursor_theme theme;
 };
 
 struct scran_output_subsurface {
@@ -414,6 +429,7 @@ struct scran_output {
     wl_fixed_t fractional_scale_wlr;        // zwlr_output_head
 
     struct scran_output_selectionSurface selection_surface;
+    struct scran_cursor cursor;
     struct scran_output_selectionContext selection_ctx;
     struct scran_output_capture capture;
     struct scran_output_freezeframe freezeframe;

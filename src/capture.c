@@ -15,6 +15,7 @@
 
 #include "state.h"
 #include "state-util.h"
+#include "cursor.h"
 #include "selection-surface.h"
 #include "ui.h"
 #include "util/blend2d.h"
@@ -453,6 +454,7 @@ video_capture_start(struct scran_output *st_output)
         scran_ui_textline_item_set_locked(  ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
     }
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
+    cursor_set_theme(st_output, SCRAN_CURSOR_THEME_VIDEO_CAPTURE);
     request_selection_surface_frame_callback(st_output);
 
     st_output->capture.frame_ctx.presentation_time_nsec_start = capture_clock_gettime_nsec();
@@ -611,6 +613,7 @@ video_capture_finish(struct scran_output *st_output)
         scran_ui_statusline_set_timer(&st_output->selection_surface.ui_ctx.ui_statusline, 0);
     }
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+    cursor_set_theme(st_output, SCRAN_CURSOR_THEME_DEFAULT);
     request_selection_surface_frame_callback(st_output);
 
     unset_selection_freeze_size(st_output);

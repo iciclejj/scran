@@ -28,6 +28,7 @@
 #include "selection.h"
 #include "state.h"
 #include "state-util.h"
+#include "cursor.h"
 #include "capture.h"
 #include "selection-surface.h"
 #include "ui.h"
@@ -110,6 +111,10 @@ init_premem()
         }
 
         if (!init_premem__selection(st_output, &g_state.globals)) {
+            return false;
+        }
+
+        if (!init_premem__cursor(st_output)) {
             return false;
         }
 
@@ -244,6 +249,7 @@ init_premem__destroy()
         if (g_state.options.freezeframe) {
             init_premem__freezeframe__destroy(st_output);
         }
+        init_premem__cursor__destroy(st_output);
         init_premem__selection__destroy(st_output);
         init_premem__capture__destroy(st_output);
 
@@ -270,7 +276,7 @@ init_premem__destroy()
 
 // Just bump this if/when we need more
 // TODO: Make this cleaner...
-#define SCRAN_ARENA_BLOCKS_MAX (MAX_OUTPUTS * 6)
+#define SCRAN_ARENA_BLOCKS_MAX (MAX_OUTPUTS * 8)
 
 struct scran_arena_context {
     void *addr;
@@ -394,6 +400,19 @@ init_meminit(
             );
         };
 
+        const size_t cursor_buf_size = get_framebuffer_size(
+            SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
+            SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
+            SURFACE_PIXEL_STRIDE
+        );
+        for (int i_buffer = 0; i_buffer < SCRAN_CURSOR_N_THEMES; ++i_buffer) {
+            struct scran_cursor_buffer *buffer = &st_output->cursor.buffers[i_buffer];
+            scran_arena_add_block(
+                shm_arena,
+                cursor_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &buffer->scran_wl_buffer.data
+            );
+        }
+
         const size_t capture_buf_size = get_capture_buf_size(st_output);
 
         if (g_state.options.freezeframe) {
@@ -492,6 +511,21 @@ init_meminit(
             );
         }
 
+        for (int i_buffer = 0; i_buffer < SCRAN_CURSOR_N_THEMES; ++i_buffer) {
+            struct scran_cursor_buffer *buffer = &st_output->cursor.buffers[i_buffer];
+            init_wl_shm_buffer(
+                shm_arena,
+                global_pool_wl,
+                &buffer->scran_wl_buffer,
+                SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
+                SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
+                SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX * SURFACE_PIXEL_STRIDE,
+                SURFACE_SHM_FORMAT,
+                NULL,
+                NULL
+            );
+        }
+
         if (g_state.options.freezeframe) {
             struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
 
@@ -567,6 +601,9 @@ init_meminit__destroy(
             struct scran_output_selectionSurface_buffer *selection_surface_buffer = &st_output->selection_surface.double_buffer[i_buf];
             wl_buffer_destroy(selection_surface_buffer->scran_wl_buffer.wl_buffer);
         }
+        for (int i_buf = 0; i_buf < SCRAN_CURSOR_N_THEMES; ++i_buf) {
+            wl_buffer_destroy(st_output->cursor.buffers[i_buf].scran_wl_buffer.wl_buffer);
+        }
 
         wl_buffer_destroy(st_output->capture.frame_ctx.scran_wl_buffer.wl_buffer);
 
@@ -608,6 +645,10 @@ init_postmem()
             (st_output == custom_initial_selection_output)
             ? &custom_initial_selection : NULL;
 
+        if (!init_postmem__cursor(st_output)) {
+            return false;
+        }
+
         if (!init_postmem__selection(st_output, _p_custom_initial_selection)) {
             return false;
         }
@@ -620,6 +661,7 @@ static void
 init_postmem__destroy()
 {
     FOR_EACH_OUTPUT(i, st_output) {
+        init_postmem__cursor__destroy(st_output);
         init_postmem__selection__destroy(st_output);
     }
 }
@@ -907,4 +949,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-
