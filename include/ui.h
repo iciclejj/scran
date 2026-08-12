@@ -17,6 +17,10 @@ enum scran_ui_disable_reason {
     SCRAN_UI_N_DISABLE_REASONS,
 };
 
+enum scran_ui_greeting_item_index {
+    SCRAN_UI_GREETING_ITEM_I_GREETING,
+    SCRAN_UI_GREETING_N_ITEMS,
+};
 enum scran_ui_keymap_item_index {
     SCRAN_UI_KEYMAP_ITEM_I_IMAGE,
     SCRAN_UI_KEYMAP_ITEM_I_VIDEO,
@@ -24,15 +28,12 @@ enum scran_ui_keymap_item_index {
     SCRAN_UI_KEYMAP_ITEM_I_FOCUS,
     SCRAN_UI_KEYMAP_N_ITEMS,
 };
-
 enum scran_ui_statusline_item_index {
     SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE,
     SCRAN_UI_STATUSLINE_ITEM_I_TIMER,
     SCRAN_UI_STATUSLINE_N_ITEMS,
 };
-
 enum scran_ui_statusline_keymap_item_index {
-    SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_EXTRA,
     SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS,
 };
 
@@ -46,6 +47,8 @@ enum scran_ui_color {
 };
 
 enum scran_ui_text {
+    SCRAN_UI_TEXT_GREETING,
+
     SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT,
     SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD,
 
@@ -61,8 +64,6 @@ enum scran_ui_text {
 
     SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY,
     SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY,
-
-    SCRAN_UI_TEXT_STATUSLINE_KEYMAP_EXTRA_PRE_INIT_DEFAULT,
 
     SCRAN_UI_TEXT_ATLAS_DIGITS,
     SCRAN_UI_TEXT_ATLAS_SEPARATORS,
@@ -117,6 +118,10 @@ struct glyph_atlas {
     } separators;
 };
 
+struct scran_ui_greeting {
+    struct scran_ui_textline_metadata meta;
+    struct scran_ui_textline_item     items[SCRAN_UI_GREETING_N_ITEMS];
+};
 struct scran_ui_keymap_textline {
     struct scran_ui_textline_metadata meta;
     struct scran_ui_textline_item     items[SCRAN_UI_KEYMAP_N_ITEMS];
@@ -133,6 +138,7 @@ struct scran_ui_statusline_keymap_textline {
 };
 
 struct scran_ui_context {
+    struct scran_ui_greeting                   ui_greeting;
     struct scran_ui_keymap_textline            ui_keymap;
     struct scran_ui_statusline_textline        ui_statusline;
     struct scran_ui_statusline_keymap_textline ui_statusline_keymap;
@@ -153,13 +159,13 @@ struct scran_ui_context {
 
 bool init_scran_ui_pre_selection(struct scran_ui_context *ui_ctx, double scale);
  void destroy_scran_ui(struct scran_ui_context *ui_ctx);
-bool scran_ui_set_selection_stage_defaults( struct scran_ui_context *ui_ctx);
 bool reinit_scran_ui(struct scran_ui_context *ui_ctx, double scale);
 
 enum scran_ui_redrawn_textline_mask {
-    SCRAN_UI_REDREW_KEYMAP            = 1U << 0,
-    SCRAN_UI_REDREW_STATUSLINE        = 1U << 1,
-    SCRAN_UI_REDREW_STATUSLINE_KEYMAP = 1U << 2,
+    SCRAN_UI_REDREW_GREETING          = 1U << 0,
+    SCRAN_UI_REDREW_KEYMAP            = 1U << 1,
+    SCRAN_UI_REDREW_STATUSLINE        = 1U << 2,
+    SCRAN_UI_REDREW_STATUSLINE_KEYMAP = 1U << 3,
 };
 // Returns scran_ui_redrawn_textline_mask-valued mask
 uint32_t scran_ui_redraw_elements(struct scran_ui_context *ui_ctx);

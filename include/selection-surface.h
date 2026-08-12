@@ -14,7 +14,7 @@
 #define SCRAN_SELECTION_BORDER_THICKNESS_PX 1
 
 
-void draw_selection_and_damage_buffer(struct scran_output_selectionSurface *selection_surface, struct scran_output_selectionSurface_buffer *st_buffer, struct BLBoxI capture_area);
+void draw_selection_and_damage_buffer(struct scran_output_selectionSurface *selection_surface, struct scran_output_selectionSurface_buffer *st_buffer, struct scran_output_selectionContext *selection_ctx, struct BLBoxI capture_area);
 void request_selection_surface_frame_callback(struct scran_output *st_output);
 void init_selection_surface_content(struct scran_output *st_output);
 
@@ -33,12 +33,12 @@ get_selection_surface_pre_selection_box(struct scran_output *st_output) {
     float font_height = ceil(st_output->selection_surface.ui_ctx.font_height);
     assert(font_height);
 
-    // Show all of the UI in the top left corner
+    // Show all of the UI in the top left corner, including splash/greeting line
     return (BLBoxI){
         .x0 = 0,
-        .y0 = font_height,
+        .y0 = 2 * font_height,
         .x1 = 0,
-        .y1 = font_height,
+        .y1 = 2 * font_height,
     };
 }
 

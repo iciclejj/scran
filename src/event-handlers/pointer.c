@@ -294,7 +294,6 @@ handle_pointer_button(
 
             // TODO: Create set_selection_initializing()/set_selection_stage(),
             // analogous to current set_selection_initialized()?
-            scran_ui_set_selection_stage_defaults(&st_output->selection_surface.ui_ctx);
             scran_ui_statusline_set_selection_size(
                 &st_output->selection_surface.ui_ctx.ui_statusline,
                 blboxi_to_blrecti(initial_selection_area)

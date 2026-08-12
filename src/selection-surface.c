@@ -263,15 +263,18 @@ static inline void
 draw_and_damage_ui(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
+    struct scran_output_selectionContext *selection_ctx,
     BLBoxI capture_area_border_outline
 ) {
     struct scran_ui_context  *ui_ctx = &selection_surface->ui_ctx;
 
     const uint32_t redrawn_textline_mask          = scran_ui_redraw_elements(ui_ctx);
+    const bool     force_redraw_greeting          = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_GREETING);
     const bool     force_redraw_keymap            = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_KEYMAP);
     const bool     force_redraw_statusline        = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE);
     const bool     force_redraw_statusline_keymap = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE_KEYMAP);
     const int      item_spacing_px                = get_item_spacing_px(ui_ctx);
+
 
     // Draw below-selection keymap
     {
@@ -359,6 +362,34 @@ draw_and_damage_ui(
             force_redraw_statusline
         );
     }
+
+
+    // Draw greeting
+    //   XXX: Must currently be at the end to play nice with scale updates.
+    //   TODO: unlikely() ?
+    if (selection_is_none(selection_ctx)) {
+        struct scran_ui_textline_surface_state state_new_greeting = {
+            .origin = {
+                .x = capture_area_border_outline.x0,
+                .y = capture_area_border_outline.y0 - 2*round(ui_ctx->font_height),
+            },
+            .total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting), item_spacing_px),
+        };
+        clamp_textline_surface_state(&state_new_greeting, 0, selection_surface->surface.width_px_buffer);
+        draw_and_damage_ui_textline(
+            selection_surface,
+            st_buffer,
+            capture_area_border_outline,
+            SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting),
+            item_spacing_px,
+            // We have these for greeting as well, despite it not moving,
+            // so that it updates correctly on scale changes.
+            &st_buffer->ui_greeting_state_currently_drawn,
+            &selection_surface->ui_greeting_state_last_drawn,
+            &state_new_greeting,
+            force_redraw_greeting
+        );
+    }
 }
 
 // We trunc/ceil like this to make sure that fractionally scaled displays
@@ -388,6 +419,7 @@ void
 draw_selection_and_damage_buffer(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
+    struct scran_output_selectionContext *selection_ctx,
     struct BLBoxI capture_area
 ) {
     if (g_state.options.hide_ui_level >= SCRAN_OPT_HIDE_UI_EVERYTHING) {
@@ -460,7 +492,7 @@ draw_selection_and_damage_buffer(
     if (g_state.options.hide_ui_level < SCRAN_OPT_HIDE_UI_ITEMS) {
         // Draw keymap
         //   Must be drawn after/on top of background
-        draw_and_damage_ui(selection_surface, st_buffer, capture_area_border_outline);
+        draw_and_damage_ui(selection_surface, st_buffer, selection_ctx, capture_area_border_outline);
     }
 
     // Draw selection border
@@ -547,7 +579,6 @@ init_selection_surface_content(
         // state has been set up.
         // ALSO make sure it's called somewhere that the freezeframe init path
         // (and potential future alternate init paths) will reach.
-        scran_ui_set_selection_stage_defaults(&selection_surface->ui_ctx);
         scran_ui_statusline_set_selection_size(&selection_surface->ui_ctx.ui_statusline, blboxi_to_blrecti(initial_box));
         set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
         set_selection_initialized(st_output);
@@ -562,6 +593,7 @@ init_selection_surface_content(
         draw_selection_and_damage_buffer(
             selection_surface,
             st_buffer,
+            &st_output->selection_ctx,
             initial_box
         );
     }
