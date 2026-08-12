@@ -441,9 +441,6 @@ scran_ui_redraw_elements(
     if (redraw_statusline_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline), &ui_ctx->ui_statusline)) {
         redrawn_textline_mask |= SCRAN_UI_REDREW_STATUSLINE;
     }
-    if (redraw_static_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap))) {
-        redrawn_textline_mask |= SCRAN_UI_REDREW_STATUSLINE_KEYMAP;
-    }
 
     return redrawn_textline_mask;
 }
@@ -581,7 +578,6 @@ reinit_scran_ui(
         reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting),          width_px_max, height_px_max);
         reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),            width_px_max, height_px_max);
         reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),        width_px_max, height_px_max);
-        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), width_px_max, height_px_max);
         scran_ui_redraw_elements(ui_ctx);
 
     }
@@ -595,9 +591,6 @@ struct default_textline_values {
 };
 static const struct default_textline_values m_greeting_defaults[] = {
     [SCRAN_UI_GREETING_ITEM_I_GREETING]             = { SCRAN_UI_TEXT_GREETING,                        SCRAN_UI_COLOR_DEFAULT },
-};
-static const struct default_textline_values m_statusline_keymap_defaults[] = {
-    // We use the pre-selection keymap textline to draw the splash text.
 };
 static const struct default_textline_values m_statusline_defaults[] = {
     [SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE]     = { SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY, SCRAN_UI_COLOR_DEFAULT },
@@ -617,7 +610,6 @@ static const struct default_textline_values m_atlas_separators_defaults[] = {
     [0]                                             = { SCRAN_UI_TEXT_ATLAS_SEPARATORS,                SCRAN_UI_COLOR_DEFAULT },
 };
 static_assert(ARRAY_LENGTH(m_greeting_defaults)          == SCRAN_UI_GREETING_N_ITEMS,                             "");
-static_assert(ARRAY_LENGTH(m_statusline_keymap_defaults) == SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS,                    "");
 static_assert(ARRAY_LENGTH(m_statusline_defaults)        == SCRAN_UI_STATUSLINE_N_ITEMS,                           "");
 static_assert(ARRAY_LENGTH(m_keymap_defaults)            == SCRAN_UI_KEYMAP_N_ITEMS,                               "");
 static_assert(ARRAY_LENGTH(m_atlas_digits_defaults)      == ARRAY_LENGTH((struct glyph_atlas){}.digits.items),     "");
@@ -666,7 +658,6 @@ init_scran_ui_pre_selection(
     init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting),           m_greeting_defaults,          ARRAY_LENGTH(m_greeting_defaults));
     init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),             m_keymap_defaults,            ARRAY_LENGTH(m_keymap_defaults));
     init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),         m_statusline_defaults,        ARRAY_LENGTH(m_statusline_defaults));
-    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap),  m_statusline_keymap_defaults, ARRAY_LENGTH(m_statusline_keymap_defaults));
     init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.digits),    m_atlas_digits_defaults,      ARRAY_LENGTH(m_atlas_digits_defaults));
     init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators),m_atlas_separators_defaults,  ARRAY_LENGTH(m_atlas_separators_defaults));
 
@@ -694,7 +685,6 @@ destroy_scran_ui(
     destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting));
     destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap));
     destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline));
-    destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap));
     destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.digits));
     destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators));
 }
