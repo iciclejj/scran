@@ -498,9 +498,7 @@ start_fullscreen_capture(
 
     // If !=SELECTION_NONE becomes possible in the future, then we will
     // need to save/restore the previous selection.
-    assert(st_output->selection_ctx.selection_state == SELECTION_NONE
-        || st_output->selection_ctx.selection_state == SELECTION_NONE_FREEZE_SIZE
-    );
+    assert(selection_is_none(&st_output->selection_ctx));
     BLBoxI fullscreen_selection = get_fullscreen_selection_box(st_output);
     st_output->selection_ctx.box_px = fullscreen_selection;
     capture_update_area_with_selection(st_output, fullscreen_selection);
@@ -516,9 +514,7 @@ end_fullscreen_capture(
 
     // If !=SELECTION_NONE becomes possible in the future, then just do
     // update_capture_area_with_selection() when !=SELECTION_NONE.
-    assert(st_output->selection_ctx.selection_state == SELECTION_NONE
-        || st_output->selection_ctx.selection_state == SELECTION_NONE_FREEZE_SIZE
-    );
+    assert(selection_is_none(&st_output->selection_ctx));
     st_output->selection_ctx.box_px = get_selection_surface_pre_selection_box(st_output);
     st_output->capture.frame_ctx.capture_area_px = (BLBoxI){0};
 
