@@ -111,8 +111,7 @@ handle_keyboard_key(
         key + 8 // See wl_keyboard::keymap_format
     );
 
-    bool pre_selection = st_output->selection_ctx.selection_state == SELECTION_NONE ||
-                         st_output->selection_ctx.selection_state == SELECTION_NONE_FREEZE_SIZE;
+    bool pre_selection = selection_is_none(&st_output->selection_ctx);
     bool fullscreen_capture = pre_selection;
 
     // TODO: Nested switch for released/pressed
