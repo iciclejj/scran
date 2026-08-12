@@ -33,9 +33,6 @@ enum scran_ui_statusline_item_index {
     SCRAN_UI_STATUSLINE_ITEM_I_TIMER,
     SCRAN_UI_STATUSLINE_N_ITEMS,
 };
-enum scran_ui_statusline_keymap_item_index {
-    SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS,
-};
 
 enum scran_ui_color {
     SCRAN_UI_COLOR_DEFAULT,
@@ -132,16 +129,11 @@ struct scran_ui_statusline_textline {
     int timer_seconds;
     BLRectI selection_size;
 };
-struct scran_ui_statusline_keymap_textline {
-    struct scran_ui_textline_metadata meta;
-    struct scran_ui_textline_item     items[SCRAN_UI_STATUSLINE_KEYMAP_N_ITEMS];
-};
 
 struct scran_ui_context {
     struct scran_ui_greeting                   ui_greeting;
     struct scran_ui_keymap_textline            ui_keymap;
     struct scran_ui_statusline_textline        ui_statusline;
-    struct scran_ui_statusline_keymap_textline ui_statusline_keymap;
 
     struct glyph_atlas glyph_atlas;
 
@@ -165,7 +157,6 @@ enum scran_ui_redrawn_textline_mask {
     SCRAN_UI_REDREW_GREETING          = 1U << 0,
     SCRAN_UI_REDREW_KEYMAP            = 1U << 1,
     SCRAN_UI_REDREW_STATUSLINE        = 1U << 2,
-    SCRAN_UI_REDREW_STATUSLINE_KEYMAP = 1U << 3,
 };
 // Returns scran_ui_redrawn_textline_mask-valued mask
 uint32_t scran_ui_redraw_elements(struct scran_ui_context *ui_ctx);

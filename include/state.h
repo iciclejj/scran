@@ -155,7 +155,6 @@ struct scran_output_selectionSurface_buffer {
     struct scran_ui_textline_surface_state ui_greeting_state_currently_drawn;
     struct scran_ui_textline_surface_state ui_keymap_state_currently_drawn;
     struct scran_ui_textline_surface_state ui_statusline_state_currently_drawn;
-    struct scran_ui_textline_surface_state ui_statusline_keymap_state_currently_drawn;
 
     bool busy;
     bool force_redraw;
@@ -181,7 +180,6 @@ struct scran_output_selectionSurface {
     struct scran_ui_textline_surface_state ui_greeting_state_last_drawn;
     struct scran_ui_textline_surface_state ui_keymap_state_last_drawn;
     struct scran_ui_textline_surface_state ui_statusline_state_last_drawn;
-    struct scran_ui_textline_surface_state ui_statusline_keymap_state_last_drawn;
 
     bool awaiting_frame_callback;
     // Disables frame callbacks and hiding/unhiding.
