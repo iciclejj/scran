@@ -254,6 +254,11 @@ clamp_textline_surface_state(
     }
 }
 
+static inline int
+get_item_spacing_px(struct scran_ui_context *ui_ctx) {
+    return round(3 * ui_ctx->font_advance_fixed_width);
+}
+
 static inline void
 draw_and_damage_ui(
     struct scran_output_selectionSurface *selection_surface,
@@ -266,7 +271,7 @@ draw_and_damage_ui(
     const bool     force_redraw_keymap            = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_KEYMAP);
     const bool     force_redraw_statusline        = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE);
     const bool     force_redraw_statusline_keymap = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE_KEYMAP);
-    const int      item_spacing_px                = round(3 * ui_ctx->font_advance_fixed_width);
+    const int      item_spacing_px                = get_item_spacing_px(ui_ctx);
 
     // Draw below-selection keymap
     {
@@ -374,6 +379,11 @@ get_scalesafe_border_inline(
     };
 }
 
+static inline BLBoxI
+get_border_outline_from_inline(BLBoxI border_inline) {
+    return blboxi_get_inflated(border_inline, SCRAN_SELECTION_BORDER_THICKNESS_PX);
+}
+
 void
 draw_selection_and_damage_buffer(
     struct scran_output_selectionSurface *selection_surface,
@@ -413,9 +423,9 @@ draw_selection_and_damage_buffer(
     const BLBoxI capture_area_border_inline_last_used_in_current_buffer = get_scalesafe_border_inline(capture_area_last_used_in_current_buffer, scale);
 
     // XXX: Remake the "stroke width" macros
-    const BLBoxI capture_area_border_outline                             = blboxi_get_inflated(capture_area_border_inline                            , SCRAN_SELECTION_BORDER_THICKNESS_PX);
-    const BLBoxI capture_area_border_outline_last_used_in_any_buffer     = blboxi_get_inflated(capture_area_border_inline_last_used_in_any_buffer    , SCRAN_SELECTION_BORDER_THICKNESS_PX);
-    const BLBoxI capture_area_border_outline_last_used_in_current_buffer = blboxi_get_inflated(capture_area_border_inline_last_used_in_current_buffer, SCRAN_SELECTION_BORDER_THICKNESS_PX);
+    const BLBoxI capture_area_border_outline                             = get_border_outline_from_inline(capture_area_border_inline);
+    const BLBoxI capture_area_border_outline_last_used_in_any_buffer     = get_border_outline_from_inline(capture_area_border_inline_last_used_in_any_buffer);
+    const BLBoxI capture_area_border_outline_last_used_in_current_buffer = get_border_outline_from_inline(capture_area_border_inline_last_used_in_current_buffer);
 
     bool selection_changed =
         !blboxi_are_equal(capture_area, st_buffer->box_currently_drawn)
