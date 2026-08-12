@@ -323,13 +323,32 @@ fill_char16(char16_t *str, int n, char16_t char_) {
 
 // Returns final cursor location
 static inline char16_t *
-prepend_char16_uint(char16_t *left_bound, char16_t *start, uint32_t uint_) {
-    do {
-        *(--start) = u'0' + uint_ % 10;
-        uint_ /= 10;
-    } while (uint_ && left_bound < start);
+append_char16_uint(char16_t *cursor, char16_t *right_bound, uint32_t uint_)
+{
+    char16_t *const start = cursor;
 
-    return start;
+    // Generate the number in reverse
+    while (cursor < right_bound) {
+        *(cursor++) = u'0' + uint_ % 10;
+        uint_ /= 10;
+
+        if (!uint_) {
+            break;
+        }
+    }
+
+    char16_t *const end = cursor;
+
+    // Reverse it
+    char16_t *left  = start;
+    char16_t *right = end - 1;
+    while (right - left >= 1) {
+        char16_t tmp = *left;
+        *left++  = *right;
+        *right-- = tmp;
+    }
+
+    return end;
 }
 
 static inline char16_t *
@@ -378,11 +397,14 @@ get_selection_size_string(
     BLRectI size
 ) {
     fill_char16(string_char16, SELECTION_SIZE_STRLEN, u' ');
-    char16_t *cursor = string_char16 + SELECTION_SIZE_STRLEN;
 
-    cursor = prepend_char16_uint(string_char16, cursor, abs(size.h)); // Rightmost value
-    *(--cursor) = u'x';
-    cursor = prepend_char16_uint(string_char16, cursor, abs(size.w)); // Leftmost value
+    char16_t *cursor      = string_char16;
+    char16_t *right_bound = string_char16 + SELECTION_SIZE_STRLEN;
+
+    // We want it left-aligned to show nicely on the pre-selection screen
+    cursor = append_char16_uint(cursor, right_bound, abs(size.w)); // Leftmost value
+    *(cursor++) = u'x';
+    cursor = append_char16_uint(cursor, right_bound, abs(size.h)); // Rightmost value
 }
 
 static inline bool
