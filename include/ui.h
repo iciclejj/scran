@@ -139,11 +139,11 @@ struct scran_ui_context {
 
     struct glyph_atlas glyph_atlas;
 
-    // Must be cached per output in case of different scale factors.
-    int cached_text_widths_px[SCRAN_UI_N_TEXTS];
-
     BLContextCore bl_ctx;
     BLFontCore font;
+
+    // Must be cached per output in case of different scale factors.
+    int cached_text_widths_px[SCRAN_UI_N_TEXTS];
 
     float font_ascent;
     float font_height;
