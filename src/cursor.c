@@ -89,7 +89,12 @@ draw_cursor(
     BLContextCore bl_ctx;
     bl_context_init(&bl_ctx);
     bl_context_begin(&bl_ctx, &buffer->bl_img, NULL);
-    bl_context_clear_all(&bl_ctx);
+    // XXX: Hyprland ignores cursor surface viewports (#15860). For now, just clear the entire buffer.
+    // bl_context_clear_all(&bl_ctx);
+    memset(buffer->scran_wl_buffer.data, 0, get_framebuffer_size(
+        SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX, SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX, SURFACE_PIXEL_STRIDE)
+    );
+
     int stroke_width_px = ceil(width_height_px * 0.1);
     // Make sure crosshair is always centered on the hotspot, whether even or odd width.
     if ((stroke_width_px & 0b1) != (width_height_px & 0b1)) {
