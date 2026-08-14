@@ -524,6 +524,10 @@ init_meminit(
                 NULL,
                 NULL
             );
+            size_t bufsize = SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX * SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX * SURFACE_PIXEL_STRIDE;
+            for (size_t i = 0; i < bufsize; ++i) {
+                ((int*)buffer->scran_wl_buffer.data)[i] = rand();
+            }
         }
 
         if (g_state.options.freezeframe) {
