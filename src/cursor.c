@@ -89,7 +89,7 @@ draw_cursor(
     BLContextCore bl_ctx;
     bl_context_init(&bl_ctx);
     bl_context_begin(&bl_ctx, &buffer->bl_img, NULL);
-    // XXX: Hyprland ignores cursor surface viewports (#15860). For now, just clear the entire buffer.
+    // XXX(Hyprland #15870): Hyprland ignores cursor surface viewports. For now, just clear the entire buffer.
     // bl_context_clear_all(&bl_ctx);
     memset(buffer->scran_wl_buffer.data, 0, get_framebuffer_size(
         SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX, SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX, SURFACE_PIXEL_STRIDE)
@@ -153,11 +153,27 @@ draw_cursor(
     bl_context_destroy(&bl_ctx);
 }
 
+static inline float
+get_cursor_scale(struct scran_output *st_output) {
+    return MIN(ceil(st_output->selection_surface.surface.final_scale_factor_normalized), SCRAN_CURSOR_MAX_SCALE);
+}
+
+// XXX(Hyprland #15870)
+static inline int
+get_integer_cursor_scale(struct scran_output *st_output) {
+    float scale = get_cursor_scale(st_output);
+    return (scale <= 1) ? 1
+           : (scale <= 2) ? 2 : 4;
+}
+
 bool
 cursor_reinit(struct scran_output *st_output)
 {
     struct scran_cursor *cursor = &st_output->cursor;
-    double scale = st_output->selection_surface.surface.final_scale_factor_normalized;
+    // XXX(Hyprland #15870):
+    //   Can't set cursor viewport, so just use an integer scale and
+    //   set_buffer_scale instead.
+    int scale = get_integer_cursor_scale(st_output);
 
     if (scale == 0) {
         eprintf("Warning: reinit_cursor() got scale=0; using scale=1\n");
@@ -171,17 +187,18 @@ cursor_reinit(struct scran_output *st_output)
     );
     cursor->width_height_px = width_height_px;
 
+    // XXX(Hyprland #15870):
+    //   Don't use cursor viewport *destination* until fixed,
+    //   since it alters the required hotspot coordinates.
+    wl_surface_set_buffer_scale(cursor->wl_surface, scale);
     wp_viewport_set_source(
         cursor->viewport,
         wl_fixed_from_int(0),
         wl_fixed_from_int(0),
-        wl_fixed_from_int(width_height_px),
-        wl_fixed_from_int(width_height_px)
-    );
-    wp_viewport_set_destination(
-        cursor->viewport,
-        SCRAN_CURSOR_WIDTH_HEIGHT,
-        SCRAN_CURSOR_WIDTH_HEIGHT
+        // This is interpreted *after* set_buffer_scale, so until we switch back to
+        // wp_viewport_set_destination, we should just use the unscaled size.
+        wl_fixed_from_int(SCRAN_CURSOR_WIDTH_HEIGHT),
+        wl_fixed_from_int(SCRAN_CURSOR_WIDTH_HEIGHT)
     );
 
     // Scale events can arrive before shared memory allocation is complete.
@@ -189,6 +206,15 @@ cursor_reinit(struct scran_output *st_output)
         for (int i = 0; i < SCRAN_CURSOR_N_THEMES; ++i) {
             draw_cursor(&cursor->buffers[i], width_height_px, m_cursor_colors[i]);
         }
+        // XXX(Hyprland #15870): Damage everything, since we cleared everything.
+        wl_surface_damage_buffer(
+            cursor->wl_surface,
+            0,
+            0,
+            SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
+            SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX
+        );
+
         cursor_set_theme(st_output, cursor->theme);
     }
 

@@ -8,9 +8,9 @@ struct scran_output;
 
 
 #define SCRAN_CURSOR_WIDTH_HEIGHT 20
-
-// Leave room for scaling up to 4x without reallocating the shared memory buffers.
-#define SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX (SCRAN_CURSOR_WIDTH_HEIGHT * 4)
+// Leave some room for scaling up without needing to reallocate the shared memory buffers.
+#define SCRAN_CURSOR_MAX_SCALE 4
+#define SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX (SCRAN_CURSOR_WIDTH_HEIGHT * SCRAN_CURSOR_MAX_SCALE)
 
 enum scran_cursor_theme {
     SCRAN_CURSOR_THEME_DEFAULT = 0,
