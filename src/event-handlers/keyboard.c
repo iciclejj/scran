@@ -259,6 +259,7 @@ z_done:
             }
 
             if (!video_capture_started) {
+                video_button_got_jammed = true;
                 // TODO: Fire a notification instead?
                 eprintf("Failed to start video capture.\n");
             }
