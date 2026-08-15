@@ -85,7 +85,7 @@ set_selection_initialized(struct scran_output *st_output)
     if (g_state.options.capture_and_exit_after_selection_init) {
         DEBUG("STARTING AUTOMATIC IMAGE CAPTURE\n");
         image_capture_start(st_output, true);
-        g_state.exit_requested = true;
+        scran_request_exit();
     }
 }
 

@@ -217,7 +217,7 @@ z_done:
             video_capture_request_stop(st_output);
         } else {
             eprintf(" exiting.\n");
-            state->exit_requested = true;
+            scran_request_exit();
         }
         break;
     case XKB_KEY_Return:

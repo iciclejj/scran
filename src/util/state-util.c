@@ -2,7 +2,7 @@
 
 #include "state.h"
 #include "state-util.h"
-#include "selection.h"
+#include "capture.h"
 #include "ui.h"
 #include "cursor.h"
 #include "freezeframe.h"
@@ -12,6 +12,18 @@
 
 extern struct scran g_state;
 
+
+void
+scran_request_exit()
+{
+    g_state.exit_requested = true;
+
+    FOR_EACH_OUTPUT(i, st_output) {
+        if (st_output->capture.frame_ctx.capturing_video) {
+            video_capture_request_stop(st_output);
+        }
+    }
+}
 
 static inline int32_t
 downscale_cosmic_style(

@@ -718,8 +718,10 @@ image_capture_start(struct scran_output *st_output, bool exit_after_capture)
         atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
     }
 
-    // XXX TODO: Put this in a generic end_capture() function.
-    g_state.exit_requested |= exit_after_capture;
+    if (exit_after_capture) {
+        // XXX TODO: Put this in a generic end_capture() function.
+        scran_request_exit();
+    }
 
     return true;
 }
@@ -730,8 +732,10 @@ image_capture_start_fullscreen(struct scran_output *st_output, bool exit_after_c
 
     if (g_state.options.produce_slurp) {
         print_slurp_string_fullscreen(st_output);
-        // XXX TODO: Put this in a generic end_capture() function.
-        g_state.exit_requested |= exit_after_capture;
+        if (exit_after_capture) {
+            // XXX TODO: Put this in a generic end_capture() function.
+            scran_request_exit();
+        }
         return true;
     }
 
