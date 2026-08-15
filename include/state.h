@@ -184,6 +184,7 @@ struct scran_output_selectionSurface {
     bool awaiting_frame_callback;
     // Disables frame callbacks and hiding/unhiding.
     uint8_t disable_reason_mask;
+    uint8_t theme;
 };
 
 struct scran_output;
@@ -394,6 +395,8 @@ struct scran_output_capture {
     struct ext_image_capture_source_v1 *source;
 
     uint32_t shm_format;
+
+    uint8_t pre_capture_selection_theme;
     bool exit_after_capture;
 };
 

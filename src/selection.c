@@ -26,12 +26,12 @@ extern struct scran g_state;
 void
 set_selection_surface_theme(
     struct scran_output *st_output,
-    enum surface_theme action
+    enum surface_theme theme
 ) {
     struct BLRgba32 fill_style;
     static const enum BLFillRule fill_rule = BL_FILL_RULE_EVEN_ODD;
 
-    switch (action) {
+    switch (theme) {
     case SURFACE_THEME_PRE_SELECTION:
         // Alpha channel must be respected for invisibility.
         assert(SURFACE_SHM_FORMAT_BL == BL_FORMAT_PRGB32);
@@ -47,6 +47,7 @@ set_selection_surface_theme(
         fill_style = SCRAN_SELECTION_BORDER_COLOR_DEFAULT;
         break;
     }
+    st_output->selection_surface.theme = theme;
 
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
         struct scran_output_selectionSurface_buffer *st_buffer = &st_output->selection_surface.double_buffer[i];

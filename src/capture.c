@@ -453,6 +453,7 @@ video_capture_start(struct scran_output *st_output)
         scran_ui_textline_item_set_color(   ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE);
         scran_ui_textline_item_set_locked(  ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
     }
+    st_output->capture.pre_capture_selection_theme = st_output->selection_surface.theme;
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
     cursor_set_theme(st_output, SCRAN_CURSOR_THEME_VIDEO_CAPTURE);
     request_selection_surface_frame_callback(st_output);
@@ -608,8 +609,7 @@ video_capture_finish(struct scran_output *st_output)
         scran_ui_textline_item_set_locked(  ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
         scran_ui_statusline_set_timer(&st_output->selection_surface.ui_ctx.ui_statusline, 0);
     }
-    // XXX TODO: This needs to be updated now respect previous theme, now that we allow fullscreen capture
-    set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+    set_selection_surface_theme(st_output, st_output->capture.pre_capture_selection_theme);
     cursor_set_theme(st_output, SCRAN_CURSOR_THEME_DEFAULT);
     request_selection_surface_frame_callback(st_output);
 
