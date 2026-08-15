@@ -194,23 +194,13 @@ unhide_selection_surface(struct scran_output *st_output) {
         selection_buffer->scran_wl_buffer.wl_buffer,
         0, 0
     );
+    update_selection_surface_viewport(st_output);
     selection_buffer->busy = true;
     wl_surface_damage_buffer(
         selection_surface->surface.wl_surface,
         0, 0,
         selection_surface->surface.width_px_buffer,
         selection_surface->surface.height_px_buffer
-    );
-    // Make sure the viewport is set appropriately. The (re-)freezeframe
-    // pipeline sets it to 1x1 for the transparent buffer.
-    //   TODO: Revisit the postmem init functions now and maybe call
-    //   update_surface_scale_bufsize_viewport() here instead.
-    wp_viewport_set_source(
-        selection_surface->surface.viewport,
-        wl_fixed_from_int(0),
-        wl_fixed_from_int(0),
-        wl_fixed_from_int(selection_surface->surface.width_px_buffer),
-        wl_fixed_from_int(selection_surface->surface.height_px_buffer)
     );
     set_force_redraw_selection_surface_buffers(st_output);
     // XXX: This commit is currently redundant in practice, but keeping it here
@@ -221,6 +211,11 @@ unhide_selection_surface(struct scran_output *st_output) {
     // responsibility out of any freezeframe.c function entirely, and have the
     // caller ensure pre/post-recapture state like this manually.
     wl_surface_commit(selection_surface->surface.wl_surface);
+
+    // Scale-triggered callback requests are suppressed while hidden. Ensure
+    // the forced redraw above is eventually presented after unhiding.
+    // TODO: Make this not double-commit with the above commit.
+    request_selection_surface_frame_callback(st_output);
 }
 
 void

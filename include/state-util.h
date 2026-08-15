@@ -18,6 +18,7 @@ extern struct scran g_state;
 
 
 void update_surface_scale_bufsize_viewport(struct scran_output *st_output);
+void update_selection_surface_viewport(struct scran_output *st_output);
 double get_surface_scale_factor_normalized(struct scran_output_surface *st_surface);
 void do_scale_updates(struct scran_output *st_output);
 

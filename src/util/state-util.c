@@ -116,6 +116,45 @@ update_surface_scale_and_size(
     st_surface->height_px_buffer = round(scale_factor * st_surface->height_logical);
 }
 
+void
+update_selection_surface_viewport(
+    struct scran_output *st_output
+) {
+    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+    struct scran_output_surface          *st_surface         = &selection_surface->surface;
+
+    // A disabled selection surface may have the 1x1 transparent buffer
+    // attached. Don't call this function in that case.
+    assert(!selection_surface->disable_reason_mask);
+
+    if (!(st_surface->viewport
+          && st_surface->width_px_buffer && st_surface->height_px_buffer
+          && st_surface->width_logical   && st_surface->height_logical)
+    ) {
+        return;
+    }
+
+    DEBUG("    Updating selection-surface viewport...\n");
+    DEBUG("      src_width: %d, src_height: %d,  dst_width: %d, dst_height: %d\n",
+          st_surface->width_px_buffer, st_surface->height_px_buffer,
+          st_surface->width_logical, st_surface->height_logical
+    );
+
+    wp_viewport_set_source(
+        st_surface->viewport,
+        wl_fixed_from_int(0),
+        wl_fixed_from_int(0),
+        wl_fixed_from_int(st_surface->width_px_buffer),
+        wl_fixed_from_int(st_surface->height_px_buffer)
+    );
+
+    wp_viewport_set_destination(
+        st_surface->viewport,
+        st_surface->width_logical,
+        st_surface->height_logical
+    );
+}
+
 // NOTE: This does not necessarily force-redraw the buffer, since buffer
 // handling, beyond getting/calculating recommended size, is not part of
 // scran_output_surface.
@@ -129,39 +168,11 @@ update_surface_scale_bufsize_viewport(
     DEBUG("    Updating scale and size...\n");
     update_surface_scale_and_size(st_surface);
 
-    // TODO: Maybe move this responsibility into output::scale etc, so we're
-    // not forced to do this check every time we update
-    if (st_surface->viewport == NULL) {
-        return;
+    if (!st_output->selection_surface.disable_reason_mask) {
+        update_selection_surface_viewport(st_output);
+    } else {
+        DEBUG("    Selection surface disabled; deferring viewport update.\n");
     }
-    if (!(st_surface->width_px_buffer && st_surface->height_px_buffer)) {
-        return;
-    }
-    if (!(st_surface->width_logical && st_surface->height_logical)) {
-        return;
-    }
-
-    DEBUG("    Updating viewport...\n");
-    DEBUG("      src_width: %d, src_height: %d,  dst_width: %d, dst_height: %d\n",
-          st_surface->width_px_buffer, st_surface->height_px_buffer,
-          st_surface->width_logical, st_surface->height_logical
-    );
-
-    if (st_surface->width_px_buffer && st_surface->height_px_buffer) {
-        wp_viewport_set_source(
-            st_surface->viewport,
-            wl_fixed_from_int(0),
-            wl_fixed_from_int(0),
-            wl_fixed_from_int(st_surface->width_px_buffer),
-            wl_fixed_from_int(st_surface->height_px_buffer)
-        );
-    }
-
-    wp_viewport_set_destination(
-        st_surface->viewport,
-        st_surface->width_logical,
-        st_surface->height_logical
-    );
 
     if (g_state.options.freezeframe) {
         freezeframe_surface_update_scale_size_viewport(st_output);
