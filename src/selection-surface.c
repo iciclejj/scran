@@ -141,9 +141,9 @@ draw_and_damage_ui_textline(
     struct scran_ui_textline_surface_state *state_prev,
     struct scran_ui_textline_surface_state *state_prev_any_buffer,
     struct scran_ui_textline_surface_state *state_new,
-    bool force_redraw
+    bool textline_changed
 ) {
-    if ( !(force_redraw || textline_surface_state_changed(state_prev, state_new))) {
+    if ( !(textline_changed || st_buffer->force_redraw || textline_surface_state_changed(state_prev, state_new))) {
         return;
     }
 
@@ -266,14 +266,15 @@ draw_and_damage_ui(
     struct scran_output_selectionContext *selection_ctx,
     BLBoxI capture_area_border_outline
 ) {
-    struct scran_ui_context  *ui_ctx = &selection_surface->ui_ctx;
+    struct scran_ui_context *ui_ctx = &selection_surface->ui_ctx;
 
-    const uint32_t redrawn_textline_mask          = scran_ui_redraw_elements(ui_ctx);
-    const bool     force_redraw_greeting          = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_GREETING);
-    const bool     force_redraw_keymap            = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_KEYMAP);
-    const bool     force_redraw_statusline        = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE);
-    const int      item_spacing_px                = get_item_spacing_px(ui_ctx);
-
+    {
+        uint8_t mask = scran_ui_redraw_elements(ui_ctx);
+        for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
+            selection_surface->double_buffer[i].redrawn_textline_mask |= mask;
+        }
+    }
+    const int item_spacing_px = get_item_spacing_px(ui_ctx);
 
     // Draw below-selection keymap
     {
@@ -294,8 +295,9 @@ draw_and_damage_ui(
             &st_buffer->ui_keymap_state_currently_drawn,
             &selection_surface->ui_keymap_state_last_drawn,
             &state_new_keymap,
-            force_redraw_keymap
+            st_buffer->redrawn_textline_mask & SCRAN_UI_REDREW_KEYMAP
         );
+        st_buffer->redrawn_textline_mask &= ~SCRAN_UI_REDREW_KEYMAP;
     }
 
 
@@ -320,8 +322,9 @@ draw_and_damage_ui(
             &st_buffer->ui_statusline_state_currently_drawn,
             &selection_surface->ui_statusline_state_last_drawn,
             &state_new_statusline,
-            force_redraw_statusline
+            st_buffer->redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE
         );
+        st_buffer->redrawn_textline_mask &= ~SCRAN_UI_REDREW_STATUSLINE;
     }
 
 
@@ -348,8 +351,9 @@ draw_and_damage_ui(
             &st_buffer->ui_greeting_state_currently_drawn,
             &selection_surface->ui_greeting_state_last_drawn,
             &state_new_greeting,
-            force_redraw_greeting
+            st_buffer->redrawn_textline_mask & SCRAN_UI_REDREW_GREETING
         );
+        st_buffer->redrawn_textline_mask &= ~SCRAN_UI_REDREW_GREETING;
     }
 }
 

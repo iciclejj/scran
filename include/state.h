@@ -158,6 +158,7 @@ struct scran_output_selectionSurface_buffer {
 
     bool busy;
     bool force_redraw;
+    uint8_t redrawn_textline_mask;
 };
 
 enum scran_selection_surface_disable_reason {

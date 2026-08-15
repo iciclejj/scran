@@ -159,7 +159,7 @@ enum scran_ui_redrawn_textline_mask {
     SCRAN_UI_REDREW_STATUSLINE        = 1U << 2,
 };
 // Returns scran_ui_redrawn_textline_mask-valued mask
-uint32_t scran_ui_redraw_elements(struct scran_ui_context *ui_ctx);
+uint8_t scran_ui_redraw_elements(struct scran_ui_context *ui_ctx);
 
 
 static inline uint32_t
