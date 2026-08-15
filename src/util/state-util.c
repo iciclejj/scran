@@ -19,7 +19,15 @@ scran_request_exit()
     g_state.exit_requested = true;
 
     FOR_EACH_OUTPUT(i, st_output) {
-        if (st_output->capture.frame_ctx.capturing_video) {
+        struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+
+        if (frame_ctx->fullscreen_video_pending) {
+            frame_ctx->fullscreen_video_pending = false;
+            frame_ctx->fullscreen_video_pending_audio_disabled = false;
+            end_fullscreen_capture(st_output);
+        }
+
+        if (frame_ctx->capturing_video) {
             video_capture_request_stop(st_output);
         }
     }

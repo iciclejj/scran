@@ -526,7 +526,18 @@ end_fullscreen_capture(
 bool
 video_capture_start_fullscreen(struct scran_output *st_output)
 {
-    return start_fullscreen_capture(st_output, &presentation_feedback_listener__selection_transparent_for_fullscreen_video_capture);
+    if (!start_fullscreen_capture(
+            st_output,
+            &presentation_feedback_listener__selection_transparent_for_fullscreen_video_capture)
+    ) {
+        return false;
+    }
+
+    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+    frame_ctx->fullscreen_video_pending = true;
+    frame_ctx->fullscreen_video_pending_audio_disabled = frame_ctx->audio_disable_modifier_active;
+
+    return true;
 }
 
 void

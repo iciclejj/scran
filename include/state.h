@@ -389,6 +389,8 @@ struct capture_frame_context {
     bool audio_active;
     bool audio_disable_modifier_active;
     bool fullscreen_capture;
+    bool fullscreen_video_pending;
+    bool fullscreen_video_pending_audio_disabled;
 };
 
 struct scran_output_capture {

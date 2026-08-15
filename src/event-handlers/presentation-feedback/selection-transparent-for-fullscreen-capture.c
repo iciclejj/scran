@@ -12,9 +12,18 @@ static void handle_presentation_feedback_sync_output__selection_transparent_for_
 static inline void
 start_video_capture_or_unwind_fullscreen(struct scran_output *st_output)
 {
-    if (g_state.exit_requested
-        || !video_capture_start(st_output)
-    ) {
+    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+
+    // Escape may have already cancelled and unwound this pending start.
+    if (!frame_ctx->fullscreen_video_pending) {
+        return;
+    }
+
+    frame_ctx->audio_disable_modifier_active = frame_ctx->fullscreen_video_pending_audio_disabled;
+    frame_ctx->fullscreen_video_pending_audio_disabled = false;
+    frame_ctx->fullscreen_video_pending = false;
+
+    if (g_state.exit_requested || !video_capture_start(st_output)) {
         end_fullscreen_capture(st_output);
     }
 }
