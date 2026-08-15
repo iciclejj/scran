@@ -532,9 +532,11 @@ video_capture_start_fullscreen(struct scran_output *st_output)
 void
 video_capture_request_stop(struct scran_output *st_output)
 {
-    ext_image_copy_capture_frame_v1_destroy(st_output->capture.frame_ctx.frame);
+    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
 
-    st_output->capture.frame_ctx.video_end_requested = true;
+    ext_image_copy_capture_frame_v1_destroy(frame_ctx->frame);
+
+    frame_ctx->video_end_requested = true;
 
     // Ensure one last frame is triggered as soon as possible, even if
     // no damage has been reported by the compositor. This ensures
@@ -542,21 +544,21 @@ video_capture_request_stop(struct scran_output *st_output)
     // timestamp. This also lets the frame listener finalize the
     // recording and clean up as soon as possible.
 
-    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture.frame_ctx);
+    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(frame_ctx);
     // XXX: This damage request is probably normally redundant with
     // capture_force_next_frame(), but should stay regardless, in case the
     // initial frame was interrupted before it came back (i.e. making it a
     // 1-frame video, once this frame is processed), since the first frame
     // in a session should always have full damage. .
     video_capture_damage_buffer(
-        &st_output->capture.frame_ctx,
+        frame_ctx,
         frame,
         0, 0,
-        st_output->capture.frame_ctx.source_width_px,
-        st_output->capture.frame_ctx.source_height_px
+        frame_ctx->source_width_px,
+        frame_ctx->source_height_px
     );
     ext_image_copy_capture_frame_v1_capture(frame);
-    st_output->capture.frame_ctx.frame = frame;
+    frame_ctx->frame = frame;
 
     capture_force_next_frame(st_output);
 }
