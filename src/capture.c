@@ -133,21 +133,10 @@ video_capture_drain_encoder(
     }
 }
 
-// `selection_box` has `scran_output_selectionContext.box` coordinate space!
+// `selection_ctx_box_px` has `scran_output_selectionContext.box_px` coordinate space!
 void
-capture_update_area_with_selection(
-    struct scran_output *st_output,
-    BLBoxI selection_box
-) {
-    st_output->capture.frame_ctx.capture_area_px = blboxi_get_reverse_transform(
-        selection_box,
-        st_output->mode.width_px,
-        st_output->mode.height_px,
-        st_output->transform
-    );
-
-    assert(st_output->capture.frame_ctx.capture_area_px.x1 <= st_output->mode.width_px);
-    assert(st_output->capture.frame_ctx.capture_area_px.y1 <= st_output->mode.height_px);
+capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px) {
+    st_output->capture.frame_ctx.selection_ctx_box_px = selection_ctx_box_px;
 }
 
 struct ext_image_copy_capture_frame_v1 *
@@ -250,18 +239,16 @@ init_ffmpeg(struct scran_output *st_output)
     struct capture_frame_context *frame_ctx  = &st_output->capture.frame_ctx;
     struct ffmpeg_context        *ffmpeg_ctx = &st_output->capture.frame_ctx.ffmpeg_ctx;
 
-    // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be
-    // divisible by 2. TODO: Also update selection area visuals to this width.
-    const int width_px_captured = blboxi_width_abs_unsafe(frame_ctx->capture_area_px) & ~0b1;
-    const int height_px_captured = blboxi_height_abs_unsafe(frame_ctx->capture_area_px) & ~0b1;
     // TODO: Is output::mode framerate_mhz same as the capture framerate?
     const AVRational av_framerate_captured = { st_output->mode.refresh_rate_mHz, MILLIHZ_PER_HZ };
     // INFO: Using 1/NSEC_PER_SEC due to (wayland's) frame::presentation_time()
     // giving time with nanosecond precision.
     const AVRational av_time_base_captured = { 1, NSEC_PER_SEC };
 
-    const int width_px_to_encode = get_transformed_width(width_px_captured, height_px_captured, st_output->transform);
-    const int height_px_to_encode = get_transformed_height(width_px_captured, height_px_captured, st_output->transform);
+    // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be
+    // divisible by 2. TODO: Also update selection area visuals to this width.
+    const int width_px_to_encode  = blboxi_width_abs_unsafe(frame_ctx->selection_ctx_box_px) & ~0b1;
+    const int height_px_to_encode = blboxi_height_abs_unsafe(frame_ctx->selection_ctx_box_px) & ~0b1;
     // NOTE: Some pixel formats (and some file formats), e.g. YUV420P, require
     //       even-numbered (or some other multiplier) height and/or width.
     const enum AVPixelFormat av_pixel_format_to_encode = AV_PIX_FMT_YUV420P;
@@ -464,7 +451,13 @@ video_capture_start(struct scran_output *st_output)
     // frame::ready, similar to the wl_surface callback event loop
     struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture.frame_ctx);
     // Ensure the first frame is fully rendered
-    video_capture_damage_buffer(&st_output->capture.frame_ctx, frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px);
+    video_capture_damage_buffer(
+        &st_output->capture.frame_ctx,
+        frame,
+        0, 0,
+        st_output->capture.frame_ctx.source_width_px,
+        st_output->capture.frame_ctx.source_height_px
+    );
     ext_image_copy_capture_frame_v1_capture(frame);
     st_output->capture.frame_ctx.frame = frame;
 
@@ -502,7 +495,7 @@ start_fullscreen_capture(
     assert(selection_is_none(&st_output->selection_ctx));
     BLBoxI fullscreen_selection = get_fullscreen_selection_box(st_output);
     st_output->selection_ctx.box_px = fullscreen_selection;
-    capture_update_area_with_selection(st_output, fullscreen_selection);
+    capture_update_selection(st_output, fullscreen_selection);
 
     return true;
 }
@@ -514,10 +507,10 @@ end_fullscreen_capture(
     unset_selection_freeze_size(st_output);
 
     // If !=SELECTION_NONE becomes possible in the future, then just do
-    // update_capture_area_with_selection() when !=SELECTION_NONE.
+    // capture_update_selection() when !=SELECTION_NONE.
     assert(selection_is_none(&st_output->selection_ctx));
     st_output->selection_ctx.box_px = get_selection_surface_pre_selection_box(st_output);
-    st_output->capture.frame_ctx.capture_area_px = (BLBoxI){0};
+    st_output->capture.frame_ctx.selection_ctx_box_px = (BLBoxI){0};
 
     st_output->capture.frame_ctx.fullscreen_capture = false;
 
@@ -555,7 +548,13 @@ video_capture_request_stop(struct scran_output *st_output)
     // initial frame was interrupted before it came back (i.e. making it a
     // 1-frame video, once this frame is processed), since the first frame
     // in a session should always have full damage. .
-    video_capture_damage_buffer(&st_output->capture.frame_ctx, frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px);
+    video_capture_damage_buffer(
+        &st_output->capture.frame_ctx,
+        frame,
+        0, 0,
+        st_output->capture.frame_ctx.source_width_px,
+        st_output->capture.frame_ctx.source_height_px
+    );
     ext_image_copy_capture_frame_v1_capture(frame);
     st_output->capture.frame_ctx.frame = frame;
 
@@ -628,13 +627,15 @@ image_capture_request_frame(
     struct scran_output *st_output,
     struct ext_image_copy_capture_frame_v1_listener *listener,
     struct ext_image_copy_capture_session_v1 *session,
-    struct wl_buffer *buffer
+    struct wl_buffer *buffer,
+    int32_t buffer_width_px,
+    int32_t buffer_height_px
 ) {
     struct ext_image_copy_capture_frame_v1 *frame =
         ext_image_copy_capture_session_v1_create_frame(session);
 
     ext_image_copy_capture_frame_v1_attach_buffer(frame, buffer);
-    ext_image_copy_capture_frame_v1_damage_buffer(frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px);
+    ext_image_copy_capture_frame_v1_damage_buffer(frame, 0, 0, buffer_width_px, buffer_height_px);
     ext_image_copy_capture_frame_v1_add_listener(frame, listener, st_output);
     ext_image_copy_capture_frame_v1_capture(frame);
 
@@ -710,7 +711,9 @@ image_capture_start(struct scran_output *st_output, bool exit_after_capture)
             st_output,
             &image_copy_capture_frame_listener__image_capture,
             frame_ctx->wl_capture_session,
-            frame_ctx->scran_wl_buffer.wl_buffer
+            frame_ctx->scran_wl_buffer.wl_buffer,
+            frame_ctx->source_width_px,
+            frame_ctx->source_height_px
         );
         atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
     }

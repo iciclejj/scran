@@ -32,7 +32,9 @@ freezeframe_capture_start_assume_callback_set(struct scran_output *st_output)
         st_output,
         &image_copy_capture_frame_listener__freezeframe,
         st_output->freezeframe.wl_capture_session,
-        st_output->freezeframe.capture_buffer.scran_wl_buffer.wl_buffer
+        st_output->freezeframe.capture_buffer.scran_wl_buffer.wl_buffer,
+        st_output->freezeframe.source_width_px,
+        st_output->freezeframe.source_height_px
     );
 }
 

@@ -200,6 +200,9 @@ struct scran_output_freezeframe {
     struct scran_output_subsurface subsurface;
 
     struct ext_image_copy_capture_session_v1 *wl_capture_session;
+    int32_t source_width_px;
+    int32_t source_height_px;
+    enum wl_output_transform source_transform;
     enum wl_shm_format shm_format;
 
     bool unhide_after_capture;
@@ -362,9 +365,9 @@ struct capture_frame_context {
     int64_t presentation_time_nsec_start;
     int64_t presentation_time_nsec; // NOTE: _start is PRE-SUBTRACTED.
 
-    //  NOTE: Capture area should be set synchronously with the drawn overlay's
-    //        area (or be set based on the same real-time values). Otherwise,
-    //        its graphics can spill into the capture frame.
+    //  NOTE: selection_ctx_box_px should be updated synchronously with the
+    //        drawn overlay's area (or be set based on the same real-time
+    //        values). Otherwise, its graphics can spill into the capture frame.
     //        F.ex., the mouse can have moved in-between overlay's frame draw
     //        and capture's frame "draw".
     //        NOTE also that the most-recently drawn by us frame is *not*
@@ -372,14 +375,12 @@ struct capture_frame_context {
     //        like Sway, this does result in proper sync, but some other
     //        compositors, like COSMIC, are not neatly ordered like this
     //        internally (at time of writing).
-    struct BLBoxI capture_area_px; // NOTE: Transform should be reversed.
+    struct BLBoxI selection_ctx_box_px;
     // Contains *at least* the union of frame::damage-reported damage
-    struct BLBoxI damage_area_px;
-    // TODO: Get this through output.mode if we both end up pointing to it here,
-    //       AND it is still asserted to be equal to session::buffer_size's
-    //       width arg.
+    struct BLBoxI capture_buffer_damage_area_px;
     int32_t source_width_px;
     int32_t source_height_px;
+    enum wl_output_transform source_transform;
     uint8_t pixel_stride;
 
     bool capturing_video;

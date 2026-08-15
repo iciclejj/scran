@@ -424,13 +424,18 @@ init_meminit(
             // XXX: We use a separate capture buffer and surface buffer due to
             // wl_surface::set_buffer_transform not working as expected in
             // Hyprland (#14441).
-            scran_arena_add_block(
-                shm_arena,
-                capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.capture_buffer.scran_wl_buffer.data
+            const size_t freezeframe_buf_size = get_framebuffer_size(
+                st_output->freezeframe.source_width_px,
+                st_output->freezeframe.source_height_px,
+                SURFACE_PIXEL_STRIDE
             );
             scran_arena_add_block(
                 shm_arena,
-                capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.scran_wl_buffer.data
+                freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.capture_buffer.scran_wl_buffer.data
+            );
+            scran_arena_add_block(
+                shm_arena,
+                freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.scran_wl_buffer.data
             );
         }
 
@@ -534,9 +539,9 @@ init_meminit(
                 shm_arena,
                 global_pool_wl,
                 &capture_buffer->scran_wl_buffer,
-                st_output->mode.width_px,
-                st_output->mode.height_px,
-                get_capture_stride(st_output),
+                freezeframe->source_width_px,
+                freezeframe->source_height_px,
+                freezeframe->source_width_px * SURFACE_PIXEL_STRIDE,
                 freezeframe->shm_format,
                 &freezeframe_buffer_listener,
                 capture_buffer
@@ -561,8 +566,8 @@ init_meminit(
             shm_arena,
             global_pool_wl,
             &capture->frame_ctx.scran_wl_buffer,
-            st_output->mode.width_px,
-            st_output->mode.height_px,
+            capture->frame_ctx.source_width_px,
+            capture->frame_ctx.source_height_px,
             get_capture_stride(st_output),
             capture->shm_format,
             &capture_buffer_listener,

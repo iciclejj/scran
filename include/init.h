@@ -67,14 +67,14 @@ get_surface_buf_size_padded(struct scran_output_surface *st_surface) {
 
 static inline size_t
 get_capture_buf_size(struct scran_output *st_output) {
-    int32_t width_px = st_output->mode.width_px;
-    int32_t height_px = st_output->mode.height_px;
-    return get_framebuffer_size(width_px, height_px, st_output->capture.frame_ctx.pixel_stride);
+    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+    return get_framebuffer_size(frame_ctx->source_width_px, frame_ctx->source_height_px, frame_ctx->pixel_stride);
 }
 
 static inline size_t
 get_capture_stride(struct scran_output *st_output) {
-    return st_output->capture.frame_ctx.pixel_stride * st_output->mode.width_px;
+    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+    return frame_ctx->pixel_stride * frame_ctx->source_width_px;
 }
 
 

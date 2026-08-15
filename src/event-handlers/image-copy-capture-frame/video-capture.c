@@ -33,10 +33,7 @@ handle_image_copy_capture_frame_transform__video_capture(
     uint32_t transform
 ) {
     struct capture_frame_context *frame_ctx = data;
-    (void)frame_ctx;
-
-    // TODO: What is this transform representing?
-    //           It is separate from output::geometry's transform.
+    frame_ctx->source_transform = transform;
 }
 
 
@@ -90,18 +87,19 @@ end_capture(
 static inline bool
 do_handle_frame(
     struct capture_frame_context *frame_ctx,
-    struct scran_output *st_output
+    struct scran_output *st_output,
+    BLBoxI capture_buffer_area_px
 ) {
     struct ffmpeg_context        *ffmpeg_ctx = &frame_ctx->ffmpeg_ctx;
 
     // Crop and convert
     {
 
-        uint8_t *const area_start_addr = capture_get_area_start_address(frame_ctx);
+        uint8_t *const area_start_addr = capture_get_area_start_address(frame_ctx, capture_buffer_area_px);
         // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be divisible by 2.
         // XXX TODO: Collect this bit zeroing logic somehow? (Duplicated in init_ffmpeg.)
-        const int area_w_px = blboxi_width_abs_unsafe( frame_ctx->capture_area_px) & ~0b1;
-        const int area_h_px = blboxi_height_abs_unsafe(frame_ctx->capture_area_px) & ~0b1;
+        const int area_w_px = blboxi_width_abs_unsafe(capture_buffer_area_px) & ~0b1;
+        const int area_h_px = blboxi_height_abs_unsafe(capture_buffer_area_px) & ~0b1;
         const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
 
         uint32_t  rgba32_shuffle = wl_shm_format_to_scranrot_yuv_rgba32_shuffle(st_output->capture.shm_format);
@@ -113,10 +111,13 @@ do_handle_frame(
 
         // XXX: Scranrot does not support flipped transforms yet, so we just
         // record it flipped for now, rather than blocking capture entirely.
-        enum wl_output_transform transform = wl_output_transform_without_flip(st_output->transform);
+        enum wl_output_transform transform = wl_output_transform_without_flip(frame_ctx->source_transform);
 
         AVFrame *frame = ffmpeg_ctx->av_frame_to_encode;
         void *const frame_buffer = frame_ctx->img_data_2;
+
+        assert(frame->width == get_transformed_width(area_w_px, area_h_px, transform));
+        assert(frame->height == get_transformed_height(area_w_px, area_h_px, transform));
 
         if (!scranrot_transform_framebuffer_to_yuv420(
                 area_start_addr, area_w_px, area_h_px, source_row_bytes,
@@ -179,14 +180,15 @@ handle_image_copy_capture_frame_ready__video_capture(
     // XXX TODO: Just pass st_output to this handler.
     struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
     struct scran_output         *const st_output  = wl_container_of(st_capture, st_output, capture);
+    const BLBoxI capture_buffer_area_px = capture_get_selection_as_capture_buffer_area_px(frame_ctx);
 
-    if (blboxi_intersects(frame_ctx->capture_area_px, frame_ctx->damage_area_px) ) {
-        if (!do_handle_frame(frame_ctx, st_output)) {
+    if (blboxi_intersects(capture_buffer_area_px, frame_ctx->capture_buffer_damage_area_px) ) {
+        if (!do_handle_frame(frame_ctx, st_output, capture_buffer_area_px)) {
             frame_ctx->video_end_requested = true;
         }
     }
 
-    frame_ctx->damage_area_px = (BLBoxI){0};
+    frame_ctx->capture_buffer_damage_area_px = (BLBoxI){0};
 
     // NOTE: We do this check *after* writing the incoming frame. This ensures
     // that the video will not be cut short at the end if we're only capturing
@@ -232,4 +234,3 @@ struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listene
     .ready = handle_image_copy_capture_frame_ready__video_capture,
     .failed = handle_image_copy_capture_frame_failed__video_capture,
 };
-
