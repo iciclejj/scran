@@ -534,9 +534,12 @@ video_capture_request_stop(struct scran_output *st_output)
 {
     struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
 
-    ext_image_copy_capture_frame_v1_destroy(frame_ctx->frame);
-
+    if (frame_ctx->video_end_requested) {
+        return;
+    }
     frame_ctx->video_end_requested = true;
+
+    ext_image_copy_capture_frame_v1_destroy(frame_ctx->frame);
 
     // Ensure one last frame is triggered as soon as possible, even if
     // no damage has been reported by the compositor. This ensures
