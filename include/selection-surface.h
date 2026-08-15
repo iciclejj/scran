@@ -30,15 +30,15 @@ set_force_redraw_selection_surface_buffers(
 
 static inline BLBoxI
 get_selection_surface_pre_selection_box(struct scran_output *st_output) {
-    float font_height = ceil(st_output->selection_surface.ui_ctx.font_height);
-    assert(font_height);
+    int font_height_px = scran_ui_font_height_px(&st_output->selection_surface.ui_ctx);
+    assert(font_height_px);
 
     // Show all of the UI in the top left corner, including splash/greeting line
     return (BLBoxI){
         .x0 = 0,
-        .y0 = 2 * font_height,
+        .y0 = 2 * font_height_px,
         .x1 = 0,
-        .y1 = 2 * font_height,
+        .y1 = 2 * font_height_px,
     };
 }
 

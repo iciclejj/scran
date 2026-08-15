@@ -212,7 +212,7 @@ draw_and_damage_ui_textline(
         struct scran_ui_textline_item *item = &textline.items[i];
 
         const int width_px  = item->width_px;
-        const int height_px = round(ui_ctx->font_height);
+        const int height_px = scran_ui_font_height_px(ui_ctx);
 
         if (width_px != 0) {
             // Allocated BLImage dimensions may be larger than its current contents.
@@ -308,7 +308,7 @@ draw_and_damage_ui(
         struct scran_ui_textline_surface_state state_new_statusline = {
             .origin = {
                 .x = capture_area_border_outline.x1 - statusline_total_width_px,
-                .y = capture_area_border_outline.y0 - round(ui_ctx->font_height),
+                .y = capture_area_border_outline.y0 - scran_ui_font_height_px(ui_ctx),
             },
             .total_width_px = statusline_total_width_px,
         };
@@ -335,7 +335,7 @@ draw_and_damage_ui(
         struct scran_ui_textline_surface_state state_new_greeting = {
             .origin = {
                 .x = capture_area_border_outline.x0,
-                .y = capture_area_border_outline.y0 - 2*round(ui_ctx->font_height),
+                .y = capture_area_border_outline.y0 - 2 * scran_ui_font_height_px(ui_ctx),
             },
             .total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting), item_spacing_px),
         };

@@ -193,7 +193,7 @@ blit_atlas_glyph(
             .x = atlas_glyph_i * advance_px,
             .y = 0,
             .w = advance_px,
-            .h = round(ui_ctx->font_height), // XXX TODO: More robust way of getting full height here?
+            .h = scran_ui_font_height_px(ui_ctx),
         }
     );
 };
@@ -566,7 +566,7 @@ reinit_scran_ui(
     // - Allocate a buffer that fits the largest possible string for all text images
     // - Pre-calculate the pixel-widths of each text
     {
-        int height_px_max = ceil(font_height);
+        int height_px_max = scran_ui_font_height_px(ui_ctx);
         int width_px_max  = 0;
 
         // Some of this could be done at compile-time, but would require some ugly macros...

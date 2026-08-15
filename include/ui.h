@@ -162,6 +162,11 @@ enum scran_ui_redrawn_textline_mask {
 uint8_t scran_ui_redraw_elements(struct scran_ui_context *ui_ctx);
 
 
+static inline int
+scran_ui_font_height_px(struct scran_ui_context *ui_ctx) {
+    return ceil(ui_ctx->font_height);
+}
+
 static inline uint32_t
 scran_ui_textline_all_items_mask(
     struct scran_ui_textline_view textline
