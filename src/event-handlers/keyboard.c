@@ -190,8 +190,6 @@ handle_keyboard_key(
 
         // XXX TODO: Make this a bit cleaner responsibility-wise.
         //             See also refactor-TODO in unhide_selection_surface().
-        //           Also, maybe make this the only (default) way to toggle freezeframe,
-        //           and don't let refocus automatically re-freeze?
         if (pretend_all_hidden) {
             FOR_EACH_OUTPUT(i, st_output) {
                 freezeframe_capture_refresh(st_output, start_grabbing_focus_for_output);

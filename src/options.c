@@ -435,7 +435,7 @@ static const char help_string[] =
     "         that is waiting for scran to fully exit.\n"
     "         NOTE: This also disables notification interaction\n"
     "  -z   freeze the display at startup\n"
-    "         Typing 'z' or grabbing/releasing focus toggles hide/refresh.\n"
+    "         Typing 'z' toggles and refreshes the freezeframe.\n"
     "  -s   slurp: send selection as geometry string to standard output\n"
     "         Replaces/disables image capture.\n"
     "         Format: '<x>,<y> <width>x<height>'\n"

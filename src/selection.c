@@ -267,11 +267,6 @@ start_grabbing_focus()
     DEBUG("Grabbing focus\n");
 
     FOR_EACH_OUTPUT(i, st_output) {
-        if (g_state.options.freezeframe) {
-            freezeframe_capture_refresh(st_output, start_grabbing_focus_for_output);
-            continue;
-        }
-
         start_grabbing_focus_for_output(st_output);
     }
 }
