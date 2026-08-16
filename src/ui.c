@@ -621,8 +621,7 @@ static const struct default_textline_values m_statusline_defaults[] = {
 static const struct default_textline_values m_keymap_defaults[] = {
     [SCRAN_UI_KEYMAP_ITEM_I_IMAGE]                  = { SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
     [SCRAN_UI_KEYMAP_ITEM_I_VIDEO]                  = { SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
-    // Freezeframe init code enables this.
-    [SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME]            = { SCRAN_UI_TEXT_EMPTY,                           SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME]            = { SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON,      SCRAN_UI_COLOR_DEFAULT },
     [SCRAN_UI_KEYMAP_ITEM_I_FOCUS]                  = { SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
 };
 static const struct default_textline_values m_atlas_digits_defaults[] = {

@@ -118,10 +118,8 @@ init_premem()
             return false;
         }
 
-        if (g_state.options.freezeframe) {
-            if (!init_premem__freezeframe(st_output)) {
-                return false;
-            }
+        if (!init_premem__freezeframe(st_output)) {
+            return false;
         }
 
         st_output->xdg_output = zxdg_output_manager_v1_get_xdg_output(
@@ -246,9 +244,7 @@ init_premem__destroy()
     registry_listener__destroy(&g_state);
 
     FOR_EACH_OUTPUT(i, st_output) {
-        if (g_state.options.freezeframe) {
-            init_premem__freezeframe__destroy(st_output);
-        }
+        init_premem__freezeframe__destroy(st_output);
         init_premem__cursor__destroy(st_output);
         init_premem__selection__destroy(st_output);
         init_premem__capture__destroy(st_output);
@@ -413,32 +409,28 @@ init_meminit(
             );
         }
 
-        const size_t capture_buf_size = get_capture_buf_size(st_output);
-
-        if (g_state.options.freezeframe) {
-            if (st_output->freezeframe.shm_format == SCRAN_SHM_FORMAT_UNSET) {
-                DEBUG("Failed to select shm_format for freezeframe capture buffer.\n");
-                return false;
-            }
-
-            // XXX: We use a separate capture buffer and surface buffer due to
-            // wl_surface::set_buffer_transform not working as expected in
-            // Hyprland (#14441).
-            const size_t freezeframe_buf_size = get_framebuffer_size(
-                st_output->freezeframe.source_width_px,
-                st_output->freezeframe.source_height_px,
-                SURFACE_PIXEL_STRIDE
-            );
-            scran_arena_add_block(
-                shm_arena,
-                freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.capture_buffer.scran_wl_buffer.data
-            );
-            scran_arena_add_block(
-                shm_arena,
-                freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.scran_wl_buffer.data
-            );
+        if (st_output->freezeframe.shm_format == SCRAN_SHM_FORMAT_UNSET) {
+            DEBUG("Failed to select shm_format for freezeframe capture buffer.\n");
+            return false;
         }
+        // XXX: We use a separate capture buffer and surface buffer due to
+        // wl_surface::set_buffer_transform not working as expected in
+        // Hyprland (#14441).
+        const size_t freezeframe_buf_size = get_framebuffer_size(
+            st_output->freezeframe.source_width_px,
+            st_output->freezeframe.source_height_px,
+            SURFACE_PIXEL_STRIDE
+        );
+        scran_arena_add_block(
+            shm_arena,
+            freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.capture_buffer.scran_wl_buffer.data
+        );
+        scran_arena_add_block(
+            shm_arena,
+            freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.scran_wl_buffer.data
+        );
 
+        const size_t capture_buf_size = get_capture_buf_size(st_output);
         scran_arena_add_block(
             shm_arena,
             capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.scran_wl_buffer.data
@@ -531,7 +523,7 @@ init_meminit(
             );
         }
 
-        if (g_state.options.freezeframe) {
+        {
             struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
 
             struct scran_freezeframe_buffer *capture_buffer = &freezeframe->capture_buffer;
@@ -611,11 +603,8 @@ init_meminit__destroy(
         }
 
         wl_buffer_destroy(st_output->capture.frame_ctx.scran_wl_buffer.wl_buffer);
-
-        if (g_state.options.freezeframe) {
-            wl_buffer_destroy(st_output->freezeframe.capture_buffer.scran_wl_buffer.wl_buffer);
-            wl_buffer_destroy(st_output->freezeframe.surface_buffer.scran_wl_buffer.wl_buffer);
-        }
+        wl_buffer_destroy(st_output->freezeframe.capture_buffer.scran_wl_buffer.wl_buffer);
+        wl_buffer_destroy(st_output->freezeframe.surface_buffer.scran_wl_buffer.wl_buffer);
     }
     wl_buffer_destroy(g_state.transparent_single_pixel_buffer.wl_buffer);
 

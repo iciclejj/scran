@@ -312,7 +312,7 @@ See `scran -h` for more details
          Note: audio capture requires PipeWire.
   -C   disable cursor capture
   -B   do not keep background process alive
-  -z   freeze the display at startup
+  -z   automatically freeze the display at startup
   -s   slurp: send selection as geometry string to standard output
          Equivalent to slurp's default output.
          See https://wayland.emersion.fr/slurp/.

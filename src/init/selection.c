@@ -142,7 +142,7 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
     // If we freezeframe, then we must initialize the selection surface from
     // within the freezeframe callback, to make sure we don't "freeze" an
     // already dimmed (our UI dim) frame. TODO: Make this a bit neater?
-    if (g_state.options.freezeframe) {
+    if (g_state.options.freezeframe_at_startup) {
         // This commits the surface in the capture-frame::ready handler, handing
         // over the wl_buffer containing the captured freezeframe.
         freezeframe_capture_start(st_output, init_selection_surface_content);
