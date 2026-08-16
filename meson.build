@@ -38,7 +38,7 @@ endif
 
 blend2d_dep = dependency('blend2d', required: false)
 if not blend2d_dep.found()
-  warning('Meson cannot detect Blend2D as a dependency; this is expected if CMake is not installed. Falling back to header/library checks.')
+  message('Meson cannot detect Blend2D as a dependency; this is expected if CMake is not installed. Falling back to header/library checks.')
   if not cc.has_header('blend2d/blend2d.h')
     error('Blend2D header not found: blend2d/blend2d.h')
   endif
