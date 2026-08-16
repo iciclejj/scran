@@ -38,6 +38,11 @@
 extern struct scran g_state;
 
 
+typedef void video_capture_write_packet_fn(
+    struct capture_frame_context *,
+    AVPacket *pkt
+);
+
 void
 video_capture_write_audio_packet(
     struct capture_frame_context *frame_ctx,
@@ -65,7 +70,7 @@ video_capture_write_audio_packet(
 }
 
 void
-video_capture_write_frame(
+video_capture_write_video_packet(
     struct capture_frame_context *frame_ctx,
     AVPacket *pkt // Encoded frame
 ) {
@@ -94,6 +99,39 @@ video_capture_write_frame(
     av_interleaved_write_frame(ffmpeg_ctx->av_format_ctx, pkt);
 }
 
+static bool
+video_capture_drain_encoder(
+    struct capture_frame_context *frame_ctx,
+    AVCodecContext *codec_ctx,
+    AVPacket *packet,
+    video_capture_write_packet_fn write_packet_fn,
+    const char *stream_name
+) {
+    assert(packet != NULL);
+
+    int ret = avcodec_send_frame(codec_ctx, NULL);
+    if (ret == AVERROR_EOF) {
+        return true;
+    }
+    if (ret < 0) {
+        eprintf("Error: Failed to start draining %s encoder (%d).\n", stream_name, ret);
+        return false;
+    }
+
+    for (;;) {
+        ret = avcodec_receive_packet(codec_ctx, packet);
+        if (ret == AVERROR_EOF) {
+            return true;
+        }
+        if (ret < 0) {
+            eprintf("Error: Failed while draining %s encoder (%d).\n", stream_name, ret);
+            return false;
+        }
+
+        write_packet_fn(frame_ctx, packet);
+    }
+}
+
 // `selection_box` has `scran_output_selectionContext.box` coordinate space!
 void
 capture_update_area_with_selection(
@@ -111,36 +149,18 @@ capture_update_area_with_selection(
     assert(st_output->capture.frame_ctx.capture_area_px.y1 <= st_output->mode.height_px);
 }
 
-void
-video_capture_request_frame(
-    struct capture_frame_context *frame_ctx,
-    int32_t damage_x,
-    int32_t damage_y,
-    int32_t damage_w,
-    int32_t damage_h
+struct ext_image_copy_capture_frame_v1 *
+video_capture_create_frame(
+    struct capture_frame_context *frame_ctx
 ) {
-    frame_ctx->frame = ext_image_copy_capture_session_v1_create_frame(
-        frame_ctx->wl_capture_session
-    );
+    struct ext_image_copy_capture_frame_v1 *frame =
+        ext_image_copy_capture_session_v1_create_frame(frame_ctx->wl_capture_session);
 
-    ext_image_copy_capture_frame_v1_attach_buffer(
-        frame_ctx->frame,
-        frame_ctx->st_buffer.wl_buffer
-    );
-    ext_image_copy_capture_frame_v1_damage_buffer(
-        frame_ctx->frame,
-        damage_x, damage_y, damage_w, damage_h
-    );
-    ext_image_copy_capture_frame_v1_add_listener(
-        frame_ctx->frame,
-        &image_copy_capture_frame_listener__video_capture,
-        frame_ctx
-    );
-    ext_image_copy_capture_frame_v1_capture(
-        frame_ctx->frame
-    );
+    ext_image_copy_capture_frame_v1_attach_buffer(frame, frame_ctx->st_buffer.wl_buffer);
+    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__video_capture, frame_ctx);
+
+    return frame;
 }
-
 
 static inline bool
 destroy_ffmpeg_audio(struct scran_output *st_output)
@@ -432,27 +452,22 @@ video_capture_start(struct scran_output *st_output)
 
     {
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        scran_ui_keymap_item_set_disabled(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, true);
-        scran_ui_keymap_item_set_color(   ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_VIDEO_CAPTURE);
-        scran_ui_keymap_item_set_locked(  ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
+        scran_ui_textline_item_set_disabled(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, true);
+        scran_ui_textline_item_set_color(   ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE);
+        scran_ui_textline_item_set_locked(  ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
     }
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
     request_selection_surface_frame_callback(st_output);
 
-    // image-copy-capture protocol guarantees we get presentation time based
-    // on system monotonic time.
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    // XXX: Will overflow at tv_sec > ~584.9 years...
-    st_output->capture.frame_ctx.presentation_time_nsec_start = ts.tv_sec * NSEC_PER_SEC + ts.tv_nsec;
+    st_output->capture.frame_ctx.presentation_time_nsec_start = capture_clock_gettime_nsec();
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
-    video_capture_request_frame(
-        &st_output->capture.frame_ctx,
-        // Ensure the first frame is fully rendered
-        0, 0, st_output->mode.width_px, st_output->mode.height_px
-    );
+    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture.frame_ctx);
+    // Ensure the first frame is fully rendered
+    video_capture_damage_buffer(&st_output->capture.frame_ctx, frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px);
+    ext_image_copy_capture_frame_v1_capture(frame);
+    st_output->capture.frame_ctx.frame = frame;
 
     if (st_output->capture.frame_ctx.audio_active) {
         scran_pipewire_connect();
@@ -467,16 +482,23 @@ video_capture_start(struct scran_output *st_output)
 void
 video_capture_request_stop(struct scran_output *st_output)
 {
+    ext_image_copy_capture_frame_v1_destroy(st_output->capture.frame_ctx.frame);
+
     // Ensure one last frame is triggered as soon as possible, even if
     // no damage has been reported by the compositor. This ensures
     // variable framerate recordings will end at an appropriate
     // timestamp. This also lets the frame listener finalize the
     // recording and clean up as soon as possible.
-    ext_image_copy_capture_frame_v1_destroy(st_output->capture.frame_ctx.frame);
-    video_capture_request_frame(
-        &st_output->capture.frame_ctx,
-        0, 0, st_output->mode.width_px, st_output->mode.height_px
-    );
+
+    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture.frame_ctx);
+    // XXX: This damage request is probably normally redundant with
+    // capture_force_next_frame(), but should stay regardless, in case the
+    // initial frame was interrupted before it came back (i.e. making it a
+    // 1-frame video, once this frame is processed), since the first frame
+    // in a session should always have full damage. .
+    video_capture_damage_buffer(&st_output->capture.frame_ctx, frame, 0, 0, st_output->mode.width_px, st_output->mode.height_px);
+    ext_image_copy_capture_frame_v1_capture(frame);
+    st_output->capture.frame_ctx.frame = frame;
 
     capture_force_next_frame(st_output);
 
@@ -493,25 +515,24 @@ video_capture_finish(struct scran_output *st_output)
 
     if (frame_ctx->audio_active) {
         scran_pipewire_reset();
-
-        // Drain audio codec
-        avcodec_send_frame(ffmpeg_ctx->av_codec_ctx_audio, NULL);
-        assert(ffmpeg_ctx->av_packet_audio != NULL);
-        while (avcodec_receive_packet(ffmpeg_ctx->av_codec_ctx_audio, ffmpeg_ctx->av_packet_audio) != AVERROR_EOF) {
-            video_capture_write_audio_packet(frame_ctx, ffmpeg_ctx->av_packet_audio);
-        }
-
+        video_capture_drain_encoder(
+            frame_ctx,
+            ffmpeg_ctx->av_codec_ctx_audio,
+            ffmpeg_ctx->av_packet_audio,
+            video_capture_write_audio_packet,
+            "audio"
+        );
         destroy_ffmpeg_audio(st_output);
-
         frame_ctx->audio_active = false;
     }
 
-    // Drain video codec
-    avcodec_send_frame(ffmpeg_ctx->av_codec_ctx, NULL);
-    assert(ffmpeg_ctx->av_packet != NULL);
-    while (avcodec_receive_packet(ffmpeg_ctx->av_codec_ctx, ffmpeg_ctx->av_packet) != AVERROR_EOF) {
-        video_capture_write_frame(frame_ctx, ffmpeg_ctx->av_packet);
-    }
+    video_capture_drain_encoder(
+        frame_ctx,
+        ffmpeg_ctx->av_codec_ctx,
+        ffmpeg_ctx->av_packet,
+        video_capture_write_video_packet,
+        "video"
+    );
 
     av_write_trailer(ffmpeg_ctx->av_format_ctx);
     eprintf("Video saved: %s\n", g_state.options.output_path);
@@ -526,9 +547,10 @@ video_capture_finish(struct scran_output *st_output)
 
     {
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        scran_ui_keymap_item_set_disabled(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, false);
-        scran_ui_keymap_item_set_color(   ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_DEFAULT);
-        scran_ui_keymap_item_set_locked(  ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
+        scran_ui_textline_item_set_disabled(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, false);
+        scran_ui_textline_item_set_color(   ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_DEFAULT);
+        scran_ui_textline_item_set_locked(  ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
+        scran_ui_statusline_set_timer(&st_output->selection_surface.ui_ctx.ui_statusline, 0);
     }
     set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
     request_selection_surface_frame_callback(st_output);

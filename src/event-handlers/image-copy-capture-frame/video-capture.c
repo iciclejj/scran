@@ -50,9 +50,8 @@ handle_image_copy_capture_frame_damage__video_capture(
     int32_t height
 ) {
     struct capture_frame_context *frame_ctx = data;
-    (void)frame_ctx;
 
-    // XXX TODO IMPORTANT: Implement this and add flag to enable damage-based capture
+    video_capture_grow_tracked_damage(frame_ctx, x, y, width, height);
 }
 
 
@@ -87,31 +86,15 @@ end_capture(
     DEBUG("FINISHED RECORDING.\n");
 }
 
-// TODO:
-//  - Can we fully avoid capturing the overlay (beyond just
-//    making sure it's out of frame) ?
-//  - Either assert width/height isn't 0 (and enforce in selection logic)
-//    or handle it properly here
-//  - Allow resizing capture frame during recording
-//  - Perform libav allocations in meminit
-//       NOTE: Read up on the libav refcount mechanisms first.
-//       https://www.ffmpeg.org/doxygen/trunk/group__lavc__encdec.html
-//
-static void
-handle_image_copy_capture_frame_ready__video_capture(
-    void *data,
-    struct ext_image_copy_capture_frame_v1 *frame
+static inline bool
+do_handle_frame(
+    struct capture_frame_context *frame_ctx,
+    struct scran_output *st_output
 ) {
-    ext_image_copy_capture_frame_v1_destroy(frame);
-
-    struct capture_frame_context *frame_ctx  = data;
     struct ffmpeg_context        *ffmpeg_ctx = &frame_ctx->ffmpeg_ctx;
 
     // Crop and convert
     {
-        // XXX TODO: Just pass st_output to this handler.
-        struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
-        struct scran_output         *const st_output  = wl_container_of(st_capture, st_output, capture);
 
         uint8_t *const area_start_addr = capture_get_area_start_address(frame_ctx);
         // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be divisible by 2.
@@ -120,10 +103,10 @@ handle_image_copy_capture_frame_ready__video_capture(
         const int area_h_px = blboxi_height_abs_unsafe(frame_ctx->capture_area_px) & ~0b1;
         const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
 
-        uint32_t  rgba32_shuffle = wl_shm_format_to_scranrot_yuv_rgba32_shuffle(st_capture->shm_format);
+        uint32_t  rgba32_shuffle = wl_shm_format_to_scranrot_yuv_rgba32_shuffle(st_output->capture.shm_format);
         if (rgba32_shuffle == RGBA32_SHUFFLE_ERROR) {
             eprintf("WARNING: Output's pixel format (%x) not recognized. Please report this as a bug. Attempting anyways...\n",
-                    st_capture->shm_format);
+                    st_output->capture.shm_format);
             rgba32_shuffle = RGBA32_SHUFFLE_NO_CHANGE;
         }
 
@@ -145,8 +128,7 @@ handle_image_copy_capture_frame_ready__video_capture(
             )
         ) {
             eprintf("Error: scranrot failed to convert framebuffer to yuv\n");
-            end_capture(frame_ctx);
-            return;
+            return false;
         }
         frame->pts = frame_ctx->presentation_time_nsec;
     }
@@ -162,21 +144,54 @@ handle_image_copy_capture_frame_ready__video_capture(
             break;
         } else if (_ret_enc < 0) {
             eprintf("Error while encoding frame\n");
-            return; // TODO: goto err
+            return false;
         }
 
-        video_capture_write_frame(frame_ctx, ffmpeg_ctx->av_packet);
+        video_capture_write_video_packet(frame_ctx, ffmpeg_ctx->av_packet);
 
         // INFO: packet gets unreferenced at start of loop by avcodec_receive_packet
     }
 
     av_packet_unref(ffmpeg_ctx->av_packet);
+    return true;
+}
+
+// TODO:
+//  - Can we fully avoid capturing the overlay (beyond just
+//    making sure it's out of frame) ?
+//  - Either assert width/height isn't 0 (and enforce in selection logic)
+//    or handle it properly here
+//  - Allow resizing capture frame during recording
+//  - Perform libav allocations in meminit
+//       NOTE: Read up on the libav refcount mechanisms first.
+//       https://www.ffmpeg.org/doxygen/trunk/group__lavc__encdec.html
+//
+static void
+handle_image_copy_capture_frame_ready__video_capture(
+    void *data,
+    struct ext_image_copy_capture_frame_v1 *this_frame
+) {
+    ext_image_copy_capture_frame_v1_destroy(this_frame);
+
+    struct capture_frame_context *frame_ctx  = data;
+
+    // XXX TODO: Just pass st_output to this handler.
+    struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
+    struct scran_output         *const st_output  = wl_container_of(st_capture, st_output, capture);
+
+    if (blboxi_intersects(frame_ctx->capture_area_px, frame_ctx->damage_area_px) ) {
+        if (!do_handle_frame(frame_ctx, st_output)) {
+            frame_ctx->capturing_video = false;
+        }
+    }
+
+    frame_ctx->damage_area_px = (BLBoxI){0};
 
     // NOTE: We do this check *after* writing the incoming frame. This ensures
     // that the video will not be cut short at the end if we're only capturing
     // frames on demand (with variable framerate) and nothing has changed for
     // the last x amount of time.
-    // Calling capture_frame::damage_buffer() when signaling to end the capture
+    // Forcing some compositor/surface damage when signaling to end the capture
     // should trigger the necessary final frame.
     //
     // TODO: Go through uses of capturing_video to check for redundancy now
@@ -188,13 +203,9 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     // TODO: avio_flush ?
 
-    video_capture_request_frame(
-        frame_ctx,
-        // TODO: Only damage what the capture area will be on next capture,
-        // somehow? Will not be possible to determine from here, though,
-        // at least not portably.
-        0, 0, frame_ctx->source_width_px, frame_ctx->source_height_px
-    );
+    struct ext_image_copy_capture_frame_v1 *next_frame = video_capture_create_frame(frame_ctx);
+    ext_image_copy_capture_frame_v1_capture(next_frame);
+    st_output->capture.frame_ctx.frame = next_frame;
 }
 
 

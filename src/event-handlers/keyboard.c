@@ -115,18 +115,25 @@ handle_keyboard_key(
     if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
         switch(xkb_key) {
         case XKB_KEY_Return:
-            scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, false);
-            request_selection_surface_frame_callback(st_output);
+            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, false);
             break;
         case XKB_KEY_space:
-            scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
-            request_selection_surface_frame_callback(st_output);
+            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
             break;
         case XKB_KEY_Tab:
-            scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_FOCUS, false);
-            request_selection_surface_frame_callback(st_output);
+            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FOCUS, false);
             break;
+        case XKB_KEY_z:
+        case XKB_KEY_Z:
+            if (state->options.freezeframe) {
+                scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME, false);
+            }
+            break;
+        default:
+            return;
         }
+
+        request_selection_surface_frame_callback(st_output);
         return;
     }
 
@@ -155,6 +162,12 @@ handle_keyboard_key(
     case XKB_KEY_Z:
         if (!state->options.freezeframe) {
             break;
+        }
+
+        {
+            struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
+            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME, true);
+            request_selection_surface_frame_callback(st_output);
         }
 
         bool pretend_all_hidden = true;
@@ -209,7 +222,7 @@ z_done:
                 state->exit_requested = true;
             }
 
-            scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
+            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
             request_selection_surface_frame_callback(st_output);
         }
 
@@ -233,7 +246,7 @@ z_done:
         }
 
         if (!video_button_got_jammed) {
-            scran_ui_keymap_item_set_pressed(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
+            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
             request_selection_surface_frame_callback(st_output);
         }
         break;
@@ -285,15 +298,15 @@ handle_keyboard_modifiers(
         struct scran_ui_context *ui_ctx = &focused_selection_surface->ui_ctx;
 
         if (mod_key_active) {
-            scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_KEYMAP_TEXT_IMAGE_MOD);
-            scran_ui_keymap_item_set_color(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_KEYMAP_COLOR_MOD);
-            scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_TEXT_VIDEO_MOD);
-            scran_ui_keymap_item_set_color(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_MOD);
+            scran_ui_textline_item_set_text( ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD);
+            scran_ui_textline_item_set_color(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_COLOR_KEYMAP_MOD);
+            scran_ui_textline_item_set_text( ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD);
+            scran_ui_textline_item_set_color(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_KEYMAP_MOD);
         } else {
-            scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_KEYMAP_TEXT_IMAGE_DEFAULT);
-            scran_ui_keymap_item_set_color(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_KEYMAP_COLOR_DEFAULT);
-            scran_ui_keymap_item_set_text( ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_TEXT_VIDEO_DEFAULT);
-            scran_ui_keymap_item_set_color(ui_ctx, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_KEYMAP_COLOR_DEFAULT);
+            scran_ui_textline_item_set_text( ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT);
+            scran_ui_textline_item_set_color(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_COLOR_DEFAULT);
+            scran_ui_textline_item_set_text( ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT);
+            scran_ui_textline_item_set_color(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_DEFAULT);
         }
 
         // This is only used during video init, so just set this unconditionally

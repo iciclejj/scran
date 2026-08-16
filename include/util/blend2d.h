@@ -78,6 +78,12 @@ blboxi_flip_x_coordinates(struct BLBoxI *box, uint32_t width) {
 #endif /* __has_include(<wayland-client.h>) */
 
 static inline bool
+blboxi_is_empty(BLBoxI box) {
+    return box.x0 == box.x1
+        || box.y0 == box.y1;
+}
+
+static inline bool
 blboxi_is_inverted_or_empty(BLBoxI box) {
     return box.x1 <= box.x0 || box.y1 <= box.y0;
 }
@@ -196,17 +202,10 @@ blrecti_deinvert(struct BLRectI *rect)
 }
 
 static inline struct BLRectI
-get_blrecti_deinverted(struct BLRectI rect_in)
+get_blrecti_deinverted(struct BLRectI rect)
 {
-    const bool x_inverted = rect_in.w < 0;
-    const bool y_inverted = rect_in.h < 0;
-
-    return (struct BLRectI) {
-        .x = x_inverted ? rect_in.x + rect_in.w : rect_in.x,
-        .y = y_inverted ? rect_in.y + rect_in.h : rect_in.y,
-        .w = x_inverted ? -rect_in.w : rect_in.w,
-        .h = y_inverted ? -rect_in.h : rect_in.h,
-    };
+    blrecti_deinvert(&rect);
+    return rect;
 }
 
 static inline void
@@ -226,17 +225,10 @@ blboxi_deinvert(struct BLBoxI *box)
 }
 
 static inline struct BLBoxI
-blboxi_get_deinverted(struct BLBoxI box_in)
+blboxi_get_deinverted(struct BLBoxI box)
 {
-    const bool x_inverted = box_in.x1 < box_in.x0;
-    const bool y_inverted = box_in.y1 < box_in.y0;
-
-    return (struct BLBoxI) {
-        .x0 = x_inverted ? box_in.x1 : box_in.x0,
-        .x1 = x_inverted ? box_in.x0 : box_in.x1,
-        .y0 = y_inverted ? box_in.y1 : box_in.y0,
-        .y1 = y_inverted ? box_in.y0 : box_in.y1,
-    };
+    blboxi_deinvert(&box);
+    return box;
 }
 
 // NOTE: Not overflow-safe
@@ -291,6 +283,19 @@ blboxi_shift(BLBoxI *box, int x_shift, int y_shift) {
 }
 
 static inline BLBoxI
+blboxi_bounding_box(BLBoxI a, BLBoxI b) {
+    blboxi_deinvert(&a);
+    blboxi_deinvert(&b);
+
+    return (BLBoxI) {
+        .x0 = MIN(a.x0, b.x0),
+        .y0 = MIN(a.y0, b.y0),
+        .x1 = MAX(a.x1, b.x1),
+        .y1 = MAX(a.y1, b.y1),
+    };
+}
+
+static inline BLBoxI
 blboxi_intersection_raw(
     BLBoxI a,
     BLBoxI b
@@ -315,6 +320,12 @@ blboxi_intersection(
     }
 
     return intersection;
+}
+
+static inline bool
+blboxi_intersects(BLBoxI a, BLBoxI b)
+{
+    return !blboxi_is_empty(blboxi_intersection(a, b));
 }
 
 // Operation: a - b

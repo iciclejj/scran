@@ -13,61 +13,8 @@
 #include "capture.h"
 #include "state.h"
 #include "print.h"
+#include "util/util.h"
 
-
-static inline void
-advance_filename_itoa_6(
-    int integer,
-    char *restrict fn,
-    ssize_t *restrict i_fn
-) {
-    assert(integer <= 999999);
-
-    int lo2 = integer % 100;
-    int hi4 = integer / 100;
-
-    int hi4_lo = hi4 % 100;
-    int hi4_hi = hi4 / 100;
-
-    fn[(*i_fn)++] = '0' + hi4_hi / 10;
-    fn[(*i_fn)++] = '0' + hi4_hi % 10;
-    fn[(*i_fn)++] = '0' + hi4_lo / 10;
-    fn[(*i_fn)++] = '0' + hi4_lo % 10;
-    fn[(*i_fn)++] = '0' + lo2 / 10;
-    fn[(*i_fn)++] = '0' + lo2 % 10;
-}
-
-static inline void
-advance_filename_itoa_4(
-    int integer,
-    char *restrict fn,
-    ssize_t *restrict i_fn
-) {
-    assert(integer <= 9999);
-
-    int lo = integer % 100;
-    int hi = integer / 100;
-
-    fn[(*i_fn)++] = '0' + hi / 10;
-    fn[(*i_fn)++] = '0' + hi % 10;
-    fn[(*i_fn)++] = '0' + lo / 10;
-    fn[(*i_fn)++] = '0' + lo % 10;
-}
-
-static inline void
-advance_filename_itoa_2(
-    int integer,
-    char *restrict fn,
-    ssize_t *restrict i_fn
-) {
-    assert(integer <= 99);
-
-    int lo = integer % 10;
-    int hi = integer / 10;
-
-    fn[(*i_fn)++] = '0' + hi;
-    fn[(*i_fn)++] = '0' + lo;
-}
 
 static inline void
 advance_filename_file_extension(
@@ -120,31 +67,31 @@ create_filename(
         switch(format_specifier) {
         case 'Y':
             if (i_out > filename_strlen_max - 4) goto filename_out_overflow;
-            advance_filename_itoa_4(tm->tm_year + 1900, filename_out, &i_out);
+            advance_itoa_4(tm->tm_year + 1900, filename_out, &i_out);
             break;
         case 'm':
             if (i_out > filename_strlen_max - 2) goto filename_out_overflow;
-            advance_filename_itoa_2(tm->tm_mon + 1, filename_out, &i_out);
+            advance_itoa_2(tm->tm_mon + 1, filename_out, &i_out);
             break;
         case 'd':
             if (i_out > filename_strlen_max - 2) goto filename_out_overflow;
-            advance_filename_itoa_2(tm->tm_mday, filename_out, &i_out);
+            advance_itoa_2(tm->tm_mday, filename_out, &i_out);
             break;
         case 'H':
             if (i_out > filename_strlen_max - 2) goto filename_out_overflow;
-            advance_filename_itoa_2(tm->tm_hour, filename_out, &i_out);
+            advance_itoa_2(tm->tm_hour, filename_out, &i_out);
             break;
         case 'M':
             if (i_out > filename_strlen_max - 2) goto filename_out_overflow;
-            advance_filename_itoa_2(tm->tm_min , filename_out, &i_out);
+            advance_itoa_2(tm->tm_min , filename_out, &i_out);
             break;
         case 'S':
             if (i_out > filename_strlen_max - 2) goto filename_out_overflow;
-            advance_filename_itoa_2(tm->tm_sec , filename_out, &i_out);
+            advance_itoa_2(tm->tm_sec , filename_out, &i_out);
             break;
         case 'U':
             if (i_out > filename_strlen_max - 6) goto filename_out_overflow;
-            advance_filename_itoa_6(ts->tv_nsec / 1000, filename_out, &i_out);
+            advance_itoa_6(ts->tv_nsec / 1000, filename_out, &i_out);
             break;
         case 'E':
             if (i_out > filename_strlen_max - file_extension_max) goto filename_out_overflow;
@@ -501,6 +448,8 @@ static const char help_string[] =
     "         The area is clamped to the output containing the top-left corner.\n"
     "           Subject to change if/when scran will support cross-output capture.\n"
     "  -N   disable notifications\n"
+    "  -U   hide UI (partial)\n"
+    "  -UU  hide UI (full)\n"
     "  -v   show version and exit\n"
     "  -h   show this help message and exit\n"
     "\n"
@@ -520,7 +469,7 @@ scran_handle_args(int argc, char *const *argv)
     char *opt_output_directory = NULL;
 
     int opt;
-    while ((opt = getopt(argc, argv, "f:d:peACBzsg:Nvh")) != -1) {
+    while ((opt = getopt(argc, argv, "f:d:peACBzsg:NvhU")) != -1) {
         switch (opt) {
         case 'f': opt_filename                                          = optarg; break;
         case 'd': opt_output_directory                                  = optarg; break;
@@ -531,6 +480,7 @@ scran_handle_args(int argc, char *const *argv)
         case 'B': g_state.options.no_keepalive                          = true;   break;
         case 'z': g_state.options.freezeframe                           = true;   break;
         case 's': g_state.options.produce_slurp                         = true;   break;
+        case 'U': g_state.options.hide_ui_level                         += 1;     break;
         case 'g':
             {
                 char consumable_slurp[SLURP_STRING_SIZE];

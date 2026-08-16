@@ -12,6 +12,9 @@
 #include "print.h"
 
 
+extern struct scran g_state;
+
+
 static inline void
 draw_and_damage_region(
     struct scran_output_selectionSurface *selection_surface,
@@ -100,70 +103,48 @@ draw_and_damage_background(
 
 
 static inline int
-get_total_keymap_width_px(
-    struct scran_ui_keymap *keymap,
+get_total_textline_width_px(
+    struct scran_ui_textline_view textline,
     int item_spacing_px
 ) {
     int total_width_px = 0;
 
-    for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        struct scran_ui_keymap_item *keymap_item = &keymap->items[i];
-        if (keymap_item->width_px != 0) {
-            total_width_px += keymap_item->width_px + item_spacing_px;
+    for (int i = 0; i < textline.n_items; ++i) {
+        struct scran_ui_textline_item *item = &textline.items[i];
+        if (item->width_px != 0) {
+            total_width_px += item->width_px + item_spacing_px;
         }
     }
 
-    // Switch to if statement if no-text scenarios will be possible in the future.
-    assert(total_width_px != 0);
-    total_width_px -= item_spacing_px;
+    total_width_px -= (total_width_px == 0) ? 0 : item_spacing_px;
 
     return total_width_px;
 }
 
+
+static inline bool
+textline_surface_state_changed(
+    struct scran_ui_textline_surface_state *prev,
+    struct scran_ui_textline_surface_state *new
+) {
+    return !blpointi_are_equal(prev->origin, new->origin)
+        || prev->total_width_px != new->total_width_px;
+}
+
 static inline void
-draw_and_damage_keymap(
+draw_and_damage_ui_textline(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
-    BLBoxI capture_area_border_outline
+    BLBoxI capture_area_border_outline,
+    struct scran_ui_textline_view textline,
+    int textline_item_spacing_px,
+    struct scran_ui_textline_surface_state *state_prev,
+    struct scran_ui_textline_surface_state *state_prev_any_buffer,
+    struct scran_ui_textline_surface_state *state_new,
+    bool force_redraw
 ) {
-    struct scran_ui_context *ui_ctx = &selection_surface->ui_ctx;
-    struct scran_ui_keymap  *keymap = &selection_surface->ui_ctx.ui_keymap;
-
-    bool ui_was_dirty = ui_ctx->dirty;
-
-    if (ui_was_dirty) {
-        redraw_keymap(ui_ctx);
-        ui_ctx->dirty = false;
-    }
-
-    const int item_spacing_px = 3 * ui_ctx->fixed_width_font_glyph_width_px;
-    const int total_width_px = get_total_keymap_width_px(keymap, item_spacing_px);
-
-    struct scran_ui_keymap_surface_state *state_prev            = &st_buffer->ui_keymap_state_currently_drawn;
-    struct scran_ui_keymap_surface_state *state_prev_any_buffer = &selection_surface->ui_keymap_state_last_drawn;
-    struct scran_ui_keymap_surface_state  state_new = {
-        .origin         = {
-            .x = capture_area_border_outline.x0,
-            .y = capture_area_border_outline.y1,
-        },
-        .total_width_px = total_width_px,
-    };
-
-    bool should_redraw =
-        st_buffer->force_redraw
-        || ui_was_dirty
-        || !blpointi_are_equal(state_prev->origin, state_new.origin)
-        || state_prev->total_width_px != state_new.total_width_px
-    ;
-    if (!should_redraw) {
+    if ( !(force_redraw || textline_surface_state_changed(state_prev, state_new))) {
         return;
-    }
-
-    // Clamp to buffer width
-    if (state_new.origin.x < 0) {
-        state_new.origin.x = 0;
-    } else if ((state_new.origin.x + state_new.total_width_px) > selection_surface->surface.width_px_buffer) {
-        state_new.origin.x = selection_surface->surface.width_px_buffer - state_new.total_width_px;
     }
 
     // Clear out old ui
@@ -180,18 +161,19 @@ draw_and_damage_keymap(
             .x = state_prev->origin.x,
             .y = state_prev->origin.y,
             .w = state_prev->total_width_px,
-            .h = keymap->height_px,
+            .h = textline.meta->height_px,
         };
 
         BLRectI text_rect_prev_any_buffer = {
             .x = state_prev_any_buffer->origin.x,
             .y = state_prev_any_buffer->origin.y,
             .w = state_prev_any_buffer->total_width_px,
-            .h = keymap->height_px,
+            .h = textline.meta->height_px,
         };
 
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, SCRAN_SELECTION_BACKGROUND_COLOR.value);
 
+        // Uncovered, i.e. minus parts that intrude into capture area/border
         BLRectI text_rect_prev_uncovered[4];
         blboxi_get_difference_as_4_rects(blrecti_to_blboxi(text_rect_prev), capture_area_border_outline, text_rect_prev_uncovered);
         // XXX: idk if this one is actually worth doing
@@ -203,7 +185,7 @@ draw_and_damage_keymap(
                 &st_buffer->bl_ctx,
                 &text_rect_prev_uncovered[i]
             );
-            // See _draw_and_damage_region() comment for why we damage a different
+            // See draw_and_damage_region() comment for why we damage a different
             // region than we blit.
             wl_surface_damage_buffer(
                 selection_surface->surface.wl_surface,
@@ -222,13 +204,15 @@ draw_and_damage_keymap(
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, prev_fill_style_rgba32);
     }
 
-    // Blit new ui
-    BLPointI _origin_new_curr_item = state_new.origin;
-    for (enum scran_ui_keymap_item_index i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        struct scran_ui_keymap_item *keymap_item = &keymap->items[i];
+    struct scran_ui_context *ui_ctx = &selection_surface->ui_ctx;
 
-        const int width_px  = keymap_item->width_px;
-        const int height_px = ui_ctx->font_height_px;
+    // Blit new ui
+    BLPointI _origin_new_curr_item = state_new->origin;
+    for (int i = 0; i < textline.n_items; ++i) {
+        struct scran_ui_textline_item *item = &textline.items[i];
+
+        const int width_px  = item->width_px;
+        const int height_px = round(ui_ctx->font_height);
 
         if (width_px != 0) {
             // Allocated BLImage dimensions may be larger than its current contents.
@@ -238,25 +222,138 @@ draw_and_damage_keymap(
                 .w = width_px,
                 .h = height_px,
             };
-            bl_context_blit_image_i(&st_buffer->bl_ctx, &_origin_new_curr_item, &keymap_item->bl_img, &area);
-            _origin_new_curr_item.x += width_px + item_spacing_px;
+            bl_context_blit_image_i(&st_buffer->bl_ctx, &_origin_new_curr_item, &item->bl_img, &area);
+            _origin_new_curr_item.x += width_px + textline_item_spacing_px;
         }
     }
 
-    // See _get_total_keymap_width_px()
-    assert(_origin_new_curr_item.x != 0);
-    assert((_origin_new_curr_item.x - state_new.origin.x) - item_spacing_px == total_width_px);
-
     wl_surface_damage_buffer(
         selection_surface->surface.wl_surface,
-        state_new.origin.x,
-        state_new.origin.y,
-        state_new.total_width_px,
-        keymap->height_px
+        state_new->origin.x,
+        state_new->origin.y,
+        state_new->total_width_px,
+        textline.meta->height_px
     );
 
-    selection_surface->ui_keymap_state_last_drawn = state_new;
-    st_buffer->ui_keymap_state_currently_drawn    = state_new;
+    *state_prev            = *state_new;
+    *state_prev_any_buffer = *state_new;
+}
+
+
+static inline void
+clamp_textline_surface_state(
+    struct scran_ui_textline_surface_state *state_new,
+    int min_px,
+    int max_px
+) {
+    // Clamp to buffer width
+    if (state_new->origin.x < min_px) {
+        state_new->origin.x = min_px;
+    } else if ((state_new->origin.x + state_new->total_width_px) > max_px) {
+        state_new->origin.x = max_px - state_new->total_width_px;
+    }
+}
+
+static inline void
+draw_and_damage_ui(
+    struct scran_output_selectionSurface *selection_surface,
+    struct scran_output_selectionSurface_buffer *st_buffer,
+    BLBoxI capture_area_border_outline
+) {
+    struct scran_ui_context  *ui_ctx = &selection_surface->ui_ctx;
+
+    const uint32_t redrawn_textline_mask          = scran_ui_redraw_elements(ui_ctx);
+    const bool     force_redraw_keymap            = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_KEYMAP);
+    const bool     force_redraw_statusline        = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE);
+    const bool     force_redraw_statusline_keymap = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE_KEYMAP);
+    const int      item_spacing_px                = round(3 * ui_ctx->font_advance_fixed_width);
+
+    // Draw below-selection keymap
+    {
+        struct scran_ui_textline_surface_state state_new_keymap = {
+            .origin = {
+                .x = capture_area_border_outline.x0,
+                .y = capture_area_border_outline.y1,
+            },
+            .total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), item_spacing_px),
+        };
+        clamp_textline_surface_state(&state_new_keymap, 0, selection_surface->surface.width_px_buffer);
+        draw_and_damage_ui_textline(
+            selection_surface,
+            st_buffer,
+            capture_area_border_outline,
+            SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),
+            item_spacing_px,
+            &st_buffer->ui_keymap_state_currently_drawn,
+            &selection_surface->ui_keymap_state_last_drawn,
+            &state_new_keymap,
+            force_redraw_keymap
+        );
+    }
+
+
+    // Draw above-selection statusline-keymap & statusline
+    {
+        int statusline_total_width_px        = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),        item_spacing_px);
+        int statusline_keymap_total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), item_spacing_px);
+
+        struct scran_ui_textline_surface_state state_new_statusline = {
+            .origin = {
+                .x = capture_area_border_outline.x1 - statusline_total_width_px,
+                .y = capture_area_border_outline.y0 - round(ui_ctx->font_height),
+            },
+            .total_width_px = statusline_total_width_px,
+        };
+        struct scran_ui_textline_surface_state state_new_statusline_keymap = {
+            .origin = {
+                .x = capture_area_border_outline.x0,
+                .y = capture_area_border_outline.y0 - round(ui_ctx->font_height),
+            },
+            .total_width_px = statusline_keymap_total_width_px,
+        };
+
+        // The left-aligned `statusline_keymap`s anchor has priority, but it should still
+        // make space for the right-aligned `statusline` when reaching the far-right of
+        // the screen.
+        // Also add enough spacing between them so *at least their logical boxes* don't
+        // overlap and start clearing each other out.
+        int ui_element_spacing_px = (statusline_total_width_px == 0 || statusline_keymap_total_width_px == 0) ? 0 : item_spacing_px;
+        clamp_textline_surface_state(
+            &state_new_statusline_keymap,
+            0,
+            // Don't overlap the right-aligned statusline, which is clamped to buffer width
+            selection_surface->surface.width_px_buffer - (statusline_total_width_px + ui_element_spacing_px)
+        );
+        clamp_textline_surface_state(
+            &state_new_statusline,
+            // Don't overlap the left-aligned statusline_keymap
+            state_new_statusline_keymap.origin.x + (statusline_keymap_total_width_px + ui_element_spacing_px),
+            selection_surface->surface.width_px_buffer
+        );
+
+        draw_and_damage_ui_textline(
+            selection_surface,
+            st_buffer,
+            capture_area_border_outline,
+            SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap),
+            item_spacing_px,
+            &st_buffer->ui_statusline_keymap_state_currently_drawn,
+            &selection_surface->ui_statusline_keymap_state_last_drawn,
+            &state_new_statusline_keymap,
+            force_redraw_statusline_keymap
+        );
+        draw_and_damage_ui_textline(
+            selection_surface,
+            st_buffer,
+            capture_area_border_outline,
+            SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),
+            item_spacing_px,
+            &st_buffer->ui_statusline_state_currently_drawn,
+            &selection_surface->ui_statusline_state_last_drawn,
+            &state_new_statusline,
+            force_redraw_statusline
+        );
+    }
 }
 
 // We trunc/ceil like this to make sure that fractionally scaled displays
@@ -283,6 +380,12 @@ draw_selection_and_damage_buffer(
     struct scran_output_selectionSurface_buffer *st_buffer,
     struct BLBoxI capture_area
 ) {
+    if (g_state.options.hide_ui_level >= SCRAN_OPT_HIDE_UI_EVERYTHING) {
+        // XXX: Slightly spaghetti, but required for updating the capture area.
+        st_buffer->box_currently_drawn = capture_area;
+        return;
+    }
+
     // TODO: Assert bl_ctx has already begun
 
     // What the compositor has to overwrite:
@@ -314,8 +417,12 @@ draw_selection_and_damage_buffer(
     const BLBoxI capture_area_border_outline_last_used_in_any_buffer     = blboxi_get_inflated(capture_area_border_inline_last_used_in_any_buffer    , SCRAN_SELECTION_BORDER_THICKNESS_PX);
     const BLBoxI capture_area_border_outline_last_used_in_current_buffer = blboxi_get_inflated(capture_area_border_inline_last_used_in_current_buffer, SCRAN_SELECTION_BORDER_THICKNESS_PX);
 
+    bool selection_changed =
+        !blboxi_are_equal(capture_area, st_buffer->box_currently_drawn)
+        || !blboxi_are_equal(capture_area, selection_surface->box_last_drawn);
+
     // Draw background dim
-    {
+    if (selection_changed || st_buffer->force_redraw) {
         int n_damage_regions;
         BLRectI damage_regions_wayland[8];
         BLRectI damage_regions_buffer[8];
@@ -340,12 +447,14 @@ draw_selection_and_damage_buffer(
         draw_and_damage_background(selection_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, n_damage_regions);
     }
 
-    // Draw keymap
-    //   Must be drawn after/on top of background
-    draw_and_damage_keymap(selection_surface, st_buffer, capture_area_border_outline);
+    if (g_state.options.hide_ui_level < SCRAN_OPT_HIDE_UI_ITEMS) {
+        // Draw keymap
+        //   Must be drawn after/on top of background
+        draw_and_damage_ui(selection_surface, st_buffer, capture_area_border_outline);
+    }
 
     // Draw selection border
-    {
+    if (selection_changed || st_buffer->force_redraw) {
         BLRectI damage_regions[4];
         blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
         draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
@@ -422,6 +531,7 @@ init_selection_surface_content(
         // ALSO make sure it's called somewhere that the freezeframe init path
         // (and potential future alternate init paths) will reach.
         scran_ui_set_selection_stage_defaults(&selection_surface->ui_ctx);
+        scran_ui_statusline_set_selection_size(&selection_surface->ui_ctx.ui_statusline, blboxi_to_blrecti(initial_box));
         set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
         set_selection_initialized(st_output);
     }
@@ -455,4 +565,3 @@ init_selection_surface_content(
     set_force_redraw_selection_surface_buffers(st_output);
     wl_surface_commit(selection_surface->surface.wl_surface);
 }
-

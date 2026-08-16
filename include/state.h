@@ -117,7 +117,7 @@ struct scran_output_surface {
     struct wp_viewport *viewport;
 };
 
-struct scran_ui_keymap_surface_state {
+struct scran_ui_textline_surface_state {
     BLPointI origin;
     int total_width_px;
 };
@@ -132,7 +132,9 @@ struct scran_output_selectionSurface_buffer {
     // now that we have more things going on in the selection surface (like ui_keymap)?
     BLBoxI box_currently_drawn;
 
-    struct scran_ui_keymap_surface_state ui_keymap_state_currently_drawn;
+    struct scran_ui_textline_surface_state ui_keymap_state_currently_drawn;
+    struct scran_ui_textline_surface_state ui_statusline_state_currently_drawn;
+    struct scran_ui_textline_surface_state ui_statusline_keymap_state_currently_drawn;
 
     bool busy;
     bool force_redraw;
@@ -148,7 +150,9 @@ struct scran_output_selectionSurface {
     // XXX TODO: Turn this into a pointer once we remove the ugly redraw hack
     // in set_selection_surface_theme(). TODO: Redraw hack is gone now.
     BLBoxI box_last_drawn;
-    struct scran_ui_keymap_surface_state ui_keymap_state_last_drawn;
+    struct scran_ui_textline_surface_state ui_keymap_state_last_drawn;
+    struct scran_ui_textline_surface_state ui_statusline_state_last_drawn;
+    struct scran_ui_textline_surface_state ui_statusline_keymap_state_last_drawn;
 
     bool awaiting_frame_callback;
     bool frame_callbacks_disabled;
@@ -337,7 +341,7 @@ struct capture_frame_context {
     BLImageCodecCore bl_imgcodec;
 
     int64_t presentation_time_nsec_start;
-    int64_t presentation_time_nsec;
+    int64_t presentation_time_nsec; // NOTE: _start is PRE-SUBTRACTED.
 
     //  NOTE: Capture area should be set synchronously with the drawn overlay's
     //        area (or be set based on the same real-time values). Otherwise,
@@ -350,6 +354,8 @@ struct capture_frame_context {
     //        compositors, like COSMIC, are not neatly ordered like this
     //        internally (at time of writing).
     struct BLBoxI capture_area_px; // NOTE: Transform should be reversed.
+    // Contains *at least* the union of frame::damage-reported damage
+    struct BLBoxI damage_area_px;
     // TODO: Get this through output.mode if we both end up pointing to it here,
     //       AND it is still asserted to be equal to session::buffer_size's
     //       width arg.
@@ -414,6 +420,12 @@ struct scran_output {
     char name[SCRAN_STATE_OUTPUT_NAME_SIZE]; // output::name
 };
 
+enum scran_opt_hide_ui_level {
+    SCRAN_OPT_HIDE_UI_NONE,
+    SCRAN_OPT_HIDE_UI_ITEMS,
+    SCRAN_OPT_HIDE_UI_EVERYTHING,
+};
+
 // TODO: Isolate this from scran state?
 struct scran_options {
     char *output_path_filename_pointer; // TODO: Use offset instead
@@ -429,6 +441,7 @@ struct scran_options {
     bool produce_slurp;                 // output slurp-style geometry string
     bool no_notifications;
     bool have_custom_initial_selection; // output slurp-style geometry string
+    enum scran_opt_hide_ui_level hide_ui_level;
     struct BLRectI custom_initial_selection_global_coordinates;
 };
 

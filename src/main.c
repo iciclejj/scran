@@ -28,6 +28,9 @@
 #include "selection.h"
 #include "state.h"
 #include "state-util.h"
+#include "capture.h"
+#include "selection-surface.h"
+#include "ui.h"
 #include "event-handlers.h"
 #include "init.h"
 #include "print.h"
@@ -663,6 +666,56 @@ init_signals(struct scran_signal_masks *masks)
     return true;
 }
 
+static inline int
+get_smallest_timeout(int a, int b)
+{
+    assert(a >= -1 && b >= -1);
+    if (a < 0) {
+        return b;
+    }
+    if (b < 0) {
+        return a;
+    }
+    return MIN(a, b);
+}
+
+static inline void
+update_video_timers(int *timeout_ms_)
+{
+    if (g_state.options.hide_ui_level >= SCRAN_OPT_HIDE_UI_ITEMS) {
+        *timeout_ms_ = -1;
+        return;
+    }
+
+    int timeout_ms = INT_MAX;
+    int64_t now_ns = capture_clock_gettime_nsec();
+
+    FOR_EACH_OUTPUT(i, st_output) {
+        struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+
+        if (frame_ctx->capturing_video) {
+            int64_t timer_ns = (now_ns - frame_ctx->presentation_time_nsec_start);
+            int     timer_s  = timer_ns / NSEC_PER_SEC;
+
+            bool dirty = scran_ui_statusline_set_timer(&st_output->selection_surface.ui_ctx.ui_statusline, timer_s);
+            if (dirty) {
+                request_selection_surface_frame_callback(st_output);
+            }
+
+            int64_t timer_ms = timer_ns / NSEC_PER_MS;
+            int ms_until_next_sec = MS_PER_SEC - (timer_ms % MS_PER_SEC);
+
+            timeout_ms = MIN(timeout_ms, ms_until_next_sec);
+        }
+    }
+
+    if (timeout_ms == INT_MAX) {
+        *timeout_ms_ = -1;
+    } else {
+        *timeout_ms_ = timeout_ms;
+    }
+}
+
 
 // TODO: More asserts
 static bool
@@ -680,8 +733,9 @@ run_main_loop(struct scran_signal_masks *signal_masks)
     };
     epoll_ctl(m_epoll_fd, EPOLL_CTL_ADD, wl_display_fd, &wl_display_epoll_event);
 
-    // Only our portal fd actually cares about max timeout atm
+    int scran_ui_timeout_ms     = -1;
     int scran_portal_timeout_ms = -1;
+
     if (!scran_dbus_init(m_epoll_fd, &scran_portal_timeout_ms)) {
         eprintf("WARNING: Failed to initialize XDG Desktop Portals\n");
         assert(scran_portal_timeout_ms == -1);
@@ -694,7 +748,6 @@ run_main_loop(struct scran_signal_masks *signal_masks)
         eprintf("sigprocmask failed: %s\n", strerror(errno));
         return false;
     }
-
 
     // Main event loop.
     //
@@ -721,7 +774,13 @@ run_main_loop(struct scran_signal_masks *signal_masks)
         wl_display_flush(g_state.globals.display);
 
         // Let blocked unsafe signals fire synchronously here
-        int ret = epoll_pwait(m_epoll_fd, m_epoll_events, SCRAN_EPOLL_SIZE, scran_portal_timeout_ms, &signal_masks->with_scran_handlers_unmasked);
+        int ret = epoll_pwait(
+            m_epoll_fd,
+            m_epoll_events,
+            SCRAN_EPOLL_SIZE,
+            get_smallest_timeout(scran_ui_timeout_ms, scran_portal_timeout_ms),
+            &signal_masks->with_scran_handlers_unmasked
+        );
 
         if (ret < 0) {
             wl_display_cancel_read(g_state.globals.display);
@@ -761,6 +820,8 @@ run_main_loop(struct scran_signal_masks *signal_masks)
             // TODO: Make this a tiered enum to prevent handling it twice?
             g_state.sig_focus_requested = false;
         }
+
+        update_video_timers(&scran_ui_timeout_ms);
     };
 
     scran_pipewire_destroy();
