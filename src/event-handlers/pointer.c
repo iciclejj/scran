@@ -28,9 +28,9 @@ handle_pointer_enter(
 
     pointer_ctx->last_enter_serial = serial;
 
-    seat_update_focused_selection_surface(&pointer_ctx->focused_selection_surface, surface_entered);
+    struct scran_output_selectionSurface *pointer_surface = seat_update_pointer_focus(&state->seat, surface_entered);
 
-    if (pointer_ctx->focused_selection_surface != NULL) {
+    if (pointer_surface && pointer_surface == state->seat.active_selection_surface) {
         struct scran_output *st_output = wl_container_of(
             pointer_ctx->focused_selection_surface, st_output, selection_surface
         );
@@ -48,9 +48,7 @@ handle_pointer_leave(
     struct wl_surface *surface_left
 ) {
     struct scran *state = data;
-    struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
-
-    pointer_ctx->focused_selection_surface = NULL;
+    seat_update_pointer_focus(&state->seat, NULL);
 }
 
 

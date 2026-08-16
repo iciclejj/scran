@@ -56,6 +56,7 @@ scran_sources = files(
   'src/options.c',
   'src/pipewires.c',
   'src/dbus.c',
+  'src/seat.c',
   'src/selection.c',
   'src/selection-surface.c',
   'src/signal-handlers.c',

@@ -65,9 +65,7 @@ handle_keyboard_enter (
     struct wl_array *keys
 ) {
     struct scran *state = data;
-    struct scran_seat_keyboard *keyboard_ctx = &state->seat.keyboard;
-
-    seat_update_focused_selection_surface(&keyboard_ctx->focused_selection_surface, surface_entered);
+    seat_update_keyboard_focus(&state->seat, surface_entered);
 }
 
 
@@ -76,12 +74,10 @@ handle_keyboard_leave (
     void *data,
     struct wl_keyboard *wl_keyboard,
     uint32_t serial,
-    struct wl_surface *surface
+    struct wl_surface *surface_left
 ) {
     struct scran *state = data;
-    struct scran_seat_keyboard *keyboard_ctx = &state->seat.keyboard;
-
-    keyboard_ctx->focused_selection_surface = NULL;
+    seat_update_keyboard_focus(&state->seat, NULL);
 }
 
 
@@ -95,14 +91,14 @@ handle_keyboard_key(
     enum wl_keyboard_key_state key_state
 ) {
     struct scran *state = data;
-    struct scran_output_selectionSurface *focused_selection_surface = state->seat.keyboard.focused_selection_surface;
+    struct scran_output_selectionSurface *active_selection_surface = state->seat.active_selection_surface;
 
-    if (focused_selection_surface == NULL) {
+    if (active_selection_surface == NULL) {
         return;
     }
 
-    struct scran_output          *st_output    = wl_container_of(focused_selection_surface, st_output, selection_surface);
-    struct scran_ui_context      *ui_ctx       = &focused_selection_surface->ui_ctx;
+    struct scran_output          *st_output    = wl_container_of(active_selection_surface, st_output, selection_surface);
+    struct scran_ui_context      *ui_ctx       = &active_selection_surface->ui_ctx;
 
     // Only xkb key format supported
     assert(state->seat.keyboard.xkb_state != NULL);
@@ -300,39 +296,10 @@ handle_keyboard_modifiers(
         group
     );
 
-    struct scran_output_selectionSurface *focused_selection_surface = state->seat.keyboard.focused_selection_surface;
-
-    if (focused_selection_surface == NULL) {
-        return;
-    }
-
-    struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, selection_surface);
-
-    bool mod_key_active = xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
-
-    {
-        struct scran_ui_context *ui_ctx = &focused_selection_surface->ui_ctx;
-
-        if (mod_key_active) {
-            scran_ui_textline_item_set_text( ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD);
-            scran_ui_textline_item_set_color(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_COLOR_KEYMAP_MOD);
-            scran_ui_textline_item_set_text( ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD);
-            scran_ui_textline_item_set_color(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_KEYMAP_MOD);
-        } else {
-            scran_ui_textline_item_set_text( ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT);
-            scran_ui_textline_item_set_color(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_COLOR_DEFAULT);
-            scran_ui_textline_item_set_text( ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT);
-            scran_ui_textline_item_set_color(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_DEFAULT);
-        }
-
-        // This is only used during video init, so just set this unconditionally
-        // to avoid future possible sticky key bugs...
-        // TODO: Probably merge the authority for these things into the ui code,
-        // especially if we want to support mouse clicks.
-        st_output->capture.frame_ctx.audio_disable_modifier_active = mod_key_active;
-
-        request_selection_surface_frame_callback(st_output);
-    }
+    seat_set_mod_key_state(
+        &state->seat,
+        xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE)
+    );
 }
 
 
