@@ -52,26 +52,6 @@ handle_pointer_leave(
 }
 
 
-// We use this mainly to set our capture-area-deciding selection box, and not
-// our border-render-deciding box (which lives in our viewport "source buffer",
-// and we define based on the capture area), but this function is named like
-// this because getting translating to the source buffer coordinates is what
-// we are in effect doing (since the source buffer should be +/- 1 pixel
-// difference to capture area dimensions, which is the range we're mapping
-// when scaling/rounding like we have to do here.
-static inline int
-convert_selection_surface_logical_coordinate_to_buffer_pixel(
-    struct scran_output_surface *st_surface,
-    wl_fixed_t surface_pixel_fixed
-) {
-    double surface_pixel_double = wl_fixed_to_double(surface_pixel_fixed);
-    double scale = st_surface->final_scale_factor_normalized;
-    int output_pixel = round(surface_pixel_double * scale);
-
-    return output_pixel;
-}
-
-
 // TODO: Benchmark with/without early exit on unchanged cursor position.
 static void
 handle_pointer_motion(
@@ -91,19 +71,11 @@ handle_pointer_motion(
     }
 
     struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, selection_surface);
-    struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
-
-    int x_px = convert_selection_surface_logical_coordinate_to_buffer_pixel(&focused_selection_surface->surface, x_surface);
-    int y_px = convert_selection_surface_logical_coordinate_to_buffer_pixel(&focused_selection_surface->surface, y_surface);
-
-    // TODO: Maybe use a BLPoint to neatly pack this into _selection_surface_logical_coordinate_to_buffer_pixel.
-    clamp_to_transformed_output_width(&x_px, st_output);
-    clamp_to_transformed_output_height(&y_px, st_output);
-
-    pointer_ctx->x_px = x_px;
-    pointer_ctx->y_px = y_px;
+    BLPointI coords_px_ = seat_update_pointer_coordinates(&state->seat, x_surface, y_surface);
+    int x_px = coords_px_.x;
+    int y_px = coords_px_.y;
 
     // TODO: Check if out of bounds
     assert(!blboxi_is_inverted(selection_ctx->box_before_changes_px));
@@ -267,8 +239,9 @@ handle_pointer_button(
     struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, selection_surface);
     struct scran_output_selectionContext *selection_ctx = &st_output->selection_ctx;
 
-    int x_px = pointer_ctx->x_px;
-    int y_px = pointer_ctx->y_px;
+    BLPointI coords_px_ = seat_get_pointer_coordinates(&state->seat);
+    int x_px = coords_px_.x;
+    int y_px = coords_px_.y;
 
     // Should e.g. not be buffer-coordinates (which is sometimes 1px larger than output dimension)
     assert(x_px <= get_transformed_output_width(st_output));

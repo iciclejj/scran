@@ -50,6 +50,8 @@ seat_set_focused_selection_surface_(
     return;
 }
 
+// For storing Wayland focus (e.g. ::enter).
+// Scran's actual active surface/output gets selected later, affected by this.
 static inline struct scran_output_selectionSurface *
 seat_update_pointer_focus(struct scran_seat *seat, struct wl_surface *focused_surface) {
     struct scran_output_selectionSurface **pointer_focused_surface = &seat->pointer_ctx.focused_selection_surface;
@@ -60,6 +62,8 @@ seat_update_pointer_focus(struct scran_seat *seat, struct wl_surface *focused_su
     return *pointer_focused_surface;
 }
 
+// For storing Wayland focus (e.g. ::enter).
+// Scran's active surface/output later gets selected later, affected by this.
 static inline struct scran_output_selectionSurface *
 seat_update_keyboard_focus(struct scran_seat *seat, struct wl_surface *focused_surface) {
     struct scran_output_selectionSurface **keyboard_focused_surface = &seat->keyboard.focused_selection_surface;
@@ -69,5 +73,51 @@ seat_update_keyboard_focus(struct scran_seat *seat, struct wl_surface *focused_s
 
     return *keyboard_focused_surface;
 }
+
+// We use this mainly to set our capture-area-deciding selection box, and not
+// our border-render-deciding box (which lives in our viewport "source buffer",
+// and we define based on the capture area), but this function is named like
+// this because getting translating to the source buffer coordinates is what
+// we are in effect doing (since the source buffer should be +/- 1 pixel
+// difference to capture area dimensions, which is the range we're mapping
+// when scaling/rounding like we have to do here.
+static BLPointI
+seat_convert_selection_surface_logical_point_to_buffer_point_px(
+    struct scran_output_surface *st_surface,
+    wl_fixed_t x_fixed_t,
+    wl_fixed_t y_fixed_t
+) {
+    double scale = st_surface->final_scale_factor_normalized;
+
+    return (BLPointI){
+        round(scale * wl_fixed_to_double(x_fixed_t)),
+        round(scale * wl_fixed_to_double(y_fixed_t)),
+    };
+}
+
+static inline BLPointI
+seat_update_pointer_coordinates(
+    struct scran_seat *seat,
+    wl_fixed_t x_surface,
+    wl_fixed_t y_surface
+) {
+    struct scran_output_selectionSurface *selection_surface = seat->pointer_ctx.focused_selection_surface;
+    struct scran_output *st_output = wl_container_of(selection_surface, st_output, selection_surface);
+
+    BLPointI coordinates = seat_convert_selection_surface_logical_point_to_buffer_point_px(
+        &selection_surface->surface, x_surface, y_surface
+    );
+    clamp_to_transformed_output_width(&coordinates.x, st_output);
+    clamp_to_transformed_output_height(&coordinates.y, st_output);
+
+    seat->pointer_ctx.coordinates = coordinates;
+    return coordinates;
+}
+
+static inline BLPointI
+seat_get_pointer_coordinates(struct scran_seat *seat) {
+    return seat->pointer_ctx.coordinates;
+}
+
 
 #endif

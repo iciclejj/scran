@@ -221,8 +221,7 @@ struct scran_output_freezeframe {
 };
 
 struct scran_seat_pointerContext {
-    int x_px;
-    int y_px;
+    BLPointI coordinates;
 
     // We only handle one button at a time
     // KEY_MAX is 2ff, but pointer::button sends uint32_t, so let's use that for now
