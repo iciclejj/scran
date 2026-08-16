@@ -9,35 +9,12 @@
 
 
 void seat_apply_mod_key_state(struct scran_seat *seat, struct scran_output_selectionSurface *selection_surface, bool state);
+void seat_update_active_selection_surface(struct scran_seat *seat);
 
 static inline void
 seat_set_mod_key_state(struct scran_seat *seat, bool state) {
     seat_apply_mod_key_state(seat, seat->active_selection_surface, state);
     seat->mod_key_active = state;
-}
-
-static inline void
-seat_update_active_selection_surface(struct scran_seat *seat) {
-
-    // When multiple same-layer layer surface request ECXLUSIVE keyboard
-    // interactivity, it is implementation-defined which surface gets keyboard
-    // focus, so prioritize the pointer's focused surface, if available.
-    //
-    // COSMIC, as of recently started only giving keyboard focus to the "main"
-    // display's selection surface.
-    //
-    // We control all our surfaces, so it doesn't matter if our "real" keyboard
-    // focus is on a different surface/output.
-
-    struct scran_output_selectionSurface *selected_surface =
-        seat->pointer_ctx.focused_selection_surface
-        ?: seat->keyboard.focused_selection_surface;
-
-    if (selected_surface != seat->active_selection_surface) {
-        seat_apply_mod_key_state(seat, seat->active_selection_surface, false);
-        seat_apply_mod_key_state(seat, selected_surface, seat->mod_key_active);
-        seat->active_selection_surface = selected_surface;
-    }
 }
 
 static inline void

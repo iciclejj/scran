@@ -250,6 +250,23 @@ scran_ui_statusline_set_timer(
     return false;
 }
 
+static inline uint32_t
+scran_ui_textline_item_get_pressed_mask(
+    struct scran_ui_textline_view textline
+) {
+    return textline.meta->pressed_items_mask;
+}
+
+static inline void
+scran_ui_textline_item_set_pressed_mask(
+    struct scran_ui_context *ui_ctx,
+    struct scran_ui_textline_view textline,
+    uint32_t pressed_items_mask
+) {
+    textline.meta->dirty_items_mask |= pressed_items_mask ^ textline.meta->pressed_items_mask;
+    textline.meta->pressed_items_mask = pressed_items_mask;
+}
+
 static inline void
 scran_ui_textline_item_set_pressed(
     struct scran_ui_context *ui_ctx,
