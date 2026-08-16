@@ -20,8 +20,8 @@ handle_pointer_enter(
     struct wl_pointer *pointer,
     uint32_t serial,
     struct wl_surface *surface_entered,
-    wl_fixed_t x,
-    wl_fixed_t y
+    wl_fixed_t x_surface,
+    wl_fixed_t y_surface
 ) {
     struct scran *state = data;
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
@@ -30,7 +30,13 @@ handle_pointer_enter(
 
     struct scran_output_selectionSurface *pointer_surface = seat_update_pointer_focus(&state->seat, surface_entered);
 
-    if (pointer_surface && pointer_surface == state->seat.active_selection_surface) {
+    if (!pointer_surface) {
+        return;
+    }
+
+    seat_update_pointer_coordinates(&state->seat, x_surface, y_surface);
+
+    if (pointer_surface == state->seat.active_selection_surface) {
         struct scran_output *st_output = wl_container_of(
             pointer_ctx->focused_selection_surface, st_output, selection_surface
         );
