@@ -289,6 +289,9 @@ struct scran_seat {
     struct wl_pointer *wl_pointer;
     struct wl_keyboard *wl_keyboard;
     // TODO: struct wl_touch *touch;
+
+    struct scran_output_selectionSurface *active_selection_surface;
+    bool mod_key_active;
 };
 
 enum selection_state {

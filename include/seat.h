@@ -4,14 +4,52 @@
 
 #include <wayland-client-core.h>
 
+#include "state.h"
 #include "state-util.h"
 
 
+void seat_apply_mod_key_state(struct scran_seat *seat, struct scran_output_selectionSurface *selection_surface, bool state);
+
 static inline void
-seat_update_focused_selection_surface(
+seat_set_mod_key_state(struct scran_seat *seat, bool state) {
+    seat_apply_mod_key_state(seat, seat->active_selection_surface, state);
+    seat->mod_key_active = state;
+}
+
+static inline void
+seat_update_active_selection_surface(struct scran_seat *seat) {
+
+    // When multiple same-layer layer surface request ECXLUSIVE keyboard
+    // interactivity, it is implementation-defined which surface gets keyboard
+    // focus, so prioritize the pointer's focused surface, if available.
+    //
+    // COSMIC, as of recently started only giving keyboard focus to the "main"
+    // display's selection surface.
+    //
+    // We control all our surfaces, so it doesn't matter if our "real" keyboard
+    // focus is on a different surface/output.
+
+    struct scran_output_selectionSurface *selected_surface =
+        seat->pointer_ctx.focused_selection_surface
+        ?: seat->keyboard.focused_selection_surface;
+
+    if (selected_surface != seat->active_selection_surface) {
+        seat_apply_mod_key_state(seat, seat->active_selection_surface, false);
+        seat_apply_mod_key_state(seat, selected_surface, seat->mod_key_active);
+        seat->active_selection_surface = selected_surface;
+    }
+}
+
+static inline void
+seat_set_focused_selection_surface_(
     struct scran_output_selectionSurface **dst,
     struct wl_surface *focused_surface
 ) {
+    if (focused_surface == NULL) {
+        *dst = NULL;
+        return;
+    }
+
     FOR_EACH_OUTPUT(i, st_output) {
         struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
         if (focused_surface == selection_surface->surface.wl_surface) {
@@ -35,5 +73,24 @@ seat_update_focused_selection_surface(
     return;
 }
 
+static inline struct scran_output_selectionSurface *
+seat_update_pointer_focus(struct scran_seat *seat, struct wl_surface *focused_surface) {
+    struct scran_output_selectionSurface **pointer_focused_surface = &seat->pointer_ctx.focused_selection_surface;
+
+    seat_set_focused_selection_surface_(&seat->pointer_ctx.focused_selection_surface, focused_surface);
+    seat_update_active_selection_surface(seat);
+
+    return *pointer_focused_surface;
+}
+
+static inline struct scran_output_selectionSurface *
+seat_update_keyboard_focus(struct scran_seat *seat, struct wl_surface *focused_surface) {
+    struct scran_output_selectionSurface **keyboard_focused_surface = &seat->keyboard.focused_selection_surface;
+
+    seat_set_focused_selection_surface_(keyboard_focused_surface, focused_surface);
+    seat_update_active_selection_surface(seat);
+
+    return *keyboard_focused_surface;
+}
 
 #endif
