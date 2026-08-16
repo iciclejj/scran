@@ -55,8 +55,8 @@ static const struct ui_string ui_texts[] = {
     [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY]      = INIT_UI_STRING(u"[⇥] Click tray icon to retake focus."),
     [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP]      = INIT_UI_STRING(u"[⇥] Focus released. 'scran -h' for help."),
 
-    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON]      = INIT_UI_STRING(u"[Z] Freeze screen"),
-    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_OFF]     = INIT_UI_STRING(u"[Z] Unfreeze screen"),
+    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON]      = INIT_UI_STRING(u"[Z] Freeze screens"),
+    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_OFF]     = INIT_UI_STRING(u"[Z] Unfreeze screens"),
 
     // Placeholders for calculating metadata (currently just max pixel widths)
     // - actual text is dynamic for these.
