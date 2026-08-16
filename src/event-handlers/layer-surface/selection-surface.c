@@ -8,7 +8,6 @@
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
-#include "selection-surface.h"
 #include "print.h"
 
 
@@ -22,7 +21,6 @@ handle_layer_surface_configure__selection(
     uint32_t height_logical
 ) {
     struct scran_output                  *st_output         = data;
-    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
     struct scran_output_surface          *st_surface        = &st_output->selection_surface.surface;
 
     DEBUG("layer_surface::configure():\n");
@@ -35,11 +33,8 @@ handle_layer_surface_configure__selection(
     ) {
         st_surface->width_logical = width_logical;
         st_surface->height_logical = height_logical;
-        update_surface_scale_bufsize_viewport(st_output);
 
-        reinit_scran_ui(&selection_surface->ui_ctx, selection_surface->surface.final_scale_factor_normalized);
-
-        request_selection_surface_frame_callback(st_output);
+        do_scale_updates(st_output);
     }
 }
 

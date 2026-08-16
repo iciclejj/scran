@@ -26,8 +26,8 @@ handle_image_copy_capture_frame_transform__image_capture(
     struct ext_image_copy_capture_frame_v1 *frame,
     uint32_t transform
 ) {
-    // TODO: What is this transform representing?
-    //           It is separate from output::geometry's transform.
+    struct scran_output *st_output = data;
+    st_output->capture.frame_ctx.source_transform = transform;
 }
 
 
@@ -58,8 +58,14 @@ handle_image_copy_capture_frame_presentation_time__image_capture(
     // No-op
 }
 
+// TODO: Make the generic end_capture logic shared between image and video
 static inline void
-end_capture() {
+end_capture(struct scran_output *st_output)
+{
+    if (st_output->capture.frame_ctx.fullscreen_capture) {
+        end_fullscreen_capture(st_output);
+    }
+
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 }
 
@@ -81,21 +87,22 @@ handle_image_copy_capture_frame_ready__image_capture(
 
     struct scran_output *st_output = data;
     struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+    const BLBoxI capture_buffer_area_px = capture_get_selection_as_capture_buffer_area_px(frame_ctx);
 
     DEBUG("CAPTURING IMAGE:\n");
-    DEBUG_BLBOXI(frame_ctx->capture_area_px);
-
+    DEBUG_BLBOXI(capture_buffer_area_px);
     // XXX: Capturing image during video capture not implemented yet...
     assert(!frame_ctx->capturing_video);
     assert(g_state.n_captures_in_progress >= 1);
 
-    const int capture_area_px_w = blboxi_width_abs_unsafe(frame_ctx->capture_area_px);
-    const int capture_area_px_h = blboxi_height_abs_unsafe(frame_ctx->capture_area_px);
+    const int capture_buffer_area_px_w = blboxi_width_abs_unsafe(capture_buffer_area_px);
+    const int capture_buffer_area_px_h = blboxi_height_abs_unsafe(capture_buffer_area_px);
+
     const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
     // XXX TODO: Either separate buffer from video capture OR double-check that
     // the shared buffer doesn't cause issues + add robust checks/asserts.
     // (Primarily for when we implement simultaneous image+video capture)
-    const uint8_t *const area_start_addr = capture_get_area_start_address(frame_ctx);
+    const uint8_t *const area_start_addr = capture_get_area_start_address(frame_ctx, capture_buffer_area_px);
     // XXX TODO(!!):
     //    Output size is not necessarily guaranteed to be <= raw pixel
     //    buffer size. In other words, this buffer could overflow, as it
@@ -112,14 +119,14 @@ handle_image_copy_capture_frame_ready__image_capture(
 
     // XXX: Scranrot does not support flipped transforms yet, so we just
     // record it flipped for now, rather than blocking capture entirely.
-    enum wl_output_transform transform = wl_output_transform_without_flip(st_output->transform);
+    enum wl_output_transform transform = wl_output_transform_without_flip(frame_ctx->source_transform);
 
     // XXX: We convert etc. unconditionally for now.
     //    TODO: Only convert if required
     //            I.e. convert if not natively supported pixel format by blend2d
     //            encoder and/or needs transform
     if (!scranrot_transform_framebuffer(
-            area_start_addr, capture_area_px_w, capture_area_px_h, source_row_bytes,
+            area_start_addr, capture_buffer_area_px_w, capture_buffer_area_px_h, source_row_bytes,
             buf_cropped_converted,
             rgba32_shuffle,
             wl_output_transform_to_scranrot(transform),
@@ -129,8 +136,8 @@ handle_image_copy_capture_frame_ready__image_capture(
         eprintf("Error: scranrot failed to convert framebuffer\n");
         goto end_capture;
     }
-    const int capture_area_px_w_transformed = get_transformed_width(capture_area_px_w, capture_area_px_h, st_output->transform);
-    const int capture_area_px_h_transformed = get_transformed_height(capture_area_px_w, capture_area_px_h, st_output->transform);
+    const int final_image_width  = get_transformed_width( capture_buffer_area_px_w, capture_buffer_area_px_h, transform);
+    const int final_image_height = get_transformed_height(capture_buffer_area_px_w, capture_buffer_area_px_h, transform);
 
 
     // Encode
@@ -140,8 +147,8 @@ handle_image_copy_capture_frame_ready__image_capture(
     // if it is not NULL (aka it is not freed here, at time of writing).
     res = bl_image_create_from_data(
         &frame_ctx->bl_img_captured,
-        capture_area_px_w_transformed,
-        capture_area_px_h_transformed,
+        final_image_width,
+        final_image_height,
         IMAGE_CAPTURE_OUTPUT_BLFORMAT_DEFAULT,
         buf_cropped_converted,
         buf_cropped_converted_row_bytes,
@@ -216,7 +223,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     bl_array_destroy(&bl_array_img_encoded);
 
 end_capture:
-    end_capture();
+    end_capture(st_output);
 }
 
 
@@ -228,7 +235,9 @@ handle_image_copy_capture_frame_failed__image_capture(
 ) {
     ext_image_copy_capture_frame_v1_destroy(frame);
 
-    end_capture();
+    struct scran_output *st_output = data;
+
+    end_capture(st_output);
 }
 
 
@@ -239,4 +248,3 @@ struct ext_image_copy_capture_frame_v1_listener image_copy_capture_frame_listene
     .ready = handle_image_copy_capture_frame_ready__image_capture,
     .failed = handle_image_copy_capture_frame_failed__image_capture,
 };
-

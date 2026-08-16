@@ -38,19 +38,23 @@ handle_presentation_feedback_presented__selection(
     struct scran_output_selectionSurface_buffer *st_buffer = data;
     struct scran_output *st_output = &g_state.outputs[get_containing_output_array_index(st_buffer)];
 
-    // Must be synchronized at actual presentation time, and using the box that
-    // was for certain used by the just-presented buffer. This should ensure
-    // consistency across compositors, regardless of how they handle their
-    // rendering.
-    //
-    // For example, at time of writing, naive assignment from within
-    // surface_callback::frame works fine with sway, but not with COSMIC, which
-    // is what triggered this change.
-    //
-    // TODO: This naive implementation is not very robust against
-    // delayed/skiped/etc. frames. Probably a frame history and multi-buffered
-    // capture is required, with currently available sync/protocol guarantees.
-    capture_update_area_with_selection(st_output, st_buffer->box_currently_drawn);
+    // XXX: Fullscreen capture manages capture area itself.
+    // Would be nice to make this responsibility bit less fragmented...
+    if (!st_output->capture.frame_ctx.fullscreen_capture) {
+        // Must be synchronized at actual presentation time, and using the box that
+        // was for certain used by the just-presented buffer. This should ensure
+        // consistency across compositors, regardless of how they handle their
+        // rendering.
+        //
+        // For example, at time of writing, naive assignment from within
+        // surface_callback::frame works fine with sway, but not with COSMIC, which
+        // is what triggered this change.
+        //
+        // TODO: This naive implementation is not very robust against
+        // delayed/skiped/etc. frames. Probably a frame history and multi-buffered
+        // capture is required, with currently available sync/protocol guarantees.
+        capture_update_selection(st_output, st_buffer->box_currently_drawn);
+    }
 }
 
 static inline void

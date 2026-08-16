@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdlib.h>
 
 #include <wayland-client.h>
 
@@ -17,11 +18,9 @@ handle_image_copy_capture_session_buffer_size__freezeframe(
     uint32_t height
 ) {
     struct scran_output *st_output = data;
-    (void)st_output;
 
-    // This seemingly always hold true, so use output::mode w/h only.
-    assert(width == (uint32_t)st_output->mode.width_px);
-    assert(height == (uint32_t)st_output->mode.height_px);
+    st_output->freezeframe.source_width_px = width;
+    st_output->freezeframe.source_height_px = height;
 }
 
 
@@ -61,8 +60,12 @@ handle_image_copy_capture_session_stopped__freezeframe(
 ) {
     struct scran_output *st_output = data;
 
-    // XXX TODO: Clean up and disable freezeframe.
     ext_image_copy_capture_session_v1_destroy(st_output->freezeframe.wl_capture_session);
+    st_output->freezeframe.wl_capture_session = NULL;
+
+    // XXX TODO: Clean up and disable freezeframe, and show message in notification.
+    eprintf("Error: Capture session stopped unexpectedly.\n");
+    exit(EXIT_FAILURE);
 }
 
 

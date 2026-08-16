@@ -120,13 +120,13 @@ init_postmem__selection(struct scran_output *st_output, BLBoxI *custom_initial_s
         struct scran_output_selectionSurface_buffer *st_buffer = &selection_surface->double_buffer[i];
 
         // Blend2D wrapper for the buffer we will be rendering into
-        assert(st_buffer->data != NULL);
+        assert(st_buffer->scran_wl_buffer.data != NULL);
         bl_image_init_as_from_data(
             &st_buffer->bl_img,
             st_surface->width_px_buffer,
             st_surface->height_px_buffer,
             SURFACE_SHM_FORMAT_BL,
-            st_buffer->data,
+            st_buffer->scran_wl_buffer.data,
             SURFACE_PIXEL_STRIDE * st_surface->width_px_buffer,
             BL_DATA_ACCESS_RW,
             NULL,
@@ -180,7 +180,7 @@ init_postmem__selection__destroy(struct scran_output *st_output)
     (void)selection_ctx;
 
     // Neutralize pending surface callbacks/callback requests
-    selection_surface->frame_callbacks_disabled = true;
+    selection_surface->disable_reason_mask |= SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED;
     selection_surface->awaiting_frame_callback = false;
 
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {

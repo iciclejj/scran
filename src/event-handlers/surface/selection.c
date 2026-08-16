@@ -45,7 +45,7 @@ selection_surface_frame_callback_handler(
     struct scran_output                  *st_output         = data;
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
 
-    bool skip = selection_surface->frame_callbacks_disabled || !selection_surface->awaiting_frame_callback;
+    bool skip = selection_surface->disable_reason_mask || !selection_surface->awaiting_frame_callback;
     selection_surface->awaiting_frame_callback = false;
 
     if (skip) {
@@ -88,17 +88,18 @@ selection_surface_frame_callback_handler(
         // XXX TODO: Check whether we're actually sway more robustly, and assign
         // it as part of our state. (So we don't need to assume the user is
         // running either cosmic or sway.)
-        capture_update_area_with_selection(st_output, capture_area);
+        capture_update_selection(st_output, capture_area);
     }
 
     draw_selection_and_damage_buffer(
         &st_output->selection_surface,
         st_buffer,
+        &st_output->selection_ctx,
         capture_area
     );
     st_output->selection_surface.box_last_drawn = capture_area;
 
-    wl_surface_attach(st_output->selection_surface.surface.wl_surface, st_buffer->wl_buffer, 0, 0);
+    wl_surface_attach(st_output->selection_surface.surface.wl_surface, st_buffer->scran_wl_buffer.wl_buffer, 0, 0);
     wp_presentation_feedback_add_listener(
         wp_presentation_feedback(g_state.globals.presentation, st_output->selection_surface.surface.wl_surface),
         &presentation_feedback_listener__selection,

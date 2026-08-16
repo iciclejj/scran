@@ -3,8 +3,6 @@
 #include "state.h"
 #include "state-util.h"
 #include "event-handlers.h"
-#include "selection-surface.h"
-#include "freezeframe.h"
 #include "print.h"
 
 
@@ -36,7 +34,6 @@ handle_output_scale(
     int32_t factor
 ) {
     struct scran_output *st_output = data;
-    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
 
     DEBUG("output::scale():\n");
     DEBUG("  %d\n", st_output->scale);
@@ -44,9 +41,7 @@ handle_output_scale(
     if (st_output->scale != factor) {
         st_output->scale = factor;
 
-        update_surface_scale_bufsize_viewport(st_output);
-        reinit_scran_ui(&selection_surface->ui_ctx, selection_surface->surface.final_scale_factor_normalized);
-        request_selection_surface_frame_callback(st_output);
+        do_scale_updates(st_output);
     }
 }
 

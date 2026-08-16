@@ -69,5 +69,7 @@ init_premem__freezeframe__destroy(
     wp_viewport_destroy(freezeframe->subsurface.viewport);
     wl_subsurface_destroy(freezeframe->subsurface.wl_subsurface);
     wl_surface_destroy(freezeframe->subsurface.wl_surface);
-    ext_image_copy_capture_session_v1_destroy(freezeframe->wl_capture_session);
+    if (freezeframe->wl_capture_session) {
+        ext_image_copy_capture_session_v1_destroy(freezeframe->wl_capture_session);
+    }
 }

@@ -31,6 +31,8 @@ extern struct zwlr_output_head_v1_listener               wlr_output_head_listene
 extern struct zwlr_output_manager_v1_listener            wlr_output_manager_listener;
 extern struct ext_image_copy_capture_frame_v1_listener   image_copy_capture_frame_listener__freezeframe;
 extern struct wp_presentation_feedback_listener          presentation_feedback_listener__selection_transparent_for_freezeframe;
+extern struct wp_presentation_feedback_listener          presentation_feedback_listener__selection_transparent_for_fullscreen_image_capture;
+extern struct wp_presentation_feedback_listener          presentation_feedback_listener__selection_transparent_for_fullscreen_video_capture;
 extern struct ext_image_copy_capture_session_v1_listener image_copy_capture_session_listener__freezeframe;
 
 extern struct wl_registry_listener registry_listener;

@@ -7,6 +7,7 @@
 
 #include "state.h"
 #include "state-util.h"
+#include "seat.h"
 #include "freezeframe.h"
 #include "event-handlers.h"
 #include "capture.h"
@@ -60,10 +61,13 @@ handle_keyboard_enter (
     void *data,
     struct wl_keyboard *wl_keyboard,
     uint32_t serial,
-    struct wl_surface *surface,
+    struct wl_surface *surface_entered,
     struct wl_array *keys
 ) {
-    // TODO
+    struct scran *state = data;
+    struct scran_seat_keyboard *keyboard_ctx = &state->seat.keyboard;
+
+    seat_update_focused_selection_surface(&keyboard_ctx->focused_selection_surface, surface_entered);
 }
 
 
@@ -74,7 +78,10 @@ handle_keyboard_leave (
     uint32_t serial,
     struct wl_surface *surface
 ) {
-    // TODO
+    struct scran *state = data;
+    struct scran_seat_keyboard *keyboard_ctx = &state->seat.keyboard;
+
+    keyboard_ctx->focused_selection_surface = NULL;
 }
 
 
@@ -88,7 +95,7 @@ handle_keyboard_key(
     enum wl_keyboard_key_state key_state
 ) {
     struct scran *state = data;
-    struct scran_output_selectionSurface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
+    struct scran_output_selectionSurface *focused_selection_surface = state->seat.keyboard.focused_selection_surface;
 
     if (focused_selection_surface == NULL) {
         return;
@@ -104,12 +111,8 @@ handle_keyboard_key(
         key + 8 // See wl_keyboard::keymap_format
     );
 
-    // TODO: Add custom pre-init actions.
-    if (st_output->selection_ctx.selection_state == SELECTION_NONE
-        && xkb_key != XKB_KEY_Escape // Allow exit
-    ) {
-        return;
-    }
+    bool pre_selection = selection_is_none(&st_output->selection_ctx);
+    bool fullscreen_capture = pre_selection;
 
     // TODO: Nested switch for released/pressed
     if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
@@ -126,7 +129,7 @@ handle_keyboard_key(
         case XKB_KEY_z:
         case XKB_KEY_Z:
             if (state->options.freezeframe) {
-                scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME, false);
+                scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, false);
             }
             break;
         default:
@@ -140,20 +143,28 @@ handle_keyboard_key(
     assert(key_state != WL_KEYBOARD_KEY_STATE_RELEASED);
     switch (xkb_key) {
     case XKB_KEY_Left:
-        blboxi_shift(&st_output->selection_ctx.box_px, -1,  0);
-        request_selection_surface_frame_callback(st_output);
+        if (!pre_selection) {
+            blboxi_shift(&st_output->selection_ctx.box_px, -1,  0);
+            request_selection_surface_frame_callback(st_output);
+        }
         break;
     case XKB_KEY_Right:
-        blboxi_shift(&st_output->selection_ctx.box_px, +1,  0);
-        request_selection_surface_frame_callback(st_output);
+        if (!pre_selection) {
+            blboxi_shift(&st_output->selection_ctx.box_px, +1,  0);
+            request_selection_surface_frame_callback(st_output);
+        }
         break;
     case XKB_KEY_Up:
-        blboxi_shift(&st_output->selection_ctx.box_px,  0, -1);
-        request_selection_surface_frame_callback(st_output);
+        if (!pre_selection) {
+            blboxi_shift(&st_output->selection_ctx.box_px,  0, -1);
+            request_selection_surface_frame_callback(st_output);
+        }
         break;
     case XKB_KEY_Down:
-        blboxi_shift(&st_output->selection_ctx.box_px,  0, +1);
-        request_selection_surface_frame_callback(st_output);
+        if (!pre_selection) {
+            blboxi_shift(&st_output->selection_ctx.box_px,  0, +1);
+            request_selection_surface_frame_callback(st_output);
+        }
         break;
     case XKB_KEY_Tab:
         stop_grabbing_focus();
@@ -166,7 +177,7 @@ handle_keyboard_key(
 
         {
             struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME, true);
+            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, true);
             request_selection_surface_frame_callback(st_output);
         }
 
@@ -182,7 +193,7 @@ handle_keyboard_key(
         }
 
         // XXX TODO: Make this a bit cleaner responsibility-wise.
-        //             See also refactor-TODO in freezeframe_unhide_selection_surface().
+        //             See also refactor-TODO in unhide_selection_surface().
         //           Also, maybe make this the only (default) way to toggle freezeframe,
         //           and don't let refocus automatically re-freeze?
         if (pretend_all_hidden) {
@@ -206,7 +217,7 @@ z_done:
             video_capture_request_stop(st_output);
         } else {
             eprintf(" exiting.\n");
-            state->exit_requested = true;
+            scran_request_exit();
         }
         break;
     case XKB_KEY_Return:
@@ -216,14 +227,15 @@ z_done:
         if (st_output->capture.frame_ctx.capturing_video) {
             eprintf("Screenshot during video capture not implemented yet, try again later :(\n");
         } else {
-            image_capture_start(st_output);
+            bool exit_after_capture = !xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
 
-            if (!xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE)) {
-                state->exit_requested = true;
+            if (fullscreen_capture) {
+                image_capture_start_fullscreen(st_output, exit_after_capture);
+            } else {
+                image_capture_start(st_output, exit_after_capture);
+                scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
+                request_selection_surface_frame_callback(st_output);
             }
-
-            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
-            request_selection_surface_frame_callback(st_output);
         }
 
         break;
@@ -238,9 +250,17 @@ z_done:
                 set_selection_initialized(st_output);
             }
 
-            if (!video_capture_start(st_output)) {
+            bool video_capture_started;
+
+            if (fullscreen_capture) {
+                video_capture_started = video_capture_start_fullscreen(st_output);
+            } else {
+                video_capture_started = video_capture_start(st_output);
+            }
+
+            if (!video_capture_started) {
+                video_button_got_jammed = true;
                 // TODO: Fire a notification instead?
-                video_button_got_jammed = true; // :(
                 eprintf("Failed to start video capture.\n");
             }
         }
@@ -280,17 +300,13 @@ handle_keyboard_modifiers(
         group
     );
 
-    struct scran_output_selectionSurface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
+    struct scran_output_selectionSurface *focused_selection_surface = state->seat.keyboard.focused_selection_surface;
 
     if (focused_selection_surface == NULL) {
         return;
     }
 
     struct scran_output *st_output = wl_container_of(focused_selection_surface, st_output, selection_surface);
-
-    if (st_output->selection_ctx.selection_state == SELECTION_NONE) {
-        return;
-    }
 
     bool mod_key_active = xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
 

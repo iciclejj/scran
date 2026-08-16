@@ -3,7 +3,10 @@
 
 #include <blend2d/blend2d.h>
 
+#include "presentation-time.h"
+
 #include "state.h"
+#include "state-util.h"
 
 
 #define SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED   ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE
@@ -28,11 +31,30 @@ void set_selection_surface_theme(struct scran_output *st_output, enum surface_th
 void set_selection_initialized(struct scran_output *st_output);
 bool set_selection_freeze_size(struct scran_output *st_output);
  void unset_selection_freeze_size(struct scran_output *st_output);
+void hide_selection_surface_then(struct scran_output *st_output, struct wp_presentation_feedback_listener *listener, enum scran_selection_surface_disable_reason reason);
+ void release_selection_surface_hide(struct scran_output *st_output, enum scran_selection_surface_disable_reason reason);
 
 void start_grabbing_focus(void);
 void start_grabbing_focus_for_output(struct scran_output *st_output);
 void stop_grabbing_focus(void);
 void update_focus_released_keymap_text(bool have_tray_icon);
+
+
+static inline BLBoxI
+get_fullscreen_selection_box(struct scran_output *st_output) {
+    return (BLBoxI){
+        .x0 = 0,
+        .y0 = 0,
+        .x1 = get_transformed_output_width(st_output),
+        .y1 = get_transformed_output_height(st_output),
+    };
+}
+
+static inline bool
+selection_is_none(struct scran_output_selectionContext *selection_ctx) {
+    return selection_ctx->selection_state == SELECTION_NONE ||
+           selection_ctx->selection_state == SELECTION_NONE_FREEZE_SIZE;
+}
 
 
 #endif

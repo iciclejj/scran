@@ -27,6 +27,7 @@
 #include "cosmic-output-management-unstable-v1.h"
 
 #include "ui.h"
+#include "cursor.h"
 
 #define MAX_OUTPUTS 64
 
@@ -55,6 +56,7 @@
 // length (nor for actual name to be equal to the underlying DRM name).
 #define SCRAN_STATE_OUTPUT_NAME_SIZE DRM_CONNECTOR_NAME_LEN
 
+
 struct scran_globals {
     struct wl_display *display;
     struct wl_registry *registry;
@@ -74,6 +76,25 @@ struct scran_globals {
     struct zcosmic_output_manager_v1 *cosmic_output_manager;
     struct wp_viewporter *viewporter;
     struct hyprland_surface_manager_v1 *hypr_surface_manager;
+};
+
+struct scran_wl_buffer {
+    struct wl_buffer *wl_buffer;
+    void *data;
+};
+
+struct scran_cursor_buffer {
+    struct scran_wl_buffer scran_wl_buffer;
+    BLImageCore bl_img;
+};
+
+struct scran_cursor {
+    struct wl_surface *wl_surface;
+    struct wp_viewport *viewport;
+    struct scran_cursor_buffer buffers[SCRAN_CURSOR_N_THEMES];
+
+    int width_height_px;
+    enum scran_cursor_theme theme;
 };
 
 struct scran_output_subsurface {
@@ -123,8 +144,7 @@ struct scran_ui_textline_surface_state {
 };
 
 struct scran_output_selectionSurface_buffer {
-    struct wl_buffer *wl_buffer;
-    void *data;
+    struct scran_wl_buffer scran_wl_buffer;
 
     BLContextCore bl_ctx;
     BLImageCore bl_img;
@@ -132,12 +152,20 @@ struct scran_output_selectionSurface_buffer {
     // now that we have more things going on in the selection surface (like ui_keymap)?
     BLBoxI box_currently_drawn;
 
+    struct scran_ui_textline_surface_state ui_greeting_state_currently_drawn;
     struct scran_ui_textline_surface_state ui_keymap_state_currently_drawn;
     struct scran_ui_textline_surface_state ui_statusline_state_currently_drawn;
-    struct scran_ui_textline_surface_state ui_statusline_keymap_state_currently_drawn;
 
     bool busy;
     bool force_redraw;
+    uint8_t redrawn_textline_mask;
+};
+
+enum scran_selection_surface_disable_reason {
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_NONE              = 0,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE  = 1 << 0,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE   = 1 << 1,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED = 1 << 2,
 };
 
 struct scran_output_selectionSurface {
@@ -150,20 +178,21 @@ struct scran_output_selectionSurface {
     // XXX TODO: Turn this into a pointer once we remove the ugly redraw hack
     // in set_selection_surface_theme(). TODO: Redraw hack is gone now.
     BLBoxI box_last_drawn;
+    struct scran_ui_textline_surface_state ui_greeting_state_last_drawn;
     struct scran_ui_textline_surface_state ui_keymap_state_last_drawn;
     struct scran_ui_textline_surface_state ui_statusline_state_last_drawn;
-    struct scran_ui_textline_surface_state ui_statusline_keymap_state_last_drawn;
 
     bool awaiting_frame_callback;
-    bool frame_callbacks_disabled;
+    // Disables frame callbacks and hiding/unhiding.
+    uint8_t disable_reason_mask;
+    uint8_t theme;
 };
 
 struct scran_output;
 typedef void (*freezeframe_callback)(struct scran_output *) ;
 
 struct scran_freezeframe_buffer {
-    struct wl_buffer *wl_buffer;
-    void *data;
+    struct scran_wl_buffer scran_wl_buffer;
     freezeframe_callback release_callback;
     bool busy;
 };
@@ -172,6 +201,9 @@ struct scran_output_freezeframe {
     struct scran_output_subsurface subsurface;
 
     struct ext_image_copy_capture_session_v1 *wl_capture_session;
+    int32_t source_width_px;
+    int32_t source_height_px;
+    enum wl_output_transform source_transform;
     enum wl_shm_format shm_format;
 
     bool unhide_after_capture;
@@ -186,7 +218,6 @@ struct scran_output_freezeframe {
     // some compositors, at least on Sway.
     struct scran_freezeframe_buffer capture_buffer;
     struct scran_freezeframe_buffer surface_buffer;
-    struct scran_freezeframe_buffer transparent_single_pixel_buffer;
 };
 
 struct scran_seat_pointerContext {
@@ -209,13 +240,7 @@ struct scran_seat_pointerContext {
     bool use_presses_only;
 
     uint32_t last_enter_serial;
-
-    // Fulloutput => covers entire output's area/resolution.
-    //   (Named this way to prevent any conflation with other uses of the term
-    //   "fullscreen" in Wayland/XDG protocols/etc.
-    //   TODO: Should this be for the entire seat, and not just pointer?
-    //             Both keyboard and pointer have ::enter events.
-    struct scran_output_selectionSurface *focused_fulloutput_selection_surface;
+    struct scran_output_selectionSurface *focused_selection_surface;
 
     struct wp_cursor_shape_device_v1 *cursor_shape_device;
 };
@@ -224,6 +249,8 @@ struct scran_seat_keyboard {
     struct xkb_context *xkb_context;
     struct xkb_keymap *xkb_keymap;
     struct xkb_state *xkb_state;
+
+    struct scran_output_selectionSurface *focused_selection_surface;
 };
 
 // TODO Isolate from rest of state.
@@ -266,6 +293,7 @@ struct scran_seat {
 
 enum selection_state {
     SELECTION_NONE,
+    SELECTION_NONE_FREEZE_SIZE, // Prevents starting a selection during fullscreen capture
     SELECTION_INITIALIZING,
     SELECTION_COMPLETE,
     SELECTION_COMPLETE_FREEZE_SIZE,
@@ -304,11 +332,6 @@ struct scran_output_selectionContext {
     int pointer_before_changes_y_px;
 };
 
-struct scran_capture_buffer {
-    struct wl_buffer *wl_buffer;
-    void *data;
-};
-
 struct ffmpeg_context {
     // Video
     AVFormatContext *av_format_ctx;
@@ -328,7 +351,7 @@ struct ffmpeg_context {
 struct capture_frame_context {
     struct ext_image_copy_capture_frame_v1 *frame;
 
-    struct scran_capture_buffer st_buffer;
+    struct scran_wl_buffer scran_wl_buffer;
     // Extra buffer for copying/intermediate operations
     // TODO: Rename this
     void *img_data_2;
@@ -343,9 +366,9 @@ struct capture_frame_context {
     int64_t presentation_time_nsec_start;
     int64_t presentation_time_nsec; // NOTE: _start is PRE-SUBTRACTED.
 
-    //  NOTE: Capture area should be set synchronously with the drawn overlay's
-    //        area (or be set based on the same real-time values). Otherwise,
-    //        its graphics can spill into the capture frame.
+    //  NOTE: selection_ctx_box_px should be updated synchronously with the
+    //        drawn overlay's area (or be set based on the same real-time
+    //        values). Otherwise, its graphics can spill into the capture frame.
     //        F.ex., the mouse can have moved in-between overlay's frame draw
     //        and capture's frame "draw".
     //        NOTE also that the most-recently drawn by us frame is *not*
@@ -353,19 +376,21 @@ struct capture_frame_context {
     //        like Sway, this does result in proper sync, but some other
     //        compositors, like COSMIC, are not neatly ordered like this
     //        internally (at time of writing).
-    struct BLBoxI capture_area_px; // NOTE: Transform should be reversed.
+    struct BLBoxI selection_ctx_box_px;
     // Contains *at least* the union of frame::damage-reported damage
-    struct BLBoxI damage_area_px;
-    // TODO: Get this through output.mode if we both end up pointing to it here,
-    //       AND it is still asserted to be equal to session::buffer_size's
-    //       width arg.
+    struct BLBoxI capture_buffer_damage_area_px;
     int32_t source_width_px;
     int32_t source_height_px;
+    enum wl_output_transform source_transform;
     uint8_t pixel_stride;
 
     bool capturing_video;
+    bool video_end_requested;
     bool audio_active;
     bool audio_disable_modifier_active;
+    bool fullscreen_capture;
+    bool fullscreen_video_pending;
+    bool fullscreen_video_pending_audio_disabled;
 };
 
 struct scran_output_capture {
@@ -374,6 +399,9 @@ struct scran_output_capture {
     struct ext_image_capture_source_v1 *source;
 
     uint32_t shm_format;
+
+    uint8_t pre_capture_selection_theme;
+    bool exit_after_capture;
 };
 
 struct scran_output_mode {
@@ -408,6 +436,7 @@ struct scran_output {
     wl_fixed_t fractional_scale_wlr;        // zwlr_output_head
 
     struct scran_output_selectionSurface selection_surface;
+    struct scran_cursor cursor;
     struct scran_output_selectionContext selection_ctx;
     struct scran_output_capture capture;
     struct scran_output_freezeframe freezeframe;
@@ -465,6 +494,7 @@ struct scran {
 
     // Used for releasing focus
     struct wl_region *empty_wl_region;
+    struct scran_wl_buffer transparent_single_pixel_buffer;
     sig_atomic_t sig_focus_requested;
 
     // TODO: Probably allocate this dynamically, after all.

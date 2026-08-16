@@ -2,12 +2,36 @@
 
 #include "state.h"
 #include "state-util.h"
+#include "capture.h"
+#include "ui.h"
+#include "cursor.h"
 #include "freezeframe.h"
 #include "print.h"
+#include "selection-surface.h"
 
 
 extern struct scran g_state;
 
+
+void
+scran_request_exit()
+{
+    g_state.exit_requested = true;
+
+    FOR_EACH_OUTPUT(i, st_output) {
+        struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+
+        if (frame_ctx->fullscreen_video_pending) {
+            frame_ctx->fullscreen_video_pending = false;
+            frame_ctx->fullscreen_video_pending_audio_disabled = false;
+            end_fullscreen_capture(st_output);
+        }
+
+        if (frame_ctx->capturing_video) {
+            video_capture_request_stop(st_output);
+        }
+    }
+}
 
 static inline int32_t
 downscale_cosmic_style(
@@ -112,6 +136,45 @@ update_surface_scale_and_size(
     st_surface->height_px_buffer = round(scale_factor * st_surface->height_logical);
 }
 
+void
+update_selection_surface_viewport(
+    struct scran_output *st_output
+) {
+    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+    struct scran_output_surface          *st_surface         = &selection_surface->surface;
+
+    // A disabled selection surface may have the 1x1 transparent buffer
+    // attached. Don't call this function in that case.
+    assert(!selection_surface->disable_reason_mask);
+
+    if (!(st_surface->viewport
+          && st_surface->width_px_buffer && st_surface->height_px_buffer
+          && st_surface->width_logical   && st_surface->height_logical)
+    ) {
+        return;
+    }
+
+    DEBUG("    Updating selection-surface viewport...\n");
+    DEBUG("      src_width: %d, src_height: %d,  dst_width: %d, dst_height: %d\n",
+          st_surface->width_px_buffer, st_surface->height_px_buffer,
+          st_surface->width_logical, st_surface->height_logical
+    );
+
+    wp_viewport_set_source(
+        st_surface->viewport,
+        wl_fixed_from_int(0),
+        wl_fixed_from_int(0),
+        wl_fixed_from_int(st_surface->width_px_buffer),
+        wl_fixed_from_int(st_surface->height_px_buffer)
+    );
+
+    wp_viewport_set_destination(
+        st_surface->viewport,
+        st_surface->width_logical,
+        st_surface->height_logical
+    );
+}
+
 // NOTE: This does not necessarily force-redraw the buffer, since buffer
 // handling, beyond getting/calculating recommended size, is not part of
 // scran_output_surface.
@@ -125,41 +188,27 @@ update_surface_scale_bufsize_viewport(
     DEBUG("    Updating scale and size...\n");
     update_surface_scale_and_size(st_surface);
 
-    // TODO: Maybe move this responsibility into output::scale etc, so we're
-    // not forced to do this check every time we update
-    if (st_surface->viewport == NULL) {
-        return;
+    if (!st_output->selection_surface.disable_reason_mask) {
+        update_selection_surface_viewport(st_output);
+    } else {
+        DEBUG("    Selection surface disabled; deferring viewport update.\n");
     }
-    if (!(st_surface->width_px_buffer && st_surface->height_px_buffer)) {
-        return;
-    }
-    if (!(st_surface->width_logical && st_surface->height_logical)) {
-        return;
-    }
-
-    DEBUG("    Updating viewport...\n");
-    DEBUG("      src_width: %d, src_height: %d,  dst_width: %d, dst_height: %d\n",
-          st_surface->width_px_buffer, st_surface->height_px_buffer,
-          st_surface->width_logical, st_surface->height_logical
-    );
-
-    if (st_surface->width_px_buffer && st_surface->height_px_buffer) {
-        wp_viewport_set_source(
-            st_surface->viewport,
-            wl_fixed_from_int(0),
-            wl_fixed_from_int(0),
-            wl_fixed_from_int(st_surface->width_px_buffer),
-            wl_fixed_from_int(st_surface->height_px_buffer)
-        );
-    }
-
-    wp_viewport_set_destination(
-        st_surface->viewport,
-        st_surface->width_logical,
-        st_surface->height_logical
-    );
 
     if (g_state.options.freezeframe) {
         freezeframe_surface_update_scale_size_viewport(st_output);
     }
+}
+
+void
+do_scale_updates(struct scran_output *st_output)
+{
+    update_surface_scale_bufsize_viewport(st_output);
+    cursor_reinit(st_output);
+    reinit_scran_ui(&st_output->selection_surface.ui_ctx, st_output->selection_surface.surface.final_scale_factor_normalized);
+    // XXX NOTE: Do not update if SELECTION_NONE_FREEZE_SIZE, since there might be an active capture.
+    if (st_output->selection_ctx.selection_state == SELECTION_NONE) {
+        st_output->selection_ctx.box_px = get_selection_surface_pre_selection_box(st_output);
+    }
+    set_force_redraw_selection_surface_buffers(st_output);
+    request_selection_surface_frame_callback(st_output);
 }

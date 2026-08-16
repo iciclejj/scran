@@ -1,13 +1,12 @@
 #include <wayland-client-protocol.h>
 
-#include "ext-image-copy-capture-v1.h"
+#include "selection.h"
 #include "ui.h"
 #include "viewporter.h"
 
 #include "state.h"
 #include "state-util.h"
 #include "capture.h"
-#include "init.h"
 #include "freezeframe.h"
 #include "event-handlers.h"
 #include "selection-surface.h"
@@ -18,7 +17,8 @@ extern struct scran g_state;
 
 
 void
-freezeframe_capture_start_assume_callback_set(struct scran_output *st_output) {
+freezeframe_capture_start_assume_callback_set(struct scran_output *st_output)
+{
     assert(st_output->freezeframe.callback != NULL);
 
     struct scran_freezeframe_buffer *capture_buffer = &st_output->freezeframe.capture_buffer;
@@ -28,30 +28,14 @@ freezeframe_capture_start_assume_callback_set(struct scran_output *st_output) {
         return;
     }
 
-    struct ext_image_copy_capture_frame_v1 *frame =
-        ext_image_copy_capture_session_v1_create_frame(
-            st_output->freezeframe.wl_capture_session
-        );
-
-    ext_image_copy_capture_frame_v1_attach_buffer(
-        frame,
-        capture_buffer->wl_buffer
-    );
-    ext_image_copy_capture_frame_v1_damage_buffer(
-        frame,
-        0, 0, st_output->mode.width_px, st_output->mode.height_px
-    );
-    ext_image_copy_capture_frame_v1_add_listener(
-        frame,
+    image_capture_request_frame(
+        st_output,
         &image_copy_capture_frame_listener__freezeframe,
-        st_output
+        st_output->freezeframe.wl_capture_session,
+        st_output->freezeframe.capture_buffer.scran_wl_buffer.wl_buffer,
+        st_output->freezeframe.source_width_px,
+        st_output->freezeframe.source_height_px
     );
-    ext_image_copy_capture_frame_v1_capture(frame);
-
-    // Force some output damage, since some compositors (like Hyprland on rapid
-    // consecutive freezeframe refreshes) may wait indefinitely for the next
-    // capture frame if no damage is detected.
-    capture_force_next_frame(st_output);
 }
 
 // Use freezeframe_capture_refresh post-init/during normal runtime
@@ -65,53 +49,6 @@ freezeframe_capture_start(
 
     st_output->freezeframe.callback = callback;
     freezeframe_capture_start_assume_callback_set(st_output);
-}
-
-// NOTE: This function starts a chain of wayland events that must happen
-// strictly sequentially (which is why it is in the form of a chain of events).
-// Follow the listeners to see where each step takes you...
-//
-// Conceptually, we just need to:
-//   1    Hide all our surfaces (selection surface, old freezeframe)
-//          Prevents them appearing in our captured/"frozen" frame
-//   2    Capture the output
-//   3.1  Show the capture as our new freezeframe
-//   3.2  Restore our selection surface
-//          Must be done after 3.1, since they both use the same layer/z-index
-void
-freezeframe_capture_refresh(
-    struct scran_output *st_output,
-    freezeframe_callback callback
-) {
-    struct scran_output_freezeframe      *freezeframe       = &st_output->freezeframe;
-    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
-
-    if (freezeframe->callback != NULL) {
-        eprintf("Freezeframe already in progress.\n");
-        return;
-    }
-    assert(callback != NULL);
-    freezeframe->callback = callback;
-
-    // We will have to empty out, and then re-initialize our selection, so that
-    // we don't also capture/"freeze" our selection surface. The freezeframe
-    // capture_frame::ready handler calls the regular surface init function.
-
-    // Old freezeframe is not necessarily already hidden, since this function
-    // can be triggered without releasing focus first.
-    freezeframe_hide_surface(st_output);
-    // Once the ::presented event has verified that the selection surface was
-    // hidden, we start the capture from within there.
-    wp_presentation_feedback_add_listener(
-        wp_presentation_feedback(g_state.globals.presentation, selection_surface->surface.wl_surface),
-        &presentation_feedback_listener__selection_transparent_for_freezeframe,
-        st_output
-    );
-    freezeframe_hide_selection_surface(st_output);
-    freezeframe->unhide_after_capture = true;
-    // Need to prevent any new or in-flight frame callbacks from cancelling out
-    // our surface hiding
-    selection_surface->frame_callbacks_disabled = true;
 }
 
 void
@@ -136,83 +73,46 @@ freezeframe_hide_surface(struct scran_output *st_output)
     freezeframe->showing = false;
     {
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        scran_ui_textline_item_set_text(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_TEXT_STATUSLINE_KEYMAP_FREEZEFRAME_TURN_ON);
-        scran_ui_textline_item_set_color(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), SCRAN_UI_STATUSLINE_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_COLOR_DEFAULT);
+        scran_ui_textline_item_set_text( ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON);
+        scran_ui_textline_item_set_color(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_COLOR_DEFAULT);
         request_selection_surface_frame_callback(st_output);
     }
 }
 
+// NOTE: This function starts a chain of wayland events that must happen
+// strictly sequentially (which is why it is in the form of a chain of events).
+// Follow the listeners to see where each step takes you...
+//
+// Conceptually, we just need to:
+//   1    Hide all our surfaces (selection surface, old freezeframe)
+//          Prevents them appearing in our captured/"frozen" frame
+//   2    Capture the output
+//   3.1  Show the capture as our new freezeframe
+//   3.2  Restore our selection surface
 void
-freezeframe_hide_selection_surface(struct scran_output *st_output)
-{
-    struct scran_output_surface     *st_surface  = &st_output->selection_surface.surface;
+freezeframe_capture_refresh(
+    struct scran_output *st_output,
+    freezeframe_callback callback
+) {
     struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
 
-    assert(SURFACE_SHM_FORMAT == WL_SHM_FORMAT_ARGB8888); // Alpha channel must not be ignored.
-    wl_surface_attach(
-        st_surface->wl_surface,
-        freezeframe->transparent_single_pixel_buffer.wl_buffer, 0, 0
-    );
-    wp_viewport_set_source(
-        st_surface->viewport,
-        wl_fixed_from_int(0), wl_fixed_from_int(0), wl_fixed_from_int(1), wl_fixed_from_int(1)
-    );
-    wl_surface_damage_buffer(
-        st_surface->wl_surface,
-        0, 0, 1, 1
-    );
-    wl_surface_commit(
-        st_surface->wl_surface
-    );
-}
+    if (freezeframe->callback != NULL) {
+        eprintf("Freezeframe already in progress.\n");
+        return;
+    }
+    assert(callback != NULL);
+    freezeframe->callback = callback;
 
-void
-freezeframe_unhide_selection_surface(
-    struct scran_output *st_output
-) {
-    struct scran_output_freezeframe      *freezeframe       = &st_output->freezeframe;
-    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
-    (void)freezeframe;
+    // We will have to empty out, and then re-initialize our selection, so that
+    // we don't also capture/"freeze" our selection surface. The freezeframe
+    // capture_frame::ready handler calls the regular surface init function.
 
+    // Old freezeframe is not necessarily already hidden, since this function
+    // can be triggered without releasing focus first.
+    freezeframe_hide_surface(st_output);
 
-    // TODO: Get a free buffer instead, and handle the case where can't?
-    //         See wl_surface::get_release() (as of wayland 1.25.0, 2026-03-19).
-    struct scran_output_selectionSurface_buffer *selection_buffer = &selection_surface->double_buffer[0];
-
-    // Need to attach a correctly-sized buffer back again before re-setting
-    // the viewport.
-    wl_surface_attach(
-        selection_surface->surface.wl_surface,
-        selection_buffer->wl_buffer,
-        0, 0
-    );
-    selection_buffer->busy = true;
-    wl_surface_damage_buffer(
-        selection_surface->surface.wl_surface,
-        0, 0,
-        selection_surface->surface.width_px_buffer,
-        selection_surface->surface.height_px_buffer
-    );
-    // Make sure the viewport is set appropriately. The (re-)freezeframe
-    // pipeline sets it to 1x1 for the transparent buffer.
-    //   TODO: Revisit the postmem init functions now and maybe call
-    //   update_surface_scale_bufsize_viewport() here instead.
-    wp_viewport_set_source(
-        selection_surface->surface.viewport,
-        wl_fixed_from_int(0),
-        wl_fixed_from_int(0),
-        wl_fixed_from_int(selection_surface->surface.width_px_buffer),
-        wl_fixed_from_int(selection_surface->surface.height_px_buffer)
-    );
-    set_force_redraw_selection_surface_buffers(st_output);
-    // XXX: This commit is currently redundant in practice, but keeping it here
-    // so this function makes more sense on its own.
-    //
-    // TODO: Refactor the entire freezeframe_capture_refresh() chain so that we
-    // avoid all the redundant commits. Maybe move the hiding/unhiding
-    // responsibility out of any freezeframe.c function entirely, and have the
-    // caller ensure pre/post-recapture state like this manually.
-    wl_surface_commit(selection_surface->surface.wl_surface);
+    hide_selection_surface_then(st_output, &presentation_feedback_listener__selection_transparent_for_freezeframe, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE);
+    freezeframe->unhide_after_capture = true;
 }
 
 void

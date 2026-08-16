@@ -5,6 +5,8 @@
 
 #include "state.h"
 #include "state-util.h"
+#include "cursor.h"
+#include "seat.h"
 #include "selection-surface.h"
 #include "ui.h"
 #include "util/blend2d.h"
@@ -24,35 +26,17 @@ handle_pointer_enter(
     struct scran *state = data;
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
 
-    // "When a seat's focus enters a surface, the pointer image is undefined..."
-    wp_cursor_shape_device_v1_set_shape(
-        pointer_ctx->cursor_shape_device,
-        serial,
-        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR
-    );
-
-    FOR_EACH_OUTPUT(i, st_output) {
-        struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
-
-        if (surface_entered == selection_surface->surface.wl_surface) {
-            pointer_ctx->focused_fulloutput_selection_surface = selection_surface;
-            return;
-        }
-    }
-
     pointer_ctx->last_enter_serial = serial;
 
-    // XXX: We do not have any other surfaces at the moment, so this should
-    // never happen. This was changed to tracking the surface rather than
-    // the output to make the scaling code more sane, despite only having one
-    // surface per output at the moment. Change this as appropariate if adding
-    // more surfaces.
-    // We should still handle focused_surface == NULL appropriately in the rest
-    // of the code, so this should still not be an error.
-    //     XXX: This can currently trigger when dragging out of output bounds
-    //     into a second, *left-hand-side* monitor.
-    pointer_ctx->focused_fulloutput_selection_surface = NULL;
-    DEBUG("WARNING: wl_pointer::enter triggered with unknown surface (see comment in source.)\n");
+    seat_update_focused_selection_surface(&pointer_ctx->focused_selection_surface, surface_entered);
+
+    if (pointer_ctx->focused_selection_surface != NULL) {
+        struct scran_output *st_output = wl_container_of(
+            pointer_ctx->focused_selection_surface, st_output, selection_surface
+        );
+        // "When a seat's focus enters a surface, the pointer image is undefined..."
+        cursor_set_theme(st_output, st_output->cursor.theme);
+    }
 }
 
 
@@ -66,7 +50,7 @@ handle_pointer_leave(
     struct scran *state = data;
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
 
-    pointer_ctx->focused_fulloutput_selection_surface = NULL;
+    pointer_ctx->focused_selection_surface = NULL;
 }
 
 
@@ -102,7 +86,7 @@ handle_pointer_motion(
     wl_fixed_t y_surface
 ) {
     struct scran *state = data;
-    struct scran_output_selectionSurface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
+    struct scran_output_selectionSurface *focused_selection_surface = state->seat.pointer_ctx.focused_selection_surface;
 
     if (focused_selection_surface == NULL) {
         return;
@@ -128,6 +112,7 @@ handle_pointer_motion(
 
     switch (selection_ctx->selection_state) {
     case SELECTION_NONE:
+    case SELECTION_NONE_FREEZE_SIZE:
         break;
     case SELECTION_INITIALIZING:
         selection_ctx->box_px.x1 = x_px;
@@ -245,7 +230,7 @@ handle_pointer_button(
     enum wl_pointer_button_state button_state
 ) {
     struct scran *state = data;
-    struct scran_output_selectionSurface *focused_selection_surface = state->seat.pointer_ctx.focused_fulloutput_selection_surface;
+    struct scran_output_selectionSurface *focused_selection_surface = state->seat.pointer_ctx.focused_selection_surface;
 
     if (focused_selection_surface == NULL) {
         return;
@@ -294,23 +279,28 @@ handle_pointer_button(
     switch (button) {
     case BTN_LEFT:
         switch(selection_ctx->selection_state) {
+        case SELECTION_NONE_FREEZE_SIZE:
+            break;
         case SELECTION_NONE:
-            {
-                const struct BLBoxI initial_selection_area = {
-                    .x0 = x_px,
-                    .y0 = y_px,
-                    .x1 = x_px,
-                    .y1 = y_px,
-                };
-
-                selection_ctx->box_px = initial_selection_area;
-            }
+            ;
+            const struct BLBoxI initial_selection_area = {
+                .x0 = x_px,
+                .y0 = y_px,
+                .x1 = x_px,
+                .y1 = y_px,
+            };
+            selection_ctx->box_px = initial_selection_area;
             selection_ctx->selection_state = SELECTION_INITIALIZING;
 
             // TODO: Create set_selection_initializing()/set_selection_stage(),
             // analogous to current set_selection_initialized()?
-            scran_ui_set_selection_stage_defaults(&st_output->selection_surface.ui_ctx);
+            scran_ui_statusline_set_selection_size(
+                &st_output->selection_surface.ui_ctx.ui_statusline,
+                blboxi_to_blrecti(initial_selection_area)
+            );
+
             set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+
             request_selection_surface_frame_callback(st_output);
 
             break;
@@ -473,4 +463,3 @@ struct wl_pointer_listener pointer_listener = {
     .axis_stop = handle_axis_stop,
     .axis_value120 = handle_axis_value120,
 };
-

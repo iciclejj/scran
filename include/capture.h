@@ -1,6 +1,7 @@
 #ifndef SCRAN_CAPTURE_H
 #define SCRAN_CAPTURE_H
 
+#include <assert.h>
 #include <stdbool.h>
 #include <time.h>
 
@@ -28,10 +29,12 @@ enum {
 #define IMAGE_CAPTURE_OUTPUT_FILE_EXTENSION_DEFAULT ".png"
 
 
-void capture_update_area_with_selection(struct scran_output *st_output, BLBoxI selection_box);
+void capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px);
+void end_fullscreen_capture(struct scran_output *st_output);
 
 void video_capture_write_video_packet(struct capture_frame_context *frame_ctx, AVPacket *pkt);
 bool video_capture_start(struct scran_output *st_output);
+bool video_capture_start_fullscreen(struct scran_output *st_output);
 // Call video_capture_request_stop() to initiate graceful finish from arbitrary
 // locations, rather than calling video_capture_finish() directly.
 void video_capture_request_stop(struct scran_output *st_output);
@@ -40,8 +43,9 @@ struct ext_image_copy_capture_frame_v1 * video_capture_create_frame(struct captu
 void video_capture_write_audio_packet(struct capture_frame_context *frame_ctx, AVPacket *av_packet);
 void video_capture_destroy_ffmpeg(struct scran_output *st_output);
 
-bool image_capture_start(struct scran_output *st_output);
-void image_capture_request_frame(struct scran_output *st_output);
+bool image_capture_start(struct scran_output *st_output, bool exit_after_capture);
+bool image_capture_start_fullscreen(struct scran_output *st_output, bool exit_after_capture);
+void image_capture_request_frame(struct scran_output *st_output, struct ext_image_copy_capture_frame_v1_listener *listener, struct ext_image_copy_capture_session_v1 *session, struct wl_buffer *buffer, int32_t buffer_width_px, int32_t buffer_height_px);
 
 
 // HACK
@@ -80,12 +84,12 @@ video_capture_grow_tracked_damage(
     // track at least 1 window + 1 cursor.
 
     BLBoxI incoming_damage = blrecti_to_blboxi( (BLRectI){ x, y, w, h } );
-    BLBoxI tracked_damage  = frame_ctx->damage_area_px;
+    BLBoxI tracked_damage  = frame_ctx->capture_buffer_damage_area_px;
 
     if (blboxi_is_empty(tracked_damage)) {
-        frame_ctx->damage_area_px = incoming_damage;
+        frame_ctx->capture_buffer_damage_area_px = incoming_damage;
     } else {
-        frame_ctx->damage_area_px = blboxi_bounding_box(incoming_damage, tracked_damage);
+        frame_ctx->capture_buffer_damage_area_px = blboxi_bounding_box(incoming_damage, tracked_damage);
     }
 }
 
@@ -101,11 +105,34 @@ video_capture_damage_buffer(
 
 static inline uint8_t *
 capture_get_area_start_address(
-    struct capture_frame_context *frame_ctx
+    struct capture_frame_context *frame_ctx,
+    BLBoxI capture_buffer_area_px
 ) {
-    return frame_ctx->st_buffer.data
-         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.y0 * frame_ctx->source_width_px
-         + frame_ctx->pixel_stride * frame_ctx->capture_area_px.x0;
+    return frame_ctx->scran_wl_buffer.data
+         + frame_ctx->pixel_stride * capture_buffer_area_px.y0 * frame_ctx->source_width_px
+         + frame_ctx->pixel_stride * capture_buffer_area_px.x0;
+}
+
+static inline BLBoxI
+capture_get_selection_as_capture_buffer_area_px(
+    const struct capture_frame_context *frame_ctx
+) {
+    assert(frame_ctx->source_width_px > 0);
+    assert(frame_ctx->source_height_px > 0);
+
+    const BLBoxI capture_buffer_area_px = blboxi_get_reverse_transform(
+        frame_ctx->selection_ctx_box_px,
+        frame_ctx->source_width_px,
+        frame_ctx->source_height_px,
+        frame_ctx->source_transform
+    );
+
+    assert(capture_buffer_area_px.x0 >= 0);
+    assert(capture_buffer_area_px.y0 >= 0);
+    assert(capture_buffer_area_px.x1 <= frame_ctx->source_width_px);
+    assert(capture_buffer_area_px.y1 <= frame_ctx->source_height_px);
+
+    return capture_buffer_area_px;
 }
 
 static inline int64_t

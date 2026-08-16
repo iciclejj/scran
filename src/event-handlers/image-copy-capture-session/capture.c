@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdlib.h>
 
 #include <wayland-client.h>
 
@@ -18,9 +19,6 @@ handle_image_copy_capture_session_buffer_size(
 ) {
     struct scran_output *st_output = data;
 
-    // This seemingly always hold true, so use output::mode w/h only.
-    assert(width == (uint32_t)st_output->mode.width_px);
-    assert(height == (uint32_t)st_output->mode.height_px);
     st_output->capture.frame_ctx.source_width_px = width;
     st_output->capture.frame_ctx.source_height_px = height;
 }
@@ -61,8 +59,11 @@ handle_image_copy_capture_session_stopped(
     struct scran_output *st_output = data;
 
     ext_image_copy_capture_session_v1_destroy(st_output->capture.frame_ctx.wl_capture_session);
+    st_output->capture.frame_ctx.wl_capture_session = NULL;
 
-    // TODO: Destroy dynamically allocated memory (e.g. libav objects)
+    // TODO: More graceful exit and/or attempt creating a new session
+    eprintf("Error: Capture session stopped unexpectedly.\n");
+    exit(EXIT_FAILURE);
 }
 
 
@@ -104,4 +105,3 @@ struct ext_image_copy_capture_session_v1_listener image_copy_capture_session_lis
     .done = handle_image_copy_capture_session_done,
     .stopped = handle_image_copy_capture_session_stopped,
 };
-

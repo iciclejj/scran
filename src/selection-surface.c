@@ -141,9 +141,9 @@ draw_and_damage_ui_textline(
     struct scran_ui_textline_surface_state *state_prev,
     struct scran_ui_textline_surface_state *state_prev_any_buffer,
     struct scran_ui_textline_surface_state *state_new,
-    bool force_redraw
+    bool textline_changed
 ) {
-    if ( !(force_redraw || textline_surface_state_changed(state_prev, state_new))) {
+    if ( !(textline_changed || st_buffer->force_redraw || textline_surface_state_changed(state_prev, state_new))) {
         return;
     }
 
@@ -212,7 +212,7 @@ draw_and_damage_ui_textline(
         struct scran_ui_textline_item *item = &textline.items[i];
 
         const int width_px  = item->width_px;
-        const int height_px = round(ui_ctx->font_height);
+        const int height_px = scran_ui_font_height_px(ui_ctx);
 
         if (width_px != 0) {
             // Allocated BLImage dimensions may be larger than its current contents.
@@ -254,19 +254,27 @@ clamp_textline_surface_state(
     }
 }
 
+static inline int
+get_item_spacing_px(struct scran_ui_context *ui_ctx) {
+    return round(3 * ui_ctx->font_advance_fixed_width);
+}
+
 static inline void
 draw_and_damage_ui(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
+    struct scran_output_selectionContext *selection_ctx,
     BLBoxI capture_area_border_outline
 ) {
-    struct scran_ui_context  *ui_ctx = &selection_surface->ui_ctx;
+    struct scran_ui_context *ui_ctx = &selection_surface->ui_ctx;
 
-    const uint32_t redrawn_textline_mask          = scran_ui_redraw_elements(ui_ctx);
-    const bool     force_redraw_keymap            = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_KEYMAP);
-    const bool     force_redraw_statusline        = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE);
-    const bool     force_redraw_statusline_keymap = st_buffer->force_redraw || (redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE_KEYMAP);
-    const int      item_spacing_px                = round(3 * ui_ctx->font_advance_fixed_width);
+    {
+        uint8_t mask = scran_ui_redraw_elements(ui_ctx);
+        for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
+            selection_surface->double_buffer[i].redrawn_textline_mask |= mask;
+        }
+    }
+    const int item_spacing_px = get_item_spacing_px(ui_ctx);
 
     // Draw below-selection keymap
     {
@@ -287,61 +295,24 @@ draw_and_damage_ui(
             &st_buffer->ui_keymap_state_currently_drawn,
             &selection_surface->ui_keymap_state_last_drawn,
             &state_new_keymap,
-            force_redraw_keymap
+            st_buffer->redrawn_textline_mask & SCRAN_UI_REDREW_KEYMAP
         );
+        st_buffer->redrawn_textline_mask &= ~SCRAN_UI_REDREW_KEYMAP;
     }
 
 
-    // Draw above-selection statusline-keymap & statusline
+    // Draw above-selection statusline
     {
-        int statusline_total_width_px        = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),        item_spacing_px);
-        int statusline_keymap_total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap), item_spacing_px);
+        int statusline_total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),        item_spacing_px);
 
         struct scran_ui_textline_surface_state state_new_statusline = {
             .origin = {
                 .x = capture_area_border_outline.x1 - statusline_total_width_px,
-                .y = capture_area_border_outline.y0 - round(ui_ctx->font_height),
+                .y = capture_area_border_outline.y0 - scran_ui_font_height_px(ui_ctx),
             },
             .total_width_px = statusline_total_width_px,
         };
-        struct scran_ui_textline_surface_state state_new_statusline_keymap = {
-            .origin = {
-                .x = capture_area_border_outline.x0,
-                .y = capture_area_border_outline.y0 - round(ui_ctx->font_height),
-            },
-            .total_width_px = statusline_keymap_total_width_px,
-        };
-
-        // The left-aligned `statusline_keymap`s anchor has priority, but it should still
-        // make space for the right-aligned `statusline` when reaching the far-right of
-        // the screen.
-        // Also add enough spacing between them so *at least their logical boxes* don't
-        // overlap and start clearing each other out.
-        int ui_element_spacing_px = (statusline_total_width_px == 0 || statusline_keymap_total_width_px == 0) ? 0 : item_spacing_px;
-        clamp_textline_surface_state(
-            &state_new_statusline_keymap,
-            0,
-            // Don't overlap the right-aligned statusline, which is clamped to buffer width
-            selection_surface->surface.width_px_buffer - (statusline_total_width_px + ui_element_spacing_px)
-        );
-        clamp_textline_surface_state(
-            &state_new_statusline,
-            // Don't overlap the left-aligned statusline_keymap
-            state_new_statusline_keymap.origin.x + (statusline_keymap_total_width_px + ui_element_spacing_px),
-            selection_surface->surface.width_px_buffer
-        );
-
-        draw_and_damage_ui_textline(
-            selection_surface,
-            st_buffer,
-            capture_area_border_outline,
-            SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline_keymap),
-            item_spacing_px,
-            &st_buffer->ui_statusline_keymap_state_currently_drawn,
-            &selection_surface->ui_statusline_keymap_state_last_drawn,
-            &state_new_statusline_keymap,
-            force_redraw_statusline_keymap
-        );
+        clamp_textline_surface_state(&state_new_statusline, 0, selection_surface->surface.width_px_buffer);
         draw_and_damage_ui_textline(
             selection_surface,
             st_buffer,
@@ -351,8 +322,38 @@ draw_and_damage_ui(
             &st_buffer->ui_statusline_state_currently_drawn,
             &selection_surface->ui_statusline_state_last_drawn,
             &state_new_statusline,
-            force_redraw_statusline
+            st_buffer->redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE
         );
+        st_buffer->redrawn_textline_mask &= ~SCRAN_UI_REDREW_STATUSLINE;
+    }
+
+
+    // Draw greeting
+    //   XXX: Must currently be at the end to play nice with scale updates.
+    //   TODO: unlikely() ?
+    if (selection_is_none(selection_ctx)) {
+        struct scran_ui_textline_surface_state state_new_greeting = {
+            .origin = {
+                .x = capture_area_border_outline.x0,
+                .y = capture_area_border_outline.y0 - 2 * scran_ui_font_height_px(ui_ctx),
+            },
+            .total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting), item_spacing_px),
+        };
+        clamp_textline_surface_state(&state_new_greeting, 0, selection_surface->surface.width_px_buffer);
+        draw_and_damage_ui_textline(
+            selection_surface,
+            st_buffer,
+            capture_area_border_outline,
+            SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting),
+            item_spacing_px,
+            // We have these for greeting as well, despite it not moving,
+            // so that it updates correctly on scale changes.
+            &st_buffer->ui_greeting_state_currently_drawn,
+            &selection_surface->ui_greeting_state_last_drawn,
+            &state_new_greeting,
+            st_buffer->redrawn_textline_mask & SCRAN_UI_REDREW_GREETING
+        );
+        st_buffer->redrawn_textline_mask &= ~SCRAN_UI_REDREW_GREETING;
     }
 }
 
@@ -374,10 +375,16 @@ get_scalesafe_border_inline(
     };
 }
 
+static inline BLBoxI
+get_border_outline_from_inline(BLBoxI border_inline) {
+    return blboxi_get_inflated(border_inline, SCRAN_SELECTION_BORDER_THICKNESS_PX);
+}
+
 void
 draw_selection_and_damage_buffer(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
+    struct scran_output_selectionContext *selection_ctx,
     struct BLBoxI capture_area
 ) {
     if (g_state.options.hide_ui_level >= SCRAN_OPT_HIDE_UI_EVERYTHING) {
@@ -413,9 +420,9 @@ draw_selection_and_damage_buffer(
     const BLBoxI capture_area_border_inline_last_used_in_current_buffer = get_scalesafe_border_inline(capture_area_last_used_in_current_buffer, scale);
 
     // XXX: Remake the "stroke width" macros
-    const BLBoxI capture_area_border_outline                             = blboxi_get_inflated(capture_area_border_inline                            , SCRAN_SELECTION_BORDER_THICKNESS_PX);
-    const BLBoxI capture_area_border_outline_last_used_in_any_buffer     = blboxi_get_inflated(capture_area_border_inline_last_used_in_any_buffer    , SCRAN_SELECTION_BORDER_THICKNESS_PX);
-    const BLBoxI capture_area_border_outline_last_used_in_current_buffer = blboxi_get_inflated(capture_area_border_inline_last_used_in_current_buffer, SCRAN_SELECTION_BORDER_THICKNESS_PX);
+    const BLBoxI capture_area_border_outline                             = get_border_outline_from_inline(capture_area_border_inline);
+    const BLBoxI capture_area_border_outline_last_used_in_any_buffer     = get_border_outline_from_inline(capture_area_border_inline_last_used_in_any_buffer);
+    const BLBoxI capture_area_border_outline_last_used_in_current_buffer = get_border_outline_from_inline(capture_area_border_inline_last_used_in_current_buffer);
 
     bool selection_changed =
         !blboxi_are_equal(capture_area, st_buffer->box_currently_drawn)
@@ -450,7 +457,7 @@ draw_selection_and_damage_buffer(
     if (g_state.options.hide_ui_level < SCRAN_OPT_HIDE_UI_ITEMS) {
         // Draw keymap
         //   Must be drawn after/on top of background
-        draw_and_damage_ui(selection_surface, st_buffer, capture_area_border_outline);
+        draw_and_damage_ui(selection_surface, st_buffer, selection_ctx, capture_area_border_outline);
     }
 
     // Draw selection border
@@ -477,7 +484,7 @@ arm_selection_surface_frame_callback(
 ) {
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
 
-    if (!selection_surface->awaiting_frame_callback && !selection_surface->frame_callbacks_disabled) {
+    if (!selection_surface->awaiting_frame_callback && !selection_surface->disable_reason_mask) {
         wl_callback_add_listener(
             wl_surface_frame(selection_surface->surface.wl_surface),
             &selection_surface_frame_callback_listener,
@@ -518,9 +525,16 @@ init_selection_surface_content(
     const bool no_initial_selection = blboxi_are_equal(initial_box, SCRAN_INITIAL_SELECTION_NONE);
 
     if (no_initial_selection) {
-        // We want to draw the splash text in the top left corner.
-        initial_box = (BLBoxI){0};
+        initial_box = get_selection_surface_pre_selection_box(st_output);
         st_output->selection_ctx.box_px = initial_box;
+
+        // Set fullscreen selection size.
+        // XXX TODO: Make this responsibility less disjointed
+        scran_ui_statusline_set_selection_size(
+            &selection_surface->ui_ctx.ui_statusline,
+            blboxi_to_blrecti(get_fullscreen_selection_box(st_output))
+        );
+
         set_selection_surface_theme(st_output, SURFACE_THEME_PRE_SELECTION);
     } else {
         // This must be set prior to set_selection_initialized()
@@ -530,7 +544,6 @@ init_selection_surface_content(
         // state has been set up.
         // ALSO make sure it's called somewhere that the freezeframe init path
         // (and potential future alternate init paths) will reach.
-        scran_ui_set_selection_stage_defaults(&selection_surface->ui_ctx);
         scran_ui_statusline_set_selection_size(&selection_surface->ui_ctx.ui_statusline, blboxi_to_blrecti(initial_box));
         set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
         set_selection_initialized(st_output);
@@ -545,6 +558,7 @@ init_selection_surface_content(
         draw_selection_and_damage_buffer(
             selection_surface,
             st_buffer,
+            &st_output->selection_ctx,
             initial_box
         );
     }
@@ -552,7 +566,7 @@ init_selection_surface_content(
     struct scran_output_selectionSurface_buffer *initial_buffer = &selection_surface->double_buffer[0];
     initial_buffer->busy = true;
     wl_surface_attach(
-        selection_surface->surface.wl_surface, initial_buffer->wl_buffer, 0, 0
+        selection_surface->surface.wl_surface, initial_buffer->scran_wl_buffer.wl_buffer, 0, 0
     );
     wl_surface_damage_buffer(
         selection_surface->surface.wl_surface,
@@ -562,6 +576,5 @@ init_selection_surface_content(
     );
 
     arm_selection_surface_frame_callback(st_output, false);
-    set_force_redraw_selection_surface_buffers(st_output);
     wl_surface_commit(selection_surface->surface.wl_surface);
 }
