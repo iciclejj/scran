@@ -241,6 +241,12 @@ struct scran_seat_pointerContext {
     uint32_t last_enter_serial;
     struct scran_output_selectionSurface *focused_selection_surface;
 
+    // Safeguard to work around Hyprland #15899 stealing cursor focus
+    // (not just keyboard focus) when mapping KEYBOARD_INTERACTION_EXCLUSIVE
+    // layer-surfaces. This is a compositor bug, so probably just remove all
+    // code referencing this some time after it's fixed upstream.
+    bool pointer_focus_trusted;
+
     struct wp_cursor_shape_device_v1 *cursor_shape_device;
 };
 
@@ -250,6 +256,8 @@ struct scran_seat_keyboard {
     struct xkb_state *xkb_state;
 
     struct scran_output_selectionSurface *focused_selection_surface;
+
+    bool last_press_was_untrusted_escape;
 };
 
 // TODO Isolate from rest of state.

@@ -50,30 +50,6 @@ seat_set_focused_selection_surface_(
     return;
 }
 
-// For storing Wayland focus (e.g. ::enter).
-// Scran's actual active surface/output gets selected later, affected by this.
-static inline struct scran_output_selectionSurface *
-seat_update_pointer_focus(struct scran_seat *seat, struct wl_surface *focused_surface) {
-    struct scran_output_selectionSurface **pointer_focused_surface = &seat->pointer_ctx.focused_selection_surface;
-
-    seat_set_focused_selection_surface_(pointer_focused_surface, focused_surface);
-    seat_update_active_selection_surface(seat);
-
-    return *pointer_focused_surface;
-}
-
-// For storing Wayland focus (e.g. ::enter).
-// Scran's active surface/output later gets selected later, affected by this.
-static inline struct scran_output_selectionSurface *
-seat_update_keyboard_focus(struct scran_seat *seat, struct wl_surface *focused_surface) {
-    struct scran_output_selectionSurface **keyboard_focused_surface = &seat->keyboard.focused_selection_surface;
-
-    seat_set_focused_selection_surface_(keyboard_focused_surface, focused_surface);
-    seat_update_active_selection_surface(seat);
-
-    return *keyboard_focused_surface;
-}
-
 // We use this mainly to set our capture-area-deciding selection box, and not
 // our border-render-deciding box (which lives in our viewport "source buffer",
 // and we define based on the capture area), but this function is named like
@@ -95,6 +71,23 @@ seat_convert_selection_surface_logical_point_to_buffer_point_px(
     };
 }
 
+static inline bool
+pointer_within_bounds(
+    struct scran_output_selectionSurface *pointer_surface,
+    wl_fixed_t x_surface,
+    wl_fixed_t y_surface
+) {
+    static const double tolerance = 1.0;
+
+    double x = wl_fixed_to_double(x_surface);
+    double y = wl_fixed_to_double(y_surface);
+
+    return x >=  -tolerance
+        && y >=  -tolerance
+        && x <  (double)pointer_surface->surface.width_logical  + tolerance
+        && y <  (double)pointer_surface->surface.height_logical + tolerance;
+}
+
 static inline BLPointI
 seat_update_pointer_coordinates(
     struct scran_seat *seat,
@@ -103,6 +96,17 @@ seat_update_pointer_coordinates(
 ) {
     struct scran_output_selectionSurface *selection_surface = seat->pointer_ctx.focused_selection_surface;
     struct scran_output *st_output = wl_container_of(selection_surface, st_output, selection_surface);
+
+    // Pointer motion should have made it already ::enter the correct surface
+    // again, but allow re-trusting here as well, just in case.
+    // Don't allow removing trust, since we want to be able to click and
+    // drag into out-of-bounds, for compositors that intentionally allow that.
+    if (!seat->pointer_ctx.pointer_focus_trusted) {
+        seat->pointer_ctx.pointer_focus_trusted = pointer_within_bounds(selection_surface, x_surface, y_surface);
+        if (seat->pointer_ctx.pointer_focus_trusted) {
+            seat_update_active_selection_surface(seat);
+        }
+    }
 
     BLPointI coordinates = seat_convert_selection_surface_logical_point_to_buffer_point_px(
         &selection_surface->surface, x_surface, y_surface
@@ -117,6 +121,41 @@ seat_update_pointer_coordinates(
 static inline BLPointI
 seat_get_pointer_coordinates(struct scran_seat *seat) {
     return seat->pointer_ctx.coordinates;
+}
+
+// For storing Wayland focus (e.g. ::enter).
+// Scran's actual active surface/output gets selected later, affected by this.
+static inline struct scran_output_selectionSurface *
+seat_update_pointer_focus(
+    struct scran_seat *seat,
+    struct wl_surface *focused_surface,
+    wl_fixed_t x_surface,
+    wl_fixed_t y_surface
+) {
+    struct scran_output_selectionSurface **pointer_focused_surface = &seat->pointer_ctx.focused_selection_surface;
+
+    seat_set_focused_selection_surface_(pointer_focused_surface, focused_surface);
+
+    if (*pointer_focused_surface != NULL) {
+        seat_update_pointer_coordinates(seat, x_surface, y_surface);
+        seat->pointer_ctx.pointer_focus_trusted = pointer_within_bounds(*pointer_focused_surface, x_surface, y_surface);
+    }
+
+    seat_update_active_selection_surface(seat);
+
+    return *pointer_focused_surface;
+}
+
+// For storing Wayland focus (e.g. ::enter).
+// Scran's active surface/output later gets selected later, affected by this.
+static inline struct scran_output_selectionSurface *
+seat_update_keyboard_focus(struct scran_seat *seat, struct wl_surface *focused_surface) {
+    struct scran_output_selectionSurface **keyboard_focused_surface = &seat->keyboard.focused_selection_surface;
+
+    seat_set_focused_selection_surface_(keyboard_focused_surface, focused_surface);
+    seat_update_active_selection_surface(seat);
+
+    return *keyboard_focused_surface;
 }
 
 

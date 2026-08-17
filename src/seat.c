@@ -103,9 +103,13 @@ seat_update_active_selection_surface(struct scran_seat *seat)
     // We control all our surfaces, so it doesn't matter if our "real" keyboard
     // focus is on a different surface/output.
 
+    struct scran_output_selectionSurface *pointer_surface = seat->pointer_ctx.focused_selection_surface;
+    struct scran_output_selectionSurface *keyboard_surface = seat->keyboard.focused_selection_surface;
+
     struct scran_output_selectionSurface *new_surface =
-        seat->pointer_ctx.focused_selection_surface
-        ?: seat->keyboard.focused_selection_surface;
+        pointer_surface
+        ? (seat->pointer_ctx.pointer_focus_trusted ? pointer_surface : NULL)
+        : keyboard_surface;
 
     if (new_surface != seat->active_selection_surface) {
         const uint32_t old_keymap_state = get_keymap_pressed_state(seat, seat->active_selection_surface);

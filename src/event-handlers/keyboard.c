@@ -91,21 +91,69 @@ handle_keyboard_key(
     enum wl_keyboard_key_state key_state
 ) {
     struct scran *state = data;
+
+    // Only xkb key format supported
+    const xkb_keysym_t xkb_key = xkb_state_key_get_one_sym(
+        state->seat.keyboard.xkb_state,
+        key + 8 // See wl_keyboard::keymap_format
+    );
+
     struct scran_output_selectionSurface *active_selection_surface = state->seat.active_selection_surface;
 
+    // Keys we want to handle even if we don't have an active selection-surface
+    if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+        bool repeated_untrusted_escape = xkb_key == XKB_KEY_Escape && state->seat.keyboard.last_press_was_untrusted_escape;
+        state->seat.keyboard.last_press_was_untrusted_escape = false;
+
+        switch (xkb_key) {
+        case XKB_KEY_Escape:
+            if (!active_selection_surface) {
+                FOR_EACH_OUTPUT(i, _st_output) {
+                    if (_st_output->capture.frame_ctx.capturing_video) {
+                        if (repeated_untrusted_escape) {
+                            eprintf("Got escape key again...");
+                            goto esc_exit_scran; // In case user doesn't understand what's happening
+                        }
+                        state->seat.keyboard.last_press_was_untrusted_escape = true;
+                        print_untrusted_active_surface_message();
+                        return;
+                    }
+                }
+            }
+
+            eprintf("Got escape key...");
+
+            if (active_selection_surface) {
+                struct scran_output *st_output = wl_container_of(active_selection_surface, st_output, selection_surface);
+                if (st_output->capture.frame_ctx.capturing_video) {
+                    eprintf(" stopping video capture.\n");
+                    video_capture_request_stop(st_output);
+                    return;
+                }
+            }
+
+esc_exit_scran:
+            eprintf(" exiting.\n");
+            scran_request_exit();
+            return;
+        case XKB_KEY_Tab:
+            stop_grabbing_focus();
+            return;
+        default:
+            break;
+        }
+    }
+
     if (active_selection_surface == NULL) {
+        // Guard just to avoid spamming the messages
+        if (key_state != WL_KEYBOARD_KEY_STATE_RELEASED) {
+            print_untrusted_active_surface_message();
+        }
         return;
     }
 
     struct scran_output          *st_output    = wl_container_of(active_selection_surface, st_output, selection_surface);
     struct scran_ui_context      *ui_ctx       = &active_selection_surface->ui_ctx;
-
-    // Only xkb key format supported
-    assert(state->seat.keyboard.xkb_state != NULL);
-    const xkb_keysym_t xkb_key = xkb_state_key_get_one_sym(
-        state->seat.keyboard.xkb_state,
-        key + 8 // See wl_keyboard::keymap_format
-    );
 
     bool pre_selection = selection_is_none(&st_output->selection_ctx);
     bool fullscreen_capture = pre_selection;
@@ -157,9 +205,6 @@ handle_keyboard_key(
             request_selection_surface_frame_callback(st_output);
         }
         break;
-    case XKB_KEY_Tab:
-        stop_grabbing_focus();
-        break;
     case XKB_KEY_z:
     case XKB_KEY_Z:
         {
@@ -193,17 +238,6 @@ handle_keyboard_key(
         }
 
 z_done:
-        break;
-    case XKB_KEY_Escape:
-        eprintf("Got escape key...");
-        if (st_output->capture.frame_ctx.capturing_video) {
-            // TODO: Both stop capture and request exit?
-            eprintf(" stopping video capture.\n");
-            video_capture_request_stop(st_output);
-        } else {
-            eprintf(" exiting.\n");
-            scran_request_exit();
-        }
         break;
     case XKB_KEY_Return:
         // TODO: Create two capture sessions so that we can take screenshots while
@@ -320,4 +354,3 @@ keyboard_listener__destroy(struct scran_seat *st_seat)
     xkb_keymap_unref(st_seat->keyboard.xkb_keymap);
     xkb_state_unref(st_seat->keyboard.xkb_state);
 }
-

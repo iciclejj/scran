@@ -28,21 +28,17 @@ handle_pointer_enter(
 
     pointer_ctx->last_enter_serial = serial;
 
-    struct scran_output_selectionSurface *pointer_surface = seat_update_pointer_focus(&state->seat, surface_entered);
+    struct scran_output_selectionSurface *pointer_surface =
+        seat_update_pointer_focus(&state->seat, surface_entered, x_surface, y_surface);
 
     if (!pointer_surface) {
         return;
     }
 
-    seat_update_pointer_coordinates(&state->seat, x_surface, y_surface);
+    struct scran_output *st_output = wl_container_of(pointer_ctx->focused_selection_surface, st_output, selection_surface);
 
-    if (pointer_surface == state->seat.active_selection_surface) {
-        struct scran_output *st_output = wl_container_of(
-            pointer_ctx->focused_selection_surface, st_output, selection_surface
-        );
-        // "When a seat's focus enters a surface, the pointer image is undefined..."
-        cursor_set_theme(st_output, st_output->cursor.theme);
-    }
+    // "When a seat's focus enters a surface, the pointer image is undefined..."
+    cursor_set_theme(st_output, st_output->cursor.theme);
 }
 
 
@@ -54,7 +50,7 @@ handle_pointer_leave(
     struct wl_surface *surface_left
 ) {
     struct scran *state = data;
-    seat_update_pointer_focus(&state->seat, NULL);
+    seat_update_pointer_focus(&state->seat, NULL, 0, 0);
 }
 
 
@@ -211,6 +207,12 @@ handle_pointer_button(
     if (focused_selection_surface == NULL) {
         return;
     }
+
+    if (!state->seat.pointer_ctx.pointer_focus_trusted && button_state != WL_POINTER_BUTTON_STATE_RELEASED) {
+        print_untrusted_active_surface_message();
+        return;
+    }
+
 
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
 
