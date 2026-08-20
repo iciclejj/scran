@@ -23,6 +23,13 @@ double get_surface_scale_factor_normalized(struct scran_output_surface *st_surfa
 void do_scale_updates(struct scran_output *st_output);
 void scran_request_exit(void);
 
+
+static inline void
+print_untrusted_active_surface_message(void) {
+    (void)g_state.seat.pointer_ctx.pointer_focus_trusted;
+    eprintf("Untrusted pointer focus - try moving the cursor.\n");
+}
+
 // Made for cosmic_output_head and wlr_output_head scalers.
 // Essentially wl_fixed_to_double but with any denominator.
 static inline double

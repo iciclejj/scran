@@ -29,7 +29,6 @@ static inline const void * get_font_data() {
 static const BLRgba32 ui_colors[] = {
     [SCRAN_UI_COLOR_DEFAULT]              = { 0xFFDDDDDD },
     [SCRAN_UI_COLOR_KEYMAP_MOD]           = { 0xFFFFFFAA },
-    [SCRAN_UI_COLOR_KEYMAP_ALT]           = { 0xFF888888 },
     [SCRAN_UI_COLOR_KEYMAP_FREEZEFRAME]   = { 0XFF6BE7FF },
     [SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE] = SCRAN_SELECTION_BORDER_COLOR_VIDEO_CAPTURE,
 };
@@ -681,6 +680,10 @@ init_scran_ui_pre_selection(
     init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),         m_statusline_defaults,        ARRAY_LENGTH(m_statusline_defaults));
     init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.digits),    m_atlas_digits_defaults,      ARRAY_LENGTH(m_atlas_digits_defaults));
     init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators),m_atlas_separators_defaults,  ARRAY_LENGTH(m_atlas_separators_defaults));
+
+    for (int i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
+        scran_ui_textline_item_set_disabled(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), i, SCRAN_UI_DISABLE_REASON_NOT_ACTIVE_SURFACE, true);
+    }
 
     reinit_scran_ui(ui_ctx, scale);
 
