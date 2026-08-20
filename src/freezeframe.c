@@ -56,6 +56,10 @@ freezeframe_hide_surface(struct scran_output *st_output)
 {
     struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
 
+    if (!freezeframe->showing) {
+        return;
+    }
+
     // NOTE(!!): We need to actually unmap this surface, and not just
     // attach a transparent buffer, since attaching a transparent
     // buffer causes some compositors (e.g. Sway) to not properly

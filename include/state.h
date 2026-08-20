@@ -468,7 +468,7 @@ struct scran_options {
     bool no_keepalive;
     bool disable_audio_capture;
     bool disable_cursor_capture;
-    bool freezeframe;
+    bool freezeframe_at_startup;
     bool capture_and_exit_after_selection_init;
     bool produce_slurp;                 // output slurp-style geometry string
     bool no_notifications;

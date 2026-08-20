@@ -124,9 +124,7 @@ handle_keyboard_key(
             break;
         case XKB_KEY_z:
         case XKB_KEY_Z:
-            if (state->options.freezeframe) {
-                scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, false);
-            }
+            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, false);
             break;
         default:
             return;
@@ -167,10 +165,6 @@ handle_keyboard_key(
         break;
     case XKB_KEY_z:
     case XKB_KEY_Z:
-        if (!state->options.freezeframe) {
-            break;
-        }
-
         {
             struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
             scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, true);
@@ -190,8 +184,6 @@ handle_keyboard_key(
 
         // XXX TODO: Make this a bit cleaner responsibility-wise.
         //             See also refactor-TODO in unhide_selection_surface().
-        //           Also, maybe make this the only (default) way to toggle freezeframe,
-        //           and don't let refocus automatically re-freeze?
         if (pretend_all_hidden) {
             FOR_EACH_OUTPUT(i, st_output) {
                 freezeframe_capture_refresh(st_output, start_grabbing_focus_for_output);

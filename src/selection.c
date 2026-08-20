@@ -267,11 +267,6 @@ start_grabbing_focus()
     DEBUG("Grabbing focus\n");
 
     FOR_EACH_OUTPUT(i, st_output) {
-        if (g_state.options.freezeframe) {
-            freezeframe_capture_refresh(st_output, start_grabbing_focus_for_output);
-            continue;
-        }
-
         start_grabbing_focus_for_output(st_output);
     }
 }
@@ -305,10 +300,8 @@ stop_grabbing_focus()
 {
     DEBUG("Releasing focus\n");
 
-    if (g_state.options.freezeframe) {
-        FOR_EACH_OUTPUT(i, st_output) {
-            freezeframe_hide_surface(st_output);
-        }
+    FOR_EACH_OUTPUT(i, st_output) {
+        freezeframe_hide_surface(st_output);
     }
 
     const enum scran_ui_text focus_released_keymap_text = get_focus_released_keymap_text(scran_dbus_have_tray_icon());

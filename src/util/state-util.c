@@ -194,9 +194,7 @@ update_surface_scale_bufsize_viewport(
         DEBUG("    Selection surface disabled; deferring viewport update.\n");
     }
 
-    if (g_state.options.freezeframe) {
-        freezeframe_surface_update_scale_size_viewport(st_output);
-    }
+    freezeframe_surface_update_scale_size_viewport(st_output);
 }
 
 void

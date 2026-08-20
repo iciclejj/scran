@@ -55,8 +55,8 @@ static const struct ui_string ui_texts[] = {
     [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY]      = INIT_UI_STRING(u"[⇥] Click tray icon to retake focus."),
     [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP]      = INIT_UI_STRING(u"[⇥] Focus released. 'scran -h' for help."),
 
-    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON]      = INIT_UI_STRING(u"[Z] Freeze screen"),
-    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_OFF]     = INIT_UI_STRING(u"[Z] Unfreeze screen"),
+    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON]      = INIT_UI_STRING(u"[Z] Freeze screens"),
+    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_OFF]     = INIT_UI_STRING(u"[Z] Unfreeze screens"),
 
     // Placeholders for calculating metadata (currently just max pixel widths)
     // - actual text is dynamic for these.
@@ -621,8 +621,7 @@ static const struct default_textline_values m_statusline_defaults[] = {
 static const struct default_textline_values m_keymap_defaults[] = {
     [SCRAN_UI_KEYMAP_ITEM_I_IMAGE]                  = { SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
     [SCRAN_UI_KEYMAP_ITEM_I_VIDEO]                  = { SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
-    // Freezeframe init code enables this.
-    [SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME]            = { SCRAN_UI_TEXT_EMPTY,                           SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME]            = { SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON,      SCRAN_UI_COLOR_DEFAULT },
     [SCRAN_UI_KEYMAP_ITEM_I_FOCUS]                  = { SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
 };
 static const struct default_textline_values m_atlas_digits_defaults[] = {
