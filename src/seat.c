@@ -72,6 +72,24 @@ set_keymap_pressed_state(
     request_selection_surface_frame_callback(st_output);
 }
 
+static inline void
+set_keymap_disabled_state(
+    struct scran_output_selectionSurface *selection_surface,
+    bool disabled
+) {
+    if (!selection_surface) {
+        return;
+    }
+
+    struct scran_output           *st_output       = wl_container_of(selection_surface, st_output, selection_surface);
+    struct scran_ui_context       *ui_ctx          = &st_output->selection_surface.ui_ctx;
+    struct scran_ui_textline_view  keymap_textline = SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap);
+
+    for (int i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
+        scran_ui_textline_item_set_disabled(ui_ctx, keymap_textline, i, SCRAN_UI_DISABLE_REASON_NOT_ACTIVE_SURFACE, disabled);
+    }
+}
+
 void
 seat_update_active_selection_surface(struct scran_seat *seat)
 {
@@ -94,9 +112,11 @@ seat_update_active_selection_surface(struct scran_seat *seat)
 
         seat_apply_mod_key_state(seat, seat->active_selection_surface, false);
         set_keymap_pressed_state(seat->active_selection_surface, 0);
+        set_keymap_disabled_state(seat->active_selection_surface, true);
 
         seat_apply_mod_key_state(seat, new_surface, seat->mod_key_active);
         set_keymap_pressed_state(new_surface, old_keymap_state);
+        set_keymap_disabled_state(new_surface, false);
 
         seat->active_selection_surface = new_surface;
     }

@@ -681,6 +681,10 @@ init_scran_ui_pre_selection(
     init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.digits),    m_atlas_digits_defaults,      ARRAY_LENGTH(m_atlas_digits_defaults));
     init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators),m_atlas_separators_defaults,  ARRAY_LENGTH(m_atlas_separators_defaults));
 
+    for (int i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
+        scran_ui_textline_item_set_disabled(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), i, SCRAN_UI_DISABLE_REASON_NOT_ACTIVE_SURFACE, true);
+    }
+
     reinit_scran_ui(ui_ctx, scale);
 
     return true;
