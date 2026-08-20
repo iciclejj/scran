@@ -29,7 +29,6 @@ static inline const void * get_font_data() {
 static const BLRgba32 ui_colors[] = {
     [SCRAN_UI_COLOR_DEFAULT]              = { 0xFFDDDDDD },
     [SCRAN_UI_COLOR_KEYMAP_MOD]           = { 0xFFFFFFAA },
-    [SCRAN_UI_COLOR_KEYMAP_ALT]           = { 0xFF888888 },
     [SCRAN_UI_COLOR_KEYMAP_FREEZEFRAME]   = { 0XFF6BE7FF },
     [SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE] = SCRAN_SELECTION_BORDER_COLOR_VIDEO_CAPTURE,
 };

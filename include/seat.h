@@ -56,7 +56,7 @@ static inline struct scran_output_selectionSurface *
 seat_update_pointer_focus(struct scran_seat *seat, struct wl_surface *focused_surface) {
     struct scran_output_selectionSurface **pointer_focused_surface = &seat->pointer_ctx.focused_selection_surface;
 
-    seat_set_focused_selection_surface_(&seat->pointer_ctx.focused_selection_surface, focused_surface);
+    seat_set_focused_selection_surface_(pointer_focused_surface, focused_surface);
     seat_update_active_selection_surface(seat);
 
     return *pointer_focused_surface;
