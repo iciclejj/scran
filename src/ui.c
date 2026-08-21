@@ -42,7 +42,7 @@ struct ui_string {
 #define INIT_UI_STRING(s) ((struct ui_string){ .str = (s), .strlen = CHAR16_STRLEN(s) })
 
 static const struct ui_string ui_texts[] = {
-    [SCRAN_UI_TEXT_GREETING]                        = INIT_UI_STRING(u"Click and drag anywhere to select a custom region"),
+    [SCRAN_UI_TEXT_GREETING]                        = INIT_UI_STRING(u"Fullscreen capture · click and drag anywhere for custom selection"),
 
     [SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT]            = INIT_UI_STRING(u"[↵] Image & Exit"),
     [SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD]                = INIT_UI_STRING(u"[↵] Image       "),
