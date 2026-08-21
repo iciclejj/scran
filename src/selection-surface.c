@@ -246,11 +246,18 @@ clamp_textline_surface_state(
     int min_px,
     int max_px
 ) {
-    // Clamp to buffer width
+    const int max_origin_px = max_px - state_new->total_width_px;
+
+    // Prioritize left bound, if the textline is forced to clip
+    if (max_origin_px < min_px) {
+        state_new->origin.x = min_px;
+        return;
+    }
+
     if (state_new->origin.x < min_px) {
         state_new->origin.x = min_px;
-    } else if ((state_new->origin.x + state_new->total_width_px) > max_px) {
-        state_new->origin.x = max_px - state_new->total_width_px;
+    } else if (state_new->origin.x > max_origin_px) {
+        state_new->origin.x = max_origin_px;
     }
 }
 
@@ -275,6 +282,7 @@ draw_and_damage_ui(
         }
     }
     const int item_spacing_px = get_item_spacing_px(ui_ctx);
+    const int left_bound      = MAX(0, capture_area_border_outline.x0);
 
     // Draw below-selection keymap
     {
@@ -285,7 +293,7 @@ draw_and_damage_ui(
             },
             .total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), item_spacing_px),
         };
-        clamp_textline_surface_state(&state_new_keymap, 0, selection_surface->surface.width_px_buffer);
+        clamp_textline_surface_state(&state_new_keymap, left_bound, selection_surface->surface.width_px_buffer);
         draw_and_damage_ui_textline(
             selection_surface,
             st_buffer,
@@ -312,7 +320,7 @@ draw_and_damage_ui(
             },
             .total_width_px = statusline_total_width_px,
         };
-        clamp_textline_surface_state(&state_new_statusline, 0, selection_surface->surface.width_px_buffer);
+        clamp_textline_surface_state(&state_new_statusline, left_bound, selection_surface->surface.width_px_buffer);
         draw_and_damage_ui_textline(
             selection_surface,
             st_buffer,
@@ -339,7 +347,7 @@ draw_and_damage_ui(
             },
             .total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting), item_spacing_px),
         };
-        clamp_textline_surface_state(&state_new_greeting, 0, selection_surface->surface.width_px_buffer);
+        clamp_textline_surface_state(&state_new_greeting, left_bound, selection_surface->surface.width_px_buffer);
         draw_and_damage_ui_textline(
             selection_surface,
             st_buffer,
