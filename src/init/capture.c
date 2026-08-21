@@ -19,7 +19,6 @@ extern struct scran g_state;
 bool
 init_premem__capture(
     struct scran_output *st_output,
-    struct scran_seat_datacontrol *st_datacontrol,
     struct scran_globals *globals
 ) {
     st_output->capture.source = ext_output_image_capture_source_manager_v1_create_source(

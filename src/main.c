@@ -106,7 +106,7 @@ init_premem()
     g_state.empty_wl_region = wl_compositor_create_region(g_state.globals.compositor);
 
     FOR_EACH_OUTPUT(i, st_output) {
-        if (!init_premem__capture(st_output, &g_state.seat.datacontrol, &g_state.globals)) {
+        if (!init_premem__capture(st_output, &g_state.globals)) {
             return false;
         }
 
