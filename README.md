@@ -210,6 +210,8 @@ cmake --install build && ldconfig
   Space                Capture video with audio
   Shift+Space          Capture video without audio
 
+  Z                    Toggle screen freeze
+
   Arrow keys           Move selection by one pixel
 
   Tab                  Release focus (stop capturing inputs)

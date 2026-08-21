@@ -383,6 +383,7 @@ static const char help_string[] =
     "  Shift+Enter          Capture image\n"
     "  Space                Capture video with audio\n"
     "  Shift+Space          Capture video without audio\n"
+    "  Z                    Toggle screen freeze\n"
     "  Arrow keys           Move selection by one pixel\n"
     "  Tab                  Release focus (stop capturing inputs)\n"
     "                         Click tray icon or send SIGUSR1 to scran to retake focus\n"
@@ -581,4 +582,3 @@ scran_handle_args(int argc, char *const *argv)
 
     return true;
 }
-
