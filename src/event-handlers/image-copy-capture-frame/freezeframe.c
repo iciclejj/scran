@@ -126,8 +126,6 @@ handle_image_copy_capture_frame_ready__freezeframe(
     struct ext_image_copy_capture_frame_v1 *frame
 ) {
     ext_image_copy_capture_frame_v1_destroy(frame);
-    DEBUG("handle_image_copy_capture_frame_ready__freezeframe()\n");
-
     struct scran_output *st_output = data;
     display_freezeframe(st_output);
 }

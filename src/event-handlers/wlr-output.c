@@ -57,8 +57,6 @@ handle_wlr_output_head_name(
 ) {
     struct pending_head *pending_head = data;
 
-    DEBUG("handle_wlr_output_head_name\n");
-
     // Match wlr_output_head with wl_output so we can set data pointers appropriately.
     FOR_EACH_OUTPUT(i, st_output) {
         if (0 == strncmp(name, st_output->name, sizeof(st_output->name))) {

@@ -216,8 +216,6 @@ handle_pointer_button(
 
     struct scran_seat_pointerContext *pointer_ctx = &state->seat.pointer_ctx;
 
-    DEBUG("handle_pointer_button()\n");
-
     bool is_press   = button_state == WL_POINTER_BUTTON_STATE_PRESSED;
     bool is_release = button_state == WL_POINTER_BUTTON_STATE_RELEASED;
     bool is_active_button = button == pointer_ctx->active_button;
@@ -226,21 +224,21 @@ handle_pointer_button(
     if (pointer_ctx->use_presses_only) {
         assert(pointer_ctx->active_button == SCRAN_BTN_NONE);
         if (!is_press) {
-            DEBUG("  Ignored (received non-press with use_presses_only)\n");
+            DEBUG("Ignored pointer button release (use_presses_only)\n");
             return;
         }
     } else {
         if (is_release && !is_active_button) {
-            DEBUG("  Ignored (received release of non-active button_\n");
+            DEBUG("Ignored pointer button release (!is_active_button)\n");
             return;
         }
         if (is_press && have_some_active_button) {
-            DEBUG("  Ignored (received press when already have active button)\n");
+            DEBUG("Ignored pointer button press (another button is active)\n");
             return;
         }
     }
 
-    DEBUG("  Went through (button=%d, state=%b)\n", button, button_state);
+    DEBUG("Accepted pointer button event (button=%d, state=%b)\n", button, button_state);
 
     pointer_ctx->active_button = pointer_ctx->active_button ? SCRAN_BTN_NONE : button;
 

@@ -41,8 +41,6 @@ struct wl_buffer_listener capture_buffer_listener = {
 static void
 handle_freezeframe_buffer_release(void *data, struct wl_buffer *wl_buffer)
 {
-    DEBUG("buffer<Freezeframe>::release()\n");
-
     struct scran_freezeframe_buffer *buffer = data;
     freezeframe_callback callback = buffer->release_callback;
 
@@ -52,7 +50,7 @@ handle_freezeframe_buffer_release(void *data, struct wl_buffer *wl_buffer)
     if (callback) {
         struct scran_output *st_output = &g_state.outputs[get_containing_output_array_index(buffer)];
 
-        DEBUG("  calling callback\n");
+        DEBUG("Calling freezeframe buffer release callback\n");
         callback(st_output);
     }
 }

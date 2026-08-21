@@ -32,8 +32,7 @@ handle_image_copy_capture_session_shm_format__freezeframe(
 ) {
     struct scran_output *st_output = data;
 
-    DEBUG("capture_session::shm_format<Freezeframe>():\n");
-    DEBUG("  format: %x\n", shm_format);
+    DEBUG("Freezeframe capture session advertised shm format: %x\n", shm_format);
 
     // List of formats we want to support.
     // TODO: Add more formats and logic for handling them
