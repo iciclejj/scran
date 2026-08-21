@@ -79,7 +79,8 @@ draw_and_damage_background(
     BLBoxI capture_area_border_outline,
     const BLRectI *damage_regions_wayland,
     const BLRectI *damage_regions_buffer,
-    uint8_t n_damage_regions // shared between 'damage_regions_wayland' and 'damage_regions_buffer'
+    uint8_t n_damage_regions, // shared between 'damage_regions_wayland' and 'damage_regions_buffer'
+    bool greeting_screen
 ) {
     // TODO: Just store the fill styles in state
     BLVarCore prev_fill_style = { };
@@ -88,7 +89,9 @@ draw_and_damage_background(
     bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, SCRAN_SELECTION_BACKGROUND_COLOR.value);
 
     bl_path_add_box_i(&selection_surface->bl_path, &capture_area_max_bounds,     BL_GEOMETRY_DIRECTION_NONE);
-    bl_path_add_box_i(&selection_surface->bl_path, &capture_area_border_outline, BL_GEOMETRY_DIRECTION_NONE);
+    if (!greeting_screen) { // TODO: likely()
+        bl_path_add_box_i(&selection_surface->bl_path, &capture_area_border_outline, BL_GEOMETRY_DIRECTION_NONE);
+    }
 
     for (int i = 0; i < n_damage_regions; ++i) {
         draw_and_damage_region(selection_surface, st_buffer, damage_regions_wayland[i], damage_regions_buffer[i]);
@@ -270,8 +273,8 @@ static inline void
 draw_and_damage_ui(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
-    struct scran_output_selectionContext *selection_ctx,
-    BLBoxI capture_area_border_outline
+    BLBoxI capture_area_border_outline,
+    bool greeting_screen
 ) {
     struct scran_ui_context *ui_ctx = &selection_surface->ui_ctx;
 
@@ -339,7 +342,7 @@ draw_and_damage_ui(
     // Draw greeting
     //   XXX: Must currently be at the end to play nice with scale updates.
     //   TODO: unlikely() ?
-    if (selection_is_none(selection_ctx)) {
+    if (greeting_screen) {
         struct scran_ui_textline_surface_state state_new_greeting = {
             .origin = {
                 .x = capture_area_border_outline.x0,
@@ -432,6 +435,7 @@ draw_selection_and_damage_buffer(
     const BLBoxI capture_area_border_outline_last_used_in_any_buffer     = get_border_outline_from_inline(capture_area_border_inline_last_used_in_any_buffer);
     const BLBoxI capture_area_border_outline_last_used_in_current_buffer = get_border_outline_from_inline(capture_area_border_inline_last_used_in_current_buffer);
 
+    bool greeting_screen = selection_is_none(selection_ctx);
     bool selection_changed =
         !blboxi_are_equal(capture_area, st_buffer->box_currently_drawn)
         || !blboxi_are_equal(capture_area, selection_surface->box_last_drawn);
@@ -459,20 +463,24 @@ draw_selection_and_damage_buffer(
             n_damage_regions = 8;
         }
 
-        draw_and_damage_background(selection_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, n_damage_regions);
+        draw_and_damage_background(selection_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, n_damage_regions, greeting_screen);
     }
 
     if (g_state.options.hide_ui_level < SCRAN_OPT_HIDE_UI_ITEMS) {
         // Draw keymap
         //   Must be drawn after/on top of background
-        draw_and_damage_ui(selection_surface, st_buffer, selection_ctx, capture_area_border_outline);
+        draw_and_damage_ui(selection_surface, st_buffer, capture_area_border_outline, greeting_screen);
     }
 
     // Draw selection border
     if (selection_changed || st_buffer->force_redraw) {
-        BLRectI damage_regions[4];
-        blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
-        draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
+        if (greeting_screen) { // TODO: unlikely()
+            st_buffer->box_currently_drawn = capture_area;
+        } else {
+            BLRectI damage_regions[4];
+            blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
+            draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
+        }
     }
 
 
