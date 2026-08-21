@@ -36,7 +36,7 @@ handle_image_copy_capture_session_shm_format(
 
     // List of formats we want to support.
     // TODO: Add more formats and logic for handling them
-    if (st_output->capture.shm_format == SCRAN_SHM_FORMAT_UNSET
+    if (st_output->capture.session.shm_format == SCRAN_SHM_FORMAT_UNSET
         &&
         (shm_format == WL_SHM_FORMAT_ARGB8888
          || shm_format == WL_SHM_FORMAT_XRGB8888
@@ -44,7 +44,7 @@ handle_image_copy_capture_session_shm_format(
          || shm_format == WL_SHM_FORMAT_ABGR8888
         )
     ) {
-        st_output->capture.shm_format = shm_format;
+        st_output->capture.session.shm_format = shm_format;
         st_output->capture.frame_ctx.pixel_stride = 4;
     }
 }
@@ -57,8 +57,8 @@ handle_image_copy_capture_session_stopped(
 ) {
     struct scran_output *st_output = data;
 
-    ext_image_copy_capture_session_v1_destroy(st_output->capture.frame_ctx.wl_capture_session);
-    st_output->capture.frame_ctx.wl_capture_session = NULL;
+    ext_image_copy_capture_session_v1_destroy(st_output->capture.session.wl_session);
+    st_output->capture.session.wl_session = NULL;
 
     // TODO: More graceful exit and/or attempt creating a new session
     eprintf("Error: Capture session stopped unexpectedly.\n");

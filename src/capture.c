@@ -141,13 +141,13 @@ capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_bo
 
 struct ext_image_copy_capture_frame_v1 *
 video_capture_create_frame(
-    struct capture_frame_context *frame_ctx
+    struct scran_output_capture *capture
 ) {
     struct ext_image_copy_capture_frame_v1 *frame =
-        ext_image_copy_capture_session_v1_create_frame(frame_ctx->wl_capture_session);
+        ext_image_copy_capture_session_v1_create_frame(capture->session.wl_session);
 
-    ext_image_copy_capture_frame_v1_attach_buffer(frame, frame_ctx->scran_wl_buffer.wl_buffer);
-    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__video_capture, frame_ctx);
+    ext_image_copy_capture_frame_v1_attach_buffer(frame, capture->frame_ctx.scran_wl_buffer.wl_buffer);
+    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__video_capture, &capture->frame_ctx);
 
     return frame;
 }
@@ -449,7 +449,7 @@ video_capture_start(struct scran_output *st_output)
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
-    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture.frame_ctx);
+    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture);
     // Ensure the first frame is fully rendered
     video_capture_damage_buffer(
         &st_output->capture.frame_ctx,
@@ -558,7 +558,7 @@ video_capture_request_stop(struct scran_output *st_output)
     // timestamp. This also lets the frame listener finalize the
     // recording and clean up as soon as possible.
 
-    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(frame_ctx);
+    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture);
     // XXX: This damage request is probably normally redundant with
     // capture_force_next_frame(), but should stay regardless, in case the
     // initial frame was interrupted before it came back (i.e. making it a
@@ -726,7 +726,7 @@ image_capture_start(struct scran_output *st_output, bool exit_after_capture)
         image_capture_request_frame(
             st_output,
             &image_copy_capture_frame_listener__image_capture,
-            frame_ctx->wl_capture_session,
+            st_output->capture.session.wl_session,
             frame_ctx->scran_wl_buffer.wl_buffer,
             frame_ctx->source_width_px,
             frame_ctx->source_height_px

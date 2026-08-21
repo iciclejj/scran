@@ -3,6 +3,7 @@
 
 #include <wayland-client-core.h>
 
+#include "capture.h"
 #include "fractional-scale-v1.h"
 #include "viewporter.h"
 #include "ext-image-copy-capture-v1.h"
@@ -22,6 +23,13 @@ init_premem__freezeframe(
     struct scran_output *st_output
 ) {
     struct scran_output_subsurface       *st_subsurface     = &st_output->freezeframe.subsurface;
+
+    capture_session_init(
+        &st_output->freezeframe.session,
+        st_output->capture.source,
+        &image_copy_capture_session_listener__freezeframe,
+        st_output
+    );
 
     {
         struct wl_surface *wl_surface = wl_compositor_create_surface(g_state.globals.compositor);
@@ -44,19 +52,6 @@ init_premem__freezeframe(
         st_subsurface->wl_surface = wl_surface;
     }
 
-    st_output->freezeframe.wl_capture_session = ext_image_copy_capture_manager_v1_create_session(
-        g_state.globals.image_copy_capture_manager,
-        st_output->capture.source,
-        g_state.options.disable_cursor_capture ? 0 : EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS
-    );
-    st_output->freezeframe.shm_format = SCRAN_SHM_FORMAT_UNSET;
-
-    ext_image_copy_capture_session_v1_add_listener(
-        st_output->freezeframe.wl_capture_session,
-        &image_copy_capture_session_listener__freezeframe,
-        st_output
-    );
-
     return true;
 }
 
@@ -69,7 +64,7 @@ init_premem__freezeframe__destroy(
     wp_viewport_destroy(freezeframe->subsurface.viewport);
     wl_subsurface_destroy(freezeframe->subsurface.wl_subsurface);
     wl_surface_destroy(freezeframe->subsurface.wl_surface);
-    if (freezeframe->wl_capture_session) {
-        ext_image_copy_capture_session_v1_destroy(freezeframe->wl_capture_session);
+    if (freezeframe->session.wl_session) {
+        ext_image_copy_capture_session_v1_destroy(freezeframe->session.wl_session);
     }
 }
