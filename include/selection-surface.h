@@ -33,12 +33,14 @@ get_selection_surface_pre_selection_box(struct scran_output *st_output) {
     int font_height_px = scran_ui_font_height_px(&st_output->selection_surface.ui_ctx);
     assert(font_height_px);
 
+    int margin_px = round(font_height_px * 0.5) + SCRAN_SELECTION_BORDER_THICKNESS_PX;
+
     // Show all of the UI in the top left corner, including splash/greeting line
     return (BLBoxI){
-        .x0 = 0,
-        .y0 = 2 * font_height_px,
-        .x1 = 0,
-        .y1 = 2 * font_height_px,
+        .x0 = margin_px + 0,
+        .y0 = margin_px + 2 * font_height_px,
+        .x1 = margin_px + 0,
+        .y1 = margin_px + 2 * font_height_px,
     };
 }
 
