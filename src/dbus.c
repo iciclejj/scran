@@ -19,9 +19,6 @@
 #include "util/util.h"
 
 
-extern struct scran g_state;
-
-
 static struct {
     sd_bus *bus;
     int fd;

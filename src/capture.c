@@ -36,9 +36,6 @@
 #define FFMPEG_FORMAT_MP4_NAME "mp4"
 
 
-extern struct scran g_state;
-
-
 typedef void video_capture_write_packet_fn(
     struct capture_frame_context *,
     AVPacket *pkt

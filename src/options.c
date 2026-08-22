@@ -464,8 +464,7 @@ static const char help_string[] =
 bool
 scran_handle_args(int argc, char *const *argv)
 {
-    extern struct scran g_state;
-    char *opt_filename    = NULL;
+    char *opt_filename         = NULL;
     char *opt_output_directory = NULL;
 
     int opt;

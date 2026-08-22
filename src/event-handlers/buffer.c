@@ -7,9 +7,6 @@
 #include "print.h"
 
 
-extern struct scran g_state;
-
-
 static void
 handle_surface_buffer_release(void *data, struct wl_buffer *buffer)
 {

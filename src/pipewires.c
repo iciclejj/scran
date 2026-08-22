@@ -16,9 +16,6 @@
 #include "print.h"
 
 
-extern struct scran g_state;
-
-
 static struct {
     struct pw_loop               *loop;
     struct pw_stream             *stream;

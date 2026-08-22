@@ -13,9 +13,6 @@
 #include "util/lib-interop.h"
 
 
-extern struct scran g_state;
-
-
 static void
 handle_image_copy_capture_frame_transform__freezeframe(
     void *data,

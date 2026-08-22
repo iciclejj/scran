@@ -10,9 +10,6 @@
 #include "selection-surface.h"
 
 
-extern struct scran g_state;
-
-
 void
 scran_request_exit()
 {

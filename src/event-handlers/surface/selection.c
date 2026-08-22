@@ -14,9 +14,6 @@
 #include "print.h"
 
 
-extern struct scran g_state;
-
-
 static inline struct scran_output_selectionSurface_buffer *
 get_free_double_buffer(struct scran_output_selectionSurface *selection_surface)
 {

@@ -15,9 +15,6 @@
 #include "event-handlers.h"
 
 
-extern struct scran g_state;
-
-
 bool
 init_premem__freezeframe(
     struct scran_output *st_output

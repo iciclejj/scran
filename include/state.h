@@ -57,6 +57,9 @@
 #define SCRAN_STATE_OUTPUT_NAME_SIZE DRM_CONNECTOR_NAME_LEN
 
 
+extern struct scran g_state;
+
+
 struct scran_globals {
     struct wl_display *display;
     struct wl_registry *registry;
@@ -512,5 +515,6 @@ struct scran {
     uint32_t n_outputs;
     struct scran_output outputs[MAX_OUTPUTS];
 };
+
 
 #endif

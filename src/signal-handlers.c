@@ -9,7 +9,6 @@
 
 // TODO: Maybe a separate signal struct to keep this more sanitary, at least if
 // we start adding more handlers/touching more state.
-extern struct scran g_state;
 
 
 void

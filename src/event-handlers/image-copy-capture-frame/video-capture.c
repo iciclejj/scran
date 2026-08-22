@@ -23,9 +23,6 @@
 #include "util/util.h"
 
 
-extern struct scran g_state;
-
-
 static void
 handle_image_copy_capture_frame_transform__video_capture(
     void *data,

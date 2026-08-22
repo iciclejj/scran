@@ -20,9 +20,6 @@
 #include "dbus.h"
 
 
-extern struct scran g_state;
-
-
 void
 set_selection_surface_theme(
     struct scran_output *st_output,

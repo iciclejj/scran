@@ -13,9 +13,6 @@
 #include "print.h"
 
 
-extern struct scran g_state;
-
-
 void
 freezeframe_capture_start_assume_callback_set(struct scran_output *st_output)
 {

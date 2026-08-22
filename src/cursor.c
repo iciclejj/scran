@@ -12,9 +12,6 @@
 #include "selection-surface.h"
 
 
-extern struct scran g_state;
-
-
 static const BLRgba32 m_cursor_colors[] = {
     [SCRAN_CURSOR_THEME_DEFAULT]       = SCRAN_SELECTION_BORDER_COLOR_DEFAULT,
     [SCRAN_CURSOR_THEME_VIDEO_CAPTURE] = SCRAN_SELECTION_BORDER_COLOR_VIDEO_CAPTURE,

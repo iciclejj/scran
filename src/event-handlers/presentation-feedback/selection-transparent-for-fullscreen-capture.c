@@ -4,9 +4,6 @@
 #include "print.h"
 
 
-extern struct scran g_state;
-
-
 static void handle_presentation_feedback_sync_output__selection_transparent_for_fullscreen_capture(void *data, struct wp_presentation_feedback *wp_presentation_feedback, struct wl_output *wl_output) { };
 
 static inline void

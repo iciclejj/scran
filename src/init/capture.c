@@ -14,9 +14,6 @@
 #include "event-handlers.h"
 
 
-extern struct scran g_state;
-
-
 void
 capture_session_init(
     struct capture_session *session,

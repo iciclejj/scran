@@ -21,7 +21,6 @@
 #include "print.h"
 
 
-extern struct scran g_state;
 
 struct pending_head{
     struct scran_output *st_output;

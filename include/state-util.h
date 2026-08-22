@@ -9,9 +9,6 @@
 #include "state.h"
 
 
-extern struct scran g_state;
-
-
 #define FOR_EACH_OUTPUT(i, varname) \
     for (uint32_t i = (assert(g_state.n_outputs <= MAX_OUTPUTS), 0); i < g_state.n_outputs; ++i) \
         for (struct scran_output *varname = &g_state.outputs[i]; varname; varname = NULL)

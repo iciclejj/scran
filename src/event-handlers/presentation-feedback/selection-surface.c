@@ -5,9 +5,6 @@
 #include "capture.h"
 
 
-extern struct scran g_state;
-
-
 static inline void
 handle_presentation_feedback_sync_output__selection(
     void *data,
