@@ -46,8 +46,6 @@ seat_set_focused_selection_surface_(
     //     into a second, *left-hand-side* monitor.
     *dst = NULL;
     DEBUG("WARNING: wl_pointer::enter triggered with unknown surface (see comment in source.)\n");
-
-    return;
 }
 
 // We use this mainly to set our capture-area-deciding selection box, and not

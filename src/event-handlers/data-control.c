@@ -10,7 +10,7 @@
 #include "clipboard.h"
 #include "util/util.h"
 
-// void 
+// void
 // handle_data_control_device_selection(
 //     void *data,
 //     struct ext_data_control_device_v1 *device,
@@ -92,7 +92,6 @@ handle_data_control_source_send(
 failed:
     eprintf("Error while writing clipboard selection; aborting.\n");
     close(fd);
-    return;
 }
 
 
@@ -115,4 +114,3 @@ struct ext_data_control_source_v1_listener data_control_source_listener = {
     .send = handle_data_control_source_send,
     .cancelled = handle_data_control_source_cancelled,
 };
-

@@ -121,7 +121,6 @@ on_process(void *data)
 
 cont:
     pw_stream_queue_buffer(m_state.stream, pw_buf);
-    return;
 }
 
 
@@ -296,4 +295,3 @@ scran_pipewire_update(int fd_ready)
 
     return true;
 }
-
