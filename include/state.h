@@ -510,6 +510,7 @@ struct scran {
     struct wl_region *empty_wl_region;
     struct scran_wl_buffer transparent_single_pixel_buffer;
     sig_atomic_t sig_focus_requested;
+    bool focused;
 
     // TODO: Probably allocate this dynamically, after all.
     uint32_t n_outputs;

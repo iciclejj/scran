@@ -1,8 +1,35 @@
 #include "seat.h"
+#include "dbus.h"
 #include "selection-surface.h"
 #include "state.h"
 #include "ui.h"
 
+
+void
+update_focus_keymap_texts(bool have_tray_icon)
+{
+    const enum scran_ui_text text =
+        g_state.focused
+          ? SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT
+        : have_tray_icon
+          ? SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY
+          : SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP;
+
+    FOR_EACH_OUTPUT(i, output) {
+        struct scran_ui_context *ui_ctx = &output->selection_surface.ui_ctx;
+        scran_ui_textline_item_set_text(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FOCUS, text);
+        request_selection_surface_frame_callback(output);
+    }
+}
+
+static inline void
+set_global_focus_state(bool focused)
+{
+    if (g_state.focused != focused) {
+        g_state.focused = focused;
+        update_focus_keymap_texts(scran_dbus_have_tray_icon());
+    }
+}
 
 void
 seat_apply_mod_key_state(
@@ -116,9 +143,15 @@ seat_update_active_selection_surface(struct scran_seat *seat)
         set_keymap_pressed_state(seat->active_selection_surface, 0);
         set_keymap_disabled_state(seat->active_selection_surface, true);
 
-        seat_apply_mod_key_state(new_surface, seat->mod_key_active);
-        set_keymap_pressed_state(new_surface, old_keymap_state);
-        set_keymap_disabled_state(new_surface, false);
+        if (new_surface) {
+            seat_apply_mod_key_state(new_surface, seat->mod_key_active);
+            set_keymap_pressed_state(new_surface, old_keymap_state);
+            set_keymap_disabled_state(new_surface, false);
+
+            set_global_focus_state(true);
+        } else {
+            set_global_focus_state(false);
+        }
 
         seat->active_selection_surface = new_surface;
     }

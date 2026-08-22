@@ -10,6 +10,7 @@
 
 void seat_apply_mod_key_state(struct scran_output_selectionSurface *selection_surface, bool state);
 void seat_update_active_selection_surface(struct scran_seat *seat);
+void update_focus_keymap_texts(bool have_tray_icon);
 
 static inline void
 seat_set_mod_key_state(struct scran_seat *seat, bool state) {

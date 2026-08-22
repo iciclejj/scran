@@ -14,10 +14,8 @@
 #include "print.h"
 #include "capture.h"
 #include "selection-surface.h"
-#include "ui.h"
 #include "freezeframe.h"
 #include "init.h"
-#include "dbus.h"
 
 
 void
@@ -243,11 +241,6 @@ start_grabbing_focus_for_output(
     );
     wl_surface_commit(st_surface->wl_surface);
 
-    {
-        struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        scran_ui_textline_item_set_text(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FOCUS, SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT);
-    }
-
     // TODO: Make arm_selection_surface_frame_callback externally callable, so
     // that we avoid potential double-commit here?
     request_selection_surface_frame_callback(st_output);
@@ -263,31 +256,6 @@ start_grabbing_focus()
     }
 }
 
-static inline enum scran_ui_text
-get_focus_released_keymap_text(bool have_tray_icon) {
-    return have_tray_icon
-        ? SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY
-        : SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP;
-}
-
-void
-update_focus_released_keymap_text(bool have_tray_icon)
-{
-    const enum scran_ui_text text = get_focus_released_keymap_text(have_tray_icon);
-
-    FOR_EACH_OUTPUT(i, st_output) {
-        struct scran_ui_context       *ui_ctx     = &st_output->selection_surface.ui_ctx;
-        struct scran_ui_textline_item *focus_item = &ui_ctx->ui_keymap.items[SCRAN_UI_KEYMAP_ITEM_I_FOCUS];
-
-        const enum scran_ui_text current_text = focus_item->live_state.text;
-        if (current_text == SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY
-            || current_text == SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP
-        ) {
-            scran_ui_textline_item_set_text(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FOCUS, text);
-        }
-    }
-}
-
 void
 stop_grabbing_focus()
 {
@@ -296,8 +264,6 @@ stop_grabbing_focus()
     FOR_EACH_OUTPUT(i, st_output) {
         freezeframe_hide_surface(st_output);
     }
-
-    const enum scran_ui_text focus_released_keymap_text = get_focus_released_keymap_text(scran_dbus_have_tray_icon());
 
     FOR_EACH_OUTPUT(i, st_output) {
         struct scran_output_surface *st_surface = &st_output->selection_surface.surface;
@@ -308,11 +274,5 @@ stop_grabbing_focus()
             SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_UNFOCUSED
         );
         wl_surface_commit(st_surface->wl_surface);
-
-        {
-            struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-            scran_ui_textline_item_set_text(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FOCUS, focus_released_keymap_text);
-            request_selection_surface_frame_callback(st_output);
-        }
     }
 }
