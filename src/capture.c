@@ -133,7 +133,21 @@ video_capture_drain_encoder(
 // `selection_ctx_box_px` has `scran_output_selectionContext.box_px` coordinate space!
 void
 capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px) {
-    st_output->capture.frame_ctx.selection_ctx_box_px = selection_ctx_box_px;
+    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+
+    bool size_changed =
+           blboxi_width_abs_unsafe(frame_ctx->selection_ctx_box_px)  != blboxi_width_abs_unsafe(selection_ctx_box_px)
+        || blboxi_height_abs_unsafe(frame_ctx->selection_ctx_box_px) != blboxi_height_abs_unsafe(selection_ctx_box_px);
+
+    // Presentation feedback for an older selection-surface buffer can arrive
+    // after video capture has frozen the selection size.
+    // FIXME: Actually check if frozen here instead, but probably decouple
+    // selection's frozen state from selection_state first.
+    if (frame_ctx->capturing_video && size_changed) {
+        return;
+    }
+
+    frame_ctx->selection_ctx_box_px = selection_ctx_box_px;
 }
 
 struct ext_image_copy_capture_frame_v1 *
