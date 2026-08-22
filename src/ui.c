@@ -73,7 +73,6 @@ static_assert(sizeof(ui_texts) / sizeof(ui_texts[0]) == SCRAN_UI_N_TEXTS,
 static inline void
 redraw_textline_item_image_impl(
     struct scran_ui_context *ui_ctx,
-    BLContextCore *bl_ctx,
     struct scran_ui_textline_item *item,
     const struct ui_string *string,
     const BLPointI origin,
@@ -125,7 +124,7 @@ redraw_textline_item_image(
     bl_context_begin(&ui_ctx->bl_ctx, &item->bl_img, NULL);
     bl_context_clear_all(&ui_ctx->bl_ctx);
 
-    redraw_textline_item_image_impl(ui_ctx, &ui_ctx->bl_ctx, item, string, origin, color, pressed);
+    redraw_textline_item_image_impl(ui_ctx, item, string, origin, color, pressed);
 
     bl_context_end(&ui_ctx->bl_ctx);
     item->width_px = ui_ctx->cached_text_widths_px[lockable_state.text];
@@ -262,7 +261,7 @@ redraw_glyph_atlas_item_image(
     };
 
     for (size_t i = 0; i < string->strlen; ++i) {
-        redraw_textline_item_image_impl(ui_ctx, &ui_ctx->bl_ctx, item, &string_current, origin_current, color, pressed);
+        redraw_textline_item_image_impl(ui_ctx, item, &string_current, origin_current, color, pressed);
         origin_current.x   += cell_width_px;
         string_current.str += 1;
     }
@@ -682,7 +681,7 @@ init_scran_ui_pre_selection(
     init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators),m_atlas_separators_defaults,  ARRAY_LENGTH(m_atlas_separators_defaults));
 
     for (int i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        scran_ui_textline_item_set_disabled(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), i, SCRAN_UI_DISABLE_REASON_NOT_ACTIVE_SURFACE, true);
+        scran_ui_textline_item_set_disabled(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), i, SCRAN_UI_DISABLE_REASON_NOT_ACTIVE_SURFACE, true);
     }
 
     reinit_scran_ui(ui_ctx, scale);

@@ -433,9 +433,9 @@ video_capture_start(struct scran_output *st_output)
 
     {
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        scran_ui_textline_item_set_disabled(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, true);
-        scran_ui_textline_item_set_color(   ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE);
-        scran_ui_textline_item_set_locked(  ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
+        scran_ui_textline_item_set_disabled(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, true);
+        scran_ui_textline_item_set_color(   SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE);
+        scran_ui_textline_item_set_locked(  SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
     }
     st_output->capture.pre_capture_selection_theme = st_output->selection_surface.theme;
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
@@ -616,9 +616,9 @@ video_capture_finish(struct scran_output *st_output)
 
     {
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        scran_ui_textline_item_set_disabled(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, false);
-        scran_ui_textline_item_set_color(   ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_DEFAULT);
-        scran_ui_textline_item_set_locked(  ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
+        scran_ui_textline_item_set_disabled(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, false);
+        scran_ui_textline_item_set_color(   SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_DEFAULT);
+        scran_ui_textline_item_set_locked(  SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
         scran_ui_statusline_set_timer(&st_output->selection_surface.ui_ctx.ui_statusline, 0);
     }
     set_selection_surface_theme(st_output, st_output->capture.pre_capture_selection_theme);
@@ -662,7 +662,7 @@ image_capture_request_frame(
 
 
 static void
-print_slurp_string(struct scran_output *st_output, BLRectI rect)
+print_slurp_string(BLRectI rect)
 {
     // TODO: Assert nothing else was sent to stdout?
     fprintf(stdout, "%d,%d %dx%d\n", rect.x, rect.y, rect.w, rect.h);
@@ -692,14 +692,13 @@ print_slurp_string_selection(struct scran_output *st_output)
         .h = rect_logical.h
     };
 
-    print_slurp_string(st_output, rect_logical_global);
+    print_slurp_string(rect_logical_global);
 }
 
 static void
 print_slurp_string_fullscreen(struct scran_output *st_output)
 {
     print_slurp_string(
-        st_output,
         (BLRectI){
             .x = st_output->xdg_geometry.x_logical,
             .y = st_output->xdg_geometry.y_logical,

@@ -180,14 +180,14 @@ esc_exit_scran:
     if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
         switch(xkb_key) {
         case XKB_KEY_Return:
-            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, false);
+            scran_ui_textline_item_set_pressed(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, false);
             break;
         case XKB_KEY_space:
-            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
+            scran_ui_textline_item_set_pressed(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
             break;
         case XKB_KEY_z:
         case XKB_KEY_Z:
-            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, false);
+            scran_ui_textline_item_set_pressed(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, false);
             break;
         default:
             return;
@@ -223,7 +223,7 @@ esc_exit_scran:
     case XKB_KEY_Z:
         {
             struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, true);
+            scran_ui_textline_item_set_pressed(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, true);
             request_selection_surface_frame_callback(st_output);
         }
 
@@ -266,7 +266,7 @@ z_done:
                 image_capture_start_fullscreen(st_output, exit_after_capture);
             } else {
                 image_capture_start(st_output, exit_after_capture);
-                scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
+                scran_ui_textline_item_set_pressed(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
                 request_selection_surface_frame_callback(st_output);
             }
         }
@@ -299,7 +299,7 @@ z_done:
         }
 
         if (!video_button_got_jammed) {
-            scran_ui_textline_item_set_pressed(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
+            scran_ui_textline_item_set_pressed(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
             request_selection_surface_frame_callback(st_output);
         }
         break;

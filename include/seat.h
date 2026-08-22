@@ -8,12 +8,12 @@
 #include "state-util.h"
 
 
-void seat_apply_mod_key_state(struct scran_seat *seat, struct scran_output_selectionSurface *selection_surface, bool state);
+void seat_apply_mod_key_state(struct scran_output_selectionSurface *selection_surface, bool state);
 void seat_update_active_selection_surface(struct scran_seat *seat);
 
 static inline void
 seat_set_mod_key_state(struct scran_seat *seat, bool state) {
-    seat_apply_mod_key_state(seat, seat->active_selection_surface, state);
+    seat_apply_mod_key_state(seat->active_selection_surface, state);
     seat->mod_key_active = state;
 }
 

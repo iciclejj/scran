@@ -6,7 +6,6 @@
 
 void
 seat_apply_mod_key_state(
-    struct scran_seat *seat,
     struct scran_output_selectionSurface *selection_surface,
     bool state
 ) {
@@ -19,15 +18,15 @@ seat_apply_mod_key_state(
     struct scran_ui_textline_view  keymap_textline = SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap);
 
     if (state) {
-        scran_ui_textline_item_set_text( ui_ctx, keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD);
-        scran_ui_textline_item_set_color(ui_ctx, keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_COLOR_KEYMAP_MOD);
-        scran_ui_textline_item_set_text( ui_ctx, keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD);
-        scran_ui_textline_item_set_color(ui_ctx, keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_KEYMAP_MOD);
+        scran_ui_textline_item_set_text( keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD);
+        scran_ui_textline_item_set_color(keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_COLOR_KEYMAP_MOD);
+        scran_ui_textline_item_set_text( keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD);
+        scran_ui_textline_item_set_color(keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_KEYMAP_MOD);
     } else {
-        scran_ui_textline_item_set_text( ui_ctx, keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT);
-        scran_ui_textline_item_set_color(ui_ctx, keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_COLOR_DEFAULT);
-        scran_ui_textline_item_set_text( ui_ctx, keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT);
-        scran_ui_textline_item_set_color(ui_ctx, keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_DEFAULT);
+        scran_ui_textline_item_set_text( keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT);
+        scran_ui_textline_item_set_color(keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_COLOR_DEFAULT);
+        scran_ui_textline_item_set_text( keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT);
+        scran_ui_textline_item_set_color(keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_DEFAULT);
     }
 
     // This is only used during video init, so just set this unconditionally
@@ -43,7 +42,6 @@ seat_apply_mod_key_state(
 
 static inline uint32_t
 get_keymap_pressed_state(
-    struct scran_seat *seat,
     struct scran_output_selectionSurface *selection_surface
 ) {
     if(!selection_surface) {
@@ -67,7 +65,7 @@ set_keymap_pressed_state(
     struct scran_ui_context       *ui_ctx          = &st_output->selection_surface.ui_ctx;
     struct scran_ui_textline_view  keymap_textline = SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap);
 
-    scran_ui_textline_item_set_pressed_mask(ui_ctx, keymap_textline, pressed_mask);
+    scran_ui_textline_item_set_pressed_mask(keymap_textline, pressed_mask);
 
     request_selection_surface_frame_callback(st_output);
 }
@@ -86,7 +84,7 @@ set_keymap_disabled_state(
     struct scran_ui_textline_view  keymap_textline = SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap);
 
     for (int i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        scran_ui_textline_item_set_disabled(ui_ctx, keymap_textline, i, SCRAN_UI_DISABLE_REASON_NOT_ACTIVE_SURFACE, disabled);
+        scran_ui_textline_item_set_disabled(keymap_textline, i, SCRAN_UI_DISABLE_REASON_NOT_ACTIVE_SURFACE, disabled);
     }
 }
 
@@ -112,17 +110,16 @@ seat_update_active_selection_surface(struct scran_seat *seat)
         : keyboard_surface;
 
     if (new_surface != seat->active_selection_surface) {
-        const uint32_t old_keymap_state = get_keymap_pressed_state(seat, seat->active_selection_surface);
+        const uint32_t old_keymap_state = get_keymap_pressed_state(seat->active_selection_surface);
 
-        seat_apply_mod_key_state(seat, seat->active_selection_surface, false);
+        seat_apply_mod_key_state(seat->active_selection_surface, false);
         set_keymap_pressed_state(seat->active_selection_surface, 0);
         set_keymap_disabled_state(seat->active_selection_surface, true);
 
-        seat_apply_mod_key_state(seat, new_surface, seat->mod_key_active);
+        seat_apply_mod_key_state(new_surface, seat->mod_key_active);
         set_keymap_pressed_state(new_surface, old_keymap_state);
         set_keymap_disabled_state(new_surface, false);
 
         seat->active_selection_surface = new_surface;
     }
 }
-
