@@ -12,9 +12,6 @@
 #include "print.h"
 
 
-extern struct scran g_state;
-
-
 static inline void
 draw_and_damage_region(
     struct scran_output_selectionSurface *selection_surface,

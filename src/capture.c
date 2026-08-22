@@ -36,9 +36,6 @@
 #define FFMPEG_FORMAT_MP4_NAME "mp4"
 
 
-extern struct scran g_state;
-
-
 typedef void video_capture_write_packet_fn(
     struct capture_frame_context *,
     AVPacket *pkt
@@ -141,13 +138,13 @@ capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_bo
 
 struct ext_image_copy_capture_frame_v1 *
 video_capture_create_frame(
-    struct capture_frame_context *frame_ctx
+    struct scran_output_capture *capture
 ) {
     struct ext_image_copy_capture_frame_v1 *frame =
-        ext_image_copy_capture_session_v1_create_frame(frame_ctx->wl_capture_session);
+        ext_image_copy_capture_session_v1_create_frame(capture->session.wl_session);
 
-    ext_image_copy_capture_frame_v1_attach_buffer(frame, frame_ctx->scran_wl_buffer.wl_buffer);
-    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__video_capture, frame_ctx);
+    ext_image_copy_capture_frame_v1_attach_buffer(frame, capture->frame_ctx.scran_wl_buffer.wl_buffer);
+    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__video_capture, &capture->frame_ctx);
 
     return frame;
 }
@@ -436,9 +433,9 @@ video_capture_start(struct scran_output *st_output)
 
     {
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        scran_ui_textline_item_set_disabled(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, true);
-        scran_ui_textline_item_set_color(   ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE);
-        scran_ui_textline_item_set_locked(  ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
+        scran_ui_textline_item_set_disabled(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, true);
+        scran_ui_textline_item_set_color(   SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE);
+        scran_ui_textline_item_set_locked(  SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
     }
     st_output->capture.pre_capture_selection_theme = st_output->selection_surface.theme;
     set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
@@ -449,7 +446,7 @@ video_capture_start(struct scran_output *st_output)
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
-    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture.frame_ctx);
+    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture);
     // Ensure the first frame is fully rendered
     video_capture_damage_buffer(
         &st_output->capture.frame_ctx,
@@ -558,7 +555,7 @@ video_capture_request_stop(struct scran_output *st_output)
     // timestamp. This also lets the frame listener finalize the
     // recording and clean up as soon as possible.
 
-    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(frame_ctx);
+    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture);
     // XXX: This damage request is probably normally redundant with
     // capture_force_next_frame(), but should stay regardless, in case the
     // initial frame was interrupted before it came back (i.e. making it a
@@ -619,9 +616,9 @@ video_capture_finish(struct scran_output *st_output)
 
     {
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        scran_ui_textline_item_set_disabled(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, false);
-        scran_ui_textline_item_set_color(   ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_DEFAULT);
-        scran_ui_textline_item_set_locked(  ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
+        scran_ui_textline_item_set_disabled(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, false);
+        scran_ui_textline_item_set_color(   SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_DEFAULT);
+        scran_ui_textline_item_set_locked(  SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
         scran_ui_statusline_set_timer(&st_output->selection_surface.ui_ctx.ui_statusline, 0);
     }
     set_selection_surface_theme(st_output, st_output->capture.pre_capture_selection_theme);
@@ -665,7 +662,7 @@ image_capture_request_frame(
 
 
 static void
-print_slurp_string(struct scran_output *st_output, BLRectI rect)
+print_slurp_string(BLRectI rect)
 {
     // TODO: Assert nothing else was sent to stdout?
     fprintf(stdout, "%d,%d %dx%d\n", rect.x, rect.y, rect.w, rect.h);
@@ -695,14 +692,13 @@ print_slurp_string_selection(struct scran_output *st_output)
         .h = rect_logical.h
     };
 
-    print_slurp_string(st_output, rect_logical_global);
+    print_slurp_string(rect_logical_global);
 }
 
 static void
 print_slurp_string_fullscreen(struct scran_output *st_output)
 {
     print_slurp_string(
-        st_output,
         (BLRectI){
             .x = st_output->xdg_geometry.x_logical,
             .y = st_output->xdg_geometry.y_logical,
@@ -726,7 +722,7 @@ image_capture_start(struct scran_output *st_output, bool exit_after_capture)
         image_capture_request_frame(
             st_output,
             &image_copy_capture_frame_listener__image_capture,
-            frame_ctx->wl_capture_session,
+            st_output->capture.session.wl_session,
             frame_ctx->scran_wl_buffer.wl_buffer,
             frame_ctx->source_width_px,
             frame_ctx->source_height_px

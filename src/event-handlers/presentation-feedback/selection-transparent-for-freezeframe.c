@@ -20,8 +20,6 @@ handle_presentation_feedback_presented__selection_transparent_for_freezeframe(
     uint32_t flags
 ) {
     wp_presentation_feedback_destroy(wp_presentation_feedback);
-    DEBUG("::presented selection_transparent_for_freezeframe\n");
-
     struct scran_output *st_output = data;
 
     freezeframe_capture_start_assume_callback_set(st_output);
@@ -33,8 +31,6 @@ handle_presentation_feedback_discarded__selection_transparent_for_freezeframe(
     struct wp_presentation_feedback *wp_presentation_feedback
 ) {
     wp_presentation_feedback_destroy(wp_presentation_feedback);
-    DEBUG("::DISCARDED selection_transparent_for_freezeframe\n");
-
     // TODO(?):
     struct scran_output *st_output = data;
     freezeframe_capture_start_assume_callback_set(st_output);

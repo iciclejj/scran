@@ -80,7 +80,7 @@ get_capture_stride(struct scran_output *st_output) {
 
 bool init_output_surface_shm_buffers(struct scran_output *st_output, struct wl_shm *wl_shm_global);
 
-bool init_premem__capture(struct scran_output *st_output, struct scran_seat_datacontrol *st_datacontrol, struct scran_globals *globals);
+bool init_premem__capture(struct scran_output *st_output, struct scran_globals *globals);
 void init_premem__capture__destroy(struct scran_output *st_output);
 
 bool init_premem__selection(struct scran_output *st_output, struct scran_globals *st_globals);

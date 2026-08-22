@@ -106,7 +106,7 @@ init_premem()
     g_state.empty_wl_region = wl_compositor_create_region(g_state.globals.compositor);
 
     FOR_EACH_OUTPUT(i, st_output) {
-        if (!init_premem__capture(st_output, &g_state.seat.datacontrol, &g_state.globals)) {
+        if (!init_premem__capture(st_output, &g_state.globals)) {
             return false;
         }
 
@@ -381,7 +381,7 @@ init_meminit(
     //
     FOR_EACH_OUTPUT(i, st_output) {
         // XXX: Handle this gracefully (and maybe in a nicer location?)
-        if (st_output->capture.shm_format == SCRAN_SHM_FORMAT_UNSET) {
+        if (st_output->capture.session.shm_format == SCRAN_SHM_FORMAT_UNSET) {
             DEBUG("Failed to select shm_format for capture buffer.\n");
             return false;
         }
@@ -409,7 +409,7 @@ init_meminit(
             );
         }
 
-        if (st_output->freezeframe.shm_format == SCRAN_SHM_FORMAT_UNSET) {
+        if (st_output->freezeframe.session.shm_format == SCRAN_SHM_FORMAT_UNSET) {
             DEBUG("Failed to select shm_format for freezeframe capture buffer.\n");
             return false;
         }
@@ -534,7 +534,7 @@ init_meminit(
                 freezeframe->source_width_px,
                 freezeframe->source_height_px,
                 freezeframe->source_width_px * SURFACE_PIXEL_STRIDE,
-                freezeframe->shm_format,
+                freezeframe->session.shm_format,
                 &freezeframe_buffer_listener,
                 capture_buffer
             );
@@ -547,7 +547,7 @@ init_meminit(
                 freezeframe->subsurface.width_px_buffer,
                 freezeframe->subsurface.height_px_buffer,
                 freezeframe->subsurface.width_px_buffer * SURFACE_PIXEL_STRIDE,
-                freezeframe->shm_format,
+                freezeframe->session.shm_format,
                 &freezeframe_buffer_listener,
                 surface_buffer
             );
@@ -561,7 +561,7 @@ init_meminit(
             capture->frame_ctx.source_width_px,
             capture->frame_ctx.source_height_px,
             get_capture_stride(st_output),
-            capture->shm_format,
+            capture->session.shm_format,
             &capture_buffer_listener,
             &capture->frame_ctx.scran_wl_buffer
         );

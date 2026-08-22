@@ -30,11 +30,6 @@ registry_handle_global(
     uint32_t version // of interface
     )
 {
-#ifndef NDEBUG
-    static int _entry_counter_debug = 0;
-    DEBUG("HANDLE GLOBAL (%3d): %s\n", _entry_counter_debug++, interface);
-#endif
-
     struct scran *state = data;
     struct scran_globals *globals = &state->globals;
 
@@ -187,4 +182,3 @@ registry_listener__destroy(struct scran *state)
 
     wl_registry_destroy(globals->registry);
 }
-

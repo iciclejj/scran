@@ -23,9 +23,6 @@
 #include "util/util.h"
 
 
-extern struct scran g_state;
-
-
 static void
 handle_image_copy_capture_frame_transform__video_capture(
     void *data,
@@ -102,10 +99,10 @@ do_handle_frame(
         const int area_h_px = blboxi_height_abs_unsafe(capture_buffer_area_px) & ~0b1;
         const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
 
-        uint32_t  rgba32_shuffle = wl_shm_format_to_scranrot_yuv_rgba32_shuffle(st_output->capture.shm_format);
+        uint32_t  rgba32_shuffle = wl_shm_format_to_scranrot_yuv_rgba32_shuffle(st_output->capture.session.shm_format);
         if (rgba32_shuffle == RGBA32_SHUFFLE_ERROR) {
             eprintf("WARNING: Output's pixel format (%x) not recognized. Please report this as a bug. Attempting anyways...\n",
-                    st_output->capture.shm_format);
+                    st_output->capture.session.shm_format);
             rgba32_shuffle = RGBA32_SHUFFLE_NO_CHANGE;
         }
 
@@ -206,7 +203,7 @@ handle_image_copy_capture_frame_ready__video_capture(
 
     // TODO: avio_flush ?
 
-    struct ext_image_copy_capture_frame_v1 *next_frame = video_capture_create_frame(frame_ctx);
+    struct ext_image_copy_capture_frame_v1 *next_frame = video_capture_create_frame(&st_output->capture);
     ext_image_copy_capture_frame_v1_capture(next_frame);
     st_output->capture.frame_ctx.frame = next_frame;
 }

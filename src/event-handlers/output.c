@@ -35,8 +35,7 @@ handle_output_scale(
 ) {
     struct scran_output *st_output = data;
 
-    DEBUG("output::scale():\n");
-    DEBUG("  %d\n", st_output->scale);
+    DEBUG("Previous output scale: %d\n", st_output->scale);
 
     if (st_output->scale != factor) {
         st_output->scale = factor;
@@ -58,8 +57,6 @@ handle_output_mode(
 ) {
     struct scran_output *st_output = data;
 
-    DEBUG("output::mode()\n");
-
     // Non-current modes are deprecated
     if (!(flags & WL_OUTPUT_MODE_CURRENT)) {
         return;
@@ -69,8 +66,7 @@ handle_output_mode(
     st_output->mode.height_px = height;
     st_output->mode.refresh_rate_mHz = refresh_rate_mHz;
 
-    DEBUG("  st_output->mode.width_px: %d\n", width);
-    DEBUG("  st_output->mode.height_px: %d\n", height);
+    DEBUG("Current output mode size: %dx%d pixels\n", width, height);
 }
 
 
@@ -89,8 +85,6 @@ handle_output_name(
     const char *name
 ) {
     struct scran_output *st_output = data;
-
-    DEBUG("output::name()\n");
 
     // Store the name so we can match it later with a zwlr_output_head
     //     See 'event-handlers/wlr-output.c'.
@@ -123,4 +117,3 @@ struct wl_output_listener output_listener = {
     .name = handle_output_name,
     .description = handle_output_description,
 };
-

@@ -19,9 +19,6 @@
 #include "util/util.h"
 
 
-extern struct scran g_state;
-
-
 static struct {
     sd_bus *bus;
     int fd;
@@ -153,7 +150,6 @@ scran_portal_open_file(const char *file_path)
     }
 
     close(file_fd); // sd_bus duplicates this for us on method call
-    return;
 }
 
 
@@ -212,7 +208,6 @@ scran_portal_notify_file_saved(const char *saved_file_path)
         );
     }
 
-    return;
 }
 
 static bool register_StatusNotifierItem_with_watcher(void);
@@ -773,7 +768,6 @@ scran_dbus_update(int epoll_fd, int *timeout_ms)
 fail:
     scran_dbus_destroy(epoll_fd);
     *timeout_ms = -1;
-    return;
 }
 
 

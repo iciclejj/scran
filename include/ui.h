@@ -259,7 +259,6 @@ scran_ui_textline_item_get_pressed_mask(
 
 static inline void
 scran_ui_textline_item_set_pressed_mask(
-    struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_view textline,
     uint32_t pressed_items_mask
 ) {
@@ -269,7 +268,6 @@ scran_ui_textline_item_set_pressed_mask(
 
 static inline void
 scran_ui_textline_item_set_pressed(
-    struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_view textline,
     int item_index,
     bool pressed
@@ -280,7 +278,6 @@ scran_ui_textline_item_set_pressed(
 
 static inline void
 scran_ui_textline_item_set_color(
-    struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_view textline,
     int item_index,
     enum scran_ui_color color
@@ -296,7 +293,6 @@ scran_ui_textline_item_set_color(
 
 static inline void
 scran_ui_textline_item_set_text(
-    struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_view textline,
     int item_index,
     enum scran_ui_text text
@@ -312,7 +308,6 @@ scran_ui_textline_item_set_text(
 
 static inline void
 scran_ui_textline_item_set_disabled(
-    struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_view textline,
     int item_index,
     enum scran_ui_disable_reason reason,
@@ -333,7 +328,6 @@ scran_ui_textline_item_set_disabled(
 
 static inline void
 scran_ui_textline_item_set_locked(
-    struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_view textline,
     int item_index,
     bool locked

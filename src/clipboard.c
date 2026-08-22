@@ -10,9 +10,6 @@
 #include "event-handlers.h"
 
 
-extern struct scran g_state;
-
-
 static inline bool
 copy_data_weak(
     BLArrayCore *dst,

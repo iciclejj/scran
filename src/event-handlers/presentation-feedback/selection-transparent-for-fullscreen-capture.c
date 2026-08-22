@@ -4,9 +4,6 @@
 #include "print.h"
 
 
-extern struct scran g_state;
-
-
 static void handle_presentation_feedback_sync_output__selection_transparent_for_fullscreen_capture(void *data, struct wp_presentation_feedback *wp_presentation_feedback, struct wl_output *wl_output) { };
 
 static inline void
@@ -44,8 +41,6 @@ handle_presentation_feedback_presented__selection_transparent_for_fullscreen_vid
     uint32_t flags
 ) {
     wp_presentation_feedback_destroy(wp_presentation_feedback);
-    DEBUG("::presented selection_transparent_for_fullscreen_capture\n");
-
     struct scran_output *st_output = data;
     start_video_capture_or_unwind_fullscreen(st_output);
 }
@@ -56,8 +51,6 @@ handle_presentation_feedback_discarded__selection_transparent_for_fullscreen_vid
     struct wp_presentation_feedback *wp_presentation_feedback
 ) {
     wp_presentation_feedback_destroy(wp_presentation_feedback);
-    DEBUG("::DISCARDED selection_transparent_for_fullscreen_capture\n");
-
     // TODO(?):
     struct scran_output *st_output = data;
     start_video_capture_or_unwind_fullscreen(st_output);
@@ -86,8 +79,6 @@ handle_presentation_feedback_presented__selection_transparent_for_fullscreen_ima
     uint32_t flags
 ) {
     wp_presentation_feedback_destroy(wp_presentation_feedback);
-    DEBUG("::presented selection_transparent_for_fullscreen_capture\n");
-
     struct scran_output *st_output = data;
     image_capture_start(st_output, st_output->capture.exit_after_capture);
 }
@@ -98,8 +89,6 @@ handle_presentation_feedback_discarded__selection_transparent_for_fullscreen_cap
     struct wp_presentation_feedback *wp_presentation_feedback
 ) {
     wp_presentation_feedback_destroy(wp_presentation_feedback);
-    DEBUG("::DISCARDED selection_transparent_for_fullscreen_capture\n");
-
     // TODO(?):
     struct scran_output *st_output = data;
     image_capture_start(st_output, st_output->capture.exit_after_capture);

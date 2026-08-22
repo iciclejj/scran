@@ -57,6 +57,9 @@
 #define SCRAN_STATE_OUTPUT_NAME_SIZE DRM_CONNECTOR_NAME_LEN
 
 
+extern struct scran g_state;
+
+
 struct scran_globals {
     struct wl_display *display;
     struct wl_registry *registry;
@@ -197,14 +200,18 @@ struct scran_freezeframe_buffer {
     bool busy;
 };
 
+struct capture_session {
+    struct ext_image_copy_capture_session_v1 *wl_session;
+    uint32_t shm_format;
+};
+
 struct scran_output_freezeframe {
     struct scran_output_subsurface subsurface;
 
-    struct ext_image_copy_capture_session_v1 *wl_capture_session;
+    struct capture_session session;
     int32_t source_width_px;
     int32_t source_height_px;
     enum wl_output_transform source_transform;
-    enum wl_shm_format shm_format;
 
     bool unhide_after_capture;
     bool showing;
@@ -366,8 +373,6 @@ struct capture_frame_context {
     // TODO: Rename this
     void *img_data_2;
 
-    struct ext_image_copy_capture_session_v1 *wl_capture_session;
-
     struct ffmpeg_context ffmpeg_ctx;
 
     BLImageCore bl_img_captured;
@@ -405,10 +410,9 @@ struct capture_frame_context {
 
 struct scran_output_capture {
     struct capture_frame_context frame_ctx;
+    struct capture_session session;
 
     struct ext_image_capture_source_v1 *source;
-
-    uint32_t shm_format;
 
     uint8_t pre_capture_selection_theme;
     bool exit_after_capture;
@@ -511,5 +515,6 @@ struct scran {
     uint32_t n_outputs;
     struct scran_output outputs[MAX_OUTPUTS];
 };
+
 
 #endif

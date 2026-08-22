@@ -18,7 +18,6 @@
 #include "options.h"
 #include "clipboard.h"
 
-extern struct scran g_state;
 
 static void
 handle_image_copy_capture_frame_transform__image_capture(
@@ -111,7 +110,7 @@ handle_image_copy_capture_frame_ready__image_capture(
     void *const buf_cropped_converted = frame_ctx->img_data_2;
 
     uintptr_t buf_cropped_converted_row_bytes = 0;
-    uint32_t  rgba32_shuffle = wl_shm_format_to_blend2d_scranrot_rgba32_shuffle(st_output->capture.shm_format);
+    uint32_t  rgba32_shuffle = wl_shm_format_to_blend2d_scranrot_rgba32_shuffle(st_output->capture.session.shm_format);
     if (rgba32_shuffle == RGBA32_SHUFFLE_ERROR) {
         eprintf("WARNING: Output's pixel format is not supported. Attempting anyways...\n");
         rgba32_shuffle = RGBA32_SHUFFLE_NO_CHANGE;

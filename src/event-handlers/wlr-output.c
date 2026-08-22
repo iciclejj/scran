@@ -21,7 +21,6 @@
 #include "print.h"
 
 
-extern struct scran g_state;
 
 struct pending_head{
     struct scran_output *st_output;
@@ -56,8 +55,6 @@ handle_wlr_output_head_name(
     const char *name
 ) {
     struct pending_head *pending_head = data;
-
-    DEBUG("handle_wlr_output_head_name\n");
 
     // Match wlr_output_head with wl_output so we can set data pointers appropriately.
     FOR_EACH_OUTPUT(i, st_output) {

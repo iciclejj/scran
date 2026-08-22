@@ -32,12 +32,11 @@ handle_image_copy_capture_session_shm_format__freezeframe(
 ) {
     struct scran_output *st_output = data;
 
-    DEBUG("capture_session::shm_format<Freezeframe>():\n");
-    DEBUG("  format: %x\n", shm_format);
+    DEBUG("Freezeframe capture session advertised shm format: %x\n", shm_format);
 
     // List of formats we want to support.
     // TODO: Add more formats and logic for handling them
-    if (st_output->freezeframe.shm_format == SCRAN_SHM_FORMAT_UNSET
+    if (st_output->freezeframe.session.shm_format == SCRAN_SHM_FORMAT_UNSET
         &&
         (shm_format == WL_SHM_FORMAT_ARGB8888
          || shm_format == WL_SHM_FORMAT_XRGB8888
@@ -48,7 +47,7 @@ handle_image_copy_capture_session_shm_format__freezeframe(
         // We still need to filter out some formats for freezeframe, since e.g
         // cosmic will advertise 10-bit formats that the compositor is not
         // necessarily able to present.
-        st_output->freezeframe.shm_format = shm_format;
+        st_output->freezeframe.session.shm_format = shm_format;
     }
 }
 
@@ -60,8 +59,8 @@ handle_image_copy_capture_session_stopped__freezeframe(
 ) {
     struct scran_output *st_output = data;
 
-    ext_image_copy_capture_session_v1_destroy(st_output->freezeframe.wl_capture_session);
-    st_output->freezeframe.wl_capture_session = NULL;
+    ext_image_copy_capture_session_v1_destroy(st_output->freezeframe.session.wl_session);
+    st_output->freezeframe.session.wl_session = NULL;
 
     // XXX TODO: Clean up and disable freezeframe, and show message in notification.
     eprintf("Error: Capture session stopped unexpectedly.\n");
