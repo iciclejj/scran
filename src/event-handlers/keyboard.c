@@ -82,6 +82,24 @@ handle_keyboard_leave (
 
 
 static void
+shift_selection(
+    struct scran_output *st_output,
+    int x_shift,
+    int y_shift
+) {
+    const BLBoxI shifted = blboxi_get_shifted(st_output->selection_ctx.box_px, x_shift, y_shift);
+    const BLBoxI bounds = get_fullscreen_selection_box(st_output);
+
+    if (!blboxi_contains(bounds, blboxi_get_deinverted(shifted))) {
+        return;
+    }
+
+    st_output->selection_ctx.box_px = shifted;
+    request_selection_surface_frame_callback(st_output);
+}
+
+
+static void
 handle_keyboard_key(
     void *data,
     struct wl_keyboard * keyboard,
@@ -183,26 +201,22 @@ esc_exit_scran:
     switch (xkb_key) {
     case XKB_KEY_Left:
         if (!pre_selection) {
-            blboxi_shift(&st_output->selection_ctx.box_px, -1,  0);
-            request_selection_surface_frame_callback(st_output);
+            shift_selection(st_output, -1,  0);
         }
         break;
     case XKB_KEY_Right:
         if (!pre_selection) {
-            blboxi_shift(&st_output->selection_ctx.box_px, +1,  0);
-            request_selection_surface_frame_callback(st_output);
+            shift_selection(st_output, +1,  0);
         }
         break;
     case XKB_KEY_Up:
         if (!pre_selection) {
-            blboxi_shift(&st_output->selection_ctx.box_px,  0, -1);
-            request_selection_surface_frame_callback(st_output);
+            shift_selection(st_output,  0, -1);
         }
         break;
     case XKB_KEY_Down:
         if (!pre_selection) {
-            blboxi_shift(&st_output->selection_ctx.box_px,  0, +1);
-            request_selection_surface_frame_callback(st_output);
+            shift_selection(st_output,  0, +1);
         }
         break;
     case XKB_KEY_z:
