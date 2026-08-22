@@ -51,15 +51,16 @@ display_freezeframe(
 
     struct scran_freezeframe_buffer *capture_buffer = &freezeframe->capture_buffer;
     struct scran_freezeframe_buffer *surface_buffer = &freezeframe->surface_buffer;
+    const struct capture_session    *session        = &freezeframe->session;
 
     assert(capture_buffer->busy == false); // We should not have started capture if busy
 
     struct scran_freezeframe_buffer *final_buffer;
-    enum wl_output_transform buffer_transform = -1;
 
+    enum wl_output_transform       buffer_transform = -1;
+    const int32_t                  source_width_px  = session->source_dimensions_px.x;
+    const int32_t                  source_height_px = session->source_dimensions_px.y;
     const enum wl_output_transform source_transform = freezeframe->source_transform;
-    const int32_t                  source_width_px  = freezeframe->source_width_px;
-    const int32_t                  source_height_px = freezeframe->source_height_px;
 
     // XXX TODO: Rework this once scranrot supports flipped
     // XXX TODO: Refactor this to make it more readable...
@@ -83,12 +84,12 @@ display_freezeframe(
         size_t dst_stride = 0;
         // See comments referencing #14441 for why we scranrot instead of just ::set_buffer_transform().
         if (scranrot_transform_framebuffer(
-                capture_buffer->scran_wl_buffer.data, source_width_px, source_height_px, source_width_px * RGBA32_PIXEL_STRIDE,
+                capture_buffer->scran_wl_buffer.data, source_width_px, source_height_px, source_width_px * session->pixel_stride,
                 surface_buffer->scran_wl_buffer.data,
                 RGBA32_SHUFFLE_NO_CHANGE, (enum scranrot_transform)scranrot_transform,
                 &dst_stride)
         ) {
-            assert(dst_stride < INT_MAX && (int)dst_stride == freezeframe->subsurface.width_px_buffer * RGBA32_PIXEL_STRIDE);
+            assert(dst_stride < INT_MAX && (int)dst_stride == freezeframe->subsurface.width_px_buffer * session->pixel_stride);
             final_buffer     = surface_buffer;
             buffer_transform = source_is_flipped ? WL_OUTPUT_TRANSFORM_FLIPPED : WL_OUTPUT_TRANSFORM_NORMAL;
         } else {

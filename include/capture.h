@@ -114,31 +114,35 @@ video_capture_damage_buffer(
 static inline uint8_t *
 capture_get_area_start_address(
     struct capture_frame_context *frame_ctx,
+    const struct capture_session *session,
     BLBoxI capture_buffer_area_px
 ) {
     return frame_ctx->scran_wl_buffer.data
-         + frame_ctx->pixel_stride * capture_buffer_area_px.y0 * frame_ctx->source_width_px
-         + frame_ctx->pixel_stride * capture_buffer_area_px.x0;
+         + session->pixel_stride * capture_buffer_area_px.y0 * session->source_dimensions_px.x
+         + session->pixel_stride * capture_buffer_area_px.x0;
 }
 
 static inline BLBoxI
 capture_get_selection_as_capture_buffer_area_px(
-    const struct capture_frame_context *frame_ctx
+    const struct capture_frame_context *frame_ctx,
+    const struct capture_session *session
 ) {
-    assert(frame_ctx->source_width_px > 0);
-    assert(frame_ctx->source_height_px > 0);
+    const BLPointI source_dimensions_px = session->source_dimensions_px;
+
+    assert(source_dimensions_px.x > 0);
+    assert(source_dimensions_px.y > 0);
 
     const BLBoxI capture_buffer_area_px = blboxi_get_reverse_transform(
         frame_ctx->selection_ctx_box_px,
-        frame_ctx->source_width_px,
-        frame_ctx->source_height_px,
+        source_dimensions_px.x,
+        source_dimensions_px.y,
         frame_ctx->source_transform
     );
 
     assert(capture_buffer_area_px.x0 >= 0);
     assert(capture_buffer_area_px.y0 >= 0);
-    assert(capture_buffer_area_px.x1 <= frame_ctx->source_width_px);
-    assert(capture_buffer_area_px.y1 <= frame_ctx->source_height_px);
+    assert(capture_buffer_area_px.x1 <= source_dimensions_px.x);
+    assert(capture_buffer_area_px.y1 <= source_dimensions_px.y);
 
     return capture_buffer_area_px;
 }

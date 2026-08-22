@@ -87,17 +87,18 @@ do_handle_frame(
     struct scran_output *st_output,
     BLBoxI capture_buffer_area_px
 ) {
-    struct ffmpeg_context        *ffmpeg_ctx = &frame_ctx->ffmpeg_ctx;
+    struct ffmpeg_context  *ffmpeg_ctx = &frame_ctx->ffmpeg_ctx;
+    struct capture_session *session    = &st_output->capture.session;
 
     // Crop and convert
     {
 
-        uint8_t *const area_start_addr = capture_get_area_start_address(frame_ctx, capture_buffer_area_px);
+        uint8_t *const area_start_addr = capture_get_area_start_address(frame_ctx, session, capture_buffer_area_px);
         // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be divisible by 2.
         // XXX TODO: Collect this bit zeroing logic somehow? (Duplicated in init_ffmpeg.)
         const int area_w_px = blboxi_width_abs_unsafe(capture_buffer_area_px) & ~0b1;
         const int area_h_px = blboxi_height_abs_unsafe(capture_buffer_area_px) & ~0b1;
-        const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
+        const uint32_t source_row_bytes = session->pixel_stride * session->source_dimensions_px.x;
 
         uint32_t  rgba32_shuffle = wl_shm_format_to_scranrot_yuv_rgba32_shuffle(st_output->capture.session.shm_format);
         if (rgba32_shuffle == RGBA32_SHUFFLE_ERROR) {
@@ -177,7 +178,8 @@ handle_image_copy_capture_frame_ready__video_capture(
     // XXX TODO: Just pass st_output to this handler.
     struct scran_output_capture *const st_capture = wl_container_of(frame_ctx, st_capture, frame_ctx);
     struct scran_output         *const st_output  = wl_container_of(st_capture, st_output, capture);
-    const BLBoxI capture_buffer_area_px = capture_get_selection_as_capture_buffer_area_px(frame_ctx);
+    const BLBoxI capture_buffer_area_px =
+        capture_get_selection_as_capture_buffer_area_px(frame_ctx, &st_capture->session);
 
     if (blboxi_intersects(capture_buffer_area_px, frame_ctx->capture_buffer_damage_area_px) ) {
         if (!do_handle_frame(frame_ctx, st_output, capture_buffer_area_px)) {

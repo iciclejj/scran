@@ -30,7 +30,8 @@ capture_session_init(
     );
     // XXX: Maybe there's a nicer way to do this or to properly assert this
     //      initialization in the listener somewhere?
-    session->shm_format = SCRAN_SHM_FORMAT_UNSET;
+    session->shm_format   = SCRAN_SHM_FORMAT_UNSET;
+    session->pixel_stride = 0;
 
     ext_image_copy_capture_session_v1_add_listener(
         session->wl_session,
@@ -76,4 +77,3 @@ init_premem__capture__destroy(struct scran_output *st_output)
     bl_image_destroy(&st_output->capture.frame_ctx.bl_img_captured);
     bl_image_codec_destroy(&st_output->capture.frame_ctx.bl_imgcodec);
 }
-

@@ -19,8 +19,8 @@ handle_image_copy_capture_session_buffer_size(
 ) {
     struct scran_output *st_output = data;
 
-    st_output->capture.frame_ctx.source_width_px = width;
-    st_output->capture.frame_ctx.source_height_px = height;
+    st_output->capture.session.source_dimensions_px.x = width;
+    st_output->capture.session.source_dimensions_px.y = height;
 }
 
 
@@ -45,7 +45,7 @@ handle_image_copy_capture_session_shm_format(
         )
     ) {
         st_output->capture.session.shm_format = shm_format;
-        st_output->capture.frame_ctx.pixel_stride = 4;
+        st_output->capture.session.pixel_stride = 4;
     }
 }
 

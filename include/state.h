@@ -202,15 +202,15 @@ struct scran_freezeframe_buffer {
 
 struct capture_session {
     struct ext_image_copy_capture_session_v1 *wl_session;
+    BLPointI source_dimensions_px;
     uint32_t shm_format;
+    uint8_t pixel_stride;
 };
 
 struct scran_output_freezeframe {
     struct scran_output_subsurface subsurface;
 
     struct capture_session session;
-    int32_t source_width_px;
-    int32_t source_height_px;
     enum wl_output_transform source_transform;
 
     bool unhide_after_capture;
@@ -394,10 +394,7 @@ struct capture_frame_context {
     struct BLBoxI selection_ctx_box_px;
     // Contains *at least* the union of frame::damage-reported damage
     struct BLBoxI capture_buffer_damage_area_px;
-    int32_t source_width_px;
-    int32_t source_height_px;
     enum wl_output_transform source_transform;
-    uint8_t pixel_stride;
 
     bool capturing_video;
     bool video_end_requested;

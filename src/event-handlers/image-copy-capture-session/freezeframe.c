@@ -19,8 +19,8 @@ handle_image_copy_capture_session_buffer_size__freezeframe(
 ) {
     struct scran_output *st_output = data;
 
-    st_output->freezeframe.source_width_px = width;
-    st_output->freezeframe.source_height_px = height;
+    st_output->freezeframe.session.source_dimensions_px.x = width;
+    st_output->freezeframe.session.source_dimensions_px.y = height;
 }
 
 
@@ -48,6 +48,7 @@ handle_image_copy_capture_session_shm_format__freezeframe(
         // cosmic will advertise 10-bit formats that the compositor is not
         // necessarily able to present.
         st_output->freezeframe.session.shm_format = shm_format;
+        st_output->freezeframe.session.pixel_stride = 4;
     }
 }
 

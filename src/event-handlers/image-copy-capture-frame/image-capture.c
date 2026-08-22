@@ -84,9 +84,13 @@ handle_image_copy_capture_frame_ready__image_capture(
 ) {
     ext_image_copy_capture_frame_v1_destroy(frame);
 
-    struct scran_output *st_output = data;
+    struct scran_output          *st_output = data;
     struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
-    const BLBoxI capture_buffer_area_px = capture_get_selection_as_capture_buffer_area_px(frame_ctx);
+    struct capture_session       *session   = &st_output->capture.session;
+
+    const BLBoxI capture_buffer_area_px = capture_get_selection_as_capture_buffer_area_px(frame_ctx, session);
+    const int    capture_buffer_area_px_w  = blboxi_width_abs_unsafe(capture_buffer_area_px);
+    const int    capture_buffer_area_px_h  = blboxi_height_abs_unsafe(capture_buffer_area_px);
 
     DEBUG("CAPTURING IMAGE:\n");
     DEBUG_BLBOXI(capture_buffer_area_px);
@@ -94,14 +98,11 @@ handle_image_copy_capture_frame_ready__image_capture(
     assert(!frame_ctx->capturing_video);
     assert(g_state.n_captures_in_progress >= 1);
 
-    const int capture_buffer_area_px_w = blboxi_width_abs_unsafe(capture_buffer_area_px);
-    const int capture_buffer_area_px_h = blboxi_height_abs_unsafe(capture_buffer_area_px);
-
-    const uint32_t source_row_bytes = frame_ctx->pixel_stride * frame_ctx->source_width_px;
+    const uint32_t source_row_bytes = session->pixel_stride * session->source_dimensions_px.x;
     // XXX TODO: Either separate buffer from video capture OR double-check that
     // the shared buffer doesn't cause issues + add robust checks/asserts.
     // (Primarily for when we implement simultaneous image+video capture)
-    const uint8_t *const area_start_addr = capture_get_area_start_address(frame_ctx, capture_buffer_area_px);
+    const uint8_t *const area_start_addr = capture_get_area_start_address(frame_ctx, session, capture_buffer_area_px);
     // XXX TODO(!!):
     //    Output size is not necessarily guaranteed to be <= raw pixel
     //    buffer size. In other words, this buffer could overflow, as it

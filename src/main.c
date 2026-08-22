@@ -417,9 +417,9 @@ init_meminit(
         // wl_surface::set_buffer_transform not working as expected in
         // Hyprland (#14441).
         const size_t freezeframe_buf_size = get_framebuffer_size(
-            st_output->freezeframe.source_width_px,
-            st_output->freezeframe.source_height_px,
-            SURFACE_PIXEL_STRIDE
+            st_output->freezeframe.session.source_dimensions_px.x,
+            st_output->freezeframe.session.source_dimensions_px.y,
+            st_output->freezeframe.session.pixel_stride
         );
         scran_arena_add_block(
             shm_arena,
@@ -430,7 +430,7 @@ init_meminit(
             freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.scran_wl_buffer.data
         );
 
-        const size_t capture_buf_size = get_capture_buf_size(st_output);
+        const size_t capture_buf_size = get_capture_buf_size(&st_output->capture.session);
         scran_arena_add_block(
             shm_arena,
             capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.scran_wl_buffer.data
@@ -525,20 +525,22 @@ init_meminit(
 
         {
             struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
+            const struct capture_session    *session     = &freezeframe->session;
 
             struct scran_freezeframe_buffer *capture_buffer = &freezeframe->capture_buffer;
             init_wl_shm_buffer(
                 shm_arena,
                 global_pool_wl,
                 &capture_buffer->scran_wl_buffer,
-                freezeframe->source_width_px,
-                freezeframe->source_height_px,
-                freezeframe->source_width_px * SURFACE_PIXEL_STRIDE,
-                freezeframe->session.shm_format,
+                session->source_dimensions_px.x,
+                session->source_dimensions_px.y,
+                session->source_dimensions_px.x * session->pixel_stride,
+                session->shm_format,
                 &freezeframe_buffer_listener,
                 capture_buffer
             );
 
+            assert(session->pixel_stride == SURFACE_PIXEL_STRIDE);
             struct scran_freezeframe_buffer *surface_buffer = &freezeframe->surface_buffer;
             init_wl_shm_buffer(
                 shm_arena,
@@ -546,20 +548,21 @@ init_meminit(
                 &surface_buffer->scran_wl_buffer,
                 freezeframe->subsurface.width_px_buffer,
                 freezeframe->subsurface.height_px_buffer,
-                freezeframe->subsurface.width_px_buffer * SURFACE_PIXEL_STRIDE,
-                freezeframe->session.shm_format,
+                freezeframe->subsurface.width_px_buffer * session->pixel_stride,
+                session->shm_format,
                 &freezeframe_buffer_listener,
                 surface_buffer
             );
         }
 
         struct scran_output_capture *capture = &st_output->capture;
+        const BLPointI source_dimensions_px = capture->session.source_dimensions_px;
         init_wl_shm_buffer(
             shm_arena,
             global_pool_wl,
             &capture->frame_ctx.scran_wl_buffer,
-            capture->frame_ctx.source_width_px,
-            capture->frame_ctx.source_height_px,
+            source_dimensions_px.x,
+            source_dimensions_px.y,
             get_capture_stride(st_output),
             capture->session.shm_format,
             &capture_buffer_listener,

@@ -424,6 +424,8 @@ video_capture_destroy_ffmpeg(struct scran_output *st_output)
 bool
 video_capture_start(struct scran_output *st_output)
 {
+    const BLPointI source_dimensions_px = st_output->capture.session.source_dimensions_px;
+
     // TODO: Assert instead?
     if (st_output->capture.frame_ctx.capturing_video) {
         DEBUG("Already capturing...\n");
@@ -465,8 +467,8 @@ video_capture_start(struct scran_output *st_output)
         &st_output->capture.frame_ctx,
         frame,
         0, 0,
-        st_output->capture.frame_ctx.source_width_px,
-        st_output->capture.frame_ctx.source_height_px
+        source_dimensions_px.x,
+        source_dimensions_px.y
     );
     ext_image_copy_capture_frame_v1_capture(frame);
     st_output->capture.frame_ctx.frame = frame;
@@ -557,6 +559,7 @@ void
 video_capture_request_stop(struct scran_output *st_output)
 {
     struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+    const BLPointI source_dimensions_px = st_output->capture.session.source_dimensions_px;
 
     if (frame_ctx->video_end_requested) {
         return;
@@ -581,8 +584,8 @@ video_capture_request_stop(struct scran_output *st_output)
         frame_ctx,
         frame,
         0, 0,
-        frame_ctx->source_width_px,
-        frame_ctx->source_height_px
+        source_dimensions_px.x,
+        source_dimensions_px.y
     );
     ext_image_copy_capture_frame_v1_capture(frame);
     frame_ctx->frame = frame;
@@ -726,6 +729,7 @@ bool
 image_capture_start(struct scran_output *st_output, bool exit_after_capture)
 {
     struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+    const BLPointI source_dimensions_px = st_output->capture.session.source_dimensions_px;
 
     // See TODO at call site
     assert(!frame_ctx->capturing_video);
@@ -738,8 +742,8 @@ image_capture_start(struct scran_output *st_output, bool exit_after_capture)
             &image_copy_capture_frame_listener__image_capture,
             st_output->capture.session.wl_session,
             frame_ctx->scran_wl_buffer.wl_buffer,
-            frame_ctx->source_width_px,
-            frame_ctx->source_height_px
+            source_dimensions_px.x,
+            source_dimensions_px.y
         );
         atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
     }
