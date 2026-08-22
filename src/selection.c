@@ -281,10 +281,11 @@ update_focus_released_keymap_text(bool have_tray_icon)
         struct scran_ui_context       *ui_ctx     = &st_output->selection_surface.ui_ctx;
         struct scran_ui_textline_item *focus_item = &ui_ctx->ui_keymap.items[SCRAN_UI_KEYMAP_ITEM_I_FOCUS];
 
-        typeof(focus_item->disable_reason_mask) released_focus_bit = 1U << SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS;
-        if ((focus_item->disable_reason_mask & released_focus_bit) != 0) {
+        const enum scran_ui_text current_text = focus_item->live_state.text;
+        if (current_text == SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY
+            || current_text == SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP
+        ) {
             scran_ui_textline_item_set_text(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FOCUS, text);
-            request_selection_surface_frame_callback(st_output);
         }
     }
 }
