@@ -162,6 +162,17 @@ blboxi_are_equal(BLBoxI a, BLBoxI b) {
     ;
 }
 
+static inline bool
+blboxi_contains(BLBoxI outer, BLBoxI inner) {
+    assert(!blboxi_is_inverted(outer));
+    assert(!blboxi_is_inverted(inner));
+
+    return outer.x0 <= inner.x0
+        && outer.y0 <= inner.y0
+        && outer.x1 >= inner.x1
+        && outer.y1 >= inner.y1;
+}
+
 static inline double
 blboxd_width(BLBox box) {
     return box.x1 - box.x0;
@@ -288,6 +299,12 @@ blboxi_shift(BLBoxI *box, int x_shift, int y_shift) {
     box->y0 += y_shift;
     box->x1 += x_shift;
     box->y1 += y_shift;
+}
+
+static inline BLBoxI
+blboxi_get_shifted(BLBoxI box, int x_shift, int y_shift) {
+    blboxi_shift(&box, x_shift, y_shift);
+    return box;
 }
 
 static inline BLBoxI
