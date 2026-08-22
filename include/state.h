@@ -483,7 +483,7 @@ struct scran_options {
     bool capture_and_exit_after_selection_init;
     bool produce_slurp;                 // output slurp-style geometry string
     bool no_notifications;
-    bool have_custom_initial_selection; // output slurp-style geometry string
+    bool have_custom_initial_selection;
     enum scran_opt_hide_ui_level hide_ui_level;
     struct BLRectI custom_initial_selection_global_coordinates;
 };
