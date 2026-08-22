@@ -14,10 +14,8 @@
 #include "print.h"
 #include "capture.h"
 #include "selection-surface.h"
-#include "ui.h"
 #include "freezeframe.h"
 #include "init.h"
-#include "dbus.h"
 
 
 void
@@ -243,16 +241,6 @@ start_grabbing_focus_for_output(
     );
     wl_surface_commit(st_surface->wl_surface);
 
-    cursor_set_theme(st_output, st_output->cursor.theme);
-
-    {
-        struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        for (int i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-            scran_ui_textline_item_set_disabled(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, false);
-        }
-        scran_ui_textline_item_set_text(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FOCUS, SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT);
-    }
-
     // TODO: Make arm_selection_surface_frame_callback externally callable, so
     // that we avoid potential double-commit here?
     request_selection_surface_frame_callback(st_output);
@@ -268,30 +256,6 @@ start_grabbing_focus()
     }
 }
 
-static inline enum scran_ui_text
-get_focus_released_keymap_text(bool have_tray_icon) {
-    return have_tray_icon
-        ? SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY
-        : SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP;
-}
-
-void
-update_focus_released_keymap_text(bool have_tray_icon)
-{
-    const enum scran_ui_text text = get_focus_released_keymap_text(have_tray_icon);
-
-    FOR_EACH_OUTPUT(i, st_output) {
-        struct scran_ui_context       *ui_ctx     = &st_output->selection_surface.ui_ctx;
-        struct scran_ui_textline_item *focus_item = &ui_ctx->ui_keymap.items[SCRAN_UI_KEYMAP_ITEM_I_FOCUS];
-
-        typeof(focus_item->disable_reason_mask) released_focus_bit = 1U << SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS;
-        if ((focus_item->disable_reason_mask & released_focus_bit) != 0) {
-            scran_ui_textline_item_set_text(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FOCUS, text);
-            request_selection_surface_frame_callback(st_output);
-        }
-    }
-}
-
 void
 stop_grabbing_focus()
 {
@@ -300,8 +264,6 @@ stop_grabbing_focus()
     FOR_EACH_OUTPUT(i, st_output) {
         freezeframe_hide_surface(st_output);
     }
-
-    const enum scran_ui_text focus_released_keymap_text = get_focus_released_keymap_text(scran_dbus_have_tray_icon());
 
     FOR_EACH_OUTPUT(i, st_output) {
         struct scran_output_surface *st_surface = &st_output->selection_surface.surface;
@@ -312,27 +274,5 @@ stop_grabbing_focus()
             SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_UNFOCUSED
         );
         wl_surface_commit(st_surface->wl_surface);
-
-        // XXX: We need to do this to make our cursor update shape without
-        // having to move it. Seems like most compositors behave this way...
-        // Marked with XXX because theoretically we would want it to be set to
-        // the cursor shape of the surface below us, which is not necessarily
-        // default, but this is a lot better than nothing. Even in cases where
-        // where the other surface uses a non-default cursor, this still gives
-        // us nice visual feedback.
-        wp_cursor_shape_device_v1_set_shape(
-            g_state.seat.pointer_ctx.cursor_shape_device,
-            g_state.seat.pointer_ctx.last_enter_serial,
-            WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT
-        );
-
-        {
-            struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-            for (int i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-                scran_ui_textline_item_set_disabled(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), i, SCRAN_UI_DISABLE_REASON_RELEASED_FOCUS, true);
-            }
-            scran_ui_textline_item_set_text(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FOCUS, focus_released_keymap_text);
-            request_selection_surface_frame_callback(st_output);
-        }
     }
 }

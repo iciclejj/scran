@@ -14,6 +14,7 @@
 
 #include "state.h"
 #include "dbus.h"
+#include "seat.h"
 #include "selection.h"
 #include "print.h"
 #include "util/util.h"
@@ -31,11 +32,18 @@ static struct {
     sd_bus_slot *StatusNotifierWatcher_slot_NameOwnerChanged_match;
 } m_dbus = { .fd = -1 };
 
+
+bool
+scran_dbus_have_tray_icon()
+{
+    return m_dbus.StatusNotifierItem_registered_with_watcher;
+}
+
 static inline void
 set_StatusNotifierItem_registered_with_watcher(bool registered)
 {
     m_dbus.StatusNotifierItem_registered_with_watcher = registered;
-    update_focus_released_keymap_text(registered);
+    update_focus_keymap_texts(scran_dbus_have_tray_icon());
 }
 
 
@@ -770,12 +778,6 @@ fail:
     *timeout_ms = -1;
 }
 
-
-bool
-scran_dbus_have_tray_icon()
-{
-    return m_dbus.StatusNotifierItem_registered_with_watcher;
-}
 
 void
 scran_dbus_destroy_StatusNotifierItem()
