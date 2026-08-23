@@ -539,7 +539,7 @@ init_selection_surface_content(
 
     if (no_initial_selection) {
         initial_box = get_selection_surface_pre_selection_box(st_output);
-        st_output->selection_ctx.box_px = initial_box;
+        selection_set_box_px(&st_output->selection_ctx, initial_box);
 
         // Set fullscreen selection size.
         // XXX TODO: Make this responsibility less disjointed
@@ -551,7 +551,7 @@ init_selection_surface_content(
         set_selection_surface_theme(st_output, SURFACE_THEME_PRE_SELECTION);
     } else {
         // This must be set prior to set_selection_initialized()
-        st_output->selection_ctx.box_px = initial_box;
+        selection_set_box_px(&st_output->selection_ctx, initial_box);
         // These are usually called at "runtime"/main-loop-time, so call these
         // AFTER init_postmem__selection(), to ensure all relevant runtime
         // state has been set up.

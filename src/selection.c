@@ -64,8 +64,6 @@ set_selection_initialized(struct scran_output *st_output)
     assert(st_output->selection_ctx.selection_state == SELECTION_INITIALIZING
            || (g_state.options.have_custom_initial_selection && st_output->selection_ctx.selection_state == SELECTION_NONE));
 
-    // TODO: Not sure if we should deinvert in here or let the caller decide
-
     st_output->selection_ctx.selection_state = SELECTION_COMPLETE;
 
     // Reset button, since this function could have interrupted an ongoing
@@ -75,7 +73,7 @@ set_selection_initialized(struct scran_output *st_output)
     // Make sure this is initialized immediately, to not be dependent on
     // surface::frame being done, for example when using 'scran -eg'.
     //     TODO: Would be better to de-couple this somehow.
-    capture_update_selection(st_output, st_output->selection_ctx.box_px);
+    capture_update_selection(st_output, selection_get_box_px(&st_output->selection_ctx));
 
     if (g_state.options.capture_and_exit_after_selection_init) {
         DEBUG("STARTING AUTOMATIC IMAGE CAPTURE\n");
