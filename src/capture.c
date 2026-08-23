@@ -37,16 +37,16 @@
 
 
 typedef void video_capture_write_packet_fn(
-    struct capture_frame_context *,
+    struct scran_output *,
     AVPacket *pkt
 );
 
 void
 video_capture_write_audio_packet(
-    struct capture_frame_context *frame_ctx,
+    struct scran_output *st_output,
     AVPacket *pkt // Encoded frame
 ) {
-    struct ffmpeg_context *ffmpeg_ctx = &frame_ctx->ffmpeg_ctx;
+    struct ffmpeg_context *ffmpeg_ctx = &st_output->capture.ffmpeg_ctx;
 
     assert(pkt != NULL);
 
@@ -69,10 +69,10 @@ video_capture_write_audio_packet(
 
 void
 video_capture_write_video_packet(
-    struct capture_frame_context *frame_ctx,
+    struct scran_output *output,
     AVPacket *pkt // Encoded frame
 ) {
-    struct ffmpeg_context *ffmpeg_ctx = &frame_ctx->ffmpeg_ctx;
+    struct ffmpeg_context *ffmpeg_ctx = &output->capture.ffmpeg_ctx;
 
     assert(pkt != NULL);
 
@@ -99,7 +99,7 @@ video_capture_write_video_packet(
 
 static bool
 video_capture_drain_encoder(
-    struct capture_frame_context *frame_ctx,
+    struct scran_output *st_output,
     AVCodecContext *codec_ctx,
     AVPacket *packet,
     video_capture_write_packet_fn write_packet_fn,
@@ -126,28 +126,28 @@ video_capture_drain_encoder(
             return false;
         }
 
-        write_packet_fn(frame_ctx, packet);
+        write_packet_fn(st_output, packet);
     }
 }
 
 // `selection_ctx_box_px` has `scran_output_selectionContext.box_px` coordinate space!
 void
 capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px) {
-    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+    struct scran_output_capture *capture = &st_output->capture;
 
     bool size_changed =
-           blboxi_width_abs_unsafe(frame_ctx->selection_ctx_box_px)  != blboxi_width_abs_unsafe(selection_ctx_box_px)
-        || blboxi_height_abs_unsafe(frame_ctx->selection_ctx_box_px) != blboxi_height_abs_unsafe(selection_ctx_box_px);
+           blboxi_width_abs_unsafe(capture->selection_ctx_box_px)  != blboxi_width_abs_unsafe(selection_ctx_box_px)
+        || blboxi_height_abs_unsafe(capture->selection_ctx_box_px) != blboxi_height_abs_unsafe(selection_ctx_box_px);
 
     // Presentation feedback for an older selection-surface buffer can arrive
     // after video capture has frozen the selection size.
     // FIXME: Actually check if frozen here instead, but probably decouple
     // selection's frozen state from selection_state first.
-    if (frame_ctx->capturing_video && size_changed) {
+    if (capture->capturing_video && size_changed) {
         return;
     }
 
-    frame_ctx->selection_ctx_box_px = selection_ctx_box_px;
+    capture->selection_ctx_box_px = selection_ctx_box_px;
 }
 
 struct ext_image_copy_capture_frame_v1 *
@@ -157,8 +157,9 @@ video_capture_create_frame(
     struct ext_image_copy_capture_frame_v1 *frame =
         ext_image_copy_capture_session_v1_create_frame(capture->session.wl_session);
 
+    capture->frame_ctx.consumers = SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
     ext_image_copy_capture_frame_v1_attach_buffer(frame, capture->frame_ctx.scran_wl_buffer.wl_buffer);
-    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener__video_capture, &capture->frame_ctx);
+    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, &capture->frame_ctx);
 
     return frame;
 }
@@ -166,7 +167,7 @@ video_capture_create_frame(
 static inline bool
 destroy_ffmpeg_audio(struct scran_output *st_output)
 {
-    struct ffmpeg_context *ffmpeg_ctx = &st_output->capture.frame_ctx.ffmpeg_ctx;
+    struct ffmpeg_context *ffmpeg_ctx = &st_output->capture.ffmpeg_ctx;
 
     avcodec_free_context(&ffmpeg_ctx->av_codec_ctx_audio);
     av_frame_free(&ffmpeg_ctx->av_frame_captured_audio);
@@ -179,8 +180,7 @@ destroy_ffmpeg_audio(struct scran_output *st_output)
 static inline bool
 init_ffmpeg_audio(struct scran_output *st_output)
 {
-    struct capture_frame_context *frame_ctx  = &st_output->capture.frame_ctx;
-    struct ffmpeg_context        *ffmpeg_ctx = &st_output->capture.frame_ctx.ffmpeg_ctx;
+    struct ffmpeg_context *ffmpeg_ctx = &st_output->capture.ffmpeg_ctx;
 
     // Float planar should be guaranteed supported for pipewire(?)
     // TODO: Retrieve the sample_fmt using avcodec_get_supported_config() if we
@@ -193,7 +193,7 @@ init_ffmpeg_audio(struct scran_output *st_output)
 
     assert(channel_layout.nb_channels == SCRAN_PIPEWIRE_N_CHANNELS);
 
-    if (!scran_pipewire_init(frame_ctx, ffmpeg_sample_format_to_pipewire(sample_fmt))) {
+    if (!scran_pipewire_init(st_output, ffmpeg_sample_format_to_pipewire(sample_fmt))) {
         return false;
     }
 
@@ -247,8 +247,8 @@ init_ffmpeg_audio(struct scran_output *st_output)
 static inline bool
 init_ffmpeg(struct scran_output *st_output)
 {
-    struct capture_frame_context *frame_ctx  = &st_output->capture.frame_ctx;
-    struct ffmpeg_context        *ffmpeg_ctx = &st_output->capture.frame_ctx.ffmpeg_ctx;
+    struct scran_output_capture *capture    = &st_output->capture;
+    struct ffmpeg_context       *ffmpeg_ctx = &capture->ffmpeg_ctx;
 
     // TODO: Is output::mode framerate_mhz same as the capture framerate?
     const AVRational av_framerate_captured = { st_output->mode.refresh_rate_mHz, MILLIHZ_PER_HZ };
@@ -258,8 +258,8 @@ init_ffmpeg(struct scran_output *st_output)
 
     // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be
     // divisible by 2. TODO: Also update selection area visuals to this width.
-    const int width_px_to_encode  = blboxi_width_abs_unsafe(frame_ctx->selection_ctx_box_px) & ~0b1;
-    const int height_px_to_encode = blboxi_height_abs_unsafe(frame_ctx->selection_ctx_box_px) & ~0b1;
+    const int width_px_to_encode  = blboxi_width_abs_unsafe(capture->selection_ctx_box_px) & ~0b1;
+    const int height_px_to_encode = blboxi_height_abs_unsafe(capture->selection_ctx_box_px) & ~0b1;
     // NOTE: Some pixel formats (and some file formats), e.g. YUV420P, require
     //       even-numbered (or some other multiplier) height and/or width.
     const enum AVPixelFormat av_pixel_format_to_encode = AV_PIX_FMT_YUV420P;
@@ -372,9 +372,9 @@ init_ffmpeg(struct scran_output *st_output)
     avcodec_parameters_from_context(_av_stream->codecpar, ffmpeg_ctx->av_codec_ctx);
 
 
-    if (!g_state.options.disable_audio_capture && !frame_ctx->audio_disable_modifier_active) {
+    if (!g_state.options.disable_audio_capture && !capture->audio_disable_modifier_active) {
         if (init_ffmpeg_audio(st_output)) {
-            frame_ctx->audio_active = true;
+            capture->audio_active = true;
         } else {
             eprintf("WARNING: Failed to init audio capture.\n");
             scran_pipewire_reset();
@@ -408,7 +408,7 @@ init_ffmpeg(struct scran_output *st_output)
 void
 video_capture_destroy_ffmpeg(struct scran_output *st_output)
 {
-    struct ffmpeg_context        *ffmpeg_ctx = &st_output->capture.frame_ctx.ffmpeg_ctx;
+    struct ffmpeg_context *ffmpeg_ctx = &st_output->capture.ffmpeg_ctx;
 
     // Note: Most (all?) of these are fine to call with null pointers, despite
     // the asserts
@@ -427,7 +427,7 @@ video_capture_start(struct scran_output *st_output)
     const BLPointI source_dimensions_px = st_output->capture.session.source_dimensions_px;
 
     // TODO: Assert instead?
-    if (st_output->capture.frame_ctx.capturing_video) {
+    if (st_output->capture.capturing_video) {
         DEBUG("Already capturing...\n");
         return false;
     }
@@ -457,13 +457,13 @@ video_capture_start(struct scran_output *st_output)
     cursor_set_theme(st_output, SCRAN_CURSOR_THEME_VIDEO_CAPTURE);
     request_selection_surface_frame_callback(st_output);
 
-    st_output->capture.frame_ctx.presentation_time_nsec_start = capture_clock_gettime_nsec();
+    st_output->capture.video_presentation_time_nsec_start = capture_clock_gettime_nsec();
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
     struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture);
     // Ensure the first frame is fully rendered
-    video_capture_damage_buffer(
+    capture_damage_buffer(
         &st_output->capture.frame_ctx,
         frame,
         0, 0,
@@ -473,11 +473,11 @@ video_capture_start(struct scran_output *st_output)
     ext_image_copy_capture_frame_v1_capture(frame);
     st_output->capture.frame_ctx.frame = frame;
 
-    if (st_output->capture.frame_ctx.audio_active) {
+    if (st_output->capture.audio_active) {
         scran_pipewire_connect();
     }
 
-    st_output->capture.frame_ctx.capturing_video = true;
+    st_output->capture.capturing_video = true;
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     return true;
@@ -488,11 +488,11 @@ start_fullscreen_capture(
     struct scran_output *st_output,
     struct wp_presentation_feedback_listener *listener
 ) {
-    if (st_output->capture.frame_ctx.fullscreen_capture) {
+    if (st_output->capture.fullscreen_capture) {
         DEBUG("Fullscreen capture already in progress\n");
         return false;
     }
-    st_output->capture.frame_ctx.fullscreen_capture = true;
+    st_output->capture.fullscreen_capture = true;
 
     // HACK: Prevent exit while fullscreen capture is starting, despite the actual
     // capture not having started yet. This adds a "fake" capture to the counter.
@@ -525,9 +525,9 @@ end_fullscreen_capture(
         &st_output->selection_ctx,
         get_selection_surface_pre_selection_box(st_output)
     );
-    st_output->capture.frame_ctx.selection_ctx_box_px = (BLBoxI){0};
+    st_output->capture.selection_ctx_box_px = (BLBoxI){0};
 
-    st_output->capture.frame_ctx.fullscreen_capture = false;
+    st_output->capture.fullscreen_capture = false;
 
     // We don't want to flash a frame of selection/background dim if we're exiting anyways
     if (!st_output->capture.exit_after_capture) {
@@ -548,9 +548,9 @@ video_capture_start_fullscreen(struct scran_output *st_output)
         return false;
     }
 
-    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
-    frame_ctx->fullscreen_video_pending = true;
-    frame_ctx->fullscreen_video_pending_audio_disabled = frame_ctx->audio_disable_modifier_active;
+    struct scran_output_capture *capture = &st_output->capture;
+    capture->fullscreen_video_pending = true;
+    capture->fullscreen_video_pending_audio_disabled = capture->audio_disable_modifier_active;
 
     return true;
 }
@@ -558,15 +558,17 @@ video_capture_start_fullscreen(struct scran_output *st_output)
 void
 video_capture_request_stop(struct scran_output *st_output)
 {
-    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+    struct scran_output_capture *capture = &st_output->capture;
+    struct capture_frame_context *frame_ctx = &capture->frame_ctx;
     const BLPointI source_dimensions_px = st_output->capture.session.source_dimensions_px;
 
-    if (frame_ctx->video_end_requested) {
+    if (capture->video_end_requested) {
         return;
     }
-    frame_ctx->video_end_requested = true;
+    capture->video_end_requested = true;
 
     ext_image_copy_capture_frame_v1_destroy(frame_ctx->frame);
+    frame_ctx->frame = NULL;
 
     // Ensure one last frame is triggered as soon as possible, even if
     // no damage has been reported by the compositor. This ensures
@@ -580,7 +582,7 @@ video_capture_request_stop(struct scran_output *st_output)
     // initial frame was interrupted before it came back (i.e. making it a
     // 1-frame video, once this frame is processed), since the first frame
     // in a session should always have full damage. .
-    video_capture_damage_buffer(
+    capture_damage_buffer(
         frame_ctx,
         frame,
         0, 0,
@@ -598,24 +600,24 @@ video_capture_request_stop(struct scran_output *st_output)
 void
 video_capture_finish(struct scran_output *st_output)
 {
-    struct capture_frame_context *frame_ctx  = &st_output->capture.frame_ctx;
-    struct ffmpeg_context        *ffmpeg_ctx = &st_output->capture.frame_ctx.ffmpeg_ctx;
+    struct scran_output_capture *capture    = &st_output->capture;
+    struct ffmpeg_context       *ffmpeg_ctx = &capture->ffmpeg_ctx;
 
-    if (frame_ctx->audio_active) {
+    if (capture->audio_active) {
         scran_pipewire_reset();
         video_capture_drain_encoder(
-            frame_ctx,
+            st_output,
             ffmpeg_ctx->av_codec_ctx_audio,
             ffmpeg_ctx->av_packet_audio,
             video_capture_write_audio_packet,
             "audio"
         );
         destroy_ffmpeg_audio(st_output);
-        frame_ctx->audio_active = false;
+        capture->audio_active = false;
     }
 
     video_capture_drain_encoder(
-        frame_ctx,
+        st_output,
         ffmpeg_ctx->av_codec_ctx,
         ffmpeg_ctx->av_packet,
         video_capture_write_video_packet,
@@ -646,7 +648,7 @@ video_capture_finish(struct scran_output *st_output)
 
     unset_selection_freeze_size(st_output);
 
-    if (frame_ctx->fullscreen_capture) {
+    if (capture->fullscreen_capture) {
         end_fullscreen_capture(st_output);
     }
 
@@ -656,27 +658,31 @@ video_capture_finish(struct scran_output *st_output)
 
 void
 image_capture_request_frame(
-    struct scran_output *st_output,
-    struct ext_image_copy_capture_frame_v1_listener *listener,
+    struct capture_frame_context *frame_ctx,
     struct ext_image_copy_capture_session_v1 *session,
     struct wl_buffer *buffer,
     int32_t buffer_width_px,
-    int32_t buffer_height_px
+    int32_t buffer_height_px,
+    enum scran_capture_frame_consumers consumer
 ) {
+    assert(frame_ctx->output != NULL);
+    frame_ctx->consumers = consumer;
+
     struct ext_image_copy_capture_frame_v1 *frame =
         ext_image_copy_capture_session_v1_create_frame(session);
 
     ext_image_copy_capture_frame_v1_attach_buffer(frame, buffer);
     ext_image_copy_capture_frame_v1_damage_buffer(frame, 0, 0, buffer_width_px, buffer_height_px);
-    ext_image_copy_capture_frame_v1_add_listener(frame, listener, st_output);
+    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, frame_ctx);
     ext_image_copy_capture_frame_v1_capture(frame);
+    frame_ctx->frame = frame;
 
     // Force some output damage, since some compositors (like Hyprland on rapid
     // consecutive freezeframe refreshes) may wait indefinitely for the next
     // capture frame if no damage is detected.
     //
     // Mainly needed for freezeframe/hide_selection_surface_then() captures.
-    capture_force_next_frame(st_output);
+    capture_force_next_frame(frame_ctx->output);
 }
 
 
@@ -728,22 +734,23 @@ print_slurp_string_fullscreen(struct scran_output *st_output)
 bool
 image_capture_start(struct scran_output *st_output, bool exit_after_capture)
 {
-    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+    struct scran_output_capture *capture = &st_output->capture;
+    struct capture_frame_context *frame_ctx = &capture->frame_ctx;
     const BLPointI source_dimensions_px = st_output->capture.session.source_dimensions_px;
 
     // See TODO at call site
-    assert(!frame_ctx->capturing_video);
+    assert(!capture->capturing_video);
 
     if (g_state.options.produce_slurp) {
         print_slurp_string_selection(st_output);
     } else {
         image_capture_request_frame(
-            st_output,
-            &image_copy_capture_frame_listener__image_capture,
-            st_output->capture.session.wl_session,
+            frame_ctx,
+            capture->session.wl_session,
             frame_ctx->scran_wl_buffer.wl_buffer,
             source_dimensions_px.x,
-            source_dimensions_px.y
+            source_dimensions_px.y,
+            SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE
         );
         atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
     }

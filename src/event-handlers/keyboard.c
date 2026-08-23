@@ -127,7 +127,7 @@ handle_keyboard_key(
         case XKB_KEY_Escape:
             if (!active_selection_surface) {
                 FOR_EACH_OUTPUT(i, _st_output) {
-                    if (_st_output->capture.frame_ctx.capturing_video) {
+                    if (_st_output->capture.capturing_video) {
                         if (repeated_untrusted_escape) {
                             eprintf("Got escape key again...");
                             goto esc_exit_scran; // In case user doesn't understand what's happening
@@ -143,7 +143,7 @@ handle_keyboard_key(
 
             if (active_selection_surface) {
                 struct scran_output *st_output = wl_container_of(active_selection_surface, st_output, selection_surface);
-                if (st_output->capture.frame_ctx.capturing_video) {
+                if (st_output->capture.capturing_video) {
                     eprintf(" stopping video capture.\n");
                     video_capture_request_stop(st_output);
                     return;
@@ -257,7 +257,7 @@ z_done:
         // TODO: Create two capture sessions so that we can take screenshots while
         // doing video capture? Probably just implement it as part of the video
         // capture pipeline, without two capture sessions.
-        if (st_output->capture.frame_ctx.capturing_video) {
+        if (st_output->capture.capturing_video) {
             eprintf("Screenshot during video capture not implemented yet, try again later :(\n");
         } else {
             bool exit_after_capture = !xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
@@ -275,7 +275,7 @@ z_done:
     case XKB_KEY_space:
         bool video_button_got_jammed = false;
 
-        if (st_output->capture.frame_ctx.capturing_video) {
+        if (st_output->capture.capturing_video) {
             video_capture_request_stop(st_output);
         } else {
             if (st_output->selection_ctx.selection_state == SELECTION_INITIALIZING) {

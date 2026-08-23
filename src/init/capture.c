@@ -51,13 +51,14 @@ init_premem__capture(
         &st_output->capture.session,
         st_output->capture.source
     );
+    st_output->capture.frame_ctx.output = st_output;
 
     // TODO: Revisit which parts of video and image init to put here vs
     // start_capture/dispatch
 
     // Image capture
-    bl_image_init(&st_output->capture.frame_ctx.bl_img_captured);
-    bl_image_codec_init(&st_output->capture.frame_ctx.bl_imgcodec);
+    bl_image_init(&st_output->capture.bl_img_captured);
+    bl_image_codec_init(&st_output->capture.bl_imgcodec);
 
     return true;
 }
@@ -70,6 +71,6 @@ init_premem__capture__destroy(struct scran_output *st_output)
         ext_image_copy_capture_session_v1_destroy(st_output->capture.session.wl_session);
     }
 
-    bl_image_destroy(&st_output->capture.frame_ctx.bl_img_captured);
-    bl_image_codec_destroy(&st_output->capture.frame_ctx.bl_imgcodec);
+    bl_image_destroy(&st_output->capture.bl_img_captured);
+    bl_image_codec_destroy(&st_output->capture.bl_imgcodec);
 }

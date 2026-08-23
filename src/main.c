@@ -437,7 +437,7 @@ init_meminit(
         );
         scran_arena_add_block(
             private_arena,
-            capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.img_data_2
+            capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.img_data_2
         );
     }
     // Not per-output:
@@ -740,10 +740,10 @@ update_video_timers(int *timeout_ms_)
     int64_t now_ns = capture_clock_gettime_nsec();
 
     FOR_EACH_OUTPUT(i, st_output) {
-        struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+        struct scran_output_capture *capture = &st_output->capture;
 
-        if (frame_ctx->capturing_video) {
-            int64_t timer_ns = (now_ns - frame_ctx->presentation_time_nsec_start);
+        if (capture->capturing_video) {
+            int64_t timer_ns = (now_ns - st_output->capture.video_presentation_time_nsec_start);
             int     timer_s  = timer_ns / NSEC_PER_SEC;
 
             bool dirty = scran_ui_statusline_set_timer(&st_output->selection_surface.ui_ctx.ui_statusline, timer_s);

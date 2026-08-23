@@ -8,6 +8,9 @@
 #include <libavutil/rational.h>
 
 #include "ext-image-copy-capture-v1.h"
+
+#include "scranrot.h"
+
 #include "state.h"
 #include "util/blend2d.h"
 
@@ -34,7 +37,7 @@ void capture_session_init(struct capture_session *session, struct ext_image_capt
 void capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px);
 void end_fullscreen_capture(struct scran_output *st_output);
 
-void video_capture_write_video_packet(struct capture_frame_context *frame_ctx, AVPacket *pkt);
+void video_capture_write_video_packet(struct scran_output *output, AVPacket *pkt);
 bool video_capture_start(struct scran_output *st_output);
 bool video_capture_start_fullscreen(struct scran_output *st_output);
 // Call video_capture_request_stop() to initiate graceful finish from arbitrary
@@ -42,12 +45,19 @@ bool video_capture_start_fullscreen(struct scran_output *st_output);
 void video_capture_request_stop(struct scran_output *st_output);
 void video_capture_finish(struct scran_output *st_output);
 struct ext_image_copy_capture_frame_v1 * video_capture_create_frame(struct scran_output_capture *capture);
-void video_capture_write_audio_packet(struct capture_frame_context *frame_ctx, AVPacket *av_packet);
+void video_capture_write_audio_packet(struct scran_output *st_output, AVPacket *av_packet);
 void video_capture_destroy_ffmpeg(struct scran_output *st_output);
 
 bool image_capture_start(struct scran_output *st_output, bool exit_after_capture);
 bool image_capture_start_fullscreen(struct scran_output *st_output, bool exit_after_capture);
-void image_capture_request_frame(struct scran_output *st_output, struct ext_image_copy_capture_frame_v1_listener *listener, struct ext_image_copy_capture_session_v1 *session, struct wl_buffer *buffer, int32_t buffer_width_px, int32_t buffer_height_px);
+void image_capture_request_frame(
+    struct capture_frame_context *frame_ctx,
+    struct ext_image_copy_capture_session_v1 *session,
+    struct wl_buffer *buffer,
+    int32_t buffer_width_px,
+    int32_t buffer_height_px,
+    enum scran_capture_frame_consumers consumer
+);
 
 
 // HACK
@@ -77,7 +87,7 @@ capture_force_next_frame(
 }
 
 static inline void
-video_capture_grow_tracked_damage(
+capture_grow_tracked_damage(
     struct capture_frame_context *frame_ctx,
     int32_t x, int32_t y, int32_t w, int32_t h
 ) {
@@ -96,30 +106,31 @@ video_capture_grow_tracked_damage(
 }
 
 static inline void
-video_capture_damage_buffer(
+capture_damage_buffer(
     struct capture_frame_context *frame_ctx,
     struct ext_image_copy_capture_frame_v1 *frame,
     int32_t x, int32_t y, int32_t w, int32_t h
 ) {
     ext_image_copy_capture_frame_v1_damage_buffer(frame, x, y, w, h);
-    video_capture_grow_tracked_damage(frame_ctx, x, y, w, h);
+    capture_grow_tracked_damage(frame_ctx, x, y, w, h);
 }
 
 static inline uint8_t *
 capture_get_area_start_address(
-    struct capture_frame_context *frame_ctx,
     const struct capture_session *session,
-    BLBoxI capture_buffer_area_px
+    const struct capture_frame_context *frame_ctx,
+    const BLBoxI *capture_buffer_area_px
 ) {
     return frame_ctx->scran_wl_buffer.data
-         + session->pixel_stride * capture_buffer_area_px.y0 * session->source_dimensions_px.x
-         + session->pixel_stride * capture_buffer_area_px.x0;
+         + session->pixel_stride * capture_buffer_area_px->y0 * session->source_dimensions_px.x
+         + session->pixel_stride * capture_buffer_area_px->x0;
 }
 
 static inline BLBoxI
 capture_get_selection_as_capture_buffer_area_px(
-    const struct capture_frame_context *frame_ctx,
-    const struct capture_session *session
+    const struct scran_output_capture  *capture,
+    const struct capture_session       *session,
+    const struct capture_frame_context *frame_ctx
 ) {
     const BLPointI source_dimensions_px = session->source_dimensions_px;
 
@@ -127,7 +138,7 @@ capture_get_selection_as_capture_buffer_area_px(
     assert(source_dimensions_px.y > 0);
 
     const BLBoxI capture_buffer_area_px = blboxi_get_reverse_transform(
-        frame_ctx->selection_ctx_box_px,
+        capture->selection_ctx_box_px,
         source_dimensions_px.x,
         source_dimensions_px.y,
         frame_ctx->source_transform

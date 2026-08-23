@@ -200,6 +200,28 @@ struct scran_freezeframe_buffer {
     bool busy;
 };
 
+enum scran_capture_frame_consumers {
+    SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE       = 1 << 0,
+    SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO       = 1 << 1,
+    SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME = 1 << 2,
+};
+
+struct capture_frame_context {
+    struct ext_image_copy_capture_frame_v1 *frame;
+
+    struct scran_output *output;
+    struct scran_wl_buffer scran_wl_buffer;
+
+    // set by pre-::ready event handlers
+    enum wl_output_transform source_transform;
+    // Contains *at least* the union of frame::damage-reported damage
+    struct BLBoxI capture_buffer_damage_area_px;
+    int64_t presentation_time_nsec;
+
+
+    uint8_t consumers;
+};
+
 struct capture_session {
     struct ext_image_copy_capture_session_v1 *wl_session;
     BLPointI source_dimensions_px;
@@ -210,8 +232,8 @@ struct capture_session {
 struct scran_output_freezeframe {
     struct scran_output_subsurface subsurface;
 
+    struct capture_frame_context frame_ctx;
     struct capture_session session;
-    enum wl_output_transform source_transform;
 
     bool unhide_after_capture;
     bool showing;
@@ -363,23 +385,19 @@ struct ffmpeg_context {
     AVAudioFifo     *av_audio_fifo;
 };
 
-// TODO: More consistent naming?
-// TODO: Separate video/image capture context
-struct capture_frame_context {
-    struct ext_image_copy_capture_frame_v1 *frame;
+struct scran_output_capture {
+    struct ext_image_capture_source_v1 *source;
 
-    struct scran_wl_buffer scran_wl_buffer;
+    struct capture_frame_context frame_ctx;
+    struct capture_session session;
+    struct ffmpeg_context ffmpeg_ctx;
+
     // Extra buffer for copying/intermediate operations
     // TODO: Rename this
     void *img_data_2;
 
-    struct ffmpeg_context ffmpeg_ctx;
-
     BLImageCore bl_img_captured;
     BLImageCodecCore bl_imgcodec;
-
-    int64_t presentation_time_nsec_start;
-    int64_t presentation_time_nsec; // NOTE: _start is PRE-SUBTRACTED.
 
     //  NOTE: selection_ctx_box_px should be updated synchronously with the
     //        drawn overlay's area (or be set based on the same real-time
@@ -392,9 +410,11 @@ struct capture_frame_context {
     //        compositors, like COSMIC, are not neatly ordered like this
     //        internally (at time of writing).
     struct BLBoxI selection_ctx_box_px;
-    // Contains *at least* the union of frame::damage-reported damage
-    struct BLBoxI capture_buffer_damage_area_px;
-    enum wl_output_transform source_transform;
+
+    int64_t video_presentation_time_nsec_start;
+
+    uint8_t pre_capture_selection_theme;
+    bool exit_after_capture;
 
     bool capturing_video;
     bool video_end_requested;
@@ -403,16 +423,6 @@ struct capture_frame_context {
     bool fullscreen_capture;
     bool fullscreen_video_pending;
     bool fullscreen_video_pending_audio_disabled;
-};
-
-struct scran_output_capture {
-    struct capture_frame_context frame_ctx;
-    struct capture_session session;
-
-    struct ext_image_capture_source_v1 *source;
-
-    uint8_t pre_capture_selection_theme;
-    bool exit_after_capture;
 };
 
 struct scran_output_mode {

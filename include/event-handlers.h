@@ -20,8 +20,7 @@ extern struct wl_buffer_listener                         freezeframe_buffer_list
 extern struct wl_callback_listener                       selection_surface_frame_callback_listener;
 extern struct wl_output_listener                         output_listener;
 extern struct ext_image_copy_capture_session_v1_listener image_copy_capture_session_listener;
-extern struct ext_image_copy_capture_frame_v1_listener   image_copy_capture_frame_listener__video_capture;
-extern struct ext_image_copy_capture_frame_v1_listener   image_copy_capture_frame_listener__image_capture;
+extern struct ext_image_copy_capture_frame_v1_listener   image_copy_capture_frame_listener;
 extern struct ext_data_control_source_v1_listener        data_control_source_listener;
 extern struct zxdg_output_v1_listener                    xdg_output_listener;
 extern struct wp_presentation_feedback_listener          presentation_feedback_listener__selection;
@@ -29,7 +28,6 @@ extern struct wp_fractional_scale_v1_listener            fractional_scale_listen
 extern struct zcosmic_output_head_v1_listener            cosmic_output_head_listener;
 extern struct zwlr_output_head_v1_listener               wlr_output_head_listener;
 extern struct zwlr_output_manager_v1_listener            wlr_output_manager_listener;
-extern struct ext_image_copy_capture_frame_v1_listener   image_copy_capture_frame_listener__freezeframe;
 extern struct wp_presentation_feedback_listener          presentation_feedback_listener__selection_transparent_for_freezeframe;
 extern struct wp_presentation_feedback_listener          presentation_feedback_listener__selection_transparent_for_fullscreen_image_capture;
 extern struct wp_presentation_feedback_listener          presentation_feedback_listener__selection_transparent_for_fullscreen_video_capture;
