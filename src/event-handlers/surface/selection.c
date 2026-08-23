@@ -8,8 +8,8 @@
 #include "state-util.h"
 #include "state.h"
 #include "event-handlers.h"
-#include "util/blend2d.h"
 #include "selection-surface.h"
+#include "selection.h"
 #include "capture.h"
 #include "print.h"
 
@@ -59,7 +59,7 @@ selection_surface_frame_callback_handler(
 
     // This is the capture area that the rest of this function is assuming will
     // be in use for the frame in which this selection area is presented.
-    const struct BLBoxI capture_area = blboxi_get_deinverted(st_output->selection_ctx.box_px);
+    const struct BLBoxI capture_area = selection_get_box_px(&st_output->selection_ctx);
     assert(capture_area.x1 <= get_transformed_output_width(st_output));
     assert(capture_area.y1 <= get_transformed_output_height(st_output));
 
@@ -109,4 +109,3 @@ selection_surface_frame_callback_handler(
 struct wl_callback_listener selection_surface_frame_callback_listener = {
     .done = selection_surface_frame_callback_handler
 };
-

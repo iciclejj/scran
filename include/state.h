@@ -335,7 +335,7 @@ struct scran_output_selectionContext {
     //   physical pixels +/- 1 pixel (still with the buffer's transform!!).
     //   This seems to hold true at the moment on Sway, COSMIC and Hyprland,
     //   once all layer_surface::configure events have fired.
-    //   NOTE: Allowed to be inverted during resizing.
+    //   NOTE: Always deinverted. Update through selection_set_box_px().
     //   TODO: Make the coordinate space distinctions typed, in general?
     //           E.g. BLBoxISelection
     struct BLBoxI box_px;
@@ -483,7 +483,7 @@ struct scran_options {
     bool capture_and_exit_after_selection_init;
     bool produce_slurp;                 // output slurp-style geometry string
     bool no_notifications;
-    bool have_custom_initial_selection; // output slurp-style geometry string
+    bool have_custom_initial_selection;
     enum scran_opt_hide_ui_level hide_ui_level;
     struct BLRectI custom_initial_selection_global_coordinates;
 };

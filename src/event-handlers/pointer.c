@@ -79,24 +79,31 @@ handle_pointer_motion(
     int x_px = coords_px_.x;
     int y_px = coords_px_.y;
 
-    // TODO: Check if out of bounds
-    assert(!blboxi_is_inverted(selection_ctx->box_before_changes_px));
-
     switch (selection_ctx->selection_state) {
     case SELECTION_NONE:
     case SELECTION_NONE_FREEZE_SIZE:
         break;
     case SELECTION_INITIALIZING:
-        selection_ctx->box_px.x1 = x_px;
-        selection_ctx->box_px.y1 = y_px;
+        {
+            BLBoxI box_px = {
+                .x0 = selection_ctx->pointer_before_changes_x_px,
+                .y0 = selection_ctx->pointer_before_changes_y_px,
+                .x1 = x_px,
+                .y1 = y_px,
+            };
 
-        // TODO: Merge most of this logic with SELECTION_RESIZING?
+            // TODO: Merge most of this logic with SELECTION_RESIZING?
 
-        // XXX: Kinda redundant since we must also clamp on finishing selection
-        clamp_to_transformed_output_width(&selection_ctx->box_px.x1, st_output);
-        clamp_to_transformed_output_height(&selection_ctx->box_px.y1, st_output);
+            // XXX: Kinda redundant since we must also clamp on finishing selection
+            clamp_to_transformed_output_width(&box_px.x1, st_output);
+            clamp_to_transformed_output_height(&box_px.y1, st_output);
+            selection_set_box_px(selection_ctx, box_px);
+        }
 
-        scran_ui_statusline_set_selection_size(&st_output->selection_surface.ui_ctx.ui_statusline, blboxi_to_blrecti(selection_ctx->box_px));
+        scran_ui_statusline_set_selection_size(
+            &st_output->selection_surface.ui_ctx.ui_statusline,
+            blboxi_to_blrecti(selection_get_box_px(selection_ctx))
+        );
 
         request_selection_surface_frame_callback(st_output);
         break;
@@ -118,7 +125,6 @@ handle_pointer_motion(
             };
 
             // The rebase should have been initiated with a valid box.
-            assert(!blboxi_is_inverted(box_before_rebase));
             assert(box_before_rebase.x0 >= 0 && box_before_rebase.x1 <= get_transformed_output_width(st_output));
             assert(box_before_rebase.y0 >= 0 && box_before_rebase.y1 <= get_transformed_output_height(st_output));
 
@@ -139,7 +145,7 @@ handle_pointer_motion(
                 new_box.y1 = get_transformed_output_height(st_output);
             }
 
-            selection_ctx->box_px = new_box;
+            selection_set_box_px(selection_ctx, new_box);
         }
         request_selection_surface_frame_callback(st_output);
         break;
@@ -149,36 +155,40 @@ handle_pointer_motion(
             const int y_diff_px = y_px - selection_ctx->pointer_before_changes_y_px;
             const BLBoxI box_before_resize = selection_ctx->box_before_changes_px;
 
+            BLBoxI resized_box = box_before_resize;
+
             switch (selection_ctx->selection_resize_direction) {
             case SELECTION_RESIZE_NONE:
                 break;
             case SELECTION_RESIZE_TOP_LEFT:
-                selection_ctx->box_px.x0 = box_before_resize.x0 + x_diff_px;
-                selection_ctx->box_px.y0 = box_before_resize.y0 + y_diff_px;
-                clamp_to_transformed_output_width(&selection_ctx->box_px.x0, st_output);
-                clamp_to_transformed_output_height(&selection_ctx->box_px.y0, st_output);
+                resized_box.x0 += x_diff_px;
+                resized_box.y0 += y_diff_px;
+                clamp_to_transformed_output_width(&resized_box.x0, st_output);
+                clamp_to_transformed_output_height(&resized_box.y0, st_output);
                 break;
             case SELECTION_RESIZE_TOP_RIGHT:
-                selection_ctx->box_px.x1 = box_before_resize.x1 + x_diff_px;
-                selection_ctx->box_px.y0 = box_before_resize.y0 + y_diff_px;
-                clamp_to_transformed_output_width(&selection_ctx->box_px.x1, st_output);
-                clamp_to_transformed_output_height(&selection_ctx->box_px.y0, st_output);
+                resized_box.x1 += x_diff_px;
+                resized_box.y0 += y_diff_px;
+                clamp_to_transformed_output_width(&resized_box.x1, st_output);
+                clamp_to_transformed_output_height(&resized_box.y0, st_output);
                 break;
             case SELECTION_RESIZE_BOTTOM_LEFT:
-                selection_ctx->box_px.x0 = box_before_resize.x0 + x_diff_px;
-                selection_ctx->box_px.y1 = box_before_resize.y1 + y_diff_px;
-                clamp_to_transformed_output_width(&selection_ctx->box_px.x0, st_output);
-                clamp_to_transformed_output_height(&selection_ctx->box_px.y1, st_output);
+                resized_box.x0 += x_diff_px;
+                resized_box.y1 += y_diff_px;
+                clamp_to_transformed_output_width(&resized_box.x0, st_output);
+                clamp_to_transformed_output_height(&resized_box.y1, st_output);
                 break;
             case SELECTION_RESIZE_BOTTOM_RIGHT:
-                selection_ctx->box_px.x1 = box_before_resize.x1 + x_diff_px;
-                selection_ctx->box_px.y1 = box_before_resize.y1 + y_diff_px;
-                clamp_to_transformed_output_width(&selection_ctx->box_px.x1, st_output);
-                clamp_to_transformed_output_height(&selection_ctx->box_px.y1, st_output);
+                resized_box.x1 += x_diff_px;
+                resized_box.y1 += y_diff_px;
+                clamp_to_transformed_output_width(&resized_box.x1, st_output);
+                clamp_to_transformed_output_height(&resized_box.y1, st_output);
                 break;
             }
+
+            selection_set_box_px(selection_ctx, resized_box);
         }
-        scran_ui_statusline_set_selection_size(&st_output->selection_surface.ui_ctx.ui_statusline, blboxi_to_blrecti(selection_ctx->box_px));
+        scran_ui_statusline_set_selection_size(&st_output->selection_surface.ui_ctx.ui_statusline, blboxi_to_blrecti(selection_get_box_px(selection_ctx)));
         request_selection_surface_frame_callback(st_output);
         break;
     }
@@ -266,7 +276,9 @@ handle_pointer_button(
                 .x1 = x_px,
                 .y1 = y_px,
             };
-            selection_ctx->box_px = initial_selection_area;
+            selection_set_box_px(selection_ctx, initial_selection_area);
+            selection_ctx->pointer_before_changes_x_px = x_px;
+            selection_ctx->pointer_before_changes_y_px = y_px;
             selection_ctx->selection_state = SELECTION_INITIALIZING;
 
             // TODO: Create set_selection_initializing()/set_selection_stage(),
@@ -282,15 +294,21 @@ handle_pointer_button(
 
             break;
         case SELECTION_INITIALIZING:
-            selection_ctx->box_px.x1 = x_px;
-            selection_ctx->box_px.y1 = y_px;
+            {
+                BLBoxI box_px = {
+                    .x0 = selection_ctx->pointer_before_changes_x_px,
+                    .y0 = selection_ctx->pointer_before_changes_y_px,
+                    .x1 = x_px,
+                    .y1 = y_px,
+                };
 
-            blboxi_deinvert(&selection_ctx->box_px);
+                clamp_to_transformed_output_width(&box_px.x0, st_output);
+                clamp_to_transformed_output_height(&box_px.y0, st_output);
+                clamp_to_transformed_output_width(&box_px.x1, st_output);
+                clamp_to_transformed_output_height(&box_px.y1, st_output);
 
-            clamp_to_transformed_output_width(&selection_ctx->box_px.x0, st_output);
-            clamp_to_transformed_output_height(&selection_ctx->box_px.y0, st_output);
-            clamp_to_transformed_output_width(&selection_ctx->box_px.x1, st_output);
-            clamp_to_transformed_output_height(&selection_ctx->box_px.y1, st_output);
+                selection_set_box_px(selection_ctx, box_px);
+            }
 
             set_selection_initialized(st_output);
             assert(selection_ctx->selection_state == SELECTION_COMPLETE);
@@ -302,7 +320,7 @@ handle_pointer_button(
                                              ? SELECTION_REBASING : SELECTION_REBASING_FREEZE_SIZE;
             selection_ctx->pointer_before_changes_x_px = x_px;
             selection_ctx->pointer_before_changes_y_px = y_px;
-            selection_ctx->box_before_changes_px = selection_ctx->box_px;
+            selection_ctx->box_before_changes_px = selection_get_box_px(selection_ctx);
             break;
         case SELECTION_REBASING:
             selection_ctx->selection_state = SELECTION_COMPLETE;
@@ -318,7 +336,7 @@ handle_pointer_button(
         switch(selection_ctx->selection_state) {
         case SELECTION_COMPLETE:
             selection_ctx->selection_state = SELECTION_RESIZING;
-            selection_ctx->box_before_changes_px = selection_ctx->box_px;
+            selection_ctx->box_before_changes_px = selection_get_box_px(selection_ctx);
             selection_ctx->pointer_before_changes_x_px = x_px;
             selection_ctx->pointer_before_changes_y_px = y_px;
 
@@ -344,8 +362,6 @@ handle_pointer_button(
         case SELECTION_RESIZING:
             selection_ctx->selection_state = SELECTION_COMPLETE;
             selection_ctx->selection_resize_direction = SELECTION_RESIZE_NONE;
-
-            blboxi_deinvert(&selection_ctx->box_px);
             break;
         default:
             // Shunt back to a safe state to prevent state inversions or other

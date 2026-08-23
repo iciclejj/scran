@@ -133,7 +133,21 @@ video_capture_drain_encoder(
 // `selection_ctx_box_px` has `scran_output_selectionContext.box_px` coordinate space!
 void
 capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px) {
-    st_output->capture.frame_ctx.selection_ctx_box_px = selection_ctx_box_px;
+    struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+
+    bool size_changed =
+           blboxi_width_abs_unsafe(frame_ctx->selection_ctx_box_px)  != blboxi_width_abs_unsafe(selection_ctx_box_px)
+        || blboxi_height_abs_unsafe(frame_ctx->selection_ctx_box_px) != blboxi_height_abs_unsafe(selection_ctx_box_px);
+
+    // Presentation feedback for an older selection-surface buffer can arrive
+    // after video capture has frozen the selection size.
+    // FIXME: Actually check if frozen here instead, but probably decouple
+    // selection's frozen state from selection_state first.
+    if (frame_ctx->capturing_video && size_changed) {
+        return;
+    }
+
+    frame_ctx->selection_ctx_box_px = selection_ctx_box_px;
 }
 
 struct ext_image_copy_capture_frame_v1 *
@@ -422,8 +436,7 @@ video_capture_start(struct scran_output *st_output)
     }
 
     // TODO: Assert box is within output dimensions
-    //       Assert box is not inverted
-    assert(!blboxi_is_empty(st_output->selection_ctx.box_px));
+    assert(!blboxi_is_empty(selection_get_box_px(&st_output->selection_ctx)));
 
     if (!init_ffmpeg(st_output)) {
         eprintf("Error: Failed to initialize ffmpeg libraries.\n");
@@ -491,7 +504,7 @@ start_fullscreen_capture(
     // need to save/restore the previous selection.
     assert(selection_is_none(&st_output->selection_ctx));
     BLBoxI fullscreen_selection = get_fullscreen_selection_box(st_output);
-    st_output->selection_ctx.box_px = fullscreen_selection;
+    selection_set_box_px(&st_output->selection_ctx, fullscreen_selection);
     capture_update_selection(st_output, fullscreen_selection);
 
     return true;
@@ -506,7 +519,10 @@ end_fullscreen_capture(
     // If !=SELECTION_NONE becomes possible in the future, then just do
     // capture_update_selection() when !=SELECTION_NONE.
     assert(selection_is_none(&st_output->selection_ctx));
-    st_output->selection_ctx.box_px = get_selection_surface_pre_selection_box(st_output);
+    selection_set_box_px(
+        &st_output->selection_ctx,
+        get_selection_surface_pre_selection_box(st_output)
+    );
     st_output->capture.frame_ctx.selection_ctx_box_px = (BLBoxI){0};
 
     st_output->capture.frame_ctx.fullscreen_capture = false;
@@ -674,9 +690,7 @@ print_slurp_string_selection(struct scran_output *st_output)
 {
     const double scale = st_output->selection_surface.surface.final_scale_factor_normalized;
     const struct scran_output_xdg_geometry geometry = st_output->xdg_geometry;
-    const struct BLBoxI box_px = st_output->selection_ctx.box_px;
-
-    assert(!blboxi_is_inverted(box_px));
+    const struct BLBoxI box_px = selection_get_box_px(&st_output->selection_ctx);
 
     const struct BLRectI rect_logical = {
         .x = round(  box_px.x0              / scale),

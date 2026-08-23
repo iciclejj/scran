@@ -8,6 +8,7 @@
 #include "freezeframe.h"
 #include "print.h"
 #include "selection-surface.h"
+#include "selection.h"
 
 
 void
@@ -202,7 +203,10 @@ do_scale_updates(struct scran_output *st_output)
     reinit_scran_ui(&st_output->selection_surface.ui_ctx, st_output->selection_surface.surface.final_scale_factor_normalized);
     // XXX NOTE: Do not update if SELECTION_NONE_FREEZE_SIZE, since there might be an active capture.
     if (st_output->selection_ctx.selection_state == SELECTION_NONE) {
-        st_output->selection_ctx.box_px = get_selection_surface_pre_selection_box(st_output);
+        selection_set_box_px(
+            &st_output->selection_ctx,
+            get_selection_surface_pre_selection_box(st_output)
+        );
     }
     set_force_redraw_selection_surface_buffers(st_output);
     request_selection_surface_frame_callback(st_output);

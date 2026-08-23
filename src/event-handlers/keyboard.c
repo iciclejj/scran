@@ -87,14 +87,14 @@ shift_selection(
     int x_shift,
     int y_shift
 ) {
-    const BLBoxI shifted = blboxi_get_shifted(st_output->selection_ctx.box_px, x_shift, y_shift);
+    const BLBoxI shifted = blboxi_get_shifted(selection_get_box_px(&st_output->selection_ctx), x_shift, y_shift);
     const BLBoxI bounds = get_fullscreen_selection_box(st_output);
 
-    if (!blboxi_contains(bounds, blboxi_get_deinverted(shifted))) {
+    if (!blboxi_contains(bounds, shifted)) {
         return;
     }
 
-    st_output->selection_ctx.box_px = shifted;
+    selection_set_box_px(&st_output->selection_ctx, shifted);
     request_selection_surface_frame_callback(st_output);
 }
 

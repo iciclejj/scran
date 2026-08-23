@@ -7,6 +7,7 @@
 
 #include "state.h"
 #include "state-util.h"
+#include "util/blend2d.h"
 
 
 #define SCRAN_LAYER_SURFACE_KEYBOARD_INTERACTIVITY_FOCUSED   ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE
@@ -53,6 +54,20 @@ static inline bool
 selection_is_none(struct scran_output_selectionContext *selection_ctx) {
     return selection_ctx->selection_state == SELECTION_NONE ||
            selection_ctx->selection_state == SELECTION_NONE_FREEZE_SIZE;
+}
+
+static inline BLBoxI
+selection_get_box_px(const struct scran_output_selectionContext *selection_ctx) {
+    assert(!blboxi_is_inverted(selection_ctx->box_px));
+    return selection_ctx->box_px;
+}
+
+static inline void
+selection_set_box_px(
+    struct scran_output_selectionContext *selection_ctx,
+    BLBoxI box_px
+) {
+    selection_ctx->box_px = blboxi_get_deinverted(box_px);
 }
 
 
