@@ -17,9 +17,7 @@
 void
 capture_session_init(
     struct capture_session *session,
-    struct ext_image_capture_source_v1 *source,
-    struct ext_image_copy_capture_session_v1_listener *listener,
-    void *listener_userdata
+    struct ext_image_capture_source_v1 *source
 ) {
     assert(source);
 
@@ -35,8 +33,8 @@ capture_session_init(
 
     ext_image_copy_capture_session_v1_add_listener(
         session->wl_session,
-        listener,
-        listener_userdata
+        &image_copy_capture_session_listener,
+        session
     );
 }
 
@@ -51,9 +49,7 @@ init_premem__capture(
     );
     capture_session_init(
         &st_output->capture.session,
-        st_output->capture.source,
-        &image_copy_capture_session_listener,
-        st_output
+        st_output->capture.source
     );
 
     // TODO: Revisit which parts of video and image init to put here vs

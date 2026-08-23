@@ -10,9 +10,7 @@
 #include "wlr-layer-shell-unstable-v1.h"
 
 #include "state.h"
-#include "state-util.h"
 #include "init.h"
-#include "event-handlers.h"
 
 
 bool
@@ -23,9 +21,7 @@ init_premem__freezeframe(
 
     capture_session_init(
         &st_output->freezeframe.session,
-        st_output->capture.source,
-        &image_copy_capture_session_listener__freezeframe,
-        st_output
+        st_output->capture.source
     );
 
     {

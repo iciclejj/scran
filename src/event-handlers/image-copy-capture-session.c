@@ -17,10 +17,10 @@ handle_image_copy_capture_session_buffer_size(
     uint32_t width,
     uint32_t height
 ) {
-    struct scran_output *st_output = data;
+    struct capture_session *capture_session = data;
 
-    st_output->capture.session.source_dimensions_px.x = width;
-    st_output->capture.session.source_dimensions_px.y = height;
+    capture_session->source_dimensions_px.x = width;
+    capture_session->source_dimensions_px.y = height;
 }
 
 
@@ -30,13 +30,18 @@ handle_image_copy_capture_session_shm_format(
     struct ext_image_copy_capture_session_v1 *session,
     uint32_t shm_format
 ) {
-    struct scran_output *st_output = data;
+    struct capture_session *capture_session = data;
 
     DEBUG("Capture session advertised shm format: %x\n", shm_format);
 
     // List of formats we want to support.
     // TODO: Add more formats and logic for handling them
-    if (st_output->capture.session.shm_format == SCRAN_SHM_FORMAT_UNSET
+    //       NOTE:
+    //         If implementing HDR support, make sure that the freezeframe
+    //         surface picks an advertized format that the compositor can
+    //         actually display, since it is NOT necessarily the same as the
+    //         formats that it lets us capture.
+    if (capture_session->shm_format == SCRAN_SHM_FORMAT_UNSET
         &&
         (shm_format == WL_SHM_FORMAT_ARGB8888
          || shm_format == WL_SHM_FORMAT_XRGB8888
@@ -44,8 +49,8 @@ handle_image_copy_capture_session_shm_format(
          || shm_format == WL_SHM_FORMAT_ABGR8888
         )
     ) {
-        st_output->capture.session.shm_format = shm_format;
-        st_output->capture.session.pixel_stride = 4;
+        capture_session->shm_format = shm_format;
+        capture_session->pixel_stride = 4;
     }
 }
 
@@ -55,10 +60,11 @@ handle_image_copy_capture_session_stopped(
     void *data,
     struct ext_image_copy_capture_session_v1 *session
 ) {
-    struct scran_output *st_output = data;
+    struct capture_session *capture_session = data;
 
-    ext_image_copy_capture_session_v1_destroy(st_output->capture.session.wl_session);
-    st_output->capture.session.wl_session = NULL;
+    assert(capture_session->wl_session == session);
+    ext_image_copy_capture_session_v1_destroy(session);
+    capture_session->wl_session = NULL;
 
     // TODO: More graceful exit and/or attempt creating a new session
     eprintf("Error: Capture session stopped unexpectedly.\n");

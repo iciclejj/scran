@@ -29,13 +29,7 @@ enum {
 };
 
 
-void
-capture_session_init(
-    struct capture_session *capture,
-    struct ext_image_capture_source_v1 *source,
-    struct ext_image_copy_capture_session_v1_listener *listener,
-    void *listener_userdata
-);
+void capture_session_init(struct capture_session *session, struct ext_image_capture_source_v1 *source);
 
 void capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px);
 void end_fullscreen_capture(struct scran_output *st_output);
