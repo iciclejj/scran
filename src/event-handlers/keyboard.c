@@ -145,7 +145,7 @@ handle_keyboard_key(
                 struct scran_output *st_output = wl_container_of(active_selection_surface, st_output, selection_surface);
                 if (st_output->capture.capturing_video) {
                     eprintf(" stopping video capture.\n");
-                    video_capture_request_stop(st_output);
+                    capture_video_request_stop(st_output);
                     return;
                 }
             }
@@ -263,9 +263,9 @@ z_done:
             bool exit_after_capture = !xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
 
             if (fullscreen_capture) {
-                image_capture_start_fullscreen(st_output, exit_after_capture);
+                capture_image_start_fullscreen(st_output, exit_after_capture);
             } else {
-                image_capture_start(st_output, exit_after_capture);
+                capture_image_start(st_output, exit_after_capture);
                 scran_ui_textline_item_set_pressed(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
                 request_selection_surface_frame_callback(st_output);
             }
@@ -276,7 +276,7 @@ z_done:
         bool video_button_got_jammed = false;
 
         if (st_output->capture.capturing_video) {
-            video_capture_request_stop(st_output);
+            capture_video_request_stop(st_output);
         } else {
             if (st_output->selection_ctx.selection_state == SELECTION_INITIALIZING) {
                 // TODO: Guard against capture_and_exit_after_selection_init?
@@ -286,9 +286,9 @@ z_done:
             bool video_capture_started;
 
             if (fullscreen_capture) {
-                video_capture_started = video_capture_start_fullscreen(st_output);
+                video_capture_started = capture_video_start_fullscreen(st_output);
             } else {
-                video_capture_started = video_capture_start(st_output);
+                video_capture_started = capture_video_start(st_output);
             }
 
             if (!video_capture_started) {

@@ -95,7 +95,7 @@ static inline void
 end_image_capture(struct scran_output *output)
 {
     if (output->capture.fullscreen_capture) {
-        end_fullscreen_capture(output);
+        capture_fullscreen_end(output);
     }
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
@@ -438,7 +438,7 @@ do_handle_video_frame(
             return false;
         }
 
-        video_capture_write_video_packet(output, ffmpeg->av_packet);
+        capture_video_write_video_packet(output, ffmpeg->av_packet);
 
         // INFO: packet gets unreferenced at start of loop by avcodec_receive_packet
     }
@@ -451,7 +451,7 @@ static inline void
 end_video_capture(
     struct scran_output *output
 ) {
-    video_capture_finish(output);
+    capture_video_finish(output);
 
     output->capture.capturing_video = false;
     output->capture.video_end_requested = false;

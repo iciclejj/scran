@@ -9,8 +9,6 @@
 
 #include "ext-image-copy-capture-v1.h"
 
-#include "scranrot.h"
-
 #include "state.h"
 #include "util/blend2d.h"
 
@@ -35,21 +33,31 @@ enum {
 void capture_session_init(struct capture_session *session, struct ext_image_capture_source_v1 *source);
 
 void capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px);
-void end_fullscreen_capture(struct scran_output *st_output);
+void capture_fullscreen_end(struct scran_output *st_output);
 
-void video_capture_write_video_packet(struct scran_output *output, AVPacket *pkt);
-bool video_capture_start(struct scran_output *st_output);
-bool video_capture_start_fullscreen(struct scran_output *st_output);
+
+void capture_request_frame(struct capture_session *session, uint8_t consumer, const BLRectI *buffer_damage);
+
+typedef void capture_video_write_packet_fn(
+    struct scran_output *,
+    AVPacket *pkt
+);
+bool capture_video_init_writers(struct scran_output *st_output);
+ void capture_video_destroy_video_writer(struct scran_output *st_output);
+ void capture_video_destroy_audio_writer(struct scran_output *st_output);
+bool capture_video_drain_writer(struct scran_output *st_output, AVCodecContext *codec_ctx, AVPacket *packet, capture_video_write_packet_fn write_packet_fn, const char *stream_name);
+void capture_video_write_video_packet(struct scran_output *output, AVPacket *pkt);
+void capture_video_write_audio_packet(struct scran_output *st_output, AVPacket *av_packet);
+
+bool capture_video_start(struct scran_output *st_output);
+bool capture_video_start_fullscreen(struct scran_output *st_output);
 // Call video_capture_request_stop() to initiate graceful finish from arbitrary
 // locations, rather than calling video_capture_finish() directly.
-void video_capture_request_stop(struct scran_output *st_output);
-void video_capture_finish(struct scran_output *st_output);
-void video_capture_write_audio_packet(struct scran_output *st_output, AVPacket *av_packet);
-void video_capture_destroy_ffmpeg(struct scran_output *st_output);
+void capture_video_request_stop(struct scran_output *st_output);
+void capture_video_finish(struct scran_output *st_output);
 
-bool image_capture_start(struct scran_output *st_output, bool exit_after_capture);
-bool image_capture_start_fullscreen(struct scran_output *st_output, bool exit_after_capture);
-void capture_request_frame(struct capture_session *session, uint8_t consumer, const BLRectI *buffer_damage);
+bool capture_image_start(struct scran_output *st_output, bool exit_after_capture);
+bool capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_capture);
 
 
 // HACK
@@ -92,7 +100,6 @@ capture_request_frame_forced(
     // Mainly needed for freezeframe/hide_selection_surface_then() captures.
     capture_force_next_frame(session->frame_ctx.output);
 }
-
 
 static inline void
 capture_grow_tracked_damage(

@@ -20,8 +20,8 @@ start_video_capture_or_unwind_fullscreen(struct scran_output *st_output)
     capture->fullscreen_video_pending_audio_disabled = false;
     capture->fullscreen_video_pending = false;
 
-    if (g_state.exit_requested || !video_capture_start(st_output)) {
-        end_fullscreen_capture(st_output);
+    if (g_state.exit_requested || !capture_video_start(st_output)) {
+        capture_fullscreen_end(st_output);
     }
 }
 
@@ -80,7 +80,7 @@ handle_presentation_feedback_presented__selection_transparent_for_fullscreen_ima
 ) {
     wp_presentation_feedback_destroy(wp_presentation_feedback);
     struct scran_output *st_output = data;
-    image_capture_start(st_output, st_output->capture.exit_after_capture);
+    capture_image_start(st_output, st_output->capture.exit_after_capture);
 }
 
 static void
@@ -91,7 +91,7 @@ handle_presentation_feedback_discarded__selection_transparent_for_fullscreen_cap
     wp_presentation_feedback_destroy(wp_presentation_feedback);
     // TODO(?):
     struct scran_output *st_output = data;
-    image_capture_start(st_output, st_output->capture.exit_after_capture);
+    capture_image_start(st_output, st_output->capture.exit_after_capture);
 }
 
 struct wp_presentation_feedback_listener presentation_feedback_listener__selection_transparent_for_fullscreen_image_capture = {
