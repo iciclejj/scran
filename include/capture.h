@@ -29,12 +29,16 @@ enum {
     SCRAN_AV_FORMAT_STREAM_IDX_AUDIO,
 };
 
+struct capture_buffer_area_context {
+    const uint8_t *area_start_address;
+    BLBoxI area_px;
+    uint32_t source_row_bytes;
+};
 
 void capture_session_init(struct capture_session *session, struct ext_image_capture_source_v1 *source);
 
 void capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px);
 void capture_fullscreen_end(struct scran_output *st_output);
-
 
 void capture_request_frame(struct capture_session *session, uint8_t consumer, const BLRectI *buffer_damage);
 
@@ -48,6 +52,7 @@ bool capture_video_init_writers(struct scran_output *st_output);
 bool capture_video_drain_writer(struct scran_output *st_output, AVCodecContext *codec_ctx, AVPacket *packet, capture_video_write_packet_fn write_packet_fn, const char *stream_name);
 void capture_video_write_video_packet(struct scran_output *output, AVPacket *pkt);
 void capture_video_write_audio_packet(struct scran_output *st_output, AVPacket *av_packet);
+bool capture_video_write_video_frame(struct scran_output *output, struct capture_frame_context *frame_ctx, const struct capture_session_context *session, const struct capture_buffer_area_context *buffer_area_ctx);
 
 bool capture_video_start(struct scran_output *st_output);
 bool capture_video_start_fullscreen(struct scran_output *st_output);

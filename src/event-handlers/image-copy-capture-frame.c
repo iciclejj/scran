@@ -20,13 +20,6 @@
 #include "util/util.h"
 
 
-struct capture_buffer_area_context {
-    const uint8_t *area_start_address;
-    BLBoxI area_px;
-    uint32_t source_row_bytes;
-};
-
-
 static inline void
 capture_create_buffer_area_context(
     const struct scran_output *output,
@@ -366,101 +359,6 @@ do_handle_image_frame(
 }
 
 
-static inline bool
-do_handle_video_frame(
-    struct scran_output *output,
-    struct capture_frame_context *frame_ctx,
-    const struct capture_session_context *session,
-    const struct capture_buffer_area_context *buffer_area_ctx
-) {
-    if (!blboxi_intersects(buffer_area_ctx->area_px, frame_ctx->capture_buffer_damage_area_px)) {
-        return true;
-    }
-
-    struct ffmpeg_context *ffmpeg = &output->capture.ffmpeg_ctx;
-
-    // Crop and convert
-    {
-        // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be divisible by 2.
-        // XXX TODO: Collect this bit zeroing logic somehow? (Duplicated in init_ffmpeg.)
-        const int area_w_px = blboxi_width_abs_unsafe(buffer_area_ctx->area_px) & ~0b1;
-        const int area_h_px = blboxi_height_abs_unsafe(buffer_area_ctx->area_px) & ~0b1;
-
-        uint32_t rgba32_shuffle = wl_shm_format_to_scranrot_yuv_rgba32_shuffle(session->shm_format);
-        if (rgba32_shuffle == RGBA32_SHUFFLE_ERROR) {
-            eprintf(
-                "WARNING: Output's pixel format (%x) not recognized. Please report this as a bug. Attempting anyways...\n",
-                session->shm_format
-            );
-            rgba32_shuffle = RGBA32_SHUFFLE_NO_CHANGE;
-        }
-
-        // XXX: Scranrot does not support flipped transforms yet, so we just
-        // record it flipped for now, rather than blocking capture entirely.
-        enum wl_output_transform transform = wl_output_transform_without_flip(frame_ctx->source_transform);
-
-        AVFrame *frame = ffmpeg->av_frame_to_encode;
-        void *const frame_buffer = output->capture.img_data_2;
-
-        assert(frame->width == get_transformed_width(area_w_px, area_h_px, transform));
-        assert(frame->height == get_transformed_height(area_w_px, area_h_px, transform));
-
-        if (!scranrot_transform_framebuffer_to_yuv420(
-                buffer_area_ctx->area_start_address,
-                area_w_px,
-                area_h_px,
-                buffer_area_ctx->source_row_bytes,
-                frame_buffer,
-                rgba32_shuffle,
-                wl_output_transform_to_scranrot(transform),
-                &frame->data[0], &frame->linesize[0],
-                &frame->data[1], &frame->linesize[1],
-                &frame->data[2], &frame->linesize[2]
-            )
-        ) {
-            eprintf("Error: scranrot failed to convert framebuffer to yuv\n");
-            return false;
-        }
-        frame->pts = frame_ctx->presentation_time_nsec - output->capture.video_presentation_time_nsec_start;
-    }
-
-    // Encode
-    int _ret_enc = avcodec_send_frame(ffmpeg->av_codec_ctx, ffmpeg->av_frame_to_encode);
-    assert(_ret_enc != AVERROR(EINVAL));
-    while (_ret_enc >= 0) {
-        _ret_enc = avcodec_receive_packet(ffmpeg->av_codec_ctx, ffmpeg->av_packet);
-        assert(_ret_enc != AVERROR(EINVAL));
-
-        if (_ret_enc == AVERROR_EOF || _ret_enc == AVERROR(EAGAIN)) {
-            break;
-        } else if (_ret_enc < 0) {
-            eprintf("Error while encoding frame\n");
-            return false;
-        }
-
-        capture_video_write_video_packet(output, ffmpeg->av_packet);
-
-        // INFO: packet gets unreferenced at start of loop by avcodec_receive_packet
-    }
-
-    av_packet_unref(ffmpeg->av_packet);
-    return true;
-}
-
-static inline void
-end_video_capture(
-    struct scran_output *output
-) {
-    capture_video_finish(output);
-
-    output->capture.capturing_video = false;
-    output->capture.video_end_requested = false;
-
-    DEBUG("FINISHED RECORDING.\n");
-}
-
-
-
 static void
 handle_image_copy_capture_frame_ready(
     void *data,
@@ -497,8 +395,10 @@ handle_image_copy_capture_frame_ready(
         }
 
         if (video_requested) {
-            if (!do_handle_video_frame(output, frame_ctx, session, &buffer_area_ctx)) {
-                output->capture.video_end_requested = true;
+            if (blboxi_intersects(buffer_area_ctx.area_px, frame_ctx->capture_buffer_damage_area_px)) {
+                if (!capture_video_write_video_frame(output, frame_ctx, session, &buffer_area_ctx)) {
+                    output->capture.video_end_requested = true;
+                }
             }
 
             // NOTE: We do this check *after* writing the incoming frame. This ensures
@@ -511,7 +411,7 @@ handle_image_copy_capture_frame_ready(
             // TODO: Go through uses of capturing_video to check for redundancy now
             // that we have a global state, with e.g. `.exit_requested`.
             if (output->capture.video_end_requested || g_state.exit_requested) {
-                end_video_capture(output);
+                capture_video_finish(output);
             } else {
                 // TODO: avio_flush ?
                 capture_request_frame(&output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO, NULL);
@@ -545,7 +445,7 @@ handle_image_copy_capture_frame_failed(
     }
     if (frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO) {
         // TODO: Retry a few times?
-        end_video_capture(output);
+        capture_video_finish(output);
     }
 }
 

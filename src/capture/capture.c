@@ -251,6 +251,11 @@ capture_video_finish(struct scran_output *st_output)
     }
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
+
+    st_output->capture.capturing_video = false;
+    st_output->capture.video_end_requested = false;
+
+    DEBUG("FINISHED RECORDING.\n");
 }
 
 void
