@@ -44,20 +44,12 @@ bool video_capture_start_fullscreen(struct scran_output *st_output);
 // locations, rather than calling video_capture_finish() directly.
 void video_capture_request_stop(struct scran_output *st_output);
 void video_capture_finish(struct scran_output *st_output);
-struct ext_image_copy_capture_frame_v1 * video_capture_create_frame(struct scran_output_capture *capture);
 void video_capture_write_audio_packet(struct scran_output *st_output, AVPacket *av_packet);
 void video_capture_destroy_ffmpeg(struct scran_output *st_output);
 
 bool image_capture_start(struct scran_output *st_output, bool exit_after_capture);
 bool image_capture_start_fullscreen(struct scran_output *st_output, bool exit_after_capture);
-void image_capture_request_frame(
-    struct capture_frame_context *frame_ctx,
-    struct ext_image_copy_capture_session_v1 *session,
-    struct wl_buffer *buffer,
-    int32_t buffer_width_px,
-    int32_t buffer_height_px,
-    enum scran_capture_frame_consumers consumer
-);
+void capture_request_frame(struct capture_session *session, uint8_t consumer, const BLRectI *buffer_damage);
 
 
 // HACK
@@ -85,6 +77,22 @@ capture_force_next_frame(
     wl_surface_damage_buffer(st_output->selection_surface.surface.wl_surface, 0, 0, 1, 1);
     wl_surface_commit(st_output->selection_surface.surface.wl_surface);
 }
+
+static inline void
+capture_request_frame_forced(
+    struct capture_session *session,
+    uint8_t consumer,
+    const BLRectI *damage
+) {
+    capture_request_frame(session, consumer, damage);
+
+    // Some compositors (like Hyprland on rapid consecutive freezeframe refreshes)
+    // may wait indefinitely for the next capture frame, if no damage is detected.
+    //
+    // Mainly needed for freezeframe/hide_selection_surface_then() captures.
+    capture_force_next_frame(session->frame_ctx.output);
+}
+
 
 static inline void
 capture_grow_tracked_damage(

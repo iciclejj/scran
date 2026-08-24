@@ -150,20 +150,6 @@ capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_bo
     capture->selection_ctx_box_px = selection_ctx_box_px;
 }
 
-struct ext_image_copy_capture_frame_v1 *
-video_capture_create_frame(
-    struct scran_output_capture *capture
-) {
-    struct ext_image_copy_capture_frame_v1 *frame =
-        ext_image_copy_capture_session_v1_create_frame(capture->session.session_ctx.wl_session);
-
-    capture->session.frame_ctx.consumers = SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
-    ext_image_copy_capture_frame_v1_attach_buffer(frame, capture->session.frame_ctx.scran_wl_buffer.wl_buffer);
-    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, &capture->session.frame_ctx);
-
-    return frame;
-}
-
 static inline bool
 destroy_ffmpeg_audio(struct scran_output *st_output)
 {
@@ -461,17 +447,11 @@ video_capture_start(struct scran_output *st_output)
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
-    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture);
-    // Ensure the first frame is fully rendered
-    capture_damage_buffer(
-        &st_output->capture.session.frame_ctx,
-        frame,
-        0, 0,
-        source_dimensions_px.x,
-        source_dimensions_px.y
+    capture_request_frame_forced(
+        &st_output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
+        // Ensure the first frame is fully rendered
+        &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
     );
-    ext_image_copy_capture_frame_v1_capture(frame);
-    st_output->capture.session.frame_ctx.frame = frame;
 
     if (st_output->capture.audio_active) {
         scran_pipewire_connect();
@@ -576,23 +556,15 @@ video_capture_request_stop(struct scran_output *st_output)
     // timestamp. This also lets the frame listener finalize the
     // recording and clean up as soon as possible.
 
-    struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture);
-    // XXX: This damage request is probably normally redundant with
-    // capture_force_next_frame(), but should stay regardless, in case the
-    // initial frame was interrupted before it came back (i.e. making it a
-    // 1-frame video, once this frame is processed), since the first frame
-    // in a session should always have full damage. .
-    capture_damage_buffer(
-        frame_ctx,
-        frame,
-        0, 0,
-        source_dimensions_px.x,
-        source_dimensions_px.y
+    capture_request_frame_forced(
+        &st_output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
+        // XXX: This damage request is probably normally redundant with
+        // capture_request_frame_forced(), but should stay regardless, in case
+        // the initial frame was interrupted before it came back (i.e. making
+        // it a 1-frame video, once this frame is processed), since the first
+        // frame in a session should always have full damage.
+        &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
     );
-    ext_image_copy_capture_frame_v1_capture(frame);
-    frame_ctx->frame = frame;
-
-    capture_force_next_frame(st_output);
 }
 
 // Should only be called once the video capture event loop is finished.
@@ -655,36 +627,30 @@ video_capture_finish(struct scran_output *st_output)
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 }
 
-
 void
-image_capture_request_frame(
-    struct capture_frame_context *frame_ctx,
-    struct ext_image_copy_capture_session_v1 *session,
-    struct wl_buffer *buffer,
-    int32_t buffer_width_px,
-    int32_t buffer_height_px,
-    enum scran_capture_frame_consumers consumer
+capture_request_frame(
+    struct capture_session *session,
+    uint8_t consumer,
+    const BLRectI *damage
 ) {
-    assert(frame_ctx->output != NULL);
-    frame_ctx->consumers = consumer;
+    struct capture_frame_context *frame_ctx = &session->frame_ctx;
 
     struct ext_image_copy_capture_frame_v1 *frame =
-        ext_image_copy_capture_session_v1_create_frame(session);
+        ext_image_copy_capture_session_v1_create_frame(session->session_ctx.wl_session);
 
-    ext_image_copy_capture_frame_v1_attach_buffer(frame, buffer);
-    ext_image_copy_capture_frame_v1_damage_buffer(frame, 0, 0, buffer_width_px, buffer_height_px);
+    ext_image_copy_capture_frame_v1_attach_buffer(frame, frame_ctx->scran_wl_buffer.wl_buffer);
     ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, frame_ctx);
+
+    // TODO: inline to remove branch
+    if (damage != NULL) {
+        capture_damage_buffer(frame_ctx, frame, damage->x, damage->y, damage->w, damage->h);
+    }
+
+    frame_ctx->frame     = frame;
+    frame_ctx->consumers = consumer;
+
     ext_image_copy_capture_frame_v1_capture(frame);
-    frame_ctx->frame = frame;
-
-    // Force some output damage, since some compositors (like Hyprland on rapid
-    // consecutive freezeframe refreshes) may wait indefinitely for the next
-    // capture frame if no damage is detected.
-    //
-    // Mainly needed for freezeframe/hide_selection_surface_then() captures.
-    capture_force_next_frame(frame_ctx->output);
 }
-
 
 static void
 print_slurp_string(BLRectI rect)
@@ -734,23 +700,18 @@ print_slurp_string_fullscreen(struct scran_output *st_output)
 bool
 image_capture_start(struct scran_output *st_output, bool exit_after_capture)
 {
-    struct scran_output_capture *capture = &st_output->capture;
-    struct capture_frame_context *frame_ctx = &capture->session.frame_ctx;
-    const BLPointI source_dimensions_px = st_output->capture.session.session_ctx.source_dimensions_px;
+    struct capture_session *session              = &st_output->capture.session;
+    const BLPointI          source_dimensions_px = session->session_ctx.source_dimensions_px;
 
     // See TODO at call site
-    assert(!capture->capturing_video);
+    assert(!st_output->capture.capturing_video);
 
     if (g_state.options.produce_slurp) {
         print_slurp_string_selection(st_output);
     } else {
-        image_capture_request_frame(
-            frame_ctx,
-            capture->session.session_ctx.wl_session,
-            frame_ctx->scran_wl_buffer.wl_buffer,
-            source_dimensions_px.x,
-            source_dimensions_px.y,
-            SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE
+        capture_request_frame_forced(
+            session, SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE,
+            &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
         );
         atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
     }

@@ -514,9 +514,7 @@ handle_image_copy_capture_frame_ready(
                 end_video_capture(output);
             } else {
                 // TODO: avio_flush ?
-                struct ext_image_copy_capture_frame_v1 *next_frame = video_capture_create_frame(&output->capture);
-                ext_image_copy_capture_frame_v1_capture(next_frame);
-                output->capture.session.frame_ctx.frame = next_frame;
+                capture_request_frame(&output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO, NULL);
             }
         }
     }

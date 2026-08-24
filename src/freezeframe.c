@@ -26,21 +26,17 @@ freezeframe_capture_start_assume_callback_set(struct scran_output *st_output)
 {
     assert(st_output->freezeframe.callback != NULL);
 
-    struct capture_frame_context *frame_ctx    = &st_output->freezeframe.session.frame_ctx;
-    struct scran_wl_buffer       *frame_buffer = &frame_ctx->scran_wl_buffer;
+    struct capture_session *session              = &st_output->freezeframe.session;
+    const  BLPointI         source_dimensions_px = session->session_ctx.source_dimensions_px;
 
-    if (frame_buffer->busy) { // XXX: Not thread-safe.
-        frame_buffer->release_callback = freezeframe_capture_start_after_buffer_release;
+    if (session->frame_ctx.scran_wl_buffer.busy) { // XXX: Not thread-safe.
+        session->frame_ctx.scran_wl_buffer.release_callback = freezeframe_capture_start_after_buffer_release;
         return;
     }
 
-    image_capture_request_frame(
-        frame_ctx,
-        st_output->freezeframe.session.session_ctx.wl_session,
-        frame_buffer->wl_buffer,
-        st_output->freezeframe.session.session_ctx.source_dimensions_px.x,
-        st_output->freezeframe.session.session_ctx.source_dimensions_px.y,
-        SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME
+    capture_request_frame_forced(
+        session, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME,
+        &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
     );
 }
 
