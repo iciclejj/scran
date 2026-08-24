@@ -113,26 +113,35 @@ continue_after_showing_freezeframe(
         freezeframe->unhide_after_capture = false;
     }
 
-    freezeframe_callback callback = freezeframe->callback;
+    scran_output_callback callback = freezeframe->callback;
     assert(callback != NULL);
     freezeframe->callback = NULL;
     callback(output);
 }
 
 
+static void display_freezeframe(struct scran_output *output);
+
 static void
-display_freezeframe(
-    struct scran_output *output
-) {
+display_freezeframe_after_buffer_release(struct scran_wl_buffer *buffer)
+{
+    struct scran_output *output = &g_state.outputs[get_containing_output_array_index(buffer)];
+    display_freezeframe(output);
+}
+
+static void
+display_freezeframe(struct scran_output *output)
+{
     struct scran_output_freezeframe *freezeframe = &output->freezeframe;
 
-    struct scran_freezeframe_buffer *capture_buffer = &freezeframe->capture_buffer;
-    struct scran_freezeframe_buffer *surface_buffer = &freezeframe->surface_buffer;
+    struct capture_frame_context    *frame_ctx      = &freezeframe->session.frame_ctx;
+    struct scran_wl_buffer          *capture_buffer = &frame_ctx->scran_wl_buffer;
+    struct scran_wl_buffer          *surface_buffer = &freezeframe->surface_buffer;
     const struct capture_session_context *session = &freezeframe->session.session_ctx;
 
     assert(capture_buffer->busy == false); // We should not have started capture if busy
 
-    struct scran_freezeframe_buffer *final_buffer;
+    struct scran_wl_buffer *final_buffer;
 
     enum wl_output_transform       buffer_transform = -1;
     const int32_t                  source_width_px  = session->source_dimensions_px.x;
@@ -151,7 +160,7 @@ display_freezeframe(
         enum wl_output_transform scranrot_transform = source_is_flipped ? source_transform - WL_OUTPUT_TRANSFORM_FLIPPED : source_transform;
 
         if (surface_buffer->busy) {
-            surface_buffer->release_callback = display_freezeframe;
+            surface_buffer->release_callback = display_freezeframe_after_buffer_release;
             return;
         }
 
@@ -161,8 +170,8 @@ display_freezeframe(
         size_t dst_stride = 0;
         // See comments referencing #14441 for why we scranrot instead of just ::set_buffer_transform().
         if (scranrot_transform_framebuffer(
-                capture_buffer->scran_wl_buffer.data, source_width_px, source_height_px, source_width_px * session->pixel_stride,
-                surface_buffer->scran_wl_buffer.data,
+                capture_buffer->data, source_width_px, source_height_px, source_width_px * session->pixel_stride,
+                surface_buffer->data,
                 RGBA32_SHUFFLE_NO_CHANGE, (enum scranrot_transform)scranrot_transform,
                 &dst_stride)
         ) {
@@ -177,11 +186,11 @@ display_freezeframe(
             buffer_transform = source_transform;
         }
     }
-    const int final_width_px  = (final_buffer == capture_buffer) ? source_width_px  : freezeframe->subsurface.width_px_buffer;
-    const int final_height_px = (final_buffer == capture_buffer) ? source_height_px : freezeframe->subsurface.height_px_buffer;
+    const int final_width_px  = final_buffer == capture_buffer ? source_width_px  : freezeframe->subsurface.width_px_buffer;
+    const int final_height_px = final_buffer == capture_buffer ? source_height_px : freezeframe->subsurface.height_px_buffer;
 
     final_buffer->busy = true;
-    wl_surface_attach(freezeframe->subsurface.wl_surface, final_buffer->scran_wl_buffer.wl_buffer, 0, 0);
+    wl_surface_attach(freezeframe->subsurface.wl_surface, final_buffer->wl_buffer, 0, 0);
     wl_surface_set_buffer_transform(freezeframe->subsurface.wl_surface, buffer_transform);
     wl_surface_damage_buffer(freezeframe->subsurface.wl_surface, 0, 0, final_width_px, final_height_px);
     wl_surface_commit(freezeframe->subsurface.wl_surface);

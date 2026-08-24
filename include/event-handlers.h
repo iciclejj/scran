@@ -14,9 +14,7 @@
 
 extern struct wl_pointer_listener                        pointer_listener;
 extern struct zwlr_layer_surface_v1_listener             layer_surface_listener__selection;
-extern struct wl_buffer_listener                         selectionSurface_buffer_listener;
-extern struct wl_buffer_listener                         capture_buffer_listener;
-extern struct wl_buffer_listener                         freezeframe_buffer_listener;
+extern struct wl_buffer_listener                         scran_wl_buffer_listener;
 extern struct wl_callback_listener                       selection_surface_frame_callback_listener;
 extern struct wl_output_listener                         output_listener;
 extern struct ext_image_copy_capture_session_v1_listener image_copy_capture_session_listener;

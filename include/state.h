@@ -81,9 +81,14 @@ struct scran_globals {
     struct hyprland_surface_manager_v1 *hypr_surface_manager;
 };
 
+struct scran_wl_buffer;
+typedef void (*scran_wl_buffer_release_callback)(struct scran_wl_buffer *);
+
 struct scran_wl_buffer {
     struct wl_buffer *wl_buffer;
     void *data;
+    scran_wl_buffer_release_callback release_callback;
+    bool busy;
 };
 
 struct scran_cursor_buffer {
@@ -159,7 +164,6 @@ struct scran_output_selectionSurface_buffer {
     struct scran_ui_textline_surface_state ui_keymap_state_currently_drawn;
     struct scran_ui_textline_surface_state ui_statusline_state_currently_drawn;
 
-    bool busy;
     bool force_redraw;
     uint8_t redrawn_textline_mask;
 };
@@ -192,13 +196,7 @@ struct scran_output_selectionSurface {
 };
 
 struct scran_output;
-typedef void (*freezeframe_callback)(struct scran_output *) ;
-
-struct scran_freezeframe_buffer {
-    struct scran_wl_buffer scran_wl_buffer;
-    freezeframe_callback release_callback;
-    bool busy;
-};
+typedef void (*scran_output_callback)(struct scran_output *);
 
 enum scran_capture_frame_consumers {
     SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE       = 1 << 0,
@@ -241,16 +239,11 @@ struct scran_output_freezeframe {
 
     bool unhide_after_capture;
     bool showing;
-    freezeframe_callback callback;
+    scran_output_callback callback;
 
-    // We have multiple buffers because we use a separate buffer for making the
-    // parent *selection* surface transparent. Calling e.g. wl_surface_attach
-    // with a NULL buffer would unmap the entire layer surface, and would need
-    // to wait for new configure events. Behavior is also not consistent across
-    // compositors. Using wp_single_pixel_buffer also has damage-related bugs on
-    // some compositors, at least on Sway.
-    struct scran_freezeframe_buffer capture_buffer;
-    struct scran_freezeframe_buffer surface_buffer;
+    // Used when the captured frame needs to be transformed in memory before
+    // being attached to the freezeframe surface.
+    struct scran_wl_buffer surface_buffer;
 };
 
 struct scran_seat_pointerContext {

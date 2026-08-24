@@ -339,9 +339,7 @@ init_wl_shm_buffer(
     int32_t width_px,
     int32_t height_px,
     int32_t stride_bytes,
-    uint32_t shm_format,
-    struct wl_buffer_listener *listener,
-    void *listener_userdata
+    uint32_t shm_format
 ) {
     assert(buffer->data != NULL);
     assert(shm_arena->addr != NULL);
@@ -353,11 +351,7 @@ init_wl_shm_buffer(
         width_px, height_px, stride_bytes, shm_format
     );
 
-    if (listener != NULL) {
-        wl_buffer_add_listener(
-            buffer->wl_buffer, listener, listener_userdata
-        );
-    }
+    wl_buffer_add_listener(buffer->wl_buffer, &scran_wl_buffer_listener, buffer);
 }
 
 // TODO:
@@ -422,12 +416,12 @@ init_meminit(
             st_output->freezeframe.session.session_ctx.pixel_stride
         );
         scran_arena_add_block(
-            shm_arena,
-            freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.capture_buffer.scran_wl_buffer.data
+            shm_arena, freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES,
+            &st_output->freezeframe.session.frame_ctx.scran_wl_buffer.data
         );
         scran_arena_add_block(
             shm_arena,
-            freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.scran_wl_buffer.data
+            freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.data
         );
 
         const size_t capture_buf_size = get_capture_buf_size(&st_output->capture.session.session_ctx);
@@ -502,9 +496,7 @@ init_meminit(
                 selection_surface->surface.width_px_buffer,
                 selection_surface->surface.height_px_buffer,
                 selection_surface->surface.width_px_buffer * SURFACE_PIXEL_STRIDE,
-                SURFACE_SHM_FORMAT,
-                &selectionSurface_buffer_listener,
-                buffer
+                SURFACE_SHM_FORMAT
             );
         }
 
@@ -517,9 +509,7 @@ init_meminit(
                 SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
                 SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
                 SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX * SURFACE_PIXEL_STRIDE,
-                SURFACE_SHM_FORMAT,
-                NULL,
-                NULL
+                SURFACE_SHM_FORMAT
             );
         }
 
@@ -527,31 +517,27 @@ init_meminit(
             struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
             const struct capture_session_context *session = &freezeframe->session.session_ctx;
 
-            struct scran_freezeframe_buffer *capture_buffer = &freezeframe->capture_buffer;
+            struct scran_wl_buffer *capture_buffer = &freezeframe->session.frame_ctx.scran_wl_buffer;
             init_wl_shm_buffer(
                 shm_arena,
                 global_pool_wl,
-                &capture_buffer->scran_wl_buffer,
+                capture_buffer,
                 session->source_dimensions_px.x,
                 session->source_dimensions_px.y,
                 session->source_dimensions_px.x * session->pixel_stride,
-                session->shm_format,
-                &freezeframe_buffer_listener,
-                capture_buffer
+                session->shm_format
             );
 
             assert(session->pixel_stride == SURFACE_PIXEL_STRIDE);
-            struct scran_freezeframe_buffer *surface_buffer = &freezeframe->surface_buffer;
+            struct scran_wl_buffer *surface_buffer = &freezeframe->surface_buffer;
             init_wl_shm_buffer(
                 shm_arena,
                 global_pool_wl,
-                &surface_buffer->scran_wl_buffer,
+                surface_buffer,
                 freezeframe->subsurface.width_px_buffer,
                 freezeframe->subsurface.height_px_buffer,
                 freezeframe->subsurface.width_px_buffer * session->pixel_stride,
-                session->shm_format,
-                &freezeframe_buffer_listener,
-                surface_buffer
+                session->shm_format
             );
         }
 
@@ -564,9 +550,7 @@ init_meminit(
             source_dimensions_px.x,
             source_dimensions_px.y,
             get_capture_stride(st_output),
-            capture->session.session_ctx.shm_format,
-            &capture_buffer_listener,
-            &capture->session.frame_ctx.scran_wl_buffer
+            capture->session.session_ctx.shm_format
         );
     }
     // Not per-output:
@@ -575,10 +559,7 @@ init_meminit(
         init_wl_shm_buffer(
             shm_arena,
             global_pool_wl,
-            transparent_buffer, 1, 1, SURFACE_PIXEL_STRIDE, SURFACE_SHM_FORMAT,
-            // Don't need a listener for this, since it's effectively a const buffer.
-            //   TODO: Make the data pointer const?
-            NULL, NULL
+            transparent_buffer, 1, 1, SURFACE_PIXEL_STRIDE, SURFACE_SHM_FORMAT
         );
     }
 
@@ -606,8 +587,8 @@ init_meminit__destroy(
         }
 
         wl_buffer_destroy(st_output->capture.session.frame_ctx.scran_wl_buffer.wl_buffer);
-        wl_buffer_destroy(st_output->freezeframe.capture_buffer.scran_wl_buffer.wl_buffer);
-        wl_buffer_destroy(st_output->freezeframe.surface_buffer.scran_wl_buffer.wl_buffer);
+        wl_buffer_destroy(st_output->freezeframe.session.frame_ctx.scran_wl_buffer.wl_buffer);
+        wl_buffer_destroy(st_output->freezeframe.surface_buffer.wl_buffer);
     }
     wl_buffer_destroy(g_state.transparent_single_pixel_buffer.wl_buffer);
 

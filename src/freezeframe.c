@@ -13,22 +13,31 @@
 #include "print.h"
 
 
+static void
+freezeframe_capture_start_after_buffer_release(struct scran_wl_buffer *buffer)
+{
+    struct scran_output *output = &g_state.outputs[get_containing_output_array_index(buffer)];
+    freezeframe_capture_start_assume_callback_set(output);
+}
+
+
 void
 freezeframe_capture_start_assume_callback_set(struct scran_output *st_output)
 {
     assert(st_output->freezeframe.callback != NULL);
 
-    struct scran_freezeframe_buffer *capture_buffer = &st_output->freezeframe.capture_buffer;
+    struct capture_frame_context *frame_ctx    = &st_output->freezeframe.session.frame_ctx;
+    struct scran_wl_buffer       *frame_buffer = &frame_ctx->scran_wl_buffer;
 
-    if (capture_buffer->busy) { // XXX: Not thread-safe.
-        capture_buffer->release_callback = freezeframe_capture_start_assume_callback_set;
+    if (frame_buffer->busy) { // XXX: Not thread-safe.
+        frame_buffer->release_callback = freezeframe_capture_start_after_buffer_release;
         return;
     }
 
     image_capture_request_frame(
-        &st_output->freezeframe.session.frame_ctx,
+        frame_ctx,
         st_output->freezeframe.session.session_ctx.wl_session,
-        st_output->freezeframe.capture_buffer.scran_wl_buffer.wl_buffer,
+        frame_buffer->wl_buffer,
         st_output->freezeframe.session.session_ctx.source_dimensions_px.x,
         st_output->freezeframe.session.session_ctx.source_dimensions_px.y,
         SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME
@@ -39,7 +48,7 @@ freezeframe_capture_start_assume_callback_set(struct scran_output *st_output)
 void
 freezeframe_capture_start(
     struct scran_output *st_output,
-    freezeframe_callback callback
+    scran_output_callback callback
 ) {
     assert(callback != NULL);
     assert(st_output->freezeframe.callback == NULL);
@@ -93,7 +102,7 @@ freezeframe_hide_surface(struct scran_output *st_output)
 void
 freezeframe_capture_refresh(
     struct scran_output *st_output,
-    freezeframe_callback callback
+    scran_output_callback callback
 ) {
     struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
 

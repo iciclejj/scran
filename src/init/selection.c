@@ -27,7 +27,7 @@ init_premem__selection(
         // We initialize the buffers as busy so that e.g. scale handlers won't
         // do anything funny before we're done with all initialization, e.g.
         // freezeframe's init pipeline (which gatekeeps selection surface init).
-        buffer->busy = true;
+        buffer->scran_wl_buffer.busy = true;
     }
 
     // Must add role to surface and ack its configure event before adding a buffer.
@@ -194,4 +194,3 @@ init_postmem__selection__destroy(struct scran_output *st_output)
 
     destroy_scran_ui(&selection_surface->ui_ctx);
 }
-

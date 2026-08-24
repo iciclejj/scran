@@ -566,8 +566,8 @@ init_selection_surface_content(
         struct scran_output_selectionSurface_buffer *st_buffer = &selection_surface->double_buffer[i];
         // Initialized as busy; reset them now.
         //   See init_premem__selection() for more info
-        assert(st_buffer->busy == true);
-        st_buffer->busy = false;
+        assert(st_buffer->scran_wl_buffer.busy == true);
+        st_buffer->scran_wl_buffer.busy = false;
         draw_selection_and_damage_buffer(
             selection_surface,
             st_buffer,
@@ -577,7 +577,7 @@ init_selection_surface_content(
     }
 
     struct scran_output_selectionSurface_buffer *initial_buffer = &selection_surface->double_buffer[0];
-    initial_buffer->busy = true;
+    initial_buffer->scran_wl_buffer.busy = true;
     wl_surface_attach(
         selection_surface->surface.wl_surface, initial_buffer->scran_wl_buffer.wl_buffer, 0, 0
     );

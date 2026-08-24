@@ -18,12 +18,12 @@ static inline struct scran_output_selectionSurface_buffer *
 get_free_double_buffer(struct scran_output_selectionSurface *selection_surface)
 {
     struct scran_output_selectionSurface_buffer *buffer =
-        selection_surface->double_buffer[0].busy
+        selection_surface->double_buffer[0].scran_wl_buffer.busy
         ? &selection_surface->double_buffer[1]
         : &selection_surface->double_buffer[0]
     ;
 
-    if (buffer->busy) {
+    if (buffer->scran_wl_buffer.busy) {
         return NULL;
     }
 
@@ -73,7 +73,7 @@ selection_surface_frame_callback_handler(
     //     goto done;
     // }
 
-    st_buffer->busy = true;
+    st_buffer->scran_wl_buffer.busy = true;
 
     // XXX HACK: Temporary (hopefully) workaround for regression introduced by
     // trying to fix cosmic and hyprland sync by assigning on

@@ -189,7 +189,7 @@ unhide_selection_surface(struct scran_output *st_output) {
         0, 0
     );
     update_selection_surface_viewport(st_output);
-    selection_buffer->busy = true;
+    selection_buffer->scran_wl_buffer.busy = true;
     wl_surface_damage_buffer(
         selection_surface->surface.wl_surface,
         0, 0,
