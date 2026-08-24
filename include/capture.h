@@ -53,6 +53,7 @@ bool capture_video_drain_writer(struct scran_output *st_output, AVCodecContext *
 void capture_video_write_video_packet(struct scran_output *output, AVPacket *pkt);
 void capture_video_write_audio_packet(struct scran_output *st_output, AVPacket *av_packet);
 bool capture_video_write_video_frame(struct scran_output *output, struct capture_frame_context *frame_ctx, const struct capture_session_context *session, const struct capture_buffer_area_context *buffer_area_ctx);
+void capture_image_write_image(struct scran_output *output, const struct capture_session_context *session, const struct capture_frame_context *frame_ctx, const struct capture_buffer_area_context *buffer_area_ctx);
 
 bool capture_video_start(struct scran_output *st_output);
 bool capture_video_start_fullscreen(struct scran_output *st_output);
@@ -62,6 +63,7 @@ void capture_video_request_stop(struct scran_output *st_output);
 void capture_video_finish(struct scran_output *st_output);
 
 bool capture_image_start(struct scran_output *st_output, bool exit_after_capture);
+ void capture_image_finish(struct scran_output *output);
 bool capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_capture);
 
 

@@ -363,6 +363,17 @@ capture_image_start(struct scran_output *st_output, bool exit_after_capture)
     return true;
 }
 
+void
+capture_image_finish(struct scran_output *output)
+{
+    if (output->capture.fullscreen_capture) {
+        capture_fullscreen_end(output);
+    }
+
+    atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
+}
+
+
 bool
 capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_capture)
 {

@@ -50,6 +50,7 @@ endif
 scran_sources = files(
   'src/main.c',
   'src/capture/capture.c',
+  'src/capture/write/image.c',
   'src/capture/write/video.c',
   'src/clipboard.c',
   'src/cursor.c',
