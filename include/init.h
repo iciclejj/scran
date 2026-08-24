@@ -66,7 +66,7 @@ get_surface_buf_size_padded(struct scran_output_surface *st_surface) {
 }
 
 static inline size_t
-get_capture_buf_size(const struct capture_session *session) {
+get_capture_buf_size(const struct capture_session_context *session) {
     return get_framebuffer_size(
         session->source_dimensions_px.x,
         session->source_dimensions_px.y,
@@ -76,7 +76,7 @@ get_capture_buf_size(const struct capture_session *session) {
 
 static inline size_t
 get_capture_stride(struct scran_output *st_output) {
-    const struct capture_session *session = &st_output->capture.session;
+    const struct capture_session_context *session = &st_output->capture.session.session_ctx;
     return session->pixel_stride * session->source_dimensions_px.x;
 }
 

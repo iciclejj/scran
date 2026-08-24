@@ -26,11 +26,11 @@ freezeframe_capture_start_assume_callback_set(struct scran_output *st_output)
     }
 
     image_capture_request_frame(
-        &st_output->freezeframe.frame_ctx,
-        st_output->freezeframe.session.wl_session,
+        &st_output->freezeframe.session.frame_ctx,
+        st_output->freezeframe.session.session_ctx.wl_session,
         st_output->freezeframe.capture_buffer.scran_wl_buffer.wl_buffer,
-        st_output->freezeframe.session.source_dimensions_px.x,
-        st_output->freezeframe.session.source_dimensions_px.y,
+        st_output->freezeframe.session.session_ctx.source_dimensions_px.x,
+        st_output->freezeframe.session.session_ctx.source_dimensions_px.y,
         SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME
     );
 }

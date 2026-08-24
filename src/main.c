@@ -381,7 +381,7 @@ init_meminit(
     //
     FOR_EACH_OUTPUT(i, st_output) {
         // XXX: Handle this gracefully (and maybe in a nicer location?)
-        if (st_output->capture.session.shm_format == SCRAN_SHM_FORMAT_UNSET) {
+        if (st_output->capture.session.session_ctx.shm_format == SCRAN_SHM_FORMAT_UNSET) {
             DEBUG("Failed to select shm_format for capture buffer.\n");
             return false;
         }
@@ -409,7 +409,7 @@ init_meminit(
             );
         }
 
-        if (st_output->freezeframe.session.shm_format == SCRAN_SHM_FORMAT_UNSET) {
+        if (st_output->freezeframe.session.session_ctx.shm_format == SCRAN_SHM_FORMAT_UNSET) {
             DEBUG("Failed to select shm_format for freezeframe capture buffer.\n");
             return false;
         }
@@ -417,9 +417,9 @@ init_meminit(
         // wl_surface::set_buffer_transform not working as expected in
         // Hyprland (#14441).
         const size_t freezeframe_buf_size = get_framebuffer_size(
-            st_output->freezeframe.session.source_dimensions_px.x,
-            st_output->freezeframe.session.source_dimensions_px.y,
-            st_output->freezeframe.session.pixel_stride
+            st_output->freezeframe.session.session_ctx.source_dimensions_px.x,
+            st_output->freezeframe.session.session_ctx.source_dimensions_px.y,
+            st_output->freezeframe.session.session_ctx.pixel_stride
         );
         scran_arena_add_block(
             shm_arena,
@@ -430,10 +430,10 @@ init_meminit(
             freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.scran_wl_buffer.data
         );
 
-        const size_t capture_buf_size = get_capture_buf_size(&st_output->capture.session);
+        const size_t capture_buf_size = get_capture_buf_size(&st_output->capture.session.session_ctx);
         scran_arena_add_block(
             shm_arena,
-            capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.scran_wl_buffer.data
+            capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.session.frame_ctx.scran_wl_buffer.data
         );
         scran_arena_add_block(
             private_arena,
@@ -525,7 +525,7 @@ init_meminit(
 
         {
             struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
-            const struct capture_session    *session     = &freezeframe->session;
+            const struct capture_session_context *session = &freezeframe->session.session_ctx;
 
             struct scran_freezeframe_buffer *capture_buffer = &freezeframe->capture_buffer;
             init_wl_shm_buffer(
@@ -556,17 +556,17 @@ init_meminit(
         }
 
         struct scran_output_capture *capture = &st_output->capture;
-        const BLPointI source_dimensions_px = capture->session.source_dimensions_px;
+        const BLPointI source_dimensions_px = capture->session.session_ctx.source_dimensions_px;
         init_wl_shm_buffer(
             shm_arena,
             global_pool_wl,
-            &capture->frame_ctx.scran_wl_buffer,
+            &capture->session.frame_ctx.scran_wl_buffer,
             source_dimensions_px.x,
             source_dimensions_px.y,
             get_capture_stride(st_output),
-            capture->session.shm_format,
+            capture->session.session_ctx.shm_format,
             &capture_buffer_listener,
-            &capture->frame_ctx.scran_wl_buffer
+            &capture->session.frame_ctx.scran_wl_buffer
         );
     }
     // Not per-output:
@@ -605,7 +605,7 @@ init_meminit__destroy(
             wl_buffer_destroy(st_output->cursor.buffers[i_buf].scran_wl_buffer.wl_buffer);
         }
 
-        wl_buffer_destroy(st_output->capture.frame_ctx.scran_wl_buffer.wl_buffer);
+        wl_buffer_destroy(st_output->capture.session.frame_ctx.scran_wl_buffer.wl_buffer);
         wl_buffer_destroy(st_output->freezeframe.capture_buffer.scran_wl_buffer.wl_buffer);
         wl_buffer_destroy(st_output->freezeframe.surface_buffer.scran_wl_buffer.wl_buffer);
     }

@@ -117,7 +117,7 @@ capture_damage_buffer(
 
 static inline uint8_t *
 capture_get_area_start_address(
-    const struct capture_session *session,
+    const struct capture_session_context *session,
     const struct capture_frame_context *frame_ctx,
     const BLBoxI *capture_buffer_area_px
 ) {
@@ -129,7 +129,7 @@ capture_get_area_start_address(
 static inline BLBoxI
 capture_get_selection_as_capture_buffer_area_px(
     const struct scran_output_capture  *capture,
-    const struct capture_session       *session,
+    const struct capture_session_context *session,
     const struct capture_frame_context *frame_ctx
 ) {
     const BLPointI source_dimensions_px = session->source_dimensions_px;

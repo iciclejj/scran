@@ -222,17 +222,21 @@ struct capture_frame_context {
     uint8_t consumers;
 };
 
-struct capture_session {
+struct capture_session_context {
     struct ext_image_copy_capture_session_v1 *wl_session;
     BLPointI source_dimensions_px;
     uint32_t shm_format;
     uint8_t pixel_stride;
 };
 
+struct capture_session {
+    struct capture_frame_context frame_ctx;
+    struct capture_session_context session_ctx;
+};
+
 struct scran_output_freezeframe {
     struct scran_output_subsurface subsurface;
 
-    struct capture_frame_context frame_ctx;
     struct capture_session session;
 
     bool unhide_after_capture;
@@ -388,7 +392,6 @@ struct ffmpeg_context {
 struct scran_output_capture {
     struct ext_image_capture_source_v1 *source;
 
-    struct capture_frame_context frame_ctx;
     struct capture_session session;
     struct ffmpeg_context ffmpeg_ctx;
 

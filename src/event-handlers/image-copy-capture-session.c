@@ -17,7 +17,7 @@ handle_image_copy_capture_session_buffer_size(
     uint32_t width,
     uint32_t height
 ) {
-    struct capture_session *capture_session = data;
+    struct capture_session_context *capture_session = data;
 
     capture_session->source_dimensions_px.x = width;
     capture_session->source_dimensions_px.y = height;
@@ -30,7 +30,7 @@ handle_image_copy_capture_session_shm_format(
     struct ext_image_copy_capture_session_v1 *session,
     uint32_t shm_format
 ) {
-    struct capture_session *capture_session = data;
+    struct capture_session_context *capture_session = data;
 
     DEBUG("Capture session advertised shm format: %x\n", shm_format);
 
@@ -60,7 +60,7 @@ handle_image_copy_capture_session_stopped(
     void *data,
     struct ext_image_copy_capture_session_v1 *session
 ) {
-    struct capture_session *capture_session = data;
+    struct capture_session_context *capture_session = data;
 
     assert(capture_session->wl_session == session);
     ext_image_copy_capture_session_v1_destroy(session);

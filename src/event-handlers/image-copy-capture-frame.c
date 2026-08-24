@@ -30,7 +30,7 @@ struct capture_buffer_area_context {
 static inline void
 capture_create_buffer_area_context(
     const struct scran_output *output,
-    const struct capture_session *session,
+    const struct capture_session_context *session,
     const struct capture_frame_context *frame_ctx,
     struct capture_buffer_area_context *buffer_area_ctx
 ) {
@@ -128,7 +128,7 @@ display_freezeframe(
 
     struct scran_freezeframe_buffer *capture_buffer = &freezeframe->capture_buffer;
     struct scran_freezeframe_buffer *surface_buffer = &freezeframe->surface_buffer;
-    const struct capture_session    *session        = &freezeframe->session;
+    const struct capture_session_context *session = &freezeframe->session.session_ctx;
 
     assert(capture_buffer->busy == false); // We should not have started capture if busy
 
@@ -137,7 +137,7 @@ display_freezeframe(
     enum wl_output_transform       buffer_transform = -1;
     const int32_t                  source_width_px  = session->source_dimensions_px.x;
     const int32_t                  source_height_px = session->source_dimensions_px.y;
-    const enum wl_output_transform source_transform = freezeframe->frame_ctx.source_transform;
+    const enum wl_output_transform source_transform = freezeframe->session.frame_ctx.source_transform;
 
     // XXX TODO: Rework this once scranrot supports flipped
     // XXX TODO: Refactor this to make it more readable...
@@ -199,7 +199,7 @@ display_freezeframe(
 static void
 do_handle_image_frame(
     struct scran_output *output,
-    const struct capture_session *session,
+    const struct capture_session_context *session,
     const struct capture_frame_context *frame_ctx,
     const struct capture_buffer_area_context *buffer_area_ctx
 ) {
@@ -361,7 +361,7 @@ static inline bool
 do_handle_video_frame(
     struct scran_output *output,
     struct capture_frame_context *frame_ctx,
-    const struct capture_session *session,
+    const struct capture_session_context *session,
     const struct capture_buffer_area_context *buffer_area_ctx
 ) {
     if (!blboxi_intersects(buffer_area_ctx->area_px, frame_ctx->capture_buffer_damage_area_px)) {
@@ -474,7 +474,7 @@ handle_image_copy_capture_frame_ready(
     }
 
     if (image_requested || video_requested) {
-        const struct capture_session *session = &output->capture.session;
+        const struct capture_session_context *session = &output->capture.session.session_ctx;
         struct capture_buffer_area_context buffer_area_ctx;
         capture_create_buffer_area_context(output, session, frame_ctx, &buffer_area_ctx);
 
@@ -507,7 +507,7 @@ handle_image_copy_capture_frame_ready(
                 // TODO: avio_flush ?
                 struct ext_image_copy_capture_frame_v1 *next_frame = video_capture_create_frame(&output->capture);
                 ext_image_copy_capture_frame_v1_capture(next_frame);
-                output->capture.frame_ctx.frame = next_frame;
+                output->capture.session.frame_ctx.frame = next_frame;
             }
         }
     }

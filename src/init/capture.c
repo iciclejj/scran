@@ -21,20 +21,22 @@ capture_session_init(
 ) {
     assert(source);
 
-    session->wl_session = ext_image_copy_capture_manager_v1_create_session(
+    struct capture_session_context *session_ctx = &session->session_ctx;
+
+    session_ctx->wl_session = ext_image_copy_capture_manager_v1_create_session(
         g_state.globals.image_copy_capture_manager,
         source,
         g_state.options.disable_cursor_capture ? 0 : EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS
     );
     // XXX: Maybe there's a nicer way to do this or to properly assert this
     //      initialization in the listener somewhere?
-    session->shm_format   = SCRAN_SHM_FORMAT_UNSET;
-    session->pixel_stride = 0;
+    session_ctx->shm_format   = SCRAN_SHM_FORMAT_UNSET;
+    session_ctx->pixel_stride = 0;
 
     ext_image_copy_capture_session_v1_add_listener(
-        session->wl_session,
+        session_ctx->wl_session,
         &image_copy_capture_session_listener,
-        session
+        session_ctx
     );
 }
 
@@ -51,7 +53,7 @@ init_premem__capture(
         &st_output->capture.session,
         st_output->capture.source
     );
-    st_output->capture.frame_ctx.output = st_output;
+    st_output->capture.session.frame_ctx.output = st_output;
 
     // TODO: Revisit which parts of video and image init to put here vs
     // start_capture/dispatch
@@ -67,8 +69,8 @@ void
 init_premem__capture__destroy(struct scran_output *st_output)
 {
     ext_image_capture_source_v1_destroy(st_output->capture.source);
-    if (st_output->capture.session.wl_session) {
-        ext_image_copy_capture_session_v1_destroy(st_output->capture.session.wl_session);
+    if (st_output->capture.session.session_ctx.wl_session) {
+        ext_image_copy_capture_session_v1_destroy(st_output->capture.session.session_ctx.wl_session);
     }
 
     bl_image_destroy(&st_output->capture.bl_img_captured);

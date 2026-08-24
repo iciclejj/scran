@@ -155,11 +155,11 @@ video_capture_create_frame(
     struct scran_output_capture *capture
 ) {
     struct ext_image_copy_capture_frame_v1 *frame =
-        ext_image_copy_capture_session_v1_create_frame(capture->session.wl_session);
+        ext_image_copy_capture_session_v1_create_frame(capture->session.session_ctx.wl_session);
 
-    capture->frame_ctx.consumers = SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
-    ext_image_copy_capture_frame_v1_attach_buffer(frame, capture->frame_ctx.scran_wl_buffer.wl_buffer);
-    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, &capture->frame_ctx);
+    capture->session.frame_ctx.consumers = SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
+    ext_image_copy_capture_frame_v1_attach_buffer(frame, capture->session.frame_ctx.scran_wl_buffer.wl_buffer);
+    ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, &capture->session.frame_ctx);
 
     return frame;
 }
@@ -424,7 +424,7 @@ video_capture_destroy_ffmpeg(struct scran_output *st_output)
 bool
 video_capture_start(struct scran_output *st_output)
 {
-    const BLPointI source_dimensions_px = st_output->capture.session.source_dimensions_px;
+    const BLPointI source_dimensions_px = st_output->capture.session.session_ctx.source_dimensions_px;
 
     // TODO: Assert instead?
     if (st_output->capture.capturing_video) {
@@ -464,14 +464,14 @@ video_capture_start(struct scran_output *st_output)
     struct ext_image_copy_capture_frame_v1 *frame = video_capture_create_frame(&st_output->capture);
     // Ensure the first frame is fully rendered
     capture_damage_buffer(
-        &st_output->capture.frame_ctx,
+        &st_output->capture.session.frame_ctx,
         frame,
         0, 0,
         source_dimensions_px.x,
         source_dimensions_px.y
     );
     ext_image_copy_capture_frame_v1_capture(frame);
-    st_output->capture.frame_ctx.frame = frame;
+    st_output->capture.session.frame_ctx.frame = frame;
 
     if (st_output->capture.audio_active) {
         scran_pipewire_connect();
@@ -559,8 +559,8 @@ void
 video_capture_request_stop(struct scran_output *st_output)
 {
     struct scran_output_capture *capture = &st_output->capture;
-    struct capture_frame_context *frame_ctx = &capture->frame_ctx;
-    const BLPointI source_dimensions_px = st_output->capture.session.source_dimensions_px;
+    struct capture_frame_context *frame_ctx = &capture->session.frame_ctx;
+    const BLPointI source_dimensions_px = st_output->capture.session.session_ctx.source_dimensions_px;
 
     if (capture->video_end_requested) {
         return;
@@ -735,8 +735,8 @@ bool
 image_capture_start(struct scran_output *st_output, bool exit_after_capture)
 {
     struct scran_output_capture *capture = &st_output->capture;
-    struct capture_frame_context *frame_ctx = &capture->frame_ctx;
-    const BLPointI source_dimensions_px = st_output->capture.session.source_dimensions_px;
+    struct capture_frame_context *frame_ctx = &capture->session.frame_ctx;
+    const BLPointI source_dimensions_px = st_output->capture.session.session_ctx.source_dimensions_px;
 
     // See TODO at call site
     assert(!capture->capturing_video);
@@ -746,7 +746,7 @@ image_capture_start(struct scran_output *st_output, bool exit_after_capture)
     } else {
         image_capture_request_frame(
             frame_ctx,
-            capture->session.wl_session,
+            capture->session.session_ctx.wl_session,
             frame_ctx->scran_wl_buffer.wl_buffer,
             source_dimensions_px.x,
             source_dimensions_px.y,
