@@ -1,7 +1,7 @@
 #include "presentation-time.h"
 
 #include "capture.h"
-#include "print.h"
+#include "state.h"
 
 
 static void handle_presentation_feedback_sync_output__selection_transparent_for_fullscreen_capture(void *data, struct wp_presentation_feedback *wp_presentation_feedback, struct wl_output *wl_output) { };
@@ -21,7 +21,7 @@ start_video_capture_or_unwind_fullscreen(struct scran_output *st_output)
     capture->fullscreen_video_pending = false;
 
     if (g_state.exit_requested || !capture_video_start(st_output)) {
-        capture_fullscreen_end(st_output);
+        capture_fullscreen_end(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO);
     }
 }
 

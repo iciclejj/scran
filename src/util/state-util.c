@@ -22,7 +22,7 @@ scran_request_exit()
         if (capture->fullscreen_video_pending) {
             capture->fullscreen_video_pending = false;
             capture->fullscreen_video_pending_audio_disabled = false;
-            capture_fullscreen_end(st_output);
+            capture_fullscreen_end(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO);
         }
 
         if (capture->capturing_video) {

@@ -254,23 +254,26 @@ esc_exit_scran:
 z_done:
         break;
     case XKB_KEY_Return:
-        // TODO: Create two capture sessions so that we can take screenshots while
-        // doing video capture? Probably just implement it as part of the video
-        // capture pipeline, without two capture sessions.
-        if (st_output->capture.capturing_video) {
-            eprintf("Screenshot during video capture not implemented yet, try again later :(\n");
-        } else {
-            bool exit_after_capture = !xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
-
-            if (fullscreen_capture) {
-                capture_image_start_fullscreen(st_output, exit_after_capture);
-            } else {
-                capture_image_start(st_output, exit_after_capture);
-                scran_ui_textline_item_set_pressed(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
-                request_selection_surface_frame_callback(st_output);
-            }
+        if (st_output->capture.capturing_video && g_state.options.output_to_stdout) {
+            eprintf("Not allowing image capture during video when outputting to stdout.\n");
+            goto return_done;
         }
 
+        bool exit_after_capture =
+            st_output->capture.capturing_video
+            ? false
+            : !xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
+
+        if (fullscreen_capture) {
+            capture_image_start_fullscreen(st_output, exit_after_capture);
+        } else {
+            capture_image_start(st_output, exit_after_capture);
+            scran_ui_textline_item_set_pressed(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
+            request_selection_surface_frame_callback(st_output);
+        }
+
+
+return_done:
         break;
     case XKB_KEY_space:
         bool video_button_got_jammed = false;

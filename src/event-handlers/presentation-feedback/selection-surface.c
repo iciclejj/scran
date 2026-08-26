@@ -37,7 +37,7 @@ handle_presentation_feedback_presented__selection(
 
     // XXX: Fullscreen capture manages capture area itself.
     // Would be nice to make this responsibility bit less fragmented...
-    if (!st_output->capture.fullscreen_capture) {
+    if (!st_output->capture.fullscreen_consumers) {
         // Must be synchronized at actual presentation time, and using the box that
         // was for certain used by the just-presented buffer. This should ensure
         // consistency across compositors, regardless of how they handle their

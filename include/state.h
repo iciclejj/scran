@@ -409,6 +409,8 @@ struct scran_output_capture {
 
     int64_t video_presentation_time_nsec_start;
 
+    uint8_t fullscreen_consumers;
+
     uint8_t pre_capture_selection_theme;
     bool exit_after_capture;
 
@@ -416,7 +418,6 @@ struct scran_output_capture {
     bool video_end_requested;
     bool audio_active;
     bool audio_disable_modifier_active;
-    bool fullscreen_capture;
     bool fullscreen_video_pending;
     bool fullscreen_video_pending_audio_disabled;
 };

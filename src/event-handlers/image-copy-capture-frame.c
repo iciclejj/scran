@@ -87,8 +87,8 @@ handle_image_copy_capture_frame_ready(
     const bool image_requested       = frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE;
     const bool video_requested       = frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
     const bool freezeframe_requested = frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME;
-
     assert(image_requested || video_requested || freezeframe_requested);
+    frame_ctx->consumers = 0;
 
     if (freezeframe_requested) { // TODO: unlikely()
         freezeframe_capture_handle_frame_ready(output);
@@ -100,10 +100,6 @@ handle_image_copy_capture_frame_ready(
         capture_create_buffer_area_context(output, session, frame_ctx, &buffer_area_ctx);
 
         if (image_requested) {
-            // XXX: Capturing image during video capture not implemented yet...
-            assert(!output->capture.capturing_video);
-            assert(g_state.n_captures_in_progress >= 1);
-
             capture_image_write_image(output, session, frame_ctx, &buffer_area_ctx);
             capture_image_finish(output);
         }
@@ -159,6 +155,8 @@ handle_image_copy_capture_frame_failed(
         // TODO: Retry a few times?
         capture_video_finish(output);
     }
+
+    frame_ctx->consumers = 0;
 }
 
 

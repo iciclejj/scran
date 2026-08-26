@@ -38,9 +38,9 @@ struct capture_buffer_area_context {
 void capture_session_init(struct capture_session *session, struct ext_image_capture_source_v1 *source);
 
 void capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px);
-void capture_fullscreen_end(struct scran_output *st_output);
+void capture_fullscreen_end(struct scran_output *st_output, uint8_t consumer);
 
-void capture_request_frame(struct capture_session *session, uint8_t consumer, const BLRectI *buffer_damage);
+bool capture_request_frame(struct capture_session *session, uint8_t consumer, const BLRectI *buffer_damage);
 
 typedef void capture_video_write_packet_fn(
     struct scran_output *,

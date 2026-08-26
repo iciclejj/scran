@@ -37,13 +37,18 @@ capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_bo
 }
 
 
-void
+bool
 capture_request_frame(
     struct capture_session *session,
     uint8_t consumer,
     const BLRectI *damage
 ) {
     struct capture_frame_context *frame_ctx = &session->frame_ctx;
+
+    if (frame_ctx->frame) {
+        frame_ctx->consumers |= consumer;
+        return true;
+    }
 
     struct ext_image_copy_capture_frame_v1 *frame =
         ext_image_copy_capture_session_v1_create_frame(session->session_ctx.wl_session);
@@ -57,22 +62,35 @@ capture_request_frame(
     }
 
     frame_ctx->frame     = frame;
-    frame_ctx->consumers = consumer;
+    frame_ctx->consumers |= consumer;
 
     ext_image_copy_capture_frame_v1_capture(frame);
+
+    return true;
 }
 
 
+// TODO: void
 static bool
 capture_fullscreen_start(
     struct scran_output *st_output,
-    struct wp_presentation_feedback_listener *listener
+    struct wp_presentation_feedback_listener *listener,
+    uint8_t consumer
 ) {
-    if (st_output->capture.fullscreen_capture) {
-        DEBUG("Fullscreen capture already in progress\n");
-        return false;
+    uint8_t prev_consumers = st_output->capture.fullscreen_consumers;
+
+    if (prev_consumers & consumer) {
+        return true;
     }
-    st_output->capture.fullscreen_capture = true;
+    st_output->capture.fullscreen_consumers |= consumer;
+
+    if (prev_consumers) {
+        // XXX: Not sure how reliable getting the ::presented event from this is
+        // across compositors, but this will be removed shortly, once we merge
+        // the presentation-feedback listeners.
+        hide_selection_surface_then(st_output, listener, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
+        return true;
+    }
 
     // HACK: Prevent exit while fullscreen capture is starting, despite the actual
     // capture not having started yet. This adds a "fake" capture to the counter.
@@ -94,8 +112,15 @@ capture_fullscreen_start(
 
 void
 capture_fullscreen_end(
-    struct scran_output *st_output
+    struct scran_output *st_output,
+    uint8_t consumer
 ) {
+    st_output->capture.fullscreen_consumers &= ~consumer;
+
+    if (st_output->capture.fullscreen_consumers) {
+        return;
+    }
+
     unset_selection_freeze_size(st_output);
 
     // If !=SELECTION_NONE becomes possible in the future, then just do
@@ -106,8 +131,6 @@ capture_fullscreen_end(
         get_selection_surface_pre_selection_box(st_output)
     );
     st_output->capture.selection_ctx_box_px = (BLBoxI){0};
-
-    st_output->capture.fullscreen_capture = false;
 
     // We don't want to flash a frame of selection/background dim if we're exiting anyways
     if (!st_output->capture.exit_after_capture) {
@@ -146,7 +169,6 @@ capture_video_start(struct scran_output *st_output)
 
     {
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        scran_ui_textline_item_set_disabled(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, true);
         scran_ui_textline_item_set_color(   SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE);
         scran_ui_textline_item_set_locked(  SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
     }
@@ -181,7 +203,8 @@ capture_video_start_fullscreen(struct scran_output *st_output)
 {
     if (!capture_fullscreen_start(
             st_output,
-            &presentation_feedback_listener__selection_transparent_for_fullscreen_video_capture)
+            &presentation_feedback_listener__selection_transparent_for_fullscreen_video_capture,
+            SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO)
     ) {
         return false;
     }
@@ -222,20 +245,23 @@ capture_video_finish(struct scran_output *st_output)
         "video"
     );
 
-    av_write_trailer(ffmpeg_ctx->av_format_ctx);
-    eprintf("Video saved: %s\n", g_state.options.output_path);
+    {
+        // NOTE: Do not use g_state.options.output_path, since it is shared by
+        // image-capture.
+        const char *output_path = g_state.options.output_to_stdout ? NULL : ffmpeg_ctx->av_format_ctx->url;
 
-    const char *output_path = g_state.options.output_to_stdout ? NULL : ffmpeg_ctx->av_format_ctx->url;
-    clipboard_update(&g_state.seat.datacontrol, NULL, NULL, output_path);
-    if (output_path != NULL) {
-        scran_portal_notify_file_saved(output_path);
+        av_write_trailer(ffmpeg_ctx->av_format_ctx);
+        clipboard_update(&g_state.seat.datacontrol, NULL, NULL, output_path);
+
+        if (output_path) {
+            eprintf("Video saved: %s\n", output_path);
+            scran_portal_notify_file_saved(output_path);
+        }
     }
-
     capture_video_destroy_video_writer(st_output);
 
     {
         struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        scran_ui_textline_item_set_disabled(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO, false);
         scran_ui_textline_item_set_color(   SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_DEFAULT);
         scran_ui_textline_item_set_locked(  SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
         scran_ui_statusline_set_timer(&st_output->selection_surface.ui_ctx.ui_statusline, 0);
@@ -246,8 +272,8 @@ capture_video_finish(struct scran_output *st_output)
 
     unset_selection_freeze_size(st_output);
 
-    if (capture->fullscreen_capture) {
-        capture_fullscreen_end(st_output);
+    if (capture->fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO) {
+        capture_fullscreen_end(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO);
     }
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
@@ -342,11 +368,13 @@ capture_image_start(struct scran_output *st_output, bool exit_after_capture)
     struct capture_session *session              = &st_output->capture.session;
     const BLPointI          source_dimensions_px = session->session_ctx.source_dimensions_px;
 
-    // See TODO at call site
-    assert(!st_output->capture.capturing_video);
+    bool new_capture = true;
 
     if (g_state.options.produce_slurp) {
         print_slurp_string_selection(st_output);
+    } else if (session->frame_ctx.consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
+        eprintf("Image capture already in progress...\n");
+        new_capture = false;
     } else {
         capture_request_frame_forced(
             session, SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE,
@@ -360,14 +388,14 @@ capture_image_start(struct scran_output *st_output, bool exit_after_capture)
         scran_request_exit();
     }
 
-    return true;
+    return new_capture;
 }
 
 void
 capture_image_finish(struct scran_output *output)
 {
-    if (output->capture.fullscreen_capture) {
-        capture_fullscreen_end(output);
+    if (output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
+        capture_fullscreen_end(output, SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE);
     }
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
@@ -389,7 +417,8 @@ capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_c
 
     if (capture_fullscreen_start(
             st_output,
-            &presentation_feedback_listener__selection_transparent_for_fullscreen_image_capture)
+            &presentation_feedback_listener__selection_transparent_for_fullscreen_image_capture,
+            SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE)
     ) {
         st_output->capture.exit_after_capture = exit_after_capture;
         return true;
