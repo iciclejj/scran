@@ -155,7 +155,7 @@ esc_exit_scran:
             scran_request_exit();
             return;
         case XKB_KEY_Tab:
-            stop_grabbing_focus();
+            scran_focus_release();
             return;
         default:
             break;
@@ -242,7 +242,7 @@ esc_exit_scran:
         //             See also refactor-TODO in unhide_selection_surface().
         if (pretend_all_hidden) {
             FOR_EACH_OUTPUT(i, st_output) {
-                freezeframe_capture_refresh(st_output, start_grabbing_focus_for_output);
+                freezeframe_capture_refresh(st_output, scran_focus_grab_for_output);
             }
         } else {
             FOR_EACH_OUTPUT(i, st_output) {
@@ -283,7 +283,7 @@ return_done:
         } else {
             if (st_output->selection_ctx.selection_state == SELECTION_INITIALIZING) {
                 // TODO: Guard against capture_and_exit_after_selection_init?
-                set_selection_initialized(st_output);
+                selection_set_initialized(st_output);
             }
 
             bool video_capture_started;

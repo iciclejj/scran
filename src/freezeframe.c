@@ -97,7 +97,7 @@ freezeframe_capture_finish(
     struct scran_output_freezeframe *freezeframe = &output->freezeframe;
 
     if (freezeframe->unhide_after_capture) {
-        release_selection_surface_hide(output, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE);
+        selection_surface_release_hide(output, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE);
         freezeframe->unhide_after_capture = false;
     }
 
@@ -238,7 +238,7 @@ freezeframe_capture_refresh(
     // can be triggered without releasing focus first.
     freezeframe_hide_surface(st_output);
 
-    hide_selection_surface_then(st_output, &presentation_feedback_listener__selection_transparent_for_freezeframe, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE);
+    selection_surface_hide_then(st_output, &presentation_feedback_listener__selection_transparent_for_freezeframe, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE);
     freezeframe->unhide_after_capture = true;
 }
 

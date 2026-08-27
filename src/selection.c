@@ -19,7 +19,7 @@
 
 
 void
-set_selection_surface_theme(
+selection_surface_set_theme(
     struct scran_output *st_output,
     enum surface_theme theme
 ) {
@@ -59,7 +59,7 @@ set_selection_surface_theme(
 
 // TODO: Rename to set_selection_state_complete
 void
-set_selection_initialized(struct scran_output *st_output)
+selection_set_initialized(struct scran_output *st_output)
 {
     assert(st_output->selection_ctx.selection_state == SELECTION_INITIALIZING
            || (g_state.options.have_custom_initial_selection && st_output->selection_ctx.selection_state == SELECTION_NONE));
@@ -83,7 +83,7 @@ set_selection_initialized(struct scran_output *st_output)
 }
 
 bool
-set_selection_freeze_size(struct scran_output *st_output)
+selection_freeze_size(struct scran_output *st_output)
 {
     enum selection_state *selection_state = &st_output->selection_ctx.selection_state;
     switch(*selection_state) {
@@ -115,7 +115,7 @@ set_selection_freeze_size(struct scran_output *st_output)
 }
 
 void
-unset_selection_freeze_size(struct scran_output *st_output)
+selection_unfreeze_size(struct scran_output *st_output)
 {
     enum selection_state *selection_state = &st_output->selection_ctx.selection_state;
 
@@ -129,7 +129,7 @@ unset_selection_freeze_size(struct scran_output *st_output)
 }
 
 static void
-hide_selection_surface(struct scran_output *st_output)
+selection_surface_hide(struct scran_output *st_output)
 {
     struct scran_output_surface *st_surface  = &st_output->selection_surface.surface;
 
@@ -152,7 +152,7 @@ hide_selection_surface(struct scran_output *st_output)
 }
 
 void
-hide_selection_surface_then(
+selection_surface_hide_then(
     struct scran_output *st_output,
     struct wp_presentation_feedback_listener *listener,
     enum scran_selection_surface_disable_reason reason
@@ -171,11 +171,11 @@ hide_selection_surface_then(
     // our surface hiding
     selection_surface->disable_reason_mask |= reason;
 
-    hide_selection_surface(st_output);
+    selection_surface_hide(st_output);
 }
 
 static inline void
-unhide_selection_surface(struct scran_output *st_output) {
+selection_surface_unhide(struct scran_output *st_output) {
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
     // TODO: Get a free buffer instead, and handle the case where can't?
     //         See wl_surface::get_release() (as of wayland 1.25.0, 2026-03-19).
@@ -213,23 +213,23 @@ unhide_selection_surface(struct scran_output *st_output) {
 }
 
 void
-release_selection_surface_hide(struct scran_output *st_output, enum scran_selection_surface_disable_reason reason)
+selection_surface_release_hide(struct scran_output *st_output, enum scran_selection_surface_disable_reason reason)
 {
     st_output->selection_surface.disable_reason_mask &= ~reason;
     if (!st_output->selection_surface.disable_reason_mask) {
-        unhide_selection_surface(st_output);
+        selection_surface_unhide(st_output);
     }
 }
 
 // We need an output-specific function since freezeframe will need to call back
 // into it from the output-specific capture_frame::ready handler.
 void
-start_grabbing_focus_for_output(
+scran_focus_grab_for_output(
     struct scran_output *st_output
 ) {
     struct scran_output_surface *st_surface = &st_output->selection_surface.surface;
 
-    DEBUG("start_grabbing_focus_for_output()\n");
+    DEBUG("scran_focus_grab_for_output()\n");
 
     // NULL sets an infinite region
     wl_surface_set_input_region(st_surface->wl_surface, NULL);
@@ -245,17 +245,17 @@ start_grabbing_focus_for_output(
 }
 
 void
-start_grabbing_focus()
+scran_focus_grab()
 {
     DEBUG("Grabbing focus\n");
 
     FOR_EACH_OUTPUT(i, st_output) {
-        start_grabbing_focus_for_output(st_output);
+        scran_focus_grab_for_output(st_output);
     }
 }
 
 void
-stop_grabbing_focus()
+scran_focus_release()
 {
     DEBUG("Releasing focus\n");
 

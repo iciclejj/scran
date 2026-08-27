@@ -846,7 +846,7 @@ run_main_loop(struct scran_signal_masks *signal_masks)
         scran_dbus_update(m_epoll_fd, &scran_portal_timeout_ms);
 
         if (g_state.sig_focus_requested == true) {
-            start_grabbing_focus();
+            scran_focus_grab();
             // TODO: Make this a tiered enum to prevent handling it twice?
             g_state.sig_focus_requested = false;
         }

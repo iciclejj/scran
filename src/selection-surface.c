@@ -548,7 +548,7 @@ init_selection_surface_content(
             blboxi_to_blrecti(get_fullscreen_selection_box(st_output))
         );
 
-        set_selection_surface_theme(st_output, SURFACE_THEME_PRE_SELECTION);
+        selection_surface_set_theme(st_output, SURFACE_THEME_PRE_SELECTION);
     } else {
         // This must be set prior to set_selection_initialized()
         selection_set_box_px(&st_output->selection_ctx, initial_box);
@@ -558,8 +558,8 @@ init_selection_surface_content(
         // ALSO make sure it's called somewhere that the freezeframe init path
         // (and potential future alternate init paths) will reach.
         scran_ui_statusline_set_selection_size(&selection_surface->ui_ctx.ui_statusline, blboxi_to_blrecti(initial_box));
-        set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
-        set_selection_initialized(st_output);
+        selection_surface_set_theme(st_output, SURFACE_THEME_DEFAULT);
+        selection_set_initialized(st_output);
     }
 
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {

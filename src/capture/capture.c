@@ -88,7 +88,7 @@ capture_fullscreen_start(
         // XXX: Not sure how reliable getting the ::presented event from this is
         // across compositors, but this will be removed shortly, once we merge
         // the presentation-feedback listeners.
-        hide_selection_surface_then(st_output, listener, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
+        selection_surface_hide_then(st_output, listener, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
         return true;
     }
 
@@ -97,8 +97,8 @@ capture_fullscreen_start(
     // TODO: Fix this when refactoring/merging the capture paths.
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
-    set_selection_freeze_size(st_output);
-    hide_selection_surface_then(st_output, listener, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
+    selection_freeze_size(st_output);
+    selection_surface_hide_then(st_output, listener, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
 
     // If !=SELECTION_NONE becomes possible in the future, then we will
     // need to save/restore the previous selection.
@@ -121,7 +121,7 @@ capture_fullscreen_end(
         return;
     }
 
-    unset_selection_freeze_size(st_output);
+    selection_unfreeze_size(st_output);
 
     // If !=SELECTION_NONE becomes possible in the future, then just do
     // capture_update_selection() when !=SELECTION_NONE.
@@ -134,7 +134,7 @@ capture_fullscreen_end(
 
     // We don't want to flash a frame of selection/background dim if we're exiting anyways
     if (!st_output->capture.exit_after_capture) {
-        release_selection_surface_hide(st_output, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
+        selection_surface_release_hide(st_output, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
     }
 
     // HACK: See comment in start_fullscreen_capture().
@@ -153,7 +153,7 @@ capture_video_start(struct scran_output *st_output)
         return false;
     }
 
-    if (!set_selection_freeze_size(st_output)) {
+    if (!selection_freeze_size(st_output)) {
         eprintf("Can't start video capture without frozen selection size.\n");
         return false;
     }
@@ -163,7 +163,7 @@ capture_video_start(struct scran_output *st_output)
 
     if (!capture_video_init_writers(st_output)) {
         eprintf("Error: Failed to initialize ffmpeg libraries.\n");
-        unset_selection_freeze_size(st_output); // TODO: goto fail?
+        selection_unfreeze_size(st_output); // TODO: goto fail?
         return false;
     }
 
@@ -173,7 +173,7 @@ capture_video_start(struct scran_output *st_output)
         scran_ui_textline_item_set_locked(  SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
     }
     st_output->capture.pre_capture_selection_theme = st_output->selection_surface.theme;
-    set_selection_surface_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
+    selection_surface_set_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
     cursor_set_theme(st_output, SCRAN_CURSOR_THEME_VIDEO_CAPTURE);
     request_selection_surface_frame_callback(st_output);
 
@@ -266,11 +266,11 @@ capture_video_finish(struct scran_output *st_output)
         scran_ui_textline_item_set_locked(  SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
         scran_ui_statusline_set_timer(&st_output->selection_surface.ui_ctx.ui_statusline, 0);
     }
-    set_selection_surface_theme(st_output, st_output->capture.pre_capture_selection_theme);
+    selection_surface_set_theme(st_output, st_output->capture.pre_capture_selection_theme);
     cursor_set_theme(st_output, SCRAN_CURSOR_THEME_DEFAULT);
     request_selection_surface_frame_callback(st_output);
 
-    unset_selection_freeze_size(st_output);
+    selection_unfreeze_size(st_output);
 
     if (capture->fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO) {
         capture_fullscreen_end(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO);

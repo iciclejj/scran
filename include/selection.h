@@ -27,17 +27,17 @@ enum surface_theme {
     SURFACE_THEME_DEFAULT,
     SURFACE_THEME_VIDEO_CAPTURE,
 };
-void set_selection_surface_theme(struct scran_output *st_output, enum surface_theme action);
+void selection_surface_set_theme(struct scran_output *st_output, enum surface_theme action);
 
-void set_selection_initialized(struct scran_output *st_output);
-bool set_selection_freeze_size(struct scran_output *st_output);
- void unset_selection_freeze_size(struct scran_output *st_output);
-void hide_selection_surface_then(struct scran_output *st_output, struct wp_presentation_feedback_listener *listener, enum scran_selection_surface_disable_reason reason);
- void release_selection_surface_hide(struct scran_output *st_output, enum scran_selection_surface_disable_reason reason);
+void selection_set_initialized(struct scran_output *st_output);
+bool selection_freeze_size(struct scran_output *st_output);
+ void selection_unfreeze_size(struct scran_output *st_output);
+void selection_surface_hide_then(struct scran_output *st_output, struct wp_presentation_feedback_listener *listener, enum scran_selection_surface_disable_reason reason);
+ void selection_surface_release_hide(struct scran_output *st_output, enum scran_selection_surface_disable_reason reason);
 
-void start_grabbing_focus(void);
-void start_grabbing_focus_for_output(struct scran_output *st_output);
-void stop_grabbing_focus(void);
+void scran_focus_grab(void);
+void scran_focus_grab_for_output(struct scran_output *st_output);
+void scran_focus_release(void);
 
 
 static inline BLBoxI
