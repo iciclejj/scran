@@ -31,9 +31,10 @@ void selection_surface_set_theme(struct scran_output *st_output, enum surface_th
 
 void selection_set_initialized(struct scran_output *st_output);
 bool selection_freeze_size(struct scran_output *st_output);
- void selection_unfreeze_size(struct scran_output *st_output);
-void selection_surface_hide_then(struct scran_output *st_output, struct wp_presentation_feedback_listener *listener, enum scran_selection_surface_disable_reason reason);
- void selection_surface_release_hide(struct scran_output *st_output, enum scran_selection_surface_disable_reason reason);
+void selection_unfreeze_size(struct scran_output *st_output);
+
+void selection_surface_acquire_hide_then(struct scran_output *st_output, struct wp_presentation_feedback_listener *listener, enum scran_selection_surface_disable_reason reason);
+void selection_surface_release_hide(struct scran_output *st_output, enum scran_selection_surface_disable_reason reason);
 
 void scran_focus_grab(void);
 void scran_focus_grab_for_output(struct scran_output *st_output);

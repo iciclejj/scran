@@ -238,7 +238,7 @@ freezeframe_capture_refresh(
     // can be triggered without releasing focus first.
     freezeframe_hide_surface(st_output);
 
-    selection_surface_hide_then(st_output, &presentation_feedback_listener__selection_transparent_for_freezeframe, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE);
+    selection_surface_acquire_hide_then(st_output, &presentation_feedback_listener__selection_transparent_for_freezeframe, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE);
     freezeframe->unhide_after_capture = true;
 }
 

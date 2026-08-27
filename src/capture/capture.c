@@ -88,7 +88,7 @@ capture_fullscreen_start(
         // XXX: Not sure how reliable getting the ::presented event from this is
         // across compositors, but this will be removed shortly, once we merge
         // the presentation-feedback listeners.
-        selection_surface_hide_then(st_output, listener, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
+        selection_surface_acquire_hide_then(st_output, listener, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
         return true;
     }
 
@@ -98,7 +98,7 @@ capture_fullscreen_start(
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     selection_freeze_size(st_output);
-    selection_surface_hide_then(st_output, listener, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
+    selection_surface_acquire_hide_then(st_output, listener, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
 
     // If !=SELECTION_NONE becomes possible in the future, then we will
     // need to save/restore the previous selection.

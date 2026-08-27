@@ -152,7 +152,7 @@ selection_surface_hide(struct scran_output *st_output)
 }
 
 void
-selection_surface_hide_then(
+selection_surface_acquire_hide_then(
     struct scran_output *st_output,
     struct wp_presentation_feedback_listener *listener,
     enum scran_selection_surface_disable_reason reason
