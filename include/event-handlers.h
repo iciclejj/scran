@@ -26,9 +26,7 @@ extern struct wp_fractional_scale_v1_listener            fractional_scale_listen
 extern struct zcosmic_output_head_v1_listener            cosmic_output_head_listener;
 extern struct zwlr_output_head_v1_listener               wlr_output_head_listener;
 extern struct zwlr_output_manager_v1_listener            wlr_output_manager_listener;
-extern struct wp_presentation_feedback_listener          presentation_feedback_listener__selection_transparent_for_freezeframe;
-extern struct wp_presentation_feedback_listener          presentation_feedback_listener__selection_transparent_for_fullscreen_image_capture;
-extern struct wp_presentation_feedback_listener          presentation_feedback_listener__selection_transparent_for_fullscreen_video_capture;
+extern struct wp_presentation_feedback_listener          presentation_feedback_listener__transparent_selection_capture;
 
 extern struct wl_registry_listener registry_listener;
 void registry_listener__destroy(struct scran *state);

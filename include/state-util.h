@@ -70,12 +70,12 @@ get_reverse_transformed_height(int src_width, int src_height, enum wl_output_tra
 }
 
 static inline int32_t
-get_transformed_output_width(struct scran_output *st_output) {
+get_transformed_output_width(const struct scran_output *st_output) {
     return get_transformed_width(st_output->mode.width_px, st_output->mode.height_px, st_output->transform);
 }
 
 static inline int32_t
-get_transformed_output_height(struct scran_output *st_output) {
+get_transformed_output_height(const struct scran_output *st_output) {
     return get_transformed_height(st_output->mode.width_px, st_output->mode.height_px, st_output->transform);
 }
 

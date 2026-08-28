@@ -169,10 +169,12 @@ struct scran_output_selectionSurface_buffer {
 };
 
 enum scran_selection_surface_disable_reason {
-    SCRAN_SELECTION_SURFACE_DISABLE_REASON_NONE              = 0,
-    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE  = 1 << 0,
-    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE   = 1 << 1,
-    SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED = 1 << 2,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_NONE                   = 0,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_IMAGE_HIDE       = 1 << 0,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_VIDEO_HIDE       = 1 << 0,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE = 1 << 0,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE        = 1 << 1,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED      = 1 << 2,
 };
 
 struct scran_output_selectionSurface {
@@ -237,7 +239,6 @@ struct scran_output_freezeframe {
 
     struct capture_session session;
 
-    bool unhide_after_capture;
     bool showing;
     scran_output_callback callback;
 
@@ -410,6 +411,7 @@ struct scran_output_capture {
     int64_t video_presentation_time_nsec_start;
 
     uint8_t fullscreen_consumers;
+    uint8_t pending_fullscreen_consumers;
 
     uint8_t pre_capture_selection_theme;
     bool exit_after_capture;
@@ -418,7 +420,7 @@ struct scran_output_capture {
     bool video_end_requested;
     bool audio_active;
     bool audio_disable_modifier_active;
-    bool fullscreen_video_pending;
+    // TODO: Merge this into the generic video start logic
     bool fullscreen_video_pending_audio_disabled;
 };
 

@@ -92,7 +92,7 @@ selection_freeze_size(struct scran_output *st_output)
         case SELECTION_COMPLETE_FREEZE_SIZE:
             break;
         case SELECTION_NONE:
-            assert(st_output->capture.fullscreen_consumers);
+            assert(st_output->capture.pending_fullscreen_consumers || st_output->capture.fullscreen_consumers);
             *selection_state = SELECTION_NONE_FREEZE_SIZE;
             break;
         case SELECTION_REBASING:

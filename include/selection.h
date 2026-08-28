@@ -40,9 +40,16 @@ void scran_focus_grab(void);
 void scran_focus_grab_for_output(struct scran_output *st_output);
 void scran_focus_release(void);
 
+static inline void
+selection_do_some_damage(
+    struct scran_output *st_output
+) {
+    wl_surface_damage_buffer(st_output->selection_surface.surface.wl_surface, 0, 0, 1, 1);
+    wl_surface_commit(st_output->selection_surface.surface.wl_surface);
+}
 
 static inline BLBoxI
-get_fullscreen_selection_box(struct scran_output *st_output) {
+get_fullscreen_selection_box(const struct scran_output *st_output) {
     return (BLBoxI){
         .x0 = 0,
         .y0 = 0,

@@ -9,6 +9,7 @@
 
 #include "ext-image-copy-capture-v1.h"
 
+#include "selection.h"
 #include "state.h"
 #include "util/blend2d.h"
 
@@ -38,6 +39,9 @@ struct capture_buffer_area_context {
 void capture_session_init(struct capture_session *session, struct ext_image_capture_source_v1 *source);
 
 void capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px);
+
+enum scran_capture_frame_consumers capture_fullscreen_dispatch_pending_consumers(struct scran_output *st_output, enum scran_capture_frame_consumers consumers);
+enum scran_capture_frame_consumers capture_fullscreen_start(struct scran_output *st_output, uint8_t consumers);
 void capture_fullscreen_end(struct scran_output *st_output, uint8_t consumer);
 
 bool capture_request_frame(struct capture_session *session, uint8_t consumer, const BLRectI *buffer_damage);
@@ -46,7 +50,7 @@ typedef void capture_video_write_packet_fn(
     struct scran_output *,
     AVPacket *pkt
 );
-bool capture_video_init_writers(struct scran_output *st_output);
+bool capture_video_init_writers(struct scran_output *st_output, const BLPointI dimensions);
  void capture_video_destroy_video_writer(struct scran_output *st_output);
  void capture_video_destroy_audio_writer(struct scran_output *st_output);
 bool capture_video_drain_writer(struct scran_output *st_output, AVCodecContext *codec_ctx, AVPacket *packet, capture_video_write_packet_fn write_packet_fn, const char *stream_name);
@@ -89,8 +93,7 @@ capture_force_next_frame(
     //
     // TODO: This should maybe be made more robust, but this seems to work even if
     // it has a transparent buffer attached, at least on Hyprland.
-    wl_surface_damage_buffer(st_output->selection_surface.surface.wl_surface, 0, 0, 1, 1);
-    wl_surface_commit(st_output->selection_surface.surface.wl_surface);
+    selection_do_some_damage(st_output);
 }
 
 static inline void
@@ -150,9 +153,9 @@ capture_get_area_start_address(
 
 static inline BLBoxI
 capture_get_selection_as_capture_buffer_area_px(
-    const struct scran_output_capture  *capture,
     const struct capture_session_context *session,
-    const struct capture_frame_context *frame_ctx
+    const struct capture_frame_context *frame_ctx,
+    const BLBoxI selection
 ) {
     const BLPointI source_dimensions_px = session->source_dimensions_px;
 
@@ -160,7 +163,7 @@ capture_get_selection_as_capture_buffer_area_px(
     assert(source_dimensions_px.y > 0);
 
     const BLBoxI capture_buffer_area_px = blboxi_get_reverse_transform(
-        capture->selection_ctx_box_px,
+        selection,
         source_dimensions_px.x,
         source_dimensions_px.y,
         frame_ctx->source_transform

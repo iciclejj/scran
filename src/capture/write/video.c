@@ -109,7 +109,7 @@ destroy_ffmpeg_video(struct scran_output *st_output)
 //  - Don't pass scran_output. Just width/height etc.
 //
 static bool
-init_ffmpeg(struct scran_output *st_output)
+init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
 {
     struct scran_output_capture *capture    = &st_output->capture;
     struct ffmpeg_context       *ffmpeg_ctx = &capture->ffmpeg_ctx;
@@ -122,8 +122,8 @@ init_ffmpeg(struct scran_output *st_output)
 
     // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be
     // divisible by 2. TODO: Also update selection area visuals to this width.
-    const int width_px_to_encode  = blboxi_width_abs_unsafe(capture->selection_ctx_box_px) & ~0b1;
-    const int height_px_to_encode = blboxi_height_abs_unsafe(capture->selection_ctx_box_px) & ~0b1;
+    const int width_px_to_encode  = dimensions.x & ~0b1;
+    const int height_px_to_encode = dimensions.y & ~0b1;
     // NOTE: Some pixel formats (and some file formats), e.g. YUV420P, require
     //       even-numbered (or some other multiplier) height and/or width.
     const enum AVPixelFormat av_pixel_format_to_encode = AV_PIX_FMT_YUV420P;
@@ -305,9 +305,9 @@ capture_video_drain_writer(
 
 
 bool
-capture_video_init_writers(struct scran_output *st_output)
+capture_video_init_writers(struct scran_output *st_output, BLPointI dimensions)
 {
-    return init_ffmpeg(st_output);
+    return init_ffmpeg(st_output, dimensions);
 }
 
 void

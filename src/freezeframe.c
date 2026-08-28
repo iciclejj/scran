@@ -80,6 +80,12 @@ freezeframe_hide_surface(struct scran_output *st_output)
     );
     wl_surface_commit(freezeframe->subsurface.wl_surface);
 
+    // HACK: If we're capturing fullscreen video (where we attach a transparent
+    // buffer to our selection-surface), some compositors (Hyprland) will not
+    // properly update the screen to remove our freezeframe, in areas where it
+    // doesn't detect any change.
+    selection_do_some_damage(st_output);
+
     // XXX: These should theoretically be set after the commit goes through
     freezeframe->showing = false;
     {
@@ -96,9 +102,10 @@ freezeframe_capture_finish(
 ) {
     struct scran_output_freezeframe *freezeframe = &output->freezeframe;
 
-    if (freezeframe->unhide_after_capture) {
-        selection_surface_release_hide(output, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE);
-        freezeframe->unhide_after_capture = false;
+    // We can also come here during startup with -z, in which case we can bypass
+    // the regular fullscreen capture pipeline
+    if (output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME) {
+        capture_fullscreen_end(output, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME);
     }
 
     scran_output_callback callback = freezeframe->callback;
@@ -238,8 +245,7 @@ freezeframe_capture_refresh(
     // can be triggered without releasing focus first.
     freezeframe_hide_surface(st_output);
 
-    selection_surface_acquire_hide_then(st_output, &presentation_feedback_listener__selection_transparent_for_freezeframe, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE);
-    freezeframe->unhide_after_capture = true;
+    capture_fullscreen_start(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME);
 }
 
 void

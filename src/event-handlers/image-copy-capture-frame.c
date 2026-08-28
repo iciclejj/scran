@@ -6,6 +6,7 @@
 #include "capture.h"
 #include "event-handlers.h"
 #include "freezeframe.h"
+#include "selection.h"
 #include "state.h"
 
 
@@ -14,18 +15,17 @@ capture_create_buffer_area_context(
     const struct scran_output *output,
     const struct capture_session_context *session,
     const struct capture_frame_context *frame_ctx,
+    bool fullscreen,
     struct capture_buffer_area_context *buffer_area_ctx
 ) {
-    buffer_area_ctx->area_px = capture_get_selection_as_capture_buffer_area_px(
-        &output->capture,
-        session,
-        frame_ctx
-    );
-    buffer_area_ctx->area_start_address = capture_get_area_start_address(
-        session,
-        frame_ctx,
-        &buffer_area_ctx->area_px
-    );
+    const BLBoxI selection = fullscreen ? get_fullscreen_selection_box(output) : output->capture.selection_ctx_box_px;
+
+    buffer_area_ctx->area_px =
+        capture_get_selection_as_capture_buffer_area_px(session, frame_ctx, selection);
+
+    buffer_area_ctx->area_start_address =
+        capture_get_area_start_address(session, frame_ctx, &buffer_area_ctx->area_px);
+
     buffer_area_ctx->source_row_bytes =
         session->pixel_stride * session->source_dimensions_px.x;
 }
@@ -96,15 +96,21 @@ handle_image_copy_capture_frame_ready(
 
     if (image_requested || video_requested) {
         const struct capture_session_context *session = &output->capture.session.session_ctx;
-        struct capture_buffer_area_context buffer_area_ctx;
-        capture_create_buffer_area_context(output, session, frame_ctx, &buffer_area_ctx);
 
         if (image_requested) {
+            bool fullscreen = output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE;
+            struct capture_buffer_area_context buffer_area_ctx;
+            capture_create_buffer_area_context(output, session, frame_ctx, fullscreen, &buffer_area_ctx);
+
             capture_image_write_image(output, session, frame_ctx, &buffer_area_ctx);
             capture_image_finish(output);
         }
 
         if (video_requested) {
+            bool fullscreen = output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
+            struct capture_buffer_area_context buffer_area_ctx;
+            capture_create_buffer_area_context(output, session, frame_ctx, fullscreen, &buffer_area_ctx);
+
             if (blboxi_intersects(buffer_area_ctx.area_px, frame_ctx->capture_buffer_damage_area_px)) {
                 if (!capture_video_write_video_frame(output, frame_ctx, session, &buffer_area_ctx)) {
                     output->capture.video_end_requested = true;

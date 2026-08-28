@@ -8,12 +8,14 @@
 
 #include "clipboard.h"
 #include "dbus.h"
+#include "freezeframe.h"
 #include "pipewires.h"
 #include "selection-surface.h"
 #include "selection.h"
 #include "state.h"
 #include "capture.h"
 #include "event-handlers.h"
+#include "util/blend2d.h"
 
 
 // `selection_ctx_box_px` has `scran_output_selectionContext.box_px` coordinate space!
@@ -70,67 +72,90 @@ capture_request_frame(
 }
 
 
-// TODO: void
-static bool
+enum scran_capture_frame_consumers
+capture_fullscreen_dispatch_pending_consumers(
+    struct scran_output *st_output,
+    enum scran_capture_frame_consumers pending
+) {
+    enum scran_capture_frame_consumers started = 0;
+    st_output->capture.fullscreen_consumers |= pending;
+
+    if (pending & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
+        if (capture_image_start(st_output, st_output->capture.exit_after_capture)) {
+            started |= SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE;
+        }
+    }
+
+    if (pending & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO) {
+        st_output->capture.audio_disable_modifier_active = st_output->capture.fullscreen_video_pending_audio_disabled;
+        st_output->capture.fullscreen_video_pending_audio_disabled = false;
+
+        if (!g_state.exit_requested && capture_video_start(st_output)) {
+            started |= SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
+        }
+    }
+
+    if (pending & SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME) {
+        // TODO: Make freezeframe able to not set started?
+        started |= SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME;
+        freezeframe_capture_start_assume_callback_set(st_output);
+    }
+
+    enum scran_capture_frame_consumers failed = pending & ~started;
+    if (failed) {
+        capture_fullscreen_end(st_output, failed);
+    }
+
+    return started;
+}
+
+// TODO: returns added or dispatched consumers
+enum scran_capture_frame_consumers
 capture_fullscreen_start(
     struct scran_output *st_output,
-    struct wp_presentation_feedback_listener *listener,
-    uint8_t consumer
+    uint8_t consumers
 ) {
-    uint8_t prev_consumers = st_output->capture.fullscreen_consumers;
+    enum scran_capture_frame_consumers prev_consumers = st_output->capture.fullscreen_consumers;
+    enum scran_capture_frame_consumers prev_pending   = st_output->capture.pending_fullscreen_consumers;
+    enum scran_capture_frame_consumers new_consumers  = consumers & ~(prev_pending | prev_consumers);
 
-    if (prev_consumers & consumer) {
-        return true;
+    if (!new_consumers) {
+        return 0;
     }
-    st_output->capture.fullscreen_consumers |= consumer;
 
+    // If we have live consumers, it means fullscreen-capture is already set up
     if (prev_consumers) {
-        // XXX: Not sure how reliable getting the ::presented event from this is
-        // across compositors, but this will be removed shortly, once we merge
-        // the presentation-feedback listeners.
-        selection_surface_acquire_hide_then(st_output, listener, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
-        return true;
+        assert(!prev_pending);
+        return capture_fullscreen_dispatch_pending_consumers(st_output, new_consumers);
+    }
+
+    st_output->capture.pending_fullscreen_consumers |= new_consumers;
+
+    if (prev_pending) {
+        return new_consumers;
     }
 
     // HACK: Prevent exit while fullscreen capture is starting, despite the actual
     // capture not having started yet. This adds a "fake" capture to the counter.
-    // TODO: Fix this when refactoring/merging the capture paths.
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
-    selection_freeze_size(st_output);
-    selection_surface_acquire_hide_then(st_output, listener, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
+    selection_surface_acquire_hide_then(st_output, &presentation_feedback_listener__transparent_selection_capture, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
 
-    // If !=SELECTION_NONE becomes possible in the future, then we will
-    // need to save/restore the previous selection.
-    assert(selection_is_none(&st_output->selection_ctx));
-    BLBoxI fullscreen_selection = get_fullscreen_selection_box(st_output);
-    selection_set_box_px(&st_output->selection_ctx, fullscreen_selection);
-    capture_update_selection(st_output, fullscreen_selection);
-
-    return true;
+    return new_consumers;
 }
 
 void
 capture_fullscreen_end(
     struct scran_output *st_output,
-    uint8_t consumer
+    uint8_t consumers
 ) {
-    st_output->capture.fullscreen_consumers &= ~consumer;
+    st_output->capture.fullscreen_consumers &= ~consumers;
 
-    if (st_output->capture.fullscreen_consumers) {
+    if (st_output->capture.pending_fullscreen_consumers ||
+        st_output->capture.fullscreen_consumers
+    ) {
         return;
     }
-
-    selection_unfreeze_size(st_output);
-
-    // If !=SELECTION_NONE becomes possible in the future, then just do
-    // capture_update_selection() when !=SELECTION_NONE.
-    assert(selection_is_none(&st_output->selection_ctx));
-    selection_set_box_px(
-        &st_output->selection_ctx,
-        get_selection_surface_pre_selection_box(st_output)
-    );
-    st_output->capture.selection_ctx_box_px = (BLBoxI){0};
 
     // We don't want to flash a frame of selection/background dim if we're exiting anyways
     if (!st_output->capture.exit_after_capture) {
@@ -158,10 +183,15 @@ capture_video_start(struct scran_output *st_output)
         return false;
     }
 
-    // TODO: Assert box is within output dimensions
-    assert(!blboxi_is_empty(selection_get_box_px(&st_output->selection_ctx)));
+    const bool fullscreen = st_output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
+    const BLPointI dimensions = fullscreen
+        ? blboxi_get_dimensions(get_fullscreen_selection_box(st_output))
+        : blboxi_get_dimensions(st_output->capture.selection_ctx_box_px);
 
-    if (!capture_video_init_writers(st_output)) {
+    // TODO: Assert box is within output dimensions
+    assert(dimensions.x && dimensions.y);
+
+    if (!capture_video_init_writers(st_output, dimensions)) {
         eprintf("Error: Failed to initialize ffmpeg libraries.\n");
         selection_unfreeze_size(st_output); // TODO: goto fail?
         return false;
@@ -201,17 +231,21 @@ capture_video_start(struct scran_output *st_output)
 bool
 capture_video_start_fullscreen(struct scran_output *st_output)
 {
+    struct scran_output_capture *capture = &st_output->capture;
+
+    bool prev_pending_audio_disabled = capture->fullscreen_video_pending_audio_disabled;
+
+    // Must be set prior to capture_fullscreen_start(), since it will dispatch
+    // the capture instantly when possible.
+    capture->fullscreen_video_pending_audio_disabled = capture->audio_disable_modifier_active;
+
     if (!capture_fullscreen_start(
             st_output,
-            &presentation_feedback_listener__selection_transparent_for_fullscreen_video_capture,
             SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO)
     ) {
+        capture->fullscreen_video_pending_audio_disabled = prev_pending_audio_disabled;
         return false;
     }
-
-    struct scran_output_capture *capture = &st_output->capture;
-    capture->fullscreen_video_pending = true;
-    capture->fullscreen_video_pending_audio_disabled = capture->audio_disable_modifier_active;
 
     return true;
 }
@@ -415,13 +449,19 @@ capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_c
         return true;
     }
 
+    bool prev_exit_after_capture = st_output->capture.exit_after_capture;
+
+    // Must be set prior to capture_fullscreen_start(), since it will dispatch
+    // the capture instantly when possible.
+    st_output->capture.exit_after_capture = exit_after_capture;
+
     if (capture_fullscreen_start(
             st_output,
-            &presentation_feedback_listener__selection_transparent_for_fullscreen_image_capture,
             SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE)
     ) {
-        st_output->capture.exit_after_capture = exit_after_capture;
         return true;
+    } else {
+        st_output->capture.exit_after_capture = prev_exit_after_capture;
     }
 
     return false;
