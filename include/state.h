@@ -81,6 +81,17 @@ struct scran_globals {
     struct hyprland_surface_manager_v1 *hypr_surface_manager;
 };
 
+enum scran_stdout_reservation_purpose {
+    SCRAN_STDOUT_RESERVATION_PURPOSE_NONE,
+    SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE,
+    SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO,
+};
+
+struct scran_stdout_reservation {
+    enum scran_stdout_reservation_purpose purpose;
+};
+
+
 struct scran_wl_buffer;
 typedef void (*scran_wl_buffer_release_callback)(struct scran_wl_buffer *);
 
@@ -410,6 +421,8 @@ struct scran_output_capture {
 
     int64_t video_presentation_time_nsec_start;
 
+    struct scran_stdout_reservation stdout_reservation;
+
     uint8_t fullscreen_consumers;
     uint8_t pending_fullscreen_consumers;
 
@@ -511,6 +524,8 @@ struct scran {
 
     struct scran_globals globals;
     struct scran_seat seat;
+
+    struct scran_stdout_reservation *active_stdout_reservation;
 
     // Used for releasing focus
     struct wl_region *empty_wl_region;

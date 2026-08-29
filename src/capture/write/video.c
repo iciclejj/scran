@@ -182,7 +182,9 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
 
     // AVFormat
     const char *output_filepath = NULL;
+
     if (g_state.options.output_to_stdout) {
+        assert(scran_stdout_check_reservation(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO));
         output_filepath = "pipe:1";
     } else {
         static const char mp4_file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] = ".mp4";

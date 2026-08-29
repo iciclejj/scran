@@ -6,6 +6,7 @@
 #include "options.h"
 #include "scranrot.h"
 #include "state-util.h"
+#include "state.h"
 #include "util/lib-interop.h"
 #include "util/util.h"
 
@@ -125,7 +126,8 @@ capture_image_write_image(
     const char *output_filepath = NULL;
 
     if (options->output_to_stdout) {
-        // TODO: Assert nothing else was written to stdout?
+        assert(scran_stdout_check_reservation(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE));
+
         if (!scran_full_write(STDOUT_FILENO, bl_array_img_encoded_data, bytes_to_write)) {
             eprintf("Failed to write image to stdout.\n");
         }

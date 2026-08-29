@@ -22,6 +22,67 @@ void scran_request_exit(void);
 
 
 static inline void
+scran_stdout_print_busy_message(void) {
+    const char *reserver = NULL;
+
+    switch (g_state.active_stdout_reservation->purpose) {
+    case SCRAN_STDOUT_RESERVATION_PURPOSE_NONE:
+        reserver = NULL;
+        break;
+    case SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE:
+        reserver = "image";
+        break;
+    case SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO:
+        reserver = "video";
+        break;
+    }
+
+    eprintf("Already writing to stdout: %s.\n", reserver);
+}
+
+static inline bool
+scran_stdout_is_reserved(void) {
+    return g_state.active_stdout_reservation != NULL;
+}
+
+static inline bool
+scran_stdout_check_reservation(
+    struct scran_stdout_reservation *reservation,
+    enum scran_stdout_reservation_purpose purpose
+) {
+    return g_state.active_stdout_reservation          == reservation
+        && g_state.active_stdout_reservation->purpose == purpose;
+}
+
+static inline bool
+scran_stdout_try_reserve(
+    struct scran_stdout_reservation *reservation,
+    enum scran_stdout_reservation_purpose purpose
+) {
+    if (g_state.active_stdout_reservation != NULL) {
+        return false;
+    }
+
+    g_state.active_stdout_reservation = reservation;
+    reservation->purpose = purpose;
+
+    return true;
+}
+
+static inline void
+scran_stdout_release(
+    struct scran_stdout_reservation *reservation,
+    enum scran_stdout_reservation_purpose purpose
+) {
+    if (g_state.active_stdout_reservation == reservation &&
+        g_state.active_stdout_reservation->purpose == purpose
+    ) {
+        g_state.active_stdout_reservation = NULL;
+        reservation->purpose = SCRAN_STDOUT_RESERVATION_PURPOSE_NONE;
+    }
+}
+
+static inline void
 print_untrusted_active_surface_message(void) {
     (void)g_state.seat.pointer_ctx.pointer_focus_trusted;
     eprintf("Untrusted pointer focus - try moving the cursor.\n");

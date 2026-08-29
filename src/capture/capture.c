@@ -12,6 +12,7 @@
 #include "pipewires.h"
 #include "selection-surface.h"
 #include "selection.h"
+#include "state-util.h"
 #include "state.h"
 #include "capture.h"
 #include "event-handlers.h"
@@ -180,7 +181,7 @@ capture_video_start(struct scran_output *st_output)
 
     if (!selection_freeze_size(st_output)) {
         eprintf("Can't start video capture without frozen selection size.\n");
-        return false;
+        goto capture_video_start_fail_1;
     }
 
     const bool fullscreen = st_output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
@@ -191,10 +192,17 @@ capture_video_start(struct scran_output *st_output)
     // TODO: Assert box is within output dimensions
     assert(dimensions.x && dimensions.y);
 
+    if (g_state.options.output_to_stdout) {
+        if (!scran_stdout_try_reserve(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO)) {
+            scran_stdout_print_busy_message();
+            goto capture_video_start_fail_2;
+        }
+    }
+
     if (!capture_video_init_writers(st_output, dimensions)) {
         eprintf("Error: Failed to initialize ffmpeg libraries.\n");
-        selection_unfreeze_size(st_output); // TODO: goto fail?
-        return false;
+        // TODO: goto fail if this becomes more complicated
+        goto capture_video_start_fail_3;
     }
 
     {
@@ -226,12 +234,22 @@ capture_video_start(struct scran_output *st_output)
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     return true;
+
+capture_video_start_fail_3:
+    scran_stdout_release(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO);
+capture_video_start_fail_2:
+    selection_unfreeze_size(st_output);
+capture_video_start_fail_1:
+    return false;
 }
 
 bool
 capture_video_start_fullscreen(struct scran_output *st_output)
 {
     struct scran_output_capture *capture = &st_output->capture;
+
+    // TODO: Reserve stdout already here, once we have better capture-state
+    // tracking with e.g. an enum
 
     bool prev_pending_audio_disabled = capture->fullscreen_video_pending_audio_disabled;
 
@@ -303,6 +321,8 @@ capture_video_finish(struct scran_output *st_output)
     selection_surface_set_theme(st_output, st_output->capture.pre_capture_selection_theme);
     cursor_set_theme(st_output, SCRAN_CURSOR_THEME_DEFAULT);
     request_selection_surface_frame_callback(st_output);
+
+    scran_stdout_release(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO);
 
     selection_unfreeze_size(st_output);
 
@@ -402,19 +422,33 @@ capture_image_start(struct scran_output *st_output, bool exit_after_capture)
     struct capture_session *session              = &st_output->capture.session;
     const BLPointI          source_dimensions_px = session->session_ctx.source_dimensions_px;
 
-    bool new_capture = true;
+    bool success = false;
 
     if (g_state.options.produce_slurp) {
-        print_slurp_string_selection(st_output);
+        if (scran_stdout_is_reserved()) {
+            scran_stdout_print_busy_message();
+            exit_after_capture = false;
+        } else {
+            print_slurp_string_selection(st_output);
+            success = true;
+        }
     } else if (session->frame_ctx.consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
         eprintf("Image capture already in progress...\n");
-        new_capture = false;
+    } else if (g_state.options.output_to_stdout
+               && !scran_stdout_try_reserve(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE)
+    ) {
+        scran_stdout_print_busy_message();
+        // Only allow upgrading pending *images* to exit_after_capture.
+        // Our consumers check above should have ensured the assert holds.
+        assert(!scran_stdout_check_reservation(&st_output->capture.stdout_reservation,SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE));
+        exit_after_capture = false;
     } else {
         capture_request_frame_forced(
             session, SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE,
             &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
         );
         atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
+        success = true;
     }
 
     if (exit_after_capture) {
@@ -422,7 +456,7 @@ capture_image_start(struct scran_output *st_output, bool exit_after_capture)
         scran_request_exit();
     }
 
-    return new_capture;
+    return success;
 }
 
 void
@@ -430,6 +464,11 @@ capture_image_finish(struct scran_output *output)
 {
     if (output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
         capture_fullscreen_end(output, SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE);
+    }
+
+    if (g_state.options.output_to_stdout) {
+        assert(scran_stdout_check_reservation(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE));
+        scran_stdout_release(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE);
     }
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
@@ -441,10 +480,15 @@ capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_c
 {
 
     if (g_state.options.produce_slurp) {
-        print_slurp_string_fullscreen(st_output);
-        if (exit_after_capture) {
-            // XXX TODO: Put this in a generic end_capture() function.
-            scran_request_exit();
+        if (scran_stdout_is_reserved()) {
+            scran_stdout_print_busy_message();
+            return false;
+        } else {
+            print_slurp_string_fullscreen(st_output);
+            if (exit_after_capture) {
+                // XXX TODO: Put this in a generic end_capture() function.
+                scran_request_exit();
+            }
         }
         return true;
     }

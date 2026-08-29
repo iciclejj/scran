@@ -254,13 +254,17 @@ esc_exit_scran:
 z_done:
         break;
     case XKB_KEY_Return:
-        if (st_output->capture.capturing_video && g_state.options.output_to_stdout) {
-            eprintf("Not allowing image capture during video when outputting to stdout.\n");
-            goto return_done;
-        }
+        ;
+        struct scran_output_capture *capture = &st_output->capture;
+
+        // TODO: Make this cleaner, with a capture_state enum and/or helper function
+        bool video_in_progress =
+            capture->capturing_video
+            || capture->fullscreen_consumers         & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO
+            || capture->pending_fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
 
         bool exit_after_capture =
-            st_output->capture.capturing_video
+            video_in_progress
             ? false
             : !xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
 
@@ -271,9 +275,6 @@ z_done:
             scran_ui_textline_item_set_pressed(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
             request_selection_surface_frame_callback(st_output);
         }
-
-
-return_done:
         break;
     case XKB_KEY_space:
         bool video_button_got_jammed = false;
