@@ -261,11 +261,20 @@ capture_video_start_fullscreen(struct scran_output *st_output)
             st_output,
             SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO)
     ) {
-        capture->fullscreen_video_pending_audio_disabled = prev_pending_audio_disabled;
-        return false;
+        goto fail;
+    }
+
+    // Freeze already here to block entering SELECTION_INITIALIZING
+    if (!selection_freeze_size(st_output)) {
+        eprintf("Can't start video capture without frozen selection size.\n");
+        goto fail;
     }
 
     return true;
+
+fail:
+    capture->fullscreen_video_pending_audio_disabled = prev_pending_audio_disabled;
+    return false;
 }
 
 // Should only be called once the video capture event loop is finished.
