@@ -267,6 +267,7 @@ capture_video_start_fullscreen(struct scran_output *st_output)
     ) {
         capture->fullscreen_video_pending_audio_disabled = prev_pending_audio_disabled;
         capture->video_stage                             = SCRAN_VIDEO_STAGE_NONE;
+        return false;
     }
 
     // Freeze already here to block entering SELECTION_INITIALIZING
