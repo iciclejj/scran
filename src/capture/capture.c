@@ -30,9 +30,7 @@ capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_bo
 
     // Presentation feedback for an older selection-surface buffer can arrive
     // after video capture has frozen the selection size.
-    // FIXME: Actually check if frozen here instead, but probably decouple
-    // selection's frozen state from selection_state first.
-    if (capture->capturing_video && size_changed) {
+    if (st_output->selection_ctx.size_is_frozen && size_changed) {
         return;
     }
 
@@ -179,10 +177,7 @@ capture_video_start(struct scran_output *st_output)
         return false;
     }
 
-    if (!selection_freeze_size(st_output)) {
-        eprintf("Can't start video capture without frozen selection size.\n");
-        goto capture_video_start_fail_1;
-    }
+    selection_freeze_size(st_output);
 
     const bool fullscreen = st_output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
     const BLPointI dimensions = fullscreen
@@ -195,14 +190,14 @@ capture_video_start(struct scran_output *st_output)
     if (g_state.options.output_to_stdout) {
         if (!scran_stdout_try_reserve(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO)) {
             scran_stdout_print_busy_message();
-            goto capture_video_start_fail_2;
+            goto capture_video_start_fail_1;
         }
     }
 
     if (!capture_video_init_writers(st_output, dimensions)) {
         eprintf("Error: Failed to initialize ffmpeg libraries.\n");
         // TODO: goto fail if this becomes more complicated
-        goto capture_video_start_fail_3;
+        goto capture_video_start_fail_2;
     }
 
     {
@@ -235,11 +230,10 @@ capture_video_start(struct scran_output *st_output)
 
     return true;
 
-capture_video_start_fail_3:
-    scran_stdout_release(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO);
 capture_video_start_fail_2:
-    selection_unfreeze_size(st_output);
+    scran_stdout_release(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO);
 capture_video_start_fail_1:
+    selection_unfreeze_size(st_output);
     return false;
 }
 
@@ -261,20 +255,13 @@ capture_video_start_fullscreen(struct scran_output *st_output)
             st_output,
             SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO)
     ) {
-        goto fail;
+        capture->fullscreen_video_pending_audio_disabled = prev_pending_audio_disabled;
     }
 
     // Freeze already here to block entering SELECTION_INITIALIZING
-    if (!selection_freeze_size(st_output)) {
-        eprintf("Can't start video capture without frozen selection size.\n");
-        goto fail;
-    }
+    selection_freeze_size(st_output);
 
     return true;
-
-fail:
-    capture->fullscreen_video_pending_audio_disabled = prev_pending_audio_disabled;
-    return false;
 }
 
 // Should only be called once the video capture event loop is finished.

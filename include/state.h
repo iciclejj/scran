@@ -353,12 +353,9 @@ struct scran_seat {
 
 enum selection_state {
     SELECTION_NONE,
-    SELECTION_NONE_FREEZE_SIZE, // Prevents starting a selection during fullscreen capture
     SELECTION_INITIALIZING,
     SELECTION_COMPLETE,
-    SELECTION_COMPLETE_FREEZE_SIZE,
     SELECTION_REBASING,
-    SELECTION_REBASING_FREEZE_SIZE,
     SELECTION_RESIZING,
 } SCRAN_PACKED;
 
@@ -384,6 +381,7 @@ struct scran_output_selectionContext {
     struct BLBoxI box_px;
 
     enum selection_state selection_state;
+    bool size_is_frozen;
 
     // TODO: Clearer name? This should be used to store the pre-resize/rebase box
     struct BLBoxI box_before_changes_px;
