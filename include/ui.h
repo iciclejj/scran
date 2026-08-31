@@ -9,6 +9,7 @@
 #include <util/blend2d.h>
 #include <util/util.h>
 
+#include "compiler.h"
 #include "print.h"
 
 enum scran_ui_disable_reason {
@@ -40,7 +41,7 @@ enum scran_ui_color {
     SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE,
     SCRAN_UI_COLOR_KEYMAP_FREEZEFRAME,
     SCRAN_UI_N_COLORS,
-};
+} SCRAN_PACKED;
 
 enum scran_ui_text {
     SCRAN_UI_TEXT_GREETING,
@@ -66,7 +67,7 @@ enum scran_ui_text {
 
     SCRAN_UI_TEXT_EMPTY,
     SCRAN_UI_N_TEXTS,
-};
+} SCRAN_PACKED;
 
 struct scran_ui_textline_metadata {
     int height_px;

@@ -26,6 +26,7 @@
 #include "wlr-output-management-unstable-v1.h"
 #include "cosmic-output-management-unstable-v1.h"
 
+#include "compiler.h"
 #include "ui.h"
 #include "cursor.h"
 
@@ -85,7 +86,7 @@ enum scran_stdout_reservation_purpose {
     SCRAN_STDOUT_RESERVATION_PURPOSE_NONE,
     SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE,
     SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO,
-};
+} SCRAN_PACKED;
 
 struct scran_stdout_reservation {
     enum scran_stdout_reservation_purpose purpose;
@@ -186,7 +187,7 @@ enum scran_selection_surface_disable_reason {
     SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE = 1 << 0,
     SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE        = 1 << 1,
     SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED      = 1 << 2,
-};
+} SCRAN_PACKED;
 
 struct scran_output_selectionSurface {
     struct scran_output_surface surface;
@@ -215,7 +216,7 @@ enum scran_capture_frame_consumers {
     SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE       = 1 << 0,
     SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO       = 1 << 1,
     SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME = 1 << 2,
-};
+} SCRAN_PACKED;
 
 struct capture_frame_context {
     struct ext_image_copy_capture_frame_v1 *frame;
@@ -348,7 +349,7 @@ enum selection_state {
     SELECTION_REBASING,
     SELECTION_REBASING_FREEZE_SIZE,
     SELECTION_RESIZING,
-};
+} SCRAN_PACKED;
 
 enum selection_resize_direction {
     SELECTION_RESIZE_NONE,
@@ -356,7 +357,7 @@ enum selection_resize_direction {
     SELECTION_RESIZE_TOP_RIGHT,
     SELECTION_RESIZE_BOTTOM_LEFT,
     SELECTION_RESIZE_BOTTOM_RIGHT,
-};
+} SCRAN_PACKED;
 
 // This struct is used as a shared context struct for event handlers that
 // need to interact with the selection (capture area) state.
@@ -486,7 +487,7 @@ enum scran_opt_hide_ui_level {
     SCRAN_OPT_HIDE_UI_NONE,
     SCRAN_OPT_HIDE_UI_ITEMS,
     SCRAN_OPT_HIDE_UI_EVERYTHING,
-};
+} SCRAN_PACKED;
 
 // TODO: Isolate this from scran state?
 struct scran_options {
@@ -494,6 +495,7 @@ struct scran_options {
     char output_path[SCRAN_OUTPUT_FILEPATH_SIZE_MAX]; // NOTE: Also used as output_directory during cli arg init
     char filename_format[SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX];
 
+    enum scran_opt_hide_ui_level hide_ui_level;
     bool output_to_stdout;
     bool no_keepalive;
     bool disable_audio_capture;
@@ -503,7 +505,6 @@ struct scran_options {
     bool produce_slurp;                 // output slurp-style geometry string
     bool no_notifications;
     bool have_custom_initial_selection;
-    enum scran_opt_hide_ui_level hide_ui_level;
     struct BLRectI custom_initial_selection_global_coordinates;
 };
 
