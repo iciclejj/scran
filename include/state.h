@@ -81,9 +81,25 @@ struct scran_globals {
     struct hyprland_surface_manager_v1 *hypr_surface_manager;
 };
 
+enum scran_stdout_reservation_purpose {
+    SCRAN_STDOUT_RESERVATION_PURPOSE_NONE,
+    SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE,
+    SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO,
+};
+
+struct scran_stdout_reservation {
+    enum scran_stdout_reservation_purpose purpose;
+};
+
+
+struct scran_wl_buffer;
+typedef void (*scran_wl_buffer_release_callback)(struct scran_wl_buffer *);
+
 struct scran_wl_buffer {
     struct wl_buffer *wl_buffer;
     void *data;
+    scran_wl_buffer_release_callback release_callback;
+    bool busy;
 };
 
 struct scran_cursor_buffer {
@@ -159,16 +175,17 @@ struct scran_output_selectionSurface_buffer {
     struct scran_ui_textline_surface_state ui_keymap_state_currently_drawn;
     struct scran_ui_textline_surface_state ui_statusline_state_currently_drawn;
 
-    bool busy;
     bool force_redraw;
     uint8_t redrawn_textline_mask;
 };
 
 enum scran_selection_surface_disable_reason {
-    SCRAN_SELECTION_SURFACE_DISABLE_REASON_NONE              = 0,
-    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE  = 1 << 0,
-    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE   = 1 << 1,
-    SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED = 1 << 2,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_NONE                   = 0,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_IMAGE_HIDE       = 1 << 0,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_VIDEO_HIDE       = 1 << 0,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE = 1 << 0,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE        = 1 << 1,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED      = 1 << 2,
 };
 
 struct scran_output_selectionSurface {
@@ -192,39 +209,53 @@ struct scran_output_selectionSurface {
 };
 
 struct scran_output;
-typedef void (*freezeframe_callback)(struct scran_output *) ;
+typedef void (*scran_output_callback)(struct scran_output *);
 
-struct scran_freezeframe_buffer {
+enum scran_capture_frame_consumers {
+    SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE       = 1 << 0,
+    SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO       = 1 << 1,
+    SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME = 1 << 2,
+};
+
+struct capture_frame_context {
+    struct ext_image_copy_capture_frame_v1 *frame;
+
+    struct scran_output *output;
     struct scran_wl_buffer scran_wl_buffer;
-    freezeframe_callback release_callback;
-    bool busy;
+
+    // set by pre-::ready event handlers
+    enum wl_output_transform source_transform;
+    // Contains *at least* the union of frame::damage-reported damage
+    struct BLBoxI capture_buffer_damage_area_px;
+    int64_t presentation_time_nsec;
+
+
+    uint8_t consumers;
+};
+
+struct capture_session_context {
+    struct ext_image_copy_capture_session_v1 *wl_session;
+    BLPointI source_dimensions_px;
+    uint32_t shm_format;
+    uint8_t pixel_stride;
 };
 
 struct capture_session {
-    struct ext_image_copy_capture_session_v1 *wl_session;
-    uint32_t shm_format;
+    struct capture_frame_context frame_ctx;
+    struct capture_session_context session_ctx;
 };
 
 struct scran_output_freezeframe {
     struct scran_output_subsurface subsurface;
 
     struct capture_session session;
-    int32_t source_width_px;
-    int32_t source_height_px;
-    enum wl_output_transform source_transform;
 
-    bool unhide_after_capture;
     bool showing;
-    freezeframe_callback callback;
+    scran_output_callback callback;
 
-    // We have multiple buffers because we use a separate buffer for making the
-    // parent *selection* surface transparent. Calling e.g. wl_surface_attach
-    // with a NULL buffer would unmap the entire layer surface, and would need
-    // to wait for new configure events. Behavior is also not consistent across
-    // compositors. Using wp_single_pixel_buffer also has damage-related bugs on
-    // some compositors, at least on Sway.
-    struct scran_freezeframe_buffer capture_buffer;
-    struct scran_freezeframe_buffer surface_buffer;
+    // Used when the captured frame needs to be transformed in memory before
+    // being attached to the freezeframe surface.
+    struct scran_wl_buffer surface_buffer;
 };
 
 struct scran_seat_pointerContext {
@@ -363,23 +394,18 @@ struct ffmpeg_context {
     AVAudioFifo     *av_audio_fifo;
 };
 
-// TODO: More consistent naming?
-// TODO: Separate video/image capture context
-struct capture_frame_context {
-    struct ext_image_copy_capture_frame_v1 *frame;
+struct scran_output_capture {
+    struct ext_image_capture_source_v1 *source;
 
-    struct scran_wl_buffer scran_wl_buffer;
+    struct capture_session session;
+    struct ffmpeg_context ffmpeg_ctx;
+
     // Extra buffer for copying/intermediate operations
     // TODO: Rename this
     void *img_data_2;
 
-    struct ffmpeg_context ffmpeg_ctx;
-
     BLImageCore bl_img_captured;
     BLImageCodecCore bl_imgcodec;
-
-    int64_t presentation_time_nsec_start;
-    int64_t presentation_time_nsec; // NOTE: _start is PRE-SUBTRACTED.
 
     //  NOTE: selection_ctx_box_px should be updated synchronously with the
     //        drawn overlay's area (or be set based on the same real-time
@@ -392,30 +418,23 @@ struct capture_frame_context {
     //        compositors, like COSMIC, are not neatly ordered like this
     //        internally (at time of writing).
     struct BLBoxI selection_ctx_box_px;
-    // Contains *at least* the union of frame::damage-reported damage
-    struct BLBoxI capture_buffer_damage_area_px;
-    int32_t source_width_px;
-    int32_t source_height_px;
-    enum wl_output_transform source_transform;
-    uint8_t pixel_stride;
+
+    int64_t video_presentation_time_nsec_start;
+
+    struct scran_stdout_reservation stdout_reservation;
+
+    uint8_t fullscreen_consumers;
+    uint8_t pending_fullscreen_consumers;
+
+    uint8_t pre_capture_selection_theme;
+    bool exit_after_capture;
 
     bool capturing_video;
     bool video_end_requested;
     bool audio_active;
     bool audio_disable_modifier_active;
-    bool fullscreen_capture;
-    bool fullscreen_video_pending;
+    // TODO: Merge this into the generic video start logic
     bool fullscreen_video_pending_audio_disabled;
-};
-
-struct scran_output_capture {
-    struct capture_frame_context frame_ctx;
-    struct capture_session session;
-
-    struct ext_image_capture_source_v1 *source;
-
-    uint8_t pre_capture_selection_theme;
-    bool exit_after_capture;
 };
 
 struct scran_output_mode {
@@ -505,6 +524,8 @@ struct scran {
 
     struct scran_globals globals;
     struct scran_seat seat;
+
+    struct scran_stdout_reservation *active_stdout_reservation;
 
     // Used for releasing focus
     struct wl_region *empty_wl_region;

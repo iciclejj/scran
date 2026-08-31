@@ -60,7 +60,7 @@ seat_apply_mod_key_state(
     // to avoid future possible sticky key bugs...
     // TODO: Probably merge the authority for these things into the ui code,
     // especially if we want to support mouse clicks.
-    st_output->capture.frame_ctx.audio_disable_modifier_active = state;
+    st_output->capture.audio_disable_modifier_active = state;
 
     request_selection_surface_frame_callback(st_output);
 }

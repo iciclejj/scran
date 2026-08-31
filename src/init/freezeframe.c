@@ -10,9 +10,7 @@
 #include "wlr-layer-shell-unstable-v1.h"
 
 #include "state.h"
-#include "state-util.h"
 #include "init.h"
-#include "event-handlers.h"
 
 
 bool
@@ -23,10 +21,9 @@ init_premem__freezeframe(
 
     capture_session_init(
         &st_output->freezeframe.session,
-        st_output->capture.source,
-        &image_copy_capture_session_listener__freezeframe,
-        st_output
+        st_output->capture.source
     );
+    st_output->freezeframe.session.frame_ctx.output = st_output;
 
     {
         struct wl_surface *wl_surface = wl_compositor_create_surface(g_state.globals.compositor);
@@ -61,7 +58,7 @@ init_premem__freezeframe__destroy(
     wp_viewport_destroy(freezeframe->subsurface.viewport);
     wl_subsurface_destroy(freezeframe->subsurface.wl_subsurface);
     wl_surface_destroy(freezeframe->subsurface.wl_surface);
-    if (freezeframe->session.wl_session) {
-        ext_image_copy_capture_session_v1_destroy(freezeframe->session.wl_session);
+    if (freezeframe->session.session_ctx.wl_session) {
+        ext_image_copy_capture_session_v1_destroy(freezeframe->session.session_ctx.wl_session);
     }
 }

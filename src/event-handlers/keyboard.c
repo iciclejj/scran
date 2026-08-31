@@ -127,7 +127,7 @@ handle_keyboard_key(
         case XKB_KEY_Escape:
             if (!active_selection_surface) {
                 FOR_EACH_OUTPUT(i, _st_output) {
-                    if (_st_output->capture.frame_ctx.capturing_video) {
+                    if (_st_output->capture.capturing_video) {
                         if (repeated_untrusted_escape) {
                             eprintf("Got escape key again...");
                             goto esc_exit_scran; // In case user doesn't understand what's happening
@@ -143,9 +143,9 @@ handle_keyboard_key(
 
             if (active_selection_surface) {
                 struct scran_output *st_output = wl_container_of(active_selection_surface, st_output, selection_surface);
-                if (st_output->capture.frame_ctx.capturing_video) {
+                if (st_output->capture.capturing_video) {
                     eprintf(" stopping video capture.\n");
-                    video_capture_request_stop(st_output);
+                    capture_video_request_stop(st_output);
                     return;
                 }
             }
@@ -155,7 +155,7 @@ esc_exit_scran:
             scran_request_exit();
             return;
         case XKB_KEY_Tab:
-            stop_grabbing_focus();
+            scran_focus_release();
             return;
         default:
             break;
@@ -242,7 +242,7 @@ esc_exit_scran:
         //             See also refactor-TODO in unhide_selection_surface().
         if (pretend_all_hidden) {
             FOR_EACH_OUTPUT(i, st_output) {
-                freezeframe_capture_refresh(st_output, start_grabbing_focus_for_output);
+                freezeframe_capture_refresh(st_output, scran_focus_grab_for_output);
             }
         } else {
             FOR_EACH_OUTPUT(i, st_output) {
@@ -254,41 +254,45 @@ esc_exit_scran:
 z_done:
         break;
     case XKB_KEY_Return:
-        // TODO: Create two capture sessions so that we can take screenshots while
-        // doing video capture? Probably just implement it as part of the video
-        // capture pipeline, without two capture sessions.
-        if (st_output->capture.frame_ctx.capturing_video) {
-            eprintf("Screenshot during video capture not implemented yet, try again later :(\n");
+        ;
+        struct scran_output_capture *capture = &st_output->capture;
+
+        // TODO: Make this cleaner, with a capture_state enum and/or helper function
+        bool video_in_progress =
+            capture->capturing_video
+            || capture->fullscreen_consumers         & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO
+            || capture->pending_fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
+
+        bool exit_after_capture =
+            video_in_progress
+            ? false
+            : !xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
+
+        if (fullscreen_capture) {
+            capture_image_start_fullscreen(st_output, exit_after_capture);
         } else {
-            bool exit_after_capture = !xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
-
-            if (fullscreen_capture) {
-                image_capture_start_fullscreen(st_output, exit_after_capture);
-            } else {
-                image_capture_start(st_output, exit_after_capture);
-                scran_ui_textline_item_set_pressed(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
-                request_selection_surface_frame_callback(st_output);
-            }
+            capture_image_start(st_output, exit_after_capture);
+            scran_ui_textline_item_set_pressed(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_IMAGE, true);
+            request_selection_surface_frame_callback(st_output);
         }
-
         break;
     case XKB_KEY_space:
         bool video_button_got_jammed = false;
 
-        if (st_output->capture.frame_ctx.capturing_video) {
-            video_capture_request_stop(st_output);
+        if (st_output->capture.capturing_video) {
+            capture_video_request_stop(st_output);
         } else {
             if (st_output->selection_ctx.selection_state == SELECTION_INITIALIZING) {
                 // TODO: Guard against capture_and_exit_after_selection_init?
-                set_selection_initialized(st_output);
+                selection_set_initialized(st_output);
             }
 
             bool video_capture_started;
 
             if (fullscreen_capture) {
-                video_capture_started = video_capture_start_fullscreen(st_output);
+                video_capture_started = capture_video_start_fullscreen(st_output);
             } else {
-                video_capture_started = video_capture_start(st_output);
+                video_capture_started = capture_video_start(st_output);
             }
 
             if (!video_capture_started) {

@@ -288,7 +288,7 @@ handle_pointer_button(
                 blboxi_to_blrecti(initial_selection_area)
             );
 
-            set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
+            selection_surface_set_theme(st_output, SURFACE_THEME_DEFAULT);
 
             request_selection_surface_frame_callback(st_output);
 
@@ -310,7 +310,7 @@ handle_pointer_button(
                 selection_set_box_px(selection_ctx, box_px);
             }
 
-            set_selection_initialized(st_output);
+            selection_set_initialized(st_output);
             assert(selection_ctx->selection_state == SELECTION_COMPLETE);
 
             break;

@@ -22,7 +22,7 @@ static struct {
     struct pw_context            *ctx;
     struct pw_core               *core;
     struct spa_hook               stream_listener;
-    struct capture_frame_context *userdata;
+    struct scran_output          *userdata;
     enum spa_audio_format format;
     int loop_fd;
     int epoll_fd;
@@ -36,10 +36,11 @@ static struct {
 static void
 on_process(void *data)
 {
-    struct capture_frame_context *frame_ctx  = data;
-    struct ffmpeg_context        *ffmpeg_ctx = &frame_ctx->ffmpeg_ctx;
+    struct scran_output        *st_output  = data;
+    struct scran_output_capture *capture   = &st_output->capture;
+    struct ffmpeg_context      *ffmpeg_ctx = &capture->ffmpeg_ctx;
 
-    if (!frame_ctx->capturing_video) {
+    if (!capture->capturing_video) {
         // We need exit here, differently to our video frame handler, since
         // on_process gets continuously requested automatically, and we can't
         // safely stop it from within this handler.
@@ -79,7 +80,7 @@ on_process(void *data)
     // XXX: Cast overflows at ~292 years uptime.
     int64_t pts_incoming    = (meta_header != NULL) ? meta_header->pts : (int64_t)pw_buf->time;
     int64_t pts_fifo_start  = pts_incoming
-                              - frame_ctx->presentation_time_nsec_start
+                              - capture->video_presentation_time_nsec_start
                               - av_rescale(n_samples_leftover, NSEC_PER_SEC, SCRAN_PIPEWIRE_SAMPLE_RATE);
     int      frame_size     = ffmpeg_ctx->av_codec_ctx_audio->frame_size;
 
@@ -111,7 +112,7 @@ on_process(void *data)
                 goto cont; // TODO: goto err?
             }
 
-            video_capture_write_audio_packet(frame_ctx, ffmpeg_ctx->av_packet_audio);
+            capture_video_write_audio_packet(st_output, ffmpeg_ctx->av_packet_audio);
         }
 
         pts_curr += av_rescale(frame_size, NSEC_PER_SEC, SCRAN_PIPEWIRE_SAMPLE_RATE);
@@ -188,7 +189,7 @@ scran_pipewire_pre_init(int epoll_fd)
 // TODO: Error-checking and destroy on failed init
 bool
 scran_pipewire_init(
-    struct capture_frame_context *frame_ctx,
+    struct scran_output *st_output,
     enum spa_audio_format format
 ) {
     DEBUG("scran_pipewire_init()\n");
@@ -234,7 +235,7 @@ scran_pipewire_init(
     );
     m_state.stream = pw_stream_new(m_state.core, "scran-audio-capture", props);
 
-    m_state.userdata = frame_ctx;
+    m_state.userdata = st_output;
     m_state.format = format;
 
     return true;

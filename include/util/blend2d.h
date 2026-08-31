@@ -475,5 +475,13 @@ blboxi_get_symmetric_difference_as_4_rects(
     ret[3] = bottom_remaining;
 }
 
+static inline BLPointI
+blboxi_get_dimensions(BLBoxI box) {
+    return (BLPointI) {
+        blboxi_width(box),
+        blboxi_height(box),
+    };
+}
+
 
 #endif

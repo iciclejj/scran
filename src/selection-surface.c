@@ -548,7 +548,7 @@ init_selection_surface_content(
             blboxi_to_blrecti(get_fullscreen_selection_box(st_output))
         );
 
-        set_selection_surface_theme(st_output, SURFACE_THEME_PRE_SELECTION);
+        selection_surface_set_theme(st_output, SURFACE_THEME_PRE_SELECTION);
     } else {
         // This must be set prior to set_selection_initialized()
         selection_set_box_px(&st_output->selection_ctx, initial_box);
@@ -558,16 +558,16 @@ init_selection_surface_content(
         // ALSO make sure it's called somewhere that the freezeframe init path
         // (and potential future alternate init paths) will reach.
         scran_ui_statusline_set_selection_size(&selection_surface->ui_ctx.ui_statusline, blboxi_to_blrecti(initial_box));
-        set_selection_surface_theme(st_output, SURFACE_THEME_DEFAULT);
-        set_selection_initialized(st_output);
+        selection_surface_set_theme(st_output, SURFACE_THEME_DEFAULT);
+        selection_set_initialized(st_output);
     }
 
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
         struct scran_output_selectionSurface_buffer *st_buffer = &selection_surface->double_buffer[i];
         // Initialized as busy; reset them now.
         //   See init_premem__selection() for more info
-        assert(st_buffer->busy == true);
-        st_buffer->busy = false;
+        assert(st_buffer->scran_wl_buffer.busy == true);
+        st_buffer->scran_wl_buffer.busy = false;
         draw_selection_and_damage_buffer(
             selection_surface,
             st_buffer,
@@ -577,7 +577,7 @@ init_selection_surface_content(
     }
 
     struct scran_output_selectionSurface_buffer *initial_buffer = &selection_surface->double_buffer[0];
-    initial_buffer->busy = true;
+    initial_buffer->scran_wl_buffer.busy = true;
     wl_surface_attach(
         selection_surface->surface.wl_surface, initial_buffer->scran_wl_buffer.wl_buffer, 0, 0
     );

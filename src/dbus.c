@@ -554,7 +554,7 @@ StatusNotifierItem_Activate(
     void *userdata,
     sd_bus_error *error
 ) {
-    start_grabbing_focus();
+    scran_focus_grab();
     return sd_bus_reply_method_return(message, "");
 }
 

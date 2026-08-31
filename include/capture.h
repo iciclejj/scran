@@ -8,6 +8,8 @@
 #include <libavutil/rational.h>
 
 #include "ext-image-copy-capture-v1.h"
+
+#include "selection.h"
 #include "state.h"
 #include "util/blend2d.h"
 
@@ -28,32 +30,45 @@ enum {
     SCRAN_AV_FORMAT_STREAM_IDX_AUDIO,
 };
 
+struct capture_buffer_area_context {
+    const uint8_t *area_start_address;
+    BLBoxI area_px;
+    uint32_t source_row_bytes;
+};
 
-void
-capture_session_init(
-    struct capture_session *capture,
-    struct ext_image_capture_source_v1 *source,
-    struct ext_image_copy_capture_session_v1_listener *listener,
-    void *listener_userdata
-);
+void capture_session_init(struct capture_session *session, struct ext_image_capture_source_v1 *source);
 
 void capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px);
-void end_fullscreen_capture(struct scran_output *st_output);
 
-void video_capture_write_video_packet(struct capture_frame_context *frame_ctx, AVPacket *pkt);
-bool video_capture_start(struct scran_output *st_output);
-bool video_capture_start_fullscreen(struct scran_output *st_output);
+enum scran_capture_frame_consumers capture_fullscreen_dispatch_pending_consumers(struct scran_output *st_output, enum scran_capture_frame_consumers consumers);
+enum scran_capture_frame_consumers capture_fullscreen_start(struct scran_output *st_output, uint8_t consumers);
+void capture_fullscreen_end(struct scran_output *st_output, uint8_t consumer);
+
+bool capture_request_frame(struct capture_session *session, uint8_t consumer, const BLRectI *buffer_damage);
+
+typedef void capture_video_write_packet_fn(
+    struct scran_output *,
+    AVPacket *pkt
+);
+bool capture_video_init_writers(struct scran_output *st_output, const BLPointI dimensions);
+ void capture_video_destroy_video_writer(struct scran_output *st_output);
+ void capture_video_destroy_audio_writer(struct scran_output *st_output);
+bool capture_video_drain_writer(struct scran_output *st_output, AVCodecContext *codec_ctx, AVPacket *packet, capture_video_write_packet_fn write_packet_fn, const char *stream_name);
+void capture_video_write_video_packet(struct scran_output *output, AVPacket *pkt);
+void capture_video_write_audio_packet(struct scran_output *st_output, AVPacket *av_packet);
+bool capture_video_write_video_frame(struct scran_output *output, struct capture_frame_context *frame_ctx, const struct capture_session_context *session, const struct capture_buffer_area_context *buffer_area_ctx);
+void capture_image_write_image(struct scran_output *output, const struct capture_session_context *session, const struct capture_frame_context *frame_ctx, const struct capture_buffer_area_context *buffer_area_ctx);
+
+bool capture_video_start(struct scran_output *st_output);
+bool capture_video_start_fullscreen(struct scran_output *st_output);
 // Call video_capture_request_stop() to initiate graceful finish from arbitrary
 // locations, rather than calling video_capture_finish() directly.
-void video_capture_request_stop(struct scran_output *st_output);
-void video_capture_finish(struct scran_output *st_output);
-struct ext_image_copy_capture_frame_v1 * video_capture_create_frame(struct scran_output_capture *capture);
-void video_capture_write_audio_packet(struct capture_frame_context *frame_ctx, AVPacket *av_packet);
-void video_capture_destroy_ffmpeg(struct scran_output *st_output);
+void capture_video_request_stop(struct scran_output *st_output);
+void capture_video_finish(struct scran_output *st_output);
 
-bool image_capture_start(struct scran_output *st_output, bool exit_after_capture);
-bool image_capture_start_fullscreen(struct scran_output *st_output, bool exit_after_capture);
-void image_capture_request_frame(struct scran_output *st_output, struct ext_image_copy_capture_frame_v1_listener *listener, struct ext_image_copy_capture_session_v1 *session, struct wl_buffer *buffer, int32_t buffer_width_px, int32_t buffer_height_px);
+bool capture_image_start(struct scran_output *st_output, bool exit_after_capture);
+ void capture_image_finish(struct scran_output *output);
+bool capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_capture);
 
 
 // HACK
@@ -78,12 +93,26 @@ capture_force_next_frame(
     //
     // TODO: This should maybe be made more robust, but this seems to work even if
     // it has a transparent buffer attached, at least on Hyprland.
-    wl_surface_damage_buffer(st_output->selection_surface.surface.wl_surface, 0, 0, 1, 1);
-    wl_surface_commit(st_output->selection_surface.surface.wl_surface);
+    selection_do_some_damage(st_output);
 }
 
 static inline void
-video_capture_grow_tracked_damage(
+capture_request_frame_forced(
+    struct capture_session *session,
+    uint8_t consumer,
+    const BLRectI *damage
+) {
+    capture_request_frame(session, consumer, damage);
+
+    // Some compositors (like Hyprland on rapid consecutive freezeframe refreshes)
+    // may wait indefinitely for the next capture frame, if no damage is detected.
+    //
+    // Mainly needed for freezeframe/hide_selection_surface_then() captures.
+    capture_force_next_frame(session->frame_ctx.output);
+}
+
+static inline void
+capture_grow_tracked_damage(
     struct capture_frame_context *frame_ctx,
     int32_t x, int32_t y, int32_t w, int32_t h
 ) {
@@ -102,43 +131,48 @@ video_capture_grow_tracked_damage(
 }
 
 static inline void
-video_capture_damage_buffer(
+capture_damage_buffer(
     struct capture_frame_context *frame_ctx,
     struct ext_image_copy_capture_frame_v1 *frame,
     int32_t x, int32_t y, int32_t w, int32_t h
 ) {
     ext_image_copy_capture_frame_v1_damage_buffer(frame, x, y, w, h);
-    video_capture_grow_tracked_damage(frame_ctx, x, y, w, h);
+    capture_grow_tracked_damage(frame_ctx, x, y, w, h);
 }
 
 static inline uint8_t *
 capture_get_area_start_address(
-    struct capture_frame_context *frame_ctx,
-    BLBoxI capture_buffer_area_px
+    const struct capture_session_context *session,
+    const struct capture_frame_context *frame_ctx,
+    const BLBoxI *capture_buffer_area_px
 ) {
     return frame_ctx->scran_wl_buffer.data
-         + frame_ctx->pixel_stride * capture_buffer_area_px.y0 * frame_ctx->source_width_px
-         + frame_ctx->pixel_stride * capture_buffer_area_px.x0;
+         + session->pixel_stride * capture_buffer_area_px->y0 * session->source_dimensions_px.x
+         + session->pixel_stride * capture_buffer_area_px->x0;
 }
 
 static inline BLBoxI
 capture_get_selection_as_capture_buffer_area_px(
-    const struct capture_frame_context *frame_ctx
+    const struct capture_session_context *session,
+    const struct capture_frame_context *frame_ctx,
+    const BLBoxI selection
 ) {
-    assert(frame_ctx->source_width_px > 0);
-    assert(frame_ctx->source_height_px > 0);
+    const BLPointI source_dimensions_px = session->source_dimensions_px;
+
+    assert(source_dimensions_px.x > 0);
+    assert(source_dimensions_px.y > 0);
 
     const BLBoxI capture_buffer_area_px = blboxi_get_reverse_transform(
-        frame_ctx->selection_ctx_box_px,
-        frame_ctx->source_width_px,
-        frame_ctx->source_height_px,
+        selection,
+        source_dimensions_px.x,
+        source_dimensions_px.y,
         frame_ctx->source_transform
     );
 
     assert(capture_buffer_area_px.x0 >= 0);
     assert(capture_buffer_area_px.y0 >= 0);
-    assert(capture_buffer_area_px.x1 <= frame_ctx->source_width_px);
-    assert(capture_buffer_area_px.y1 <= frame_ctx->source_height_px);
+    assert(capture_buffer_area_px.x1 <= source_dimensions_px.x);
+    assert(capture_buffer_area_px.y1 <= source_dimensions_px.y);
 
     return capture_buffer_area_px;
 }

@@ -1,3 +1,6 @@
+#include <assert.h>
+#include <limits.h>
+
 #include <wayland-client-protocol.h>
 
 #include "selection.h"
@@ -11,6 +14,16 @@
 #include "event-handlers.h"
 #include "selection-surface.h"
 #include "print.h"
+#include "scranrot.h"
+#include "util/lib-interop.h"
+
+
+static void
+freezeframe_capture_start_after_buffer_release(struct scran_wl_buffer *buffer)
+{
+    struct scran_output *output = &g_state.outputs[get_containing_output_array_index(buffer)];
+    freezeframe_capture_start_assume_callback_set(output);
+}
 
 
 void
@@ -18,20 +31,17 @@ freezeframe_capture_start_assume_callback_set(struct scran_output *st_output)
 {
     assert(st_output->freezeframe.callback != NULL);
 
-    struct scran_freezeframe_buffer *capture_buffer = &st_output->freezeframe.capture_buffer;
+    struct capture_session *session              = &st_output->freezeframe.session;
+    const  BLPointI         source_dimensions_px = session->session_ctx.source_dimensions_px;
 
-    if (capture_buffer->busy) { // XXX: Not thread-safe.
-        capture_buffer->release_callback = freezeframe_capture_start_assume_callback_set;
+    if (session->frame_ctx.scran_wl_buffer.busy) { // XXX: Not thread-safe.
+        session->frame_ctx.scran_wl_buffer.release_callback = freezeframe_capture_start_after_buffer_release;
         return;
     }
 
-    image_capture_request_frame(
-        st_output,
-        &image_copy_capture_frame_listener__freezeframe,
-        st_output->freezeframe.session.wl_session,
-        st_output->freezeframe.capture_buffer.scran_wl_buffer.wl_buffer,
-        st_output->freezeframe.source_width_px,
-        st_output->freezeframe.source_height_px
+    capture_request_frame_forced(
+        session, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME,
+        &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
     );
 }
 
@@ -39,7 +49,7 @@ freezeframe_capture_start_assume_callback_set(struct scran_output *st_output)
 void
 freezeframe_capture_start(
     struct scran_output *st_output,
-    freezeframe_callback callback
+    scran_output_callback callback
 ) {
     assert(callback != NULL);
     assert(st_output->freezeframe.callback == NULL);
@@ -70,6 +80,12 @@ freezeframe_hide_surface(struct scran_output *st_output)
     );
     wl_surface_commit(freezeframe->subsurface.wl_surface);
 
+    // HACK: If we're capturing fullscreen video (where we attach a transparent
+    // buffer to our selection-surface), some compositors (Hyprland) will not
+    // properly update the screen to remove our freezeframe, in areas where it
+    // doesn't detect any change.
+    selection_do_some_damage(st_output);
+
     // XXX: These should theoretically be set after the commit goes through
     freezeframe->showing = false;
     {
@@ -79,6 +95,123 @@ freezeframe_hide_surface(struct scran_output *st_output)
         request_selection_surface_frame_callback(st_output);
     }
 }
+
+static void
+freezeframe_capture_finish(
+    struct scran_output *output
+) {
+    struct scran_output_freezeframe *freezeframe = &output->freezeframe;
+
+    // We can also come here during startup with -z, in which case we can bypass
+    // the regular fullscreen capture pipeline
+    if (output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME) {
+        capture_fullscreen_end(output, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME);
+    }
+
+    scran_output_callback callback = freezeframe->callback;
+    assert(callback != NULL);
+    freezeframe->callback = NULL;
+    callback(output);
+}
+
+
+void freezeframe_capture_handle_frame_ready(struct scran_output *output);
+
+static void
+freezeframe_show_after_buffer_release(struct scran_wl_buffer *buffer)
+{
+    struct scran_output *output = &g_state.outputs[get_containing_output_array_index(buffer)];
+    freezeframe_capture_handle_frame_ready(output);
+}
+
+// Tries to display the freezeframe.
+// If surface-buffer is busy, it will abort and re-run after buffer release.
+void
+freezeframe_capture_handle_frame_ready(struct scran_output *output)
+{
+    struct scran_output_freezeframe *freezeframe = &output->freezeframe;
+
+    struct capture_frame_context    *frame_ctx      = &freezeframe->session.frame_ctx;
+    struct scran_wl_buffer          *capture_buffer = &frame_ctx->scran_wl_buffer;
+    struct scran_wl_buffer          *surface_buffer = &freezeframe->surface_buffer;
+    const struct capture_session_context *session = &freezeframe->session.session_ctx;
+
+    assert(capture_buffer->busy == false); // We should not have started capture if busy
+
+    struct scran_wl_buffer *final_buffer;
+
+    enum wl_output_transform       buffer_transform = -1;
+    const int32_t                  source_width_px  = session->source_dimensions_px.x;
+    const int32_t                  source_height_px = session->source_dimensions_px.y;
+    const enum wl_output_transform source_transform = freezeframe->session.frame_ctx.source_transform;
+
+    // XXX TODO: Rework this once scranrot supports flipped
+    // XXX TODO: Refactor this to make it more readable...
+
+    // Show the new, just-captured freezeframe
+    if (source_transform == WL_OUTPUT_TRANSFORM_NORMAL || source_transform == WL_OUTPUT_TRANSFORM_FLIPPED) {
+        final_buffer     = capture_buffer;
+        buffer_transform = source_transform;
+    } else {
+        bool source_is_flipped = source_transform >= WL_OUTPUT_TRANSFORM_FLIPPED;
+        enum wl_output_transform scranrot_transform = source_is_flipped ? source_transform - WL_OUTPUT_TRANSFORM_FLIPPED : source_transform;
+
+        if (surface_buffer->busy) {
+            surface_buffer->release_callback = freezeframe_show_after_buffer_release;
+            return;
+        }
+
+        assert(get_transformed_width(source_width_px, source_height_px, source_transform) == freezeframe->subsurface.width_px_buffer);
+        assert(get_transformed_height(source_width_px, source_height_px, source_transform) == freezeframe->subsurface.height_px_buffer);
+
+        size_t dst_stride = 0;
+        // See comments referencing #14441 for why we scranrot instead of just ::set_buffer_transform().
+        if (scranrot_transform_framebuffer(
+                capture_buffer->data, source_width_px, source_height_px, source_width_px * session->pixel_stride,
+                surface_buffer->data,
+                RGBA32_SHUFFLE_NO_CHANGE, (enum scranrot_transform)scranrot_transform,
+                &dst_stride)
+        ) {
+            assert(dst_stride < INT_MAX && (int)dst_stride == freezeframe->subsurface.width_px_buffer * session->pixel_stride);
+            final_buffer     = surface_buffer;
+            buffer_transform = source_is_flipped ? WL_OUTPUT_TRANSFORM_FLIPPED : WL_OUTPUT_TRANSFORM_NORMAL;
+        } else {
+            eprintf("WARNING: Scranrot failed to convert freezeframe buffer; falling back to set_buffer_transform.\n");
+            // XXX TODO: This does not work correctly yet without an actual surface.transform
+            // property to check against in the update_scale_size_viewport() functions.
+            final_buffer     = capture_buffer;
+            buffer_transform = source_transform;
+        }
+    }
+    const int final_width_px  = final_buffer == capture_buffer ? source_width_px  : freezeframe->subsurface.width_px_buffer;
+    const int final_height_px = final_buffer == capture_buffer ? source_height_px : freezeframe->subsurface.height_px_buffer;
+
+    final_buffer->busy = true;
+    wl_surface_attach(freezeframe->subsurface.wl_surface, final_buffer->wl_buffer, 0, 0);
+    wl_surface_set_buffer_transform(freezeframe->subsurface.wl_surface, buffer_transform);
+    wl_surface_damage_buffer(freezeframe->subsurface.wl_surface, 0, 0, final_width_px, final_height_px);
+    wl_surface_commit(freezeframe->subsurface.wl_surface);
+    freezeframe->showing = true;
+    {
+        struct scran_ui_context *ui_ctx = &output->selection_surface.ui_ctx;
+        scran_ui_textline_item_set_text( SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_OFF);
+        scran_ui_textline_item_set_color(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_COLOR_KEYMAP_FREEZEFRAME);
+    }
+
+    freezeframe_capture_finish(output);
+}
+
+
+void
+freezeframe_capture_handle_failed(
+    struct scran_output *output,
+    uint32_t reason
+) {
+    eprintf("ERROR: freezeframe capture failed (%u)\n", reason);
+    // FIXME: Handle this better?
+    freezeframe_capture_finish(output);
+}
+
 
 // NOTE: This function starts a chain of wayland events that must happen
 // strictly sequentially (which is why it is in the form of a chain of events).
@@ -93,7 +226,7 @@ freezeframe_hide_surface(struct scran_output *st_output)
 void
 freezeframe_capture_refresh(
     struct scran_output *st_output,
-    freezeframe_callback callback
+    scran_output_callback callback
 ) {
     struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
 
@@ -112,8 +245,7 @@ freezeframe_capture_refresh(
     // can be triggered without releasing focus first.
     freezeframe_hide_surface(st_output);
 
-    hide_selection_surface_then(st_output, &presentation_feedback_listener__selection_transparent_for_freezeframe, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE);
-    freezeframe->unhide_after_capture = true;
+    capture_fullscreen_start(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME);
 }
 
 void

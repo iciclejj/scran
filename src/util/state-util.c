@@ -17,16 +17,17 @@ scran_request_exit()
     g_state.exit_requested = true;
 
     FOR_EACH_OUTPUT(i, st_output) {
-        struct capture_frame_context *frame_ctx = &st_output->capture.frame_ctx;
+        struct scran_output_capture *capture = &st_output->capture;
 
-        if (frame_ctx->fullscreen_video_pending) {
-            frame_ctx->fullscreen_video_pending = false;
-            frame_ctx->fullscreen_video_pending_audio_disabled = false;
-            end_fullscreen_capture(st_output);
+        enum scran_capture_frame_consumers pending = capture->pending_fullscreen_consumers;
+        if (pending) {
+            capture->pending_fullscreen_consumers = 0;
+            capture->fullscreen_video_pending_audio_disabled = false; // (not really needed)
+            capture_fullscreen_end(st_output, pending);
         }
 
-        if (frame_ctx->capturing_video) {
-            video_capture_request_stop(st_output);
+        if (capture->capturing_video) {
+            capture_video_request_stop(st_output);
         }
     }
 }
