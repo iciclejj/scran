@@ -446,11 +446,11 @@ redraw_statusline_textline(
     return redrew;
 }
 
-uint8_t
+enum scran_ui_redrawn_textline_mask
 scran_ui_redraw_elements(
     struct scran_ui_context *ui_ctx
 ) {
-    uint8_t redrawn_textline_mask = 0;
+    enum scran_ui_redrawn_textline_mask redrawn_textline_mask = 0;
 
     if (redraw_static_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting))) {
         redrawn_textline_mask |= SCRAN_UI_REDREW_GREETING;

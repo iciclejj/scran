@@ -276,7 +276,7 @@ draw_and_damage_ui(
     struct scran_ui_context *ui_ctx = &selection_surface->ui_ctx;
 
     {
-        uint8_t mask = scran_ui_redraw_elements(ui_ctx);
+        enum scran_ui_redrawn_textline_mask mask = scran_ui_redraw_elements(ui_ctx);
         for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
             selection_surface->double_buffer[i].redrawn_textline_mask |= mask;
         }

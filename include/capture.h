@@ -41,10 +41,10 @@ void capture_session_init(struct capture_session *session, struct ext_image_capt
 void capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px);
 
 enum scran_capture_frame_consumers capture_fullscreen_dispatch_pending_consumers(struct scran_output *st_output, enum scran_capture_frame_consumers consumers);
-enum scran_capture_frame_consumers capture_fullscreen_start(struct scran_output *st_output, uint8_t consumers);
-void capture_fullscreen_end(struct scran_output *st_output, uint8_t consumer);
+enum scran_capture_frame_consumers capture_fullscreen_start(struct scran_output *st_output, enum scran_capture_frame_consumers consumers);
+void capture_fullscreen_end(struct scran_output *st_output, enum scran_capture_frame_consumers consumers);
 
-bool capture_request_frame(struct capture_session *session, uint8_t consumer, const BLRectI *buffer_damage);
+bool capture_request_frame(struct capture_session *session, enum scran_capture_frame_consumers consumer, const BLRectI *buffer_damage);
 
 typedef void capture_video_write_packet_fn(
     struct scran_output *,
@@ -99,7 +99,7 @@ capture_force_next_frame(
 static inline void
 capture_request_frame_forced(
     struct capture_session *session,
-    uint8_t consumer,
+    enum scran_capture_frame_consumers consumer,
     const BLRectI *damage
 ) {
     capture_request_frame(session, consumer, damage);

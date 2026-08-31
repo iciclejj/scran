@@ -177,8 +177,18 @@ struct scran_output_selectionSurface_buffer {
     struct scran_ui_textline_surface_state ui_statusline_state_currently_drawn;
 
     bool force_redraw;
-    uint8_t redrawn_textline_mask;
+    enum scran_ui_redrawn_textline_mask redrawn_textline_mask;
 };
+
+enum surface_theme {
+    // HACK: Using this to make selection invisible
+    //       TODO: Rework the surface redraw functions for more granular
+    //       control over what to draw instead.
+    SURFACE_THEME_PRE_SELECTION,
+
+    SURFACE_THEME_DEFAULT,
+    SURFACE_THEME_VIDEO_CAPTURE,
+} SCRAN_PACKED;
 
 enum scran_selection_surface_disable_reason {
     SCRAN_SELECTION_SURFACE_DISABLE_REASON_NONE                   = 0,
@@ -203,10 +213,11 @@ struct scran_output_selectionSurface {
     struct scran_ui_textline_surface_state ui_keymap_state_last_drawn;
     struct scran_ui_textline_surface_state ui_statusline_state_last_drawn;
 
-    bool awaiting_frame_callback;
     // Disables frame callbacks and hiding/unhiding.
-    uint8_t disable_reason_mask;
-    uint8_t theme;
+    enum scran_selection_surface_disable_reason disable_reason_mask;
+    enum surface_theme                          theme;
+
+    bool awaiting_frame_callback;
 };
 
 struct scran_output;
@@ -231,7 +242,7 @@ struct capture_frame_context {
     int64_t presentation_time_nsec;
 
 
-    uint8_t consumers;
+    enum scran_capture_frame_consumers consumers;
 };
 
 struct capture_session_context {
@@ -424,10 +435,10 @@ struct scran_output_capture {
 
     struct scran_stdout_reservation stdout_reservation;
 
-    uint8_t fullscreen_consumers;
-    uint8_t pending_fullscreen_consumers;
+    enum scran_capture_frame_consumers fullscreen_consumers;
+    enum scran_capture_frame_consumers pending_fullscreen_consumers;
 
-    uint8_t pre_capture_selection_theme;
+    enum surface_theme pre_capture_selection_theme;
     bool exit_after_capture;
 
     bool capturing_video;
