@@ -26,6 +26,7 @@
 #include "wlr-output-management-unstable-v1.h"
 #include "cosmic-output-management-unstable-v1.h"
 
+#include "compiler.h"
 #include "ui.h"
 #include "cursor.h"
 
@@ -85,7 +86,7 @@ enum scran_stdout_reservation_purpose {
     SCRAN_STDOUT_RESERVATION_PURPOSE_NONE,
     SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE,
     SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO,
-};
+} SCRAN_PACKED;
 
 struct scran_stdout_reservation {
     enum scran_stdout_reservation_purpose purpose;
@@ -176,8 +177,18 @@ struct scran_output_selectionSurface_buffer {
     struct scran_ui_textline_surface_state ui_statusline_state_currently_drawn;
 
     bool force_redraw;
-    uint8_t redrawn_textline_mask;
+    enum scran_ui_redrawn_textline_mask redrawn_textline_mask;
 };
+
+enum surface_theme {
+    // HACK: Using this to make selection invisible
+    //       TODO: Rework the surface redraw functions for more granular
+    //       control over what to draw instead.
+    SURFACE_THEME_PRE_SELECTION,
+
+    SURFACE_THEME_DEFAULT,
+    SURFACE_THEME_VIDEO_CAPTURE,
+} SCRAN_PACKED;
 
 enum scran_selection_surface_disable_reason {
     SCRAN_SELECTION_SURFACE_DISABLE_REASON_NONE                   = 0,
@@ -186,7 +197,7 @@ enum scran_selection_surface_disable_reason {
     SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE = 1 << 0,
     SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE        = 1 << 1,
     SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED      = 1 << 2,
-};
+} SCRAN_PACKED;
 
 struct scran_output_selectionSurface {
     struct scran_output_surface surface;
@@ -202,10 +213,11 @@ struct scran_output_selectionSurface {
     struct scran_ui_textline_surface_state ui_keymap_state_last_drawn;
     struct scran_ui_textline_surface_state ui_statusline_state_last_drawn;
 
-    bool awaiting_frame_callback;
     // Disables frame callbacks and hiding/unhiding.
-    uint8_t disable_reason_mask;
-    uint8_t theme;
+    enum scran_selection_surface_disable_reason disable_reason_mask;
+    enum surface_theme                          theme;
+
+    bool awaiting_frame_callback;
 };
 
 struct scran_output;
@@ -215,7 +227,7 @@ enum scran_capture_frame_consumers {
     SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE       = 1 << 0,
     SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO       = 1 << 1,
     SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME = 1 << 2,
-};
+} SCRAN_PACKED;
 
 struct capture_frame_context {
     struct ext_image_copy_capture_frame_v1 *frame;
@@ -230,7 +242,7 @@ struct capture_frame_context {
     int64_t presentation_time_nsec;
 
 
-    uint8_t consumers;
+    enum scran_capture_frame_consumers consumers;
 };
 
 struct capture_session_context {
@@ -348,7 +360,7 @@ enum selection_state {
     SELECTION_REBASING,
     SELECTION_REBASING_FREEZE_SIZE,
     SELECTION_RESIZING,
-};
+} SCRAN_PACKED;
 
 enum selection_resize_direction {
     SELECTION_RESIZE_NONE,
@@ -356,7 +368,7 @@ enum selection_resize_direction {
     SELECTION_RESIZE_TOP_RIGHT,
     SELECTION_RESIZE_BOTTOM_LEFT,
     SELECTION_RESIZE_BOTTOM_RIGHT,
-};
+} SCRAN_PACKED;
 
 // This struct is used as a shared context struct for event handlers that
 // need to interact with the selection (capture area) state.
@@ -423,10 +435,10 @@ struct scran_output_capture {
 
     struct scran_stdout_reservation stdout_reservation;
 
-    uint8_t fullscreen_consumers;
-    uint8_t pending_fullscreen_consumers;
+    enum scran_capture_frame_consumers fullscreen_consumers;
+    enum scran_capture_frame_consumers pending_fullscreen_consumers;
 
-    uint8_t pre_capture_selection_theme;
+    enum surface_theme pre_capture_selection_theme;
     bool exit_after_capture;
 
     bool capturing_video;
@@ -486,7 +498,7 @@ enum scran_opt_hide_ui_level {
     SCRAN_OPT_HIDE_UI_NONE,
     SCRAN_OPT_HIDE_UI_ITEMS,
     SCRAN_OPT_HIDE_UI_EVERYTHING,
-};
+} SCRAN_PACKED;
 
 // TODO: Isolate this from scran state?
 struct scran_options {
@@ -494,6 +506,7 @@ struct scran_options {
     char output_path[SCRAN_OUTPUT_FILEPATH_SIZE_MAX]; // NOTE: Also used as output_directory during cli arg init
     char filename_format[SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX];
 
+    enum scran_opt_hide_ui_level hide_ui_level;
     bool output_to_stdout;
     bool no_keepalive;
     bool disable_audio_capture;
@@ -503,7 +516,6 @@ struct scran_options {
     bool produce_slurp;                 // output slurp-style geometry string
     bool no_notifications;
     bool have_custom_initial_selection;
-    enum scran_opt_hide_ui_level hide_ui_level;
     struct BLRectI custom_initial_selection_global_coordinates;
 };
 

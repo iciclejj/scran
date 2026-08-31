@@ -9,13 +9,14 @@
 #include <util/blend2d.h>
 #include <util/util.h>
 
+#include "compiler.h"
 #include "print.h"
 
 enum scran_ui_disable_reason {
     SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO,
     SCRAN_UI_DISABLE_REASON_NOT_ACTIVE_SURFACE,
     SCRAN_UI_N_DISABLE_REASONS,
-};
+} SCRAN_PACKED;
 
 enum scran_ui_greeting_item_index {
     SCRAN_UI_GREETING_ITEM_I_GREETING,
@@ -40,7 +41,7 @@ enum scran_ui_color {
     SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE,
     SCRAN_UI_COLOR_KEYMAP_FREEZEFRAME,
     SCRAN_UI_N_COLORS,
-};
+} SCRAN_PACKED;
 
 enum scran_ui_text {
     SCRAN_UI_TEXT_GREETING,
@@ -66,7 +67,7 @@ enum scran_ui_text {
 
     SCRAN_UI_TEXT_EMPTY,
     SCRAN_UI_N_TEXTS,
-};
+} SCRAN_PACKED;
 
 struct scran_ui_textline_metadata {
     int height_px;
@@ -74,8 +75,8 @@ struct scran_ui_textline_metadata {
     uint32_t dirty_items_mask;
 };
 struct scran_ui_textline_item_lockable_state {
-    uint8_t text;
-    uint8_t color;
+    enum scran_ui_text  text;
+    enum scran_ui_color color;
 };
 struct scran_ui_textline_item {
     BLImageCore bl_img;
@@ -84,7 +85,7 @@ struct scran_ui_textline_item {
     struct scran_ui_textline_item_lockable_state live_state;
     struct scran_ui_textline_item_lockable_state locked_state;
 
-    uint8_t disable_reason_mask;
+    enum scran_ui_disable_reason disable_reason_mask;
     bool locked;
 };
 static_assert(sizeof((struct scran_ui_textline_item){}.disable_reason_mask) * CHAR_BIT >= SCRAN_UI_N_DISABLE_REASONS,
@@ -156,9 +157,8 @@ enum scran_ui_redrawn_textline_mask {
     SCRAN_UI_REDREW_GREETING          = 1U << 0,
     SCRAN_UI_REDREW_KEYMAP            = 1U << 1,
     SCRAN_UI_REDREW_STATUSLINE        = 1U << 2,
-};
-// Returns scran_ui_redrawn_textline_mask-valued mask
-uint8_t scran_ui_redraw_elements(struct scran_ui_context *ui_ctx);
+} SCRAN_PACKED;
+enum scran_ui_redrawn_textline_mask scran_ui_redraw_elements(struct scran_ui_context *ui_ctx);
 
 
 static inline int
@@ -314,7 +314,7 @@ scran_ui_textline_item_set_disabled(
 ) {
     struct scran_ui_textline_item *item = &textline.items[item_index];
 
-    typeof(item->disable_reason_mask) bit = 1U << reason;
+    enum scran_ui_disable_reason bit = 1U << reason;
 
     if (disabled) {
         item->disable_reason_mask |=  bit;

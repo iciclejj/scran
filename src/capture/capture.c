@@ -43,7 +43,7 @@ capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_bo
 bool
 capture_request_frame(
     struct capture_session *session,
-    uint8_t consumer,
+    enum scran_capture_frame_consumers consumer,
     const BLRectI *damage
 ) {
     struct capture_frame_context *frame_ctx = &session->frame_ctx;
@@ -114,7 +114,7 @@ capture_fullscreen_dispatch_pending_consumers(
 enum scran_capture_frame_consumers
 capture_fullscreen_start(
     struct scran_output *st_output,
-    uint8_t consumers
+    enum scran_capture_frame_consumers consumers
 ) {
     enum scran_capture_frame_consumers prev_consumers = st_output->capture.fullscreen_consumers;
     enum scran_capture_frame_consumers prev_pending   = st_output->capture.pending_fullscreen_consumers;
@@ -148,7 +148,7 @@ capture_fullscreen_start(
 void
 capture_fullscreen_end(
     struct scran_output *st_output,
-    uint8_t consumers
+    enum scran_capture_frame_consumers consumers
 ) {
     st_output->capture.fullscreen_consumers &= ~consumers;
 

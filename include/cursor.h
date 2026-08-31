@@ -4,6 +4,8 @@
 
 #include <stdbool.h>
 
+#include "compiler.h"
+
 struct scran_output;
 
 
@@ -16,7 +18,7 @@ enum scran_cursor_theme {
     SCRAN_CURSOR_THEME_DEFAULT = 0,
     SCRAN_CURSOR_THEME_VIDEO_CAPTURE,
     SCRAN_CURSOR_N_THEMES,
-};
+} SCRAN_PACKED;
 
 bool init_premem__cursor(struct scran_output *st_output);
  void init_premem__cursor__destroy(struct scran_output *st_output);
