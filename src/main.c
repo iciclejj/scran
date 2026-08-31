@@ -721,9 +721,7 @@ update_video_timers(int *timeout_ms_)
     int64_t now_ns = capture_clock_gettime_nsec();
 
     FOR_EACH_OUTPUT(i, st_output) {
-        struct scran_output_capture *capture = &st_output->capture;
-
-        if (capture->capturing_video) {
+        if (capture_video_is_live(st_output)) {
             int64_t timer_ns = (now_ns - st_output->capture.video_presentation_time_nsec_start);
             int     timer_s  = timer_ns / NSEC_PER_SEC;
 

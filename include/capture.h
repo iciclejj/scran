@@ -71,6 +71,24 @@ bool capture_image_start(struct scran_output *st_output, bool exit_after_capture
 bool capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_capture);
 
 
+static inline bool
+capture_video_is_live(
+    struct scran_output *output
+) {
+    // We use a switch just to get compiler warnings if we add new stages and
+    // don't update this accordingly.
+    switch (output->capture.video_stage) {
+    case SCRAN_VIDEO_STAGE_NONE:
+    case SCRAN_VIDEO_STAGE_FULLSCREEN_START_PENDING:
+        return false;
+    case SCRAN_VIDEO_STAGE_CAPTURING:
+    case SCRAN_VIDEO_STAGE_STOP_REQUESTED:
+        return true;
+    }
+
+    __builtin_unreachable();
+}
+
 // HACK
 //
 // Client-requested *capture-buffer* damage does *not* necessarily trigger a new

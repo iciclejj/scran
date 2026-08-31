@@ -40,7 +40,7 @@ on_process(void *data)
     struct scran_output_capture *capture   = &st_output->capture;
     struct ffmpeg_context      *ffmpeg_ctx = &capture->ffmpeg_ctx;
 
-    if (!capture->capturing_video) {
+    if (!capture_video_is_live(st_output)) {
         // We need exit here, differently to our video frame handler, since
         // on_process gets continuously requested automatically, and we can't
         // safely stop it from within this handler.

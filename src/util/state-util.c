@@ -26,7 +26,7 @@ scran_request_exit()
             capture_fullscreen_end(st_output, pending);
         }
 
-        if (capture->capturing_video) {
+        if (capture->video_stage == SCRAN_VIDEO_STAGE_CAPTURING) {
             capture_video_request_stop(st_output);
         }
     }

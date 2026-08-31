@@ -404,6 +404,13 @@ struct ffmpeg_context {
     AVAudioFifo     *av_audio_fifo;
 };
 
+enum scran_video_stage {
+    SCRAN_VIDEO_STAGE_NONE,
+    SCRAN_VIDEO_STAGE_FULLSCREEN_START_PENDING,
+    SCRAN_VIDEO_STAGE_CAPTURING,
+    SCRAN_VIDEO_STAGE_STOP_REQUESTED,
+} SCRAN_PACKED;
+
 struct scran_output_capture {
     struct ext_image_capture_source_v1 *source;
 
@@ -437,14 +444,15 @@ struct scran_output_capture {
     enum scran_capture_frame_consumers pending_fullscreen_consumers;
 
     enum surface_theme pre_capture_selection_theme;
-    bool exit_after_capture;
 
-    bool capturing_video;
-    bool video_end_requested;
+    enum scran_video_stage video_stage;
+
     bool audio_active;
     bool audio_disable_modifier_active;
     // TODO: Merge this into the generic video start logic
     bool fullscreen_video_pending_audio_disabled;
+
+    bool exit_after_capture;
 };
 
 struct scran_output_mode {

@@ -114,7 +114,7 @@ handle_image_copy_capture_frame_ready(
 
             if (blboxi_intersects(buffer_area_ctx.area_px, frame_ctx->capture_buffer_damage_area_px)) {
                 if (!capture_video_write_video_frame(output, frame_ctx, session, &buffer_area_ctx)) {
-                    output->capture.video_end_requested = true;
+                    output->capture.video_stage = SCRAN_VIDEO_STAGE_STOP_REQUESTED;
                 }
             }
 
@@ -124,10 +124,7 @@ handle_image_copy_capture_frame_ready(
             // the last x amount of time.
             // Forcing some compositor/surface damage when signaling to end the capture
             // should trigger the necessary final frame.
-            //
-            // TODO: Go through uses of capturing_video to check for redundancy now
-            // that we have a global state, with e.g. `.exit_requested`.
-            if (output->capture.video_end_requested || g_state.exit_requested) {
+            if (output->capture.video_stage == SCRAN_VIDEO_STAGE_STOP_REQUESTED || g_state.exit_requested) {
                 capture_video_finish(output);
             } else {
                 // TODO: avio_flush ?
