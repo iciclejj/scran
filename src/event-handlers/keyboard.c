@@ -230,7 +230,7 @@ esc_exit_scran:
 
         bool pretend_all_hidden = true;
         FOR_EACH_OUTPUT(i, st_output) {
-            if (st_output->freezeframe.callback != NULL) {
+            if (st_output->freezeframe.stage != SCRAN_FREEZEFRAME_STAGE_IDLE) {
                 eprintf("Freezeframe refresh already in progress; ignoring toggle.\n");
                 goto z_done;
             }

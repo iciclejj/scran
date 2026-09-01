@@ -257,11 +257,18 @@ struct capture_session {
     struct capture_session_context session_ctx;
 };
 
+enum scran_freezeframe_stage {
+    SCRAN_FREEZEFRAME_STAGE_IDLE, // Does not imply hidden or showing
+    SCRAN_FREEZEFRAME_STAGE_REFRESHING,
+    SCRAN_FREEZEFRAME_STAGE_CAPTURING,
+};
+
 struct scran_output_freezeframe {
     struct scran_output_subsurface subsurface;
 
     struct capture_session session;
 
+    enum scran_freezeframe_stage stage;
     bool showing;
     scran_output_callback callback;
 
