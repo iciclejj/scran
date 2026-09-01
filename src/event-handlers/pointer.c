@@ -81,9 +81,9 @@ handle_pointer_motion(
 
     switch (selection_ctx->selection_state) {
     case SELECTION_NONE:
-    case SELECTION_NONE_FREEZE_SIZE:
         break;
     case SELECTION_INITIALIZING:
+        assert(!selection_ctx->size_is_frozen);
         {
             BLBoxI box_px = {
                 .x0 = selection_ctx->pointer_before_changes_x_px,
@@ -108,10 +108,8 @@ handle_pointer_motion(
         request_selection_surface_frame_callback(st_output);
         break;
     case SELECTION_COMPLETE:
-    case SELECTION_COMPLETE_FREEZE_SIZE:
         break;
     case SELECTION_REBASING:
-    case SELECTION_REBASING_FREEZE_SIZE:
         {
             int x_diff = x_px - selection_ctx->pointer_before_changes_x_px;
             int y_diff = y_px - selection_ctx->pointer_before_changes_y_px;
@@ -150,6 +148,7 @@ handle_pointer_motion(
         request_selection_surface_frame_callback(st_output);
         break;
     case SELECTION_RESIZING:
+        assert(!selection_ctx->size_is_frozen);
         {
             const int x_diff_px = x_px - selection_ctx->pointer_before_changes_x_px;
             const int y_diff_px = y_px - selection_ctx->pointer_before_changes_y_px;
@@ -266,10 +265,10 @@ handle_pointer_button(
     switch (button) {
     case BTN_LEFT:
         switch(selection_ctx->selection_state) {
-        case SELECTION_NONE_FREEZE_SIZE:
-            break;
         case SELECTION_NONE:
-            ;
+            if (selection_ctx->size_is_frozen) {
+                break;
+            }
             const struct BLBoxI initial_selection_area = {
                 .x0 = x_px,
                 .y0 = y_px,
@@ -294,6 +293,7 @@ handle_pointer_button(
 
             break;
         case SELECTION_INITIALIZING:
+            assert(!selection_ctx->size_is_frozen);
             {
                 BLBoxI box_px = {
                     .x0 = selection_ctx->pointer_before_changes_x_px,
@@ -315,9 +315,7 @@ handle_pointer_button(
 
             break;
         case SELECTION_COMPLETE:
-        case SELECTION_COMPLETE_FREEZE_SIZE:
-            selection_ctx->selection_state = selection_ctx->selection_state == SELECTION_COMPLETE
-                                             ? SELECTION_REBASING : SELECTION_REBASING_FREEZE_SIZE;
+            selection_ctx->selection_state = SELECTION_REBASING;
             selection_ctx->pointer_before_changes_x_px = x_px;
             selection_ctx->pointer_before_changes_y_px = y_px;
             selection_ctx->box_before_changes_px = selection_get_box_px(selection_ctx);
@@ -325,16 +323,17 @@ handle_pointer_button(
         case SELECTION_REBASING:
             selection_ctx->selection_state = SELECTION_COMPLETE;
             break;
-        case SELECTION_REBASING_FREEZE_SIZE:
-            selection_ctx->selection_state = SELECTION_COMPLETE_FREEZE_SIZE;
-            break;
         case SELECTION_RESIZING:
+            assert(!selection_ctx->size_is_frozen);
             break;
         }
         break;
     case BTN_RIGHT:
         switch(selection_ctx->selection_state) {
         case SELECTION_COMPLETE:
+            if (selection_ctx->size_is_frozen) {
+                goto btn_right_default;
+            }
             selection_ctx->selection_state = SELECTION_RESIZING;
             selection_ctx->box_before_changes_px = selection_get_box_px(selection_ctx);
             selection_ctx->pointer_before_changes_x_px = x_px;
@@ -360,10 +359,12 @@ handle_pointer_button(
             }
             break;
         case SELECTION_RESIZING:
+            assert(!selection_ctx->size_is_frozen);
             selection_ctx->selection_state = SELECTION_COMPLETE;
             selection_ctx->selection_resize_direction = SELECTION_RESIZE_NONE;
             break;
         default:
+btn_right_default:
             // Shunt back to a safe state to prevent state inversions or other
             // unexpected side-effects.
             pointer_ctx->active_button = SCRAN_BTN_NONE;

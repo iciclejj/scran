@@ -353,12 +353,9 @@ struct scran_seat {
 
 enum selection_state {
     SELECTION_NONE,
-    SELECTION_NONE_FREEZE_SIZE, // Prevents starting a selection during fullscreen capture
     SELECTION_INITIALIZING,
     SELECTION_COMPLETE,
-    SELECTION_COMPLETE_FREEZE_SIZE,
     SELECTION_REBASING,
-    SELECTION_REBASING_FREEZE_SIZE,
     SELECTION_RESIZING,
 } SCRAN_PACKED;
 
@@ -384,6 +381,7 @@ struct scran_output_selectionContext {
     struct BLBoxI box_px;
 
     enum selection_state selection_state;
+    bool size_is_frozen;
 
     // TODO: Clearer name? This should be used to store the pre-resize/rebase box
     struct BLBoxI box_before_changes_px;
@@ -405,6 +403,13 @@ struct ffmpeg_context {
     AVPacket        *av_packet_audio;
     AVAudioFifo     *av_audio_fifo;
 };
+
+enum scran_video_stage {
+    SCRAN_VIDEO_STAGE_NONE,
+    SCRAN_VIDEO_STAGE_FULLSCREEN_START_PENDING,
+    SCRAN_VIDEO_STAGE_CAPTURING,
+    SCRAN_VIDEO_STAGE_STOP_REQUESTED,
+} SCRAN_PACKED;
 
 struct scran_output_capture {
     struct ext_image_capture_source_v1 *source;
@@ -439,14 +444,15 @@ struct scran_output_capture {
     enum scran_capture_frame_consumers pending_fullscreen_consumers;
 
     enum surface_theme pre_capture_selection_theme;
-    bool exit_after_capture;
 
-    bool capturing_video;
-    bool video_end_requested;
+    enum scran_video_stage video_stage;
+
     bool audio_active;
     bool audio_disable_modifier_active;
     // TODO: Merge this into the generic video start logic
     bool fullscreen_video_pending_audio_disabled;
+
+    bool exit_after_capture;
 };
 
 struct scran_output_mode {

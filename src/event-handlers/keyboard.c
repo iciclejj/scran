@@ -127,7 +127,8 @@ handle_keyboard_key(
         case XKB_KEY_Escape:
             if (!active_selection_surface) {
                 FOR_EACH_OUTPUT(i, _st_output) {
-                    if (_st_output->capture.capturing_video) {
+                    // (Allow Esc during _STAGE_PENDING_END to just exit like normal)
+                    if (_st_output->capture.video_stage == SCRAN_VIDEO_STAGE_CAPTURING) {
                         if (repeated_untrusted_escape) {
                             eprintf("Got escape key again...");
                             goto esc_exit_scran; // In case user doesn't understand what's happening
@@ -143,7 +144,7 @@ handle_keyboard_key(
 
             if (active_selection_surface) {
                 struct scran_output *st_output = wl_container_of(active_selection_surface, st_output, selection_surface);
-                if (st_output->capture.capturing_video) {
+                if (st_output->capture.video_stage == SCRAN_VIDEO_STAGE_CAPTURING) {
                     eprintf(" stopping video capture.\n");
                     capture_video_request_stop(st_output);
                     return;
@@ -257,14 +258,9 @@ z_done:
         ;
         struct scran_output_capture *capture = &st_output->capture;
 
-        // TODO: Make this cleaner, with a capture_state enum and/or helper function
-        bool video_in_progress =
-            capture->capturing_video
-            || capture->fullscreen_consumers         & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO
-            || capture->pending_fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
-
         bool exit_after_capture =
-            video_in_progress
+            capture->video_stage == SCRAN_VIDEO_STAGE_CAPTURING ||
+            capture->video_stage == SCRAN_VIDEO_STAGE_FULLSCREEN_START_PENDING
             ? false
             : !xkb_state_mod_name_is_active(state->seat.keyboard.xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_EFFECTIVE);
 
@@ -279,9 +275,8 @@ z_done:
     case XKB_KEY_space:
         bool video_button_got_jammed = false;
 
-        if (st_output->capture.capturing_video) {
-            capture_video_request_stop(st_output);
-        } else {
+        switch (st_output->capture.video_stage) {
+        case SCRAN_VIDEO_STAGE_NONE:
             if (st_output->selection_ctx.selection_state == SELECTION_INITIALIZING) {
                 // TODO: Guard against capture_and_exit_after_selection_init?
                 selection_set_initialized(st_output);
@@ -300,6 +295,13 @@ z_done:
                 // TODO: Fire a notification instead?
                 eprintf("Failed to start video capture.\n");
             }
+            break;
+        case SCRAN_VIDEO_STAGE_CAPTURING:
+            capture_video_request_stop(st_output);
+            break;
+        case SCRAN_VIDEO_STAGE_STOP_REQUESTED:
+        case SCRAN_VIDEO_STAGE_FULLSCREEN_START_PENDING:
+            break;
         }
 
         if (!video_button_got_jammed) {

@@ -21,8 +21,6 @@
 void selection_surface_set_theme(struct scran_output *st_output, enum surface_theme action);
 
 void selection_set_initialized(struct scran_output *st_output);
-bool selection_freeze_size(struct scran_output *st_output);
-void selection_unfreeze_size(struct scran_output *st_output);
 
 void selection_surface_acquire_hide_then(struct scran_output *st_output, struct wp_presentation_feedback_listener *listener, enum scran_selection_surface_disable_reason reason);
 void selection_surface_release_hide(struct scran_output *st_output, enum scran_selection_surface_disable_reason reason);
@@ -30,6 +28,26 @@ void selection_surface_release_hide(struct scran_output *st_output, enum scran_s
 void scran_focus_grab(void);
 void scran_focus_grab_for_output(struct scran_output *st_output);
 void scran_focus_release(void);
+
+
+static inline void
+selection_freeze_size(struct scran_output *output) {
+    if (output->selection_ctx.selection_state == SELECTION_NONE) {
+        assert(output->capture.pending_fullscreen_consumers || output->capture.fullscreen_consumers);
+    }
+
+    output->selection_ctx.size_is_frozen = true;
+
+    if (output->selection_ctx.selection_state == SELECTION_RESIZING) {
+        // Incompatible state; neutralize button.
+        g_state.seat.pointer_ctx.active_button = SCRAN_BTN_NONE;
+        output->selection_ctx.selection_state = SELECTION_COMPLETE;
+    }
+}
+static inline void
+selection_unfreeze_size(struct scran_output *output) {
+    output->selection_ctx.size_is_frozen = false;
+}
 
 static inline void
 selection_do_some_damage(
@@ -51,8 +69,7 @@ get_fullscreen_selection_box(const struct scran_output *st_output) {
 
 static inline bool
 selection_is_none(struct scran_output_selectionContext *selection_ctx) {
-    return selection_ctx->selection_state == SELECTION_NONE ||
-           selection_ctx->selection_state == SELECTION_NONE_FREEZE_SIZE;
+    return selection_ctx->selection_state == SELECTION_NONE;
 }
 
 static inline BLBoxI

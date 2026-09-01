@@ -30,9 +30,7 @@ capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_bo
 
     // Presentation feedback for an older selection-surface buffer can arrive
     // after video capture has frozen the selection size.
-    // FIXME: Actually check if frozen here instead, but probably decouple
-    // selection's frozen state from selection_state first.
-    if (capture->capturing_video && size_changed) {
+    if (st_output->selection_ctx.size_is_frozen && size_changed) {
         return;
     }
 
@@ -72,6 +70,7 @@ capture_request_frame(
     return true;
 }
 
+static inline void capture_video_cancel_pending_fullscreen_capture(struct scran_output *output);
 
 enum scran_capture_frame_consumers
 capture_fullscreen_dispatch_pending_consumers(
@@ -93,6 +92,8 @@ capture_fullscreen_dispatch_pending_consumers(
 
         if (!g_state.exit_requested && capture_video_start(st_output)) {
             started |= SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
+        } else {
+            capture_video_cancel_pending_fullscreen_capture(st_output);
         }
     }
 
@@ -174,15 +175,12 @@ capture_video_start(struct scran_output *st_output)
     const BLPointI source_dimensions_px = st_output->capture.session.session_ctx.source_dimensions_px;
 
     // TODO: Assert instead?
-    if (st_output->capture.capturing_video) {
+    if (capture_video_is_live(st_output)) {
         DEBUG("Already capturing...\n");
         return false;
     }
 
-    if (!selection_freeze_size(st_output)) {
-        eprintf("Can't start video capture without frozen selection size.\n");
-        goto capture_video_start_fail_1;
-    }
+    selection_freeze_size(st_output);
 
     const bool fullscreen = st_output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
     const BLPointI dimensions = fullscreen
@@ -195,14 +193,14 @@ capture_video_start(struct scran_output *st_output)
     if (g_state.options.output_to_stdout) {
         if (!scran_stdout_try_reserve(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO)) {
             scran_stdout_print_busy_message();
-            goto capture_video_start_fail_2;
+            goto capture_video_start_fail_1;
         }
     }
 
     if (!capture_video_init_writers(st_output, dimensions)) {
         eprintf("Error: Failed to initialize ffmpeg libraries.\n");
         // TODO: goto fail if this becomes more complicated
-        goto capture_video_start_fail_3;
+        goto capture_video_start_fail_2;
     }
 
     {
@@ -230,16 +228,15 @@ capture_video_start(struct scran_output *st_output)
         scran_pipewire_connect();
     }
 
-    st_output->capture.capturing_video = true;
+    st_output->capture.video_stage = SCRAN_VIDEO_STAGE_CAPTURING;
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     return true;
 
-capture_video_start_fail_3:
-    scran_stdout_release(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO);
 capture_video_start_fail_2:
-    selection_unfreeze_size(st_output);
+    scran_stdout_release(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO);
 capture_video_start_fail_1:
+    selection_unfreeze_size(st_output);
     return false;
 }
 
@@ -251,30 +248,40 @@ capture_video_start_fullscreen(struct scran_output *st_output)
     // TODO: Reserve stdout already here, once we have better capture-state
     // tracking with e.g. an enum
 
+    // TODO: Assert instead?
+    if (capture_video_is_live(st_output)) {
+        DEBUG("Already capturing...\n");
+        return false;
+    }
+
     bool prev_pending_audio_disabled = capture->fullscreen_video_pending_audio_disabled;
 
     // Must be set prior to capture_fullscreen_start(), since it will dispatch
     // the capture instantly when possible.
     capture->fullscreen_video_pending_audio_disabled = capture->audio_disable_modifier_active;
+    capture->video_stage                             = SCRAN_VIDEO_STAGE_FULLSCREEN_START_PENDING;
 
     if (!capture_fullscreen_start(
             st_output,
             SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO)
     ) {
-        goto fail;
+        capture->fullscreen_video_pending_audio_disabled = prev_pending_audio_disabled;
+        capture->video_stage                             = SCRAN_VIDEO_STAGE_NONE;
+        return false;
     }
 
     // Freeze already here to block entering SELECTION_INITIALIZING
-    if (!selection_freeze_size(st_output)) {
-        eprintf("Can't start video capture without frozen selection size.\n");
-        goto fail;
-    }
+    selection_freeze_size(st_output);
 
     return true;
+}
 
-fail:
-    capture->fullscreen_video_pending_audio_disabled = prev_pending_audio_disabled;
-    return false;
+static inline void
+capture_video_cancel_pending_fullscreen_capture(struct scran_output *output) {
+    // NOTE: Change this to an early-return if we make this a public function.
+    assert(output->capture.video_stage == SCRAN_VIDEO_STAGE_FULLSCREEN_START_PENDING);
+    output->capture.video_stage = SCRAN_VIDEO_STAGE_NONE;
+    selection_unfreeze_size(output);
 }
 
 // Should only be called once the video capture event loop is finished.
@@ -341,8 +348,7 @@ capture_video_finish(struct scran_output *st_output)
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
-    st_output->capture.capturing_video = false;
-    st_output->capture.video_end_requested = false;
+    st_output->capture.video_stage = SCRAN_VIDEO_STAGE_NONE;
 
     DEBUG("FINISHED RECORDING.\n");
 }
@@ -354,10 +360,11 @@ capture_video_request_stop(struct scran_output *st_output)
     struct capture_frame_context *frame_ctx = &capture->session.frame_ctx;
     const BLPointI source_dimensions_px = st_output->capture.session.session_ctx.source_dimensions_px;
 
-    if (capture->video_end_requested) {
+    // TODO: Just assert instead?
+    if (capture->video_stage == SCRAN_VIDEO_STAGE_STOP_REQUESTED) {
         return;
     }
-    capture->video_end_requested = true;
+    capture->video_stage = SCRAN_VIDEO_STAGE_STOP_REQUESTED;
 
     ext_image_copy_capture_frame_v1_destroy(frame_ctx->frame);
     frame_ctx->frame = NULL;
