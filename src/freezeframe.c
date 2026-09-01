@@ -11,7 +11,6 @@
 #include "state-util.h"
 #include "capture.h"
 #include "freezeframe.h"
-#include "event-handlers.h"
 #include "selection-surface.h"
 #include "print.h"
 #include "scranrot.h"
