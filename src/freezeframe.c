@@ -24,7 +24,6 @@ freezeframe_capture_start_after_buffer_release(struct scran_wl_buffer *buffer)
     freezeframe_capture_start_assume_callback_set(output);
 }
 
-
 void
 freezeframe_capture_start_assume_callback_set(struct scran_output *st_output)
 {
@@ -56,6 +55,28 @@ freezeframe_capture_start(
     st_output->freezeframe.callback = callback;
     freezeframe_capture_start_assume_callback_set(st_output);
 }
+
+void
+freezeframe_capture_refresh(
+    struct scran_output *st_output,
+    scran_output_callback callback
+) {
+    struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
+
+    if (freezeframe->callback != NULL) {
+        eprintf("Freezeframe already in progress.\n");
+        return;
+    }
+    assert(callback != NULL);
+    freezeframe->callback = callback;
+
+    // Old freezeframe is not necessarily already hidden, since this function
+    // can be triggered without releasing focus first.
+    freezeframe_hide_if_showing(st_output);
+
+    capture_fullscreen_start(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME);
+}
+
 
 void
 freezeframe_hide_if_showing(struct scran_output *st_output)
@@ -211,25 +232,6 @@ freezeframe_capture_handle_failed(
     freezeframe_capture_finish(output);
 }
 
-
-void
-freezeframe_capture_refresh(
-    struct scran_output *st_output,
-    scran_output_callback callback
-) {
-    struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
-
-    if (freezeframe->callback != NULL) {
-        eprintf("Freezeframe already in progress.\n");
-        return;
-    }
-    assert(callback != NULL);
-    freezeframe->callback = callback;
-
-    freezeframe_hide_if_showing(st_output);
-
-    capture_fullscreen_start(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME);
-}
 
 void
 freezeframe_surface_update_scale_size_viewport(
