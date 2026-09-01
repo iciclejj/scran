@@ -247,7 +247,7 @@ esc_exit_scran:
             }
         } else {
             FOR_EACH_OUTPUT(i, st_output) {
-                freezeframe_hide_surface(st_output);
+                freezeframe_hide_if_showing(st_output);
                 wl_surface_commit(st_output->selection_surface.surface.wl_surface);
             }
         }

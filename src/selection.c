@@ -214,7 +214,7 @@ scran_focus_release()
     DEBUG("Releasing focus\n");
 
     FOR_EACH_OUTPUT(i, st_output) {
-        freezeframe_hide_surface(st_output);
+        freezeframe_hide_if_showing(st_output);
     }
 
     FOR_EACH_OUTPUT(i, st_output) {

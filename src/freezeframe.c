@@ -59,7 +59,7 @@ freezeframe_capture_start(
 }
 
 void
-freezeframe_hide_surface(struct scran_output *st_output)
+freezeframe_hide_if_showing(struct scran_output *st_output)
 {
     struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
 
@@ -243,7 +243,7 @@ freezeframe_capture_refresh(
 
     // Old freezeframe is not necessarily already hidden, since this function
     // can be triggered without releasing focus first.
-    freezeframe_hide_surface(st_output);
+    freezeframe_hide_if_showing(st_output);
 
     capture_fullscreen_start(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME);
 }
