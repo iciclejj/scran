@@ -6,7 +6,7 @@
 
 
 void freezeframe_capture_start(struct scran_output *st_output, scran_output_callback callback);
-void freezeframe_capture_start_assume_callback_set(struct scran_output *st_output);
+void freezeframe_capture_start_retain_callback(struct scran_output *st_output);
 void freezeframe_capture_refresh(struct scran_output *st_output, scran_output_callback callback);
 void freezeframe_capture_handle_frame_ready(struct scran_output *st_output);
 void freezeframe_capture_handle_failed(struct scran_output *st_output, uint32_t reason);

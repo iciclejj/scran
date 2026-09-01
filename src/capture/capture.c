@@ -100,7 +100,7 @@ capture_fullscreen_dispatch_pending_consumers(
     if (pending & SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME) {
         // TODO: Make freezeframe able to not set started?
         started |= SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME;
-        freezeframe_capture_start_assume_callback_set(st_output);
+        freezeframe_capture_start_retain_callback(st_output);
     }
 
     enum scran_capture_frame_consumers failed = pending & ~started;

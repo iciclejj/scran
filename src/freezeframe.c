@@ -21,14 +21,12 @@ static void
 freezeframe_capture_start_after_buffer_release(struct scran_wl_buffer *buffer)
 {
     struct scran_output *output = &g_state.outputs[get_containing_output_array_index(buffer)];
-    freezeframe_capture_start_assume_callback_set(output);
+    freezeframe_capture_start_retain_callback(output);
 }
 
 void
-freezeframe_capture_start_assume_callback_set(struct scran_output *st_output)
+freezeframe_capture_start_retain_callback(struct scran_output *st_output)
 {
-    assert(st_output->freezeframe.callback != NULL);
-
     struct capture_session *session              = &st_output->freezeframe.session;
     const  BLPointI         source_dimensions_px = session->session_ctx.source_dimensions_px;
 
@@ -52,11 +50,10 @@ freezeframe_capture_start(
     scran_output_callback callback
 ) {
     assert(st_output->freezeframe.stage == SCRAN_FREEZEFRAME_STAGE_IDLE);
-    assert(callback != NULL);
     assert(st_output->freezeframe.callback == NULL);
 
     st_output->freezeframe.callback = callback;
-    freezeframe_capture_start_assume_callback_set(st_output);
+    freezeframe_capture_start_retain_callback(st_output);
 
     assert(st_output->freezeframe.stage == SCRAN_FREEZEFRAME_STAGE_CAPTURING);
 }
@@ -72,9 +69,10 @@ freezeframe_capture_refresh(
         eprintf("Freezeframe already in progress.\n");
         return;
     }
-    freezeframe->stage = SCRAN_FREEZEFRAME_STAGE_REFRESHING;
 
-    assert(callback != NULL);
+    assert(freezeframe->callback == NULL);
+
+    freezeframe->stage    = SCRAN_FREEZEFRAME_STAGE_REFRESHING;
     freezeframe->callback = callback;
 
     // Old freezeframe is not necessarily already hidden, since this function
@@ -138,9 +136,10 @@ freezeframe_capture_finish(
     }
 
     scran_output_callback callback = freezeframe->callback;
-    assert(callback != NULL);
-    freezeframe->callback = NULL;
-    callback(output);
+    if (callback != NULL) {
+        freezeframe->callback = NULL;
+        callback(output);
+    }
 }
 
 
