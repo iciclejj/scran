@@ -175,8 +175,6 @@ selection_surface_release_hide(struct scran_output *st_output, enum scran_select
     }
 }
 
-// We need an output-specific function since freezeframe will need to call back
-// into it from the output-specific capture_frame::ready handler.
 void
 scran_focus_grab_for_output(
     struct scran_output *st_output

@@ -239,11 +239,9 @@ esc_exit_scran:
             }
         }
 
-        // XXX TODO: Make this a bit cleaner responsibility-wise.
-        //             See also refactor-TODO in unhide_selection_surface().
         if (pretend_all_hidden) {
             FOR_EACH_OUTPUT(i, st_output) {
-                freezeframe_capture_refresh(st_output, scran_focus_grab_for_output);
+                freezeframe_capture_refresh(st_output, NULL);
             }
         } else {
             FOR_EACH_OUTPUT(i, st_output) {
