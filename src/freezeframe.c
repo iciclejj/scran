@@ -213,16 +213,6 @@ freezeframe_capture_handle_failed(
 }
 
 
-// NOTE: This function starts a chain of wayland events that must happen
-// strictly sequentially (which is why it is in the form of a chain of events).
-// Follow the listeners to see where each step takes you...
-//
-// Conceptually, we just need to:
-//   1    Hide all our surfaces (selection surface, old freezeframe)
-//          Prevents them appearing in our captured/"frozen" frame
-//   2    Capture the output
-//   3.1  Show the capture as our new freezeframe
-//   3.2  Restore our selection surface
 void
 freezeframe_capture_refresh(
     struct scran_output *st_output,
@@ -237,12 +227,6 @@ freezeframe_capture_refresh(
     assert(callback != NULL);
     freezeframe->callback = callback;
 
-    // We will have to empty out, and then re-initialize our selection, so that
-    // we don't also capture/"freeze" our selection surface. The freezeframe
-    // capture_frame::ready handler calls the regular surface init function.
-
-    // Old freezeframe is not necessarily already hidden, since this function
-    // can be triggered without releasing focus first.
     freezeframe_hide_if_showing(st_output);
 
     capture_fullscreen_start(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME);
