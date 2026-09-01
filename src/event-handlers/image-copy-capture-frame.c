@@ -7,7 +7,6 @@
 #include "event-handlers.h"
 #include "freezeframe.h"
 #include "selection.h"
-#include "state-util.h"
 #include "state.h"
 
 
