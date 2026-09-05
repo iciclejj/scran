@@ -11,7 +11,6 @@
 #include "state-util.h"
 #include "capture.h"
 #include "freezeframe.h"
-#include "event-handlers.h"
 #include "selection-surface.h"
 #include "print.h"
 #include "scranrot.h"
@@ -22,17 +21,16 @@ static void
 freezeframe_capture_start_after_buffer_release(struct scran_wl_buffer *buffer)
 {
     struct scran_output *output = &g_state.outputs[get_containing_output_array_index(buffer)];
-    freezeframe_capture_start_assume_callback_set(output);
+    freezeframe_capture_start_retain_callback(output);
 }
 
-
 void
-freezeframe_capture_start_assume_callback_set(struct scran_output *st_output)
+freezeframe_capture_start_retain_callback(struct scran_output *st_output)
 {
-    assert(st_output->freezeframe.callback != NULL);
-
     struct capture_session *session              = &st_output->freezeframe.session;
     const  BLPointI         source_dimensions_px = session->session_ctx.source_dimensions_px;
+
+    st_output->freezeframe.stage = SCRAN_FREEZEFRAME_STAGE_CAPTURING;
 
     if (session->frame_ctx.scran_wl_buffer.busy) { // XXX: Not thread-safe.
         session->frame_ctx.scran_wl_buffer.release_callback = freezeframe_capture_start_after_buffer_release;
@@ -51,15 +49,41 @@ freezeframe_capture_start(
     struct scran_output *st_output,
     scran_output_callback callback
 ) {
-    assert(callback != NULL);
+    assert(st_output->freezeframe.stage == SCRAN_FREEZEFRAME_STAGE_IDLE);
     assert(st_output->freezeframe.callback == NULL);
 
     st_output->freezeframe.callback = callback;
-    freezeframe_capture_start_assume_callback_set(st_output);
+    freezeframe_capture_start_retain_callback(st_output);
+
+    assert(st_output->freezeframe.stage == SCRAN_FREEZEFRAME_STAGE_CAPTURING);
 }
 
 void
-freezeframe_hide_surface(struct scran_output *st_output)
+freezeframe_capture_refresh(
+    struct scran_output *st_output,
+    scran_output_callback callback
+) {
+    struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
+
+    if (freezeframe->stage != SCRAN_FREEZEFRAME_STAGE_IDLE) {
+        eprintf("Freezeframe already in progress.\n");
+        return;
+    }
+
+    assert(freezeframe->callback == NULL);
+
+    freezeframe->stage    = SCRAN_FREEZEFRAME_STAGE_REFRESHING;
+    freezeframe->callback = callback;
+
+    // Old freezeframe is not necessarily already hidden, since this function
+    // can be triggered without releasing focus first.
+    freezeframe_hide_if_showing(st_output);
+    capture_fullscreen_start(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME);
+}
+
+
+void
+freezeframe_hide_if_showing(struct scran_output *st_output)
 {
     struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
 
@@ -102,6 +126,9 @@ freezeframe_capture_finish(
 ) {
     struct scran_output_freezeframe *freezeframe = &output->freezeframe;
 
+    assert(freezeframe->stage == SCRAN_FREEZEFRAME_STAGE_CAPTURING);
+    freezeframe->stage = SCRAN_FREEZEFRAME_STAGE_IDLE;
+
     // We can also come here during startup with -z, in which case we can bypass
     // the regular fullscreen capture pipeline
     if (output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME) {
@@ -109,9 +136,10 @@ freezeframe_capture_finish(
     }
 
     scran_output_callback callback = freezeframe->callback;
-    assert(callback != NULL);
-    freezeframe->callback = NULL;
-    callback(output);
+    if (callback != NULL) {
+        freezeframe->callback = NULL;
+        callback(output);
+    }
 }
 
 
@@ -136,6 +164,7 @@ freezeframe_capture_handle_frame_ready(struct scran_output *output)
     struct scran_wl_buffer          *surface_buffer = &freezeframe->surface_buffer;
     const struct capture_session_context *session = &freezeframe->session.session_ctx;
 
+    assert(freezeframe->stage == SCRAN_FREEZEFRAME_STAGE_CAPTURING);
     assert(capture_buffer->busy == false); // We should not have started capture if busy
 
     struct scran_wl_buffer *final_buffer;
@@ -212,41 +241,6 @@ freezeframe_capture_handle_failed(
     freezeframe_capture_finish(output);
 }
 
-
-// NOTE: This function starts a chain of wayland events that must happen
-// strictly sequentially (which is why it is in the form of a chain of events).
-// Follow the listeners to see where each step takes you...
-//
-// Conceptually, we just need to:
-//   1    Hide all our surfaces (selection surface, old freezeframe)
-//          Prevents them appearing in our captured/"frozen" frame
-//   2    Capture the output
-//   3.1  Show the capture as our new freezeframe
-//   3.2  Restore our selection surface
-void
-freezeframe_capture_refresh(
-    struct scran_output *st_output,
-    scran_output_callback callback
-) {
-    struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
-
-    if (freezeframe->callback != NULL) {
-        eprintf("Freezeframe already in progress.\n");
-        return;
-    }
-    assert(callback != NULL);
-    freezeframe->callback = callback;
-
-    // We will have to empty out, and then re-initialize our selection, so that
-    // we don't also capture/"freeze" our selection surface. The freezeframe
-    // capture_frame::ready handler calls the regular surface init function.
-
-    // Old freezeframe is not necessarily already hidden, since this function
-    // can be triggered without releasing focus first.
-    freezeframe_hide_surface(st_output);
-
-    capture_fullscreen_start(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME);
-}
 
 void
 freezeframe_surface_update_scale_size_viewport(

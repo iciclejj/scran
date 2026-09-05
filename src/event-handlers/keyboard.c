@@ -230,7 +230,7 @@ esc_exit_scran:
 
         bool pretend_all_hidden = true;
         FOR_EACH_OUTPUT(i, st_output) {
-            if (st_output->freezeframe.callback != NULL) {
+            if (st_output->freezeframe.stage != SCRAN_FREEZEFRAME_STAGE_IDLE) {
                 eprintf("Freezeframe refresh already in progress; ignoring toggle.\n");
                 goto z_done;
             }
@@ -239,15 +239,13 @@ esc_exit_scran:
             }
         }
 
-        // XXX TODO: Make this a bit cleaner responsibility-wise.
-        //             See also refactor-TODO in unhide_selection_surface().
         if (pretend_all_hidden) {
             FOR_EACH_OUTPUT(i, st_output) {
-                freezeframe_capture_refresh(st_output, scran_focus_grab_for_output);
+                freezeframe_capture_refresh(st_output, NULL);
             }
         } else {
             FOR_EACH_OUTPUT(i, st_output) {
-                freezeframe_hide_surface(st_output);
+                freezeframe_hide_if_showing(st_output);
                 wl_surface_commit(st_output->selection_surface.surface.wl_surface);
             }
         }
