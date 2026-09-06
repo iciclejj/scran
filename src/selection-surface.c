@@ -123,9 +123,9 @@ get_total_textline_width_px(
 
 
 static inline bool
-textline_surface_state_changed(
-    struct scran_ui_textline_surface_state *prev,
-    struct scran_ui_textline_surface_state *new
+textline_geometry_changed(
+    struct scran_ui_textline_geometry *prev,
+    struct scran_ui_textline_geometry *new
 ) {
     return !blpointi_are_equal(prev->origin, new->origin)
         || prev->total_width_px != new->total_width_px;
@@ -138,12 +138,12 @@ draw_and_damage_ui_textline(
     BLBoxI capture_area_border_outline,
     struct scran_ui_textline_view textline,
     int textline_item_spacing_px,
-    struct scran_ui_textline_surface_state *state_prev,
-    struct scran_ui_textline_surface_state *state_prev_any_buffer,
-    struct scran_ui_textline_surface_state *state_new,
+    struct scran_ui_textline_geometry *prev_geometry,
+    struct scran_ui_textline_geometry *prev_geometry_any_buffer,
+    struct scran_ui_textline_geometry *new_geometry,
     bool textline_changed
 ) {
-    if ( !(textline_changed || st_buffer->force_redraw || textline_surface_state_changed(state_prev, state_new))) {
+    if ( !(textline_changed || st_buffer->force_redraw || textline_geometry_changed(prev_geometry, new_geometry))) {
         return;
     }
 
@@ -158,16 +158,16 @@ draw_and_damage_ui_textline(
         bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
 
         BLRectI text_rect_prev = {
-            .x = state_prev->origin.x,
-            .y = state_prev->origin.y,
-            .w = state_prev->total_width_px,
+            .x = prev_geometry->origin.x,
+            .y = prev_geometry->origin.y,
+            .w = prev_geometry->total_width_px,
             .h = textline.meta->height_px,
         };
 
         BLRectI text_rect_prev_any_buffer = {
-            .x = state_prev_any_buffer->origin.x,
-            .y = state_prev_any_buffer->origin.y,
-            .w = state_prev_any_buffer->total_width_px,
+            .x = prev_geometry_any_buffer->origin.x,
+            .y = prev_geometry_any_buffer->origin.y,
+            .w = prev_geometry_any_buffer->total_width_px,
             .h = textline.meta->height_px,
         };
 
@@ -207,7 +207,7 @@ draw_and_damage_ui_textline(
     struct scran_ui_context *ui_ctx = &selection_surface->ui_ctx;
 
     // Blit new ui
-    BLPointI _origin_new_curr_item = state_new->origin;
+    BLPointI _origin_new_curr_item = new_geometry->origin;
     for (int i = 0; i < textline.n_items; ++i) {
         struct scran_ui_textline_item *item = &textline.items[i];
 
@@ -229,35 +229,34 @@ draw_and_damage_ui_textline(
 
     wl_surface_damage_buffer(
         selection_surface->surface.wl_surface,
-        state_new->origin.x,
-        state_new->origin.y,
-        state_new->total_width_px,
+        new_geometry->origin.x,
+        new_geometry->origin.y,
+        new_geometry->total_width_px,
         textline.meta->height_px
     );
 
-    *state_prev            = *state_new;
-    *state_prev_any_buffer = *state_new;
+    *prev_geometry            = *new_geometry;
+    *prev_geometry_any_buffer = *new_geometry;
 }
 
-
 static inline void
-clamp_textline_surface_state(
-    struct scran_ui_textline_surface_state *state_new,
+clamp_textline_geometry(
+    struct scran_ui_textline_geometry *geometry,
     int min_px,
     int max_px
 ) {
-    const int max_origin_px = max_px - state_new->total_width_px;
+    const int max_origin_px = max_px - geometry->total_width_px;
 
     // Prioritize left bound, if the textline is forced to clip
     if (max_origin_px < min_px) {
-        state_new->origin.x = min_px;
+        geometry->origin.x = min_px;
         return;
     }
 
-    if (state_new->origin.x < min_px) {
-        state_new->origin.x = min_px;
-    } else if (state_new->origin.x > max_origin_px) {
-        state_new->origin.x = max_origin_px;
+    if (geometry->origin.x < min_px) {
+        geometry->origin.x = min_px;
+    } else if (geometry->origin.x > max_origin_px) {
+        geometry->origin.x = max_origin_px;
     }
 }
 
@@ -286,23 +285,23 @@ draw_and_damage_ui(
 
     // Draw below-selection keymap
     {
-        struct scran_ui_textline_surface_state state_new_keymap = {
+        struct scran_ui_textline_geometry new_keymap_geometry = {
             .origin = {
                 .x = capture_area_border_outline.x0,
                 .y = capture_area_border_outline.y1,
             },
             .total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), item_spacing_px),
         };
-        clamp_textline_surface_state(&state_new_keymap, left_bound, selection_surface->surface.width_px_buffer);
+        clamp_textline_geometry(&new_keymap_geometry, left_bound, selection_surface->surface.width_px_buffer);
         draw_and_damage_ui_textline(
             selection_surface,
             st_buffer,
             capture_area_border_outline,
             SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),
             item_spacing_px,
-            &st_buffer->ui_keymap_state_currently_drawn,
-            &selection_surface->ui_keymap_state_last_drawn,
-            &state_new_keymap,
+            &st_buffer->ui_keymap_geometry_currently_drawn,
+            &selection_surface->ui_keymap_geometry_last_drawn,
+            &new_keymap_geometry,
             st_buffer->redrawn_textline_mask & SCRAN_UI_REDREW_KEYMAP
         );
         st_buffer->redrawn_textline_mask &= ~SCRAN_UI_REDREW_KEYMAP;
@@ -313,23 +312,23 @@ draw_and_damage_ui(
     {
         int statusline_total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),        item_spacing_px);
 
-        struct scran_ui_textline_surface_state state_new_statusline = {
+        struct scran_ui_textline_geometry new_statusline_geometry = {
             .origin = {
                 .x = capture_area_border_outline.x1 - statusline_total_width_px,
                 .y = capture_area_border_outline.y0 - scran_ui_font_height_px(ui_ctx),
             },
             .total_width_px = statusline_total_width_px,
         };
-        clamp_textline_surface_state(&state_new_statusline, left_bound, selection_surface->surface.width_px_buffer);
+        clamp_textline_geometry(&new_statusline_geometry, left_bound, selection_surface->surface.width_px_buffer);
         draw_and_damage_ui_textline(
             selection_surface,
             st_buffer,
             capture_area_border_outline,
             SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),
             item_spacing_px,
-            &st_buffer->ui_statusline_state_currently_drawn,
-            &selection_surface->ui_statusline_state_last_drawn,
-            &state_new_statusline,
+            &st_buffer->ui_statusline_geometry_currently_drawn,
+            &selection_surface->ui_statusline_geometry_last_drawn,
+            &new_statusline_geometry,
             st_buffer->redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE
         );
         st_buffer->redrawn_textline_mask &= ~SCRAN_UI_REDREW_STATUSLINE;
@@ -340,14 +339,14 @@ draw_and_damage_ui(
     //   XXX: Must currently be at the end to play nice with scale updates.
     //   TODO: unlikely() ?
     if (greeting_screen) {
-        struct scran_ui_textline_surface_state state_new_greeting = {
+        struct scran_ui_textline_geometry new_greeting_geometry = {
             .origin = {
                 .x = capture_area_border_outline.x0,
                 .y = capture_area_border_outline.y0 - 2 * scran_ui_font_height_px(ui_ctx),
             },
             .total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting), item_spacing_px),
         };
-        clamp_textline_surface_state(&state_new_greeting, left_bound, selection_surface->surface.width_px_buffer);
+        clamp_textline_geometry(&new_greeting_geometry, left_bound, selection_surface->surface.width_px_buffer);
         draw_and_damage_ui_textline(
             selection_surface,
             st_buffer,
@@ -356,9 +355,9 @@ draw_and_damage_ui(
             item_spacing_px,
             // We have these for greeting as well, despite it not moving,
             // so that it updates correctly on scale changes.
-            &st_buffer->ui_greeting_state_currently_drawn,
-            &selection_surface->ui_greeting_state_last_drawn,
-            &state_new_greeting,
+            &st_buffer->ui_greeting_geometry_currently_drawn,
+            &selection_surface->ui_greeting_geometry_last_drawn,
+            &new_greeting_geometry,
             st_buffer->redrawn_textline_mask & SCRAN_UI_REDREW_GREETING
         );
         st_buffer->redrawn_textline_mask &= ~SCRAN_UI_REDREW_GREETING;
