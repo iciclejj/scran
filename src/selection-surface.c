@@ -3,7 +3,6 @@
 #include <blend2d/blend2d.h>
 
 #include "selection.h"
-#include "state-util.h"
 #include "state.h"
 #include "selection-surface.h"
 #include "init.h"
