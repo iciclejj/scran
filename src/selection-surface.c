@@ -239,25 +239,50 @@ draw_and_damage_ui_textline(
     *prev_geometry_any_buffer = *new_geometry;
 }
 
-static inline void
-clamp_textline_geometry(
-    struct scran_ui_textline_geometry *geometry,
-    int min_px,
-    int max_px
+enum scran_horizontal_alignment {
+    SCRAN_ALIGN_LEFT,
+    SCRAN_ALIGN_RIGHT,
+};
+
+enum scran_vertical_placement {
+    SCRAN_PLACE_ABOVE,
+    SCRAN_PLACE_BELOW,
+};
+
+static inline struct scran_ui_textline_geometry
+compute_textline_geometry(
+    const BLBoxI *capture_area_border_outline,
+    int surface_width_px,
+    int width_px,
+    int height_px,
+    enum scran_horizontal_alignment alignment,
+    enum scran_vertical_placement placement
 ) {
-    const int max_origin_px = max_px - geometry->total_width_px;
+    int origin_x = alignment == SCRAN_ALIGN_LEFT
+        ? capture_area_border_outline->x0
+        : capture_area_border_outline->x1 - width_px;
 
-    // Prioritize left bound, if the textline is forced to clip
-    if (max_origin_px < min_px) {
-        geometry->origin.x = min_px;
-        return;
+    // Clamp to selection's left edge
+    if (origin_x < capture_area_border_outline->x0) {
+        origin_x = capture_area_border_outline->x0;
     }
 
-    if (geometry->origin.x < min_px) {
-        geometry->origin.x = min_px;
-    } else if (geometry->origin.x > max_origin_px) {
-        geometry->origin.x = max_origin_px;
+    // Clamp to surface's right edge
+    if (origin_x + width_px > surface_width_px
+        // Unless that would clip the surface's left edge
+        && width_px <= surface_width_px
+    ) {
+        origin_x = surface_width_px - width_px;
     }
+
+    int origin_y = placement == SCRAN_PLACE_ABOVE
+        ? capture_area_border_outline->y0 - height_px
+        : capture_area_border_outline->y1;
+
+    return (struct scran_ui_textline_geometry) {
+        .origin = (BLPointI) { origin_x, origin_y },
+        .total_width_px = width_px,
+    };
 }
 
 static inline int
@@ -281,18 +306,19 @@ draw_and_damage_ui(
         }
     }
     const int item_spacing_px = get_item_spacing_px(ui_ctx);
-    const int left_bound      = MAX(0, capture_area_border_outline.x0);
+    const int item_height_px  = scran_ui_font_height_px(ui_ctx);
+    const int buffer_width_px = selection_surface->surface.width_px_buffer;
 
     // Draw below-selection keymap
     {
-        struct scran_ui_textline_geometry new_keymap_geometry = {
-            .origin = {
-                .x = capture_area_border_outline.x0,
-                .y = capture_area_border_outline.y1,
-            },
-            .total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), item_spacing_px),
-        };
-        clamp_textline_geometry(&new_keymap_geometry, left_bound, selection_surface->surface.width_px_buffer);
+        struct scran_ui_textline_geometry new_keymap_geometry = compute_textline_geometry(
+            &capture_area_border_outline,
+            buffer_width_px,
+            get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), item_spacing_px),
+            item_height_px,
+            SCRAN_ALIGN_LEFT,
+            SCRAN_PLACE_BELOW
+        );
         draw_and_damage_ui_textline(
             selection_surface,
             st_buffer,
@@ -310,16 +336,14 @@ draw_and_damage_ui(
 
     // Draw above-selection statusline
     {
-        int statusline_total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),        item_spacing_px);
-
-        struct scran_ui_textline_geometry new_statusline_geometry = {
-            .origin = {
-                .x = capture_area_border_outline.x1 - statusline_total_width_px,
-                .y = capture_area_border_outline.y0 - scran_ui_font_height_px(ui_ctx),
-            },
-            .total_width_px = statusline_total_width_px,
-        };
-        clamp_textline_geometry(&new_statusline_geometry, left_bound, selection_surface->surface.width_px_buffer);
+        struct scran_ui_textline_geometry new_statusline_geometry = compute_textline_geometry(
+            &capture_area_border_outline,
+            buffer_width_px,
+            get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline), item_spacing_px),
+            item_height_px,
+            SCRAN_ALIGN_RIGHT,
+            SCRAN_PLACE_ABOVE
+        );
         draw_and_damage_ui_textline(
             selection_surface,
             st_buffer,
@@ -339,14 +363,16 @@ draw_and_damage_ui(
     //   XXX: Must currently be at the end to play nice with scale updates.
     //   TODO: unlikely() ?
     if (greeting_screen) {
-        struct scran_ui_textline_geometry new_greeting_geometry = {
-            .origin = {
-                .x = capture_area_border_outline.x0,
-                .y = capture_area_border_outline.y0 - 2 * scran_ui_font_height_px(ui_ctx),
-            },
-            .total_width_px = get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting), item_spacing_px),
-        };
-        clamp_textline_geometry(&new_greeting_geometry, left_bound, selection_surface->surface.width_px_buffer);
+        struct scran_ui_textline_geometry new_greeting_geometry = compute_textline_geometry(
+            &capture_area_border_outline,
+            buffer_width_px,
+            get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting), item_spacing_px),
+            item_height_px,
+            SCRAN_ALIGN_LEFT,
+            SCRAN_PLACE_ABOVE
+        );
+        // HACK: Move it to a separate line above (see get_selection_surface_pre_selection_box())
+        new_greeting_geometry.origin.y -= item_height_px;
         draw_and_damage_ui_textline(
             selection_surface,
             st_buffer,
