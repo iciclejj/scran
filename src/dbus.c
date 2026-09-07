@@ -685,16 +685,18 @@ scran_dbus_init(int epoll_fd, int *timeout_ms)
     eprintf("D-Bus connection opened.\n");
     assert(m_dbus.bus != NULL);
 
-    int ret = sd_bus_match_signal_async(
-        m_dbus.bus, NULL,
-        "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
-        "org.freedesktop.portal.Notification", "ActionInvoked",
-        Notification_ActionInvoked_callback,
-        Dbus_AddMatch_callback,
-        NULL
-    );
-    if (ret < 0) {
-        log_sd_bus_ret_error(ret, "Failed to register listener for Notification::ActionInvoked");
+    if (!g_state.options.no_notifications) {
+        int ret = sd_bus_match_signal_async(
+            m_dbus.bus, NULL,
+            "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+            "org.freedesktop.portal.Notification", "ActionInvoked",
+            Notification_ActionInvoked_callback,
+            Dbus_AddMatch_callback,
+            NULL
+        );
+        if (ret < 0) {
+            log_sd_bus_ret_error(ret, "Failed to register listener for Notification::ActionInvoked");
+        }
     }
 
     if (!register_StatusNotifierItem()) {
