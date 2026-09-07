@@ -24,6 +24,8 @@ static struct {
     sd_bus *bus;
     int fd;
 
+    bool notification_actions_enabled;
+
     bool         StatusNotifierItem_name_registered;         // Name registered with DBus
     bool         StatusNotifierItem_registered_with_watcher; // Item registered with StatusNotifierWatcher
     sd_bus_slot *StatusNotifierItem_slot_vtable;
@@ -194,29 +196,68 @@ scran_portal_notify_file_saved(const char *saved_file_path)
     // TODO: Assert saved_file_path length?
 
     int ret;
+    sd_bus_message *message = NULL;
+
+    ret = sd_bus_message_new_method_call(
+        m_dbus.bus, &message,
+        "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+        "org.freedesktop.portal.Notification", "AddNotification"
+    );
+    if (ret < 0) {
+        goto finish;
+    }
 
     const char *notification_id = saved_file_path;
-    ret = sd_bus_call_method_async(
-        m_dbus.bus, NULL,
-        "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
-        "org.freedesktop.portal.Notification", "AddNotification",
-        &Notification_AddNotification_callback, NULL,
-        "sa{sv}",
-          notification_id,
-          5,
-            "title", "s", "Scran: saved file.",
-            "body",  "s", saved_file_path,
-            "display-hint", "as", 1, "show-as-new",
-            "default-action", "s", "OpenFile",
-            "default-action-target", "s", saved_file_path
+    ret = sd_bus_message_append(message, "s", notification_id);
+    if (ret < 0) {
+        goto finish;
+    }
+
+    ret = sd_bus_message_open_container(message, 'a', "{sv}");
+    if (ret < 0) {
+        goto finish;
+    }
+
+    ret = sd_bus_message_append(message, "{sv}{sv}{sv}",
+        "title",        "s",     "Scran: saved file.",
+        "body",         "s",      saved_file_path,
+        "display-hint", "as", 1, "show-as-new"
     );
+    if (ret < 0) {
+        goto finish;
+    }
+
+    if (m_dbus.notification_actions_enabled) {
+        ret = sd_bus_message_append(message, "{sv}{sv}",
+            "default-action",        "s", "OpenFile",
+            "default-action-target", "s", saved_file_path
+        );
+        if (ret < 0) {
+            goto finish;
+        }
+    }
+
+    ret = sd_bus_message_close_container(message);
+    if (ret < 0) {
+        goto finish;
+    }
+
+    ret = sd_bus_call_async(
+        m_dbus.bus, NULL, message,
+        Notification_AddNotification_callback, NULL, 0
+    );
+    if (ret < 0) {
+        goto finish;
+    }
+
+finish:
+    sd_bus_message_unref(message);
 
     if (ret < 0) {
         log_sd_bus_ret_error(
             ret, "Failed to call Notification::AddNotification"
         );
     }
-
 }
 
 static bool register_StatusNotifierItem_with_watcher(void);
@@ -307,7 +348,26 @@ finish:
 }
 
 static int
-Dbus_AddMatch_callback(
+Dbus_AddMatch_callback__Notification_ActionInvoked(
+    sd_bus_message *message, // Should not be freed.
+    void *data,
+    sd_bus_error *ret_error // This is for us to return, not to read
+) {
+    const char *error_name = NULL;
+    if (sd_bus_message_is_method_error(message, error_name)) {
+        const sd_bus_error *error = sd_bus_message_get_error(message);
+        log_sd_bus_error(error, "AddMatch Error\n");
+        return 0;
+    }
+
+    DEBUG("AddMatch for Notification::ActionInvoked succeeded.\n");
+
+    m_dbus.notification_actions_enabled = true;
+    return 0;
+}
+
+static int
+Dbus_AddMatch_callback__generic(
     sd_bus_message *message, // Should not be freed.
     void *data,
     sd_bus_error *ret_error // This is for us to return, not to read
@@ -639,7 +699,7 @@ register_StatusNotifierItem()
         "member='NameOwnerChanged',"
         "arg0='org.kde.StatusNotifierWatcher'",
         Dbus_NameOwnerChanged_callback__StatusNotifierWatcher,
-        Dbus_AddMatch_callback,
+        Dbus_AddMatch_callback__generic,
         NULL // TODO: Send name/description of current signal to the generic Dbus_AddMatch_callback?
     );
     if (ret < 0) {
@@ -691,7 +751,7 @@ scran_dbus_init(int epoll_fd, int *timeout_ms)
             "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
             "org.freedesktop.portal.Notification", "ActionInvoked",
             Notification_ActionInvoked_callback,
-            Dbus_AddMatch_callback,
+            Dbus_AddMatch_callback__Notification_ActionInvoked,
             NULL
         );
         if (ret < 0) {
