@@ -72,7 +72,7 @@ log_sd_bus_error(
 }
 
 
-static inline int
+static int
 get_sd_bus_timeout_ms()
 {
     uint64_t timeout_abs_usec = UINT64_MAX;
@@ -124,7 +124,7 @@ OpenURI_OpenFile_callback(
     return 0;
 }
 
-void
+static void
 scran_portal_open_file(const char *file_path)
 {
     if (m_dbus.bus == NULL) {
@@ -185,6 +185,7 @@ scran_portal_notify_file_saved(const char *saved_file_path)
         DEBUG("Notification not sent (D-Bus not initialized).\n");
         return;
     }
+
     if (g_state.options.no_notifications) {
         DEBUG("Notification not sent (options.no_notifications).\n");
         return;
@@ -276,19 +277,19 @@ Notification_ActionInvoked_callback(
 
     const char *id;
     const char *action;
-    if (0 > (ret = sd_bus_message_read(message, "ss", &id, &action))) {
-        log_sd_bus_ret_error(ret, parse_error_string);
-        return 0;
+    ret = sd_bus_message_read(message, "ss", &id, &action);
+    if (ret < 0) {
+        goto finish;
     }
 
     const char *parameter;
-    if (0 > (ret = sd_bus_message_enter_container(message, 'a', "v"))) {
-        log_sd_bus_ret_error(ret, parse_error_string);
-        return 0;
+    ret = sd_bus_message_enter_container(message, 'a', "v");
+    if (ret < 0) {
+        goto finish;
     }
-    if (0 > (ret = sd_bus_message_read(message, "v", "s", &parameter))) {
-        log_sd_bus_ret_error(ret, parse_error_string);
-        return 0;
+    ret = sd_bus_message_read(message, "v", "s", &parameter);
+    if (ret < 0) {
+        goto finish;
     }
     // Don't care about the rest of this container...
 
@@ -296,6 +297,12 @@ Notification_ActionInvoked_callback(
     scran_portal_open_file(filepath);
 
     DEBUG("ActionInvoked reply without error.\n");
+
+finish:
+    if (ret < 0) {
+        log_sd_bus_ret_error(ret, parse_error_string);
+    }
+
     return 0;
 }
 
