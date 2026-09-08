@@ -458,4 +458,5 @@ scran_tray_destroy()
     }
 
     m_sni.registered_with_watcher = false;
+    update_focus_keymap_texts(scran_tray_is_registered());
 }
