@@ -17,7 +17,6 @@
 struct scran_dbus {
     sd_bus *bus;
     int fd;
-    bool notification_actions_enabled;
 };
 extern struct scran_dbus g_dbus;
 
