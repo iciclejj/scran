@@ -82,7 +82,7 @@ scran_dbus_init(int epoll_fd, int *timeout_ms)
         }
     }
 
-    if (!register_StatusNotifierItem()) {
+    if (!scran_tray_init()) {
         eprintf("Warning: Failed to create tray icon\n.");
     }
 
@@ -174,7 +174,7 @@ fail:
 void
 scran_dbus_destroy(int epoll_fd)
 {
-    scran_dbus_destroy_StatusNotifierItem();
+    scran_tray_destroy();
 
     if (g_dbus.bus != NULL) {
         sd_bus_flush_close_unref(g_dbus.bus);

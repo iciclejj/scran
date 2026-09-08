@@ -230,7 +230,7 @@ static const sd_bus_vtable m_StatusNotifierItem_vtable[] = {
 };
 
 bool
-scran_dbus_have_tray_icon()
+scran_tray_is_registered()
 {
     return m_sni.registered_with_watcher;
 }
@@ -239,7 +239,7 @@ static inline void
 set_StatusNotifierItem_registered_with_watcher(bool registered)
 {
     m_sni.registered_with_watcher = registered;
-    update_focus_keymap_texts(scran_dbus_have_tray_icon());
+    update_focus_keymap_texts(scran_tray_is_registered());
 }
 
 static int
@@ -364,13 +364,13 @@ Dbus_RequestName_callback__StatusNotifierItem(
     DEBUG("RegisterStatusNotifierItem reply without error.\n");
     return 0;
 fail:
-    scran_dbus_destroy_StatusNotifierItem();
+    scran_tray_destroy();
     return 0;
 }
 
 // Register tray icon
 bool
-register_StatusNotifierItem()
+scran_tray_init()
 {
     int ret;
     assert(g_dbus.bus != NULL);
@@ -427,12 +427,12 @@ register_StatusNotifierItem()
     return true;
 
 fail:
-    scran_dbus_destroy_StatusNotifierItem();
+    scran_tray_destroy();
     return false;
 }
 
 void
-scran_dbus_destroy_StatusNotifierItem()
+scran_tray_destroy()
 {
     if (m_sni.slot_vtable != NULL) {
         m_sni.slot_vtable = sd_bus_slot_unref(m_sni.slot_vtable);

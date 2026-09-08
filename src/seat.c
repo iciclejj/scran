@@ -27,7 +27,7 @@ set_global_focus_state(bool focused)
 {
     if (g_state.focused != focused) {
         g_state.focused = focused;
-        update_focus_keymap_texts(scran_dbus_have_tray_icon());
+        update_focus_keymap_texts(scran_tray_is_registered());
     }
 }
 

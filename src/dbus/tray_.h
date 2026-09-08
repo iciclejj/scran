@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 
-bool register_StatusNotifierItem(void);
+bool scran_tray_init(void);
 
 
 #endif
