@@ -148,10 +148,6 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         // TODO(libopenh264):
         // - Why does it have such bad performance (high cpu usage,
         //   stutters) compared to libx264?
-        // - Why is it just giving green frames on Fedora? (works on NixOS.)
-        //   - Packet sizes are all very small. First is much smaller than
-        //     normal, and subsequent ones are almost all at minimum size (14),
-        //     despite a lot of movement in the capture frame.
         "libopenh264",
         "mpeg4"
     };
@@ -259,12 +255,18 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     av_dict_set(&format_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
 #else
     av_dict_set(&format_opts, "movflags", "hybrid_fragmented", 0);
+
+    // Earlier versions were not implemented correctly for hybrid_fragmented
+    // (ffmpeg commit 920071355dd82a74ab9bfd879d42401702b83a5e)
+#if LIBAVFORMAT_VERSION_MAJOR >= 62
     // Our mp4 muxer may shift the PTS/DTS timelines forwards to ensure that the
     // first DTS is non-negative. Some players/programs need an explicit
     // "editlist" in the moov, which specifies the timestamp at which the actual
     // playback is supposed to start. For example Adobe Premiere refuses to open
     // the file otherwise.
     av_dict_set(&format_opts, "use_editlist", "1", 0);
+#endif
+
 #endif /* LIBAVFORMAT_VERSION_INT */
     int format_ret = avformat_write_header(ffmpeg_ctx->av_format_ctx, &format_opts);
     av_dict_free(&format_opts);
