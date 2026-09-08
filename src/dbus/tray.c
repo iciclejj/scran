@@ -34,7 +34,7 @@ static struct scran_status_notifier_watcher m_snw = {0};
 static char m_StatusNotifierItem_name[64] = STATUS_NOTIFIER_ITEM_NAME_BASE;
 
 
-static struct StatusNotifierItem_data {
+static struct sni_data {
     const char    *Category;
     const char    *Id;
     const char    *Title;
@@ -82,7 +82,7 @@ struct StatusNotifierItem_icon_pixmap {
 };
 
 static inline int
-append_StatusNotifierItem_icon_pixmaps(
+sni_append_icon_pixmaps(
     sd_bus_message *message,
     const struct StatusNotifierItem_icon_pixmap *pixmaps,
     size_t n_pixmaps
@@ -116,7 +116,7 @@ append_StatusNotifierItem_icon_pixmaps(
 #define STATUS_NOTIFIER_ITEM_TOOL_TIP_TYPE "(sa(iiay)ss)"
 
 static int
-StatusNotifierItem_ToolTip_get_property(
+sni_property_ToolTip(
     sd_bus *bus,
     const char *path,
     const char *interface,
@@ -138,7 +138,7 @@ StatusNotifierItem_ToolTip_get_property(
             return ret;
         }
         {
-            if (0 > (ret = append_StatusNotifierItem_icon_pixmaps(
+            if (0 > (ret = sni_append_icon_pixmaps(
                                 reply, m_StatusNotifierItem_data.ToolTip.icon_pixmaps,
                                 m_StatusNotifierItem_data.ToolTip._icon_pixmaps_len))
             ) {
@@ -163,7 +163,7 @@ StatusNotifierItem_ToolTip_get_property(
 }
 
 static int
-StatusNotifierItem_ContextMenu(
+sni_method_ContextMenu(
     struct sd_bus_message *message,
     void *userdata,
     sd_bus_error *error
@@ -173,7 +173,7 @@ StatusNotifierItem_ContextMenu(
 }
 
 static int
-StatusNotifierItem_Activate(
+sni_method_Activate(
     struct sd_bus_message *message,
     void *userdata,
     sd_bus_error *error
@@ -183,7 +183,7 @@ StatusNotifierItem_Activate(
 }
 
 static int
-StatusNotifierItem_SecondaryActivate(
+sni_method_SecondaryActivate(
     struct sd_bus_message *message,
     void *userdata,
     sd_bus_error *error
@@ -192,7 +192,7 @@ StatusNotifierItem_SecondaryActivate(
 }
 
 static int
-StatusNotifierItem_Scroll(
+sni_method_Scroll(
     struct sd_bus_message *message,
     void *userdata,
     sd_bus_error *error
@@ -203,21 +203,21 @@ StatusNotifierItem_Scroll(
 static const sd_bus_vtable m_StatusNotifierItem_vtable[] = {
     SD_BUS_VTABLE_START(0),
 
-    SD_BUS_PROPERTY("Category",   "s", NULL, offsetof(struct StatusNotifierItem_data, Category),   SD_BUS_VTABLE_PROPERTY_CONST),
-    SD_BUS_PROPERTY("Id",         "s", NULL, offsetof(struct StatusNotifierItem_data, Id),         SD_BUS_VTABLE_PROPERTY_CONST),
-    SD_BUS_PROPERTY("Title",      "s", NULL, offsetof(struct StatusNotifierItem_data, Title),      SD_BUS_VTABLE_PROPERTY_CONST),
-    SD_BUS_PROPERTY("Status",     "s", NULL, offsetof(struct StatusNotifierItem_data, Status),     SD_BUS_VTABLE_PROPERTY_CONST),
-    SD_BUS_PROPERTY("WindowId",   "u", NULL, offsetof(struct StatusNotifierItem_data, WindowId),   SD_BUS_VTABLE_PROPERTY_CONST),
-    SD_BUS_PROPERTY("ItemIsMenu", "b", NULL, offsetof(struct StatusNotifierItem_data, ItemIsMenu), SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("Category",   "s", NULL, offsetof(struct sni_data, Category),   SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("Id",         "s", NULL, offsetof(struct sni_data, Id),         SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("Title",      "s", NULL, offsetof(struct sni_data, Title),      SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("Status",     "s", NULL, offsetof(struct sni_data, Status),     SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("WindowId",   "u", NULL, offsetof(struct sni_data, WindowId),   SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("ItemIsMenu", "b", NULL, offsetof(struct sni_data, ItemIsMenu), SD_BUS_VTABLE_PROPERTY_CONST),
     // TODO: SD_BUS_PROPERTY("Menu",                "o",            NULL, 0, SD_BUS_VTABLE_PROPERTY_CONST),
-    SD_BUS_PROPERTY("IconName",   "s", NULL, offsetof(struct StatusNotifierItem_data, IconName),   SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("IconName",   "s", NULL, offsetof(struct sni_data, IconName),   SD_BUS_VTABLE_PROPERTY_CONST),
     // TODO: SD_BUS_PROPERTY("IconPixmap",          "a(iiay)",      NULL, 0, 0),
-    SD_BUS_PROPERTY("ToolTip", STATUS_NOTIFIER_ITEM_TOOL_TIP_TYPE, StatusNotifierItem_ToolTip_get_property, 0, SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("ToolTip", STATUS_NOTIFIER_ITEM_TOOL_TIP_TYPE, sni_property_ToolTip, 0, SD_BUS_VTABLE_PROPERTY_CONST),
 
-    SD_BUS_METHOD("ContextMenu",       "ii", "", StatusNotifierItem_ContextMenu,       SD_BUS_VTABLE_UNPRIVILEGED),
-    SD_BUS_METHOD("Activate",          "ii", "", StatusNotifierItem_Activate,          SD_BUS_VTABLE_UNPRIVILEGED),
-    SD_BUS_METHOD("SecondaryActivate", "ii", "", StatusNotifierItem_SecondaryActivate, SD_BUS_VTABLE_UNPRIVILEGED),
-    SD_BUS_METHOD("Scroll",            "is", "", StatusNotifierItem_Scroll,            SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("ContextMenu",       "ii", "", sni_method_ContextMenu,       SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("Activate",          "ii", "", sni_method_Activate,          SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("SecondaryActivate", "ii", "", sni_method_SecondaryActivate, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("Scroll",            "is", "", sni_method_Scroll,            SD_BUS_VTABLE_UNPRIVILEGED),
 
     SD_BUS_SIGNAL("NewTitle",         "",  0),
     SD_BUS_SIGNAL("NewIcon",          "",  0),
@@ -236,14 +236,14 @@ scran_tray_is_registered()
 }
 
 static inline void
-set_StatusNotifierItem_registered_with_watcher(bool registered)
+sni_set_registered_with_watcher(bool registered)
 {
     m_sni.registered_with_watcher = registered;
     update_focus_keymap_texts(scran_tray_is_registered());
 }
 
 static int
-StatusNotifierWatcher_RegisterStatusNotifierItem_callback(
+sni_reply_RegisterStatusNotifierItem(
     struct sd_bus_message *message,
     void *userdata,
     sd_bus_error *error
@@ -256,24 +256,24 @@ StatusNotifierWatcher_RegisterStatusNotifierItem_callback(
         goto fail;
     }
 
-    set_StatusNotifierItem_registered_with_watcher(true);
+    sni_set_registered_with_watcher(true);
     DEBUG("RegisterStatusNotifierItem reply without error.\n");
     return 0;
 
 fail:
     eprintf("Failed to register tray icon.\n");
-    set_StatusNotifierItem_registered_with_watcher(false);
+    sni_set_registered_with_watcher(false);
     return 0;
 }
 
 static bool
-register_StatusNotifierItem_with_watcher() {
+sni_register_with_watcher() {
     m_snw.slot_RegisterStatusNotifierItem_callback = sd_bus_slot_unref(m_snw.slot_RegisterStatusNotifierItem_callback);
     int ret = sd_bus_call_method_async(
         g_dbus.bus, &m_snw.slot_RegisterStatusNotifierItem_callback,
         "org.kde.StatusNotifierWatcher", "/StatusNotifierWatcher",
         "org.kde.StatusNotifierWatcher", "RegisterStatusNotifierItem",
-        StatusNotifierWatcher_RegisterStatusNotifierItem_callback, NULL,
+        sni_reply_RegisterStatusNotifierItem, NULL,
         "s",
           m_StatusNotifierItem_name
     );
@@ -286,7 +286,7 @@ register_StatusNotifierItem_with_watcher() {
 }
 
 static int
-Dbus_NameOwnerChanged_callback__StatusNotifierWatcher(
+snw_signal_handler_Dbus_NameOwnerChanged(
     sd_bus_message *message,
     void *data,
     sd_bus_error *ret_error
@@ -308,7 +308,7 @@ Dbus_NameOwnerChanged_callback__StatusNotifierWatcher(
     }
 
     if (old_owner[0] != '\0') { // Previous owner lost ownership
-        set_StatusNotifierItem_registered_with_watcher(false);
+        sni_set_registered_with_watcher(false);
         m_snw.slot_RegisterStatusNotifierItem_callback = sd_bus_slot_unref(
             m_snw.slot_RegisterStatusNotifierItem_callback
         );
@@ -316,7 +316,7 @@ Dbus_NameOwnerChanged_callback__StatusNotifierWatcher(
 
     if (new_owner[0] != '\0') { // New owner exists
         if (m_sni.name_registered) {
-            register_StatusNotifierItem_with_watcher(); // Try to re-register with new owner
+            sni_register_with_watcher(); // Try to re-register with new owner
         }
     }
 
@@ -324,7 +324,7 @@ Dbus_NameOwnerChanged_callback__StatusNotifierWatcher(
 }
 
 static int
-Dbus_RequestName_callback__StatusNotifierItem(
+sni_reply_Dbus_RequestName(
     struct sd_bus_message *message,
     void *userdata,
     sd_bus_error *error
@@ -357,7 +357,7 @@ Dbus_RequestName_callback__StatusNotifierItem(
 
     m_sni.name_registered = true;
 
-    if (!register_StatusNotifierItem_with_watcher()) {
+    if (!sni_register_with_watcher()) {
         goto fail;
     }
 
@@ -394,8 +394,8 @@ scran_tray_init()
         "interface='org.freedesktop.DBus',"
         "member='NameOwnerChanged',"
         "arg0='org.kde.StatusNotifierWatcher'",
-        Dbus_NameOwnerChanged_callback__StatusNotifierWatcher,
-        Dbus_AddMatch_callback__generic,
+        snw_signal_handler_Dbus_NameOwnerChanged,
+        dbus_reply_AddMatch,
         NULL // TODO: Send name/description of current signal to the generic Dbus_AddMatch_callback?
     );
     if (ret < 0) {
@@ -417,7 +417,7 @@ scran_tray_init()
         g_dbus.bus, &m_sni.slot_RequestName_callback,
         m_StatusNotifierItem_name,
         SD_BUS_NAME_ALLOW_REPLACEMENT | SD_BUS_NAME_REPLACE_EXISTING,
-        Dbus_RequestName_callback__StatusNotifierItem, NULL
+        sni_reply_Dbus_RequestName, NULL
     );
     if (ret < 0) {
         log_sd_bus_ret_error(ret, "Failed to request well-known service name for StatusNotifierItem");

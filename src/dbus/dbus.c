@@ -49,7 +49,7 @@ get_sd_bus_timeout_ms()
 
 
 int
-Dbus_AddMatch_callback__generic(
+dbus_reply_AddMatch(
     sd_bus_message *message, // Should not be freed.
     void *data,
     sd_bus_error *ret_error // This is for us to return, not to read

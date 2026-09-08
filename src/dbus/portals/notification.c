@@ -15,7 +15,7 @@ static struct {
 
 
 static int
-Notification_AddNotification_callback(
+reply_AddNotification(
     sd_bus_message *message, // Should not be freed.
     void *data,
     sd_bus_error *ret_error // This is for us to return, not to read
@@ -95,7 +95,7 @@ scran_portal_notify_file_saved(const char *saved_file_path)
 
     ret = sd_bus_call_async(
         g_dbus.bus, NULL, message,
-        Notification_AddNotification_callback, NULL, 0
+        reply_AddNotification, NULL, 0
     );
     if (ret < 0) {
         goto finish;
@@ -113,7 +113,7 @@ finish:
 
 
 static int
-OpenURI_OpenFile_callback(
+reply_OpenURI_OpenFile(
     sd_bus_message *message, // Should not be freed.
     void *data,
     sd_bus_error *ret_error // This is for us to return, not to read
@@ -154,7 +154,7 @@ scran_portal_open_file(const char *file_path)
         g_dbus.bus, NULL,
         "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
         "org.freedesktop.portal.OpenURI", "OpenFile",
-        &OpenURI_OpenFile_callback, NULL,
+        &reply_OpenURI_OpenFile, NULL,
         "sha{sv}",
           parent_window, file_fd, 0
     );
@@ -169,7 +169,7 @@ scran_portal_open_file(const char *file_path)
 }
 
 static int
-Notification_ActionInvoked_callback(
+signal_handler_ActionInvoked(
     sd_bus_message *message, // Should not be freed.
     void *data,
     sd_bus_error *ret_error // This is for us to return, not to read
@@ -216,7 +216,7 @@ finish:
 }
 
 static int
-Dbus_AddMatch_callback__Notification_ActionInvoked(
+reply_AddMatch_ActionInvoked(
     sd_bus_message *message, // Should not be freed.
     void *data,
     sd_bus_error *ret_error // This is for us to return, not to read
@@ -241,8 +241,8 @@ scran_portal_notification_init()
         g_dbus.bus, NULL,
         "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
         "org.freedesktop.portal.Notification", "ActionInvoked",
-        Notification_ActionInvoked_callback,
-        Dbus_AddMatch_callback__Notification_ActionInvoked,
+        signal_handler_ActionInvoked,
+        reply_AddMatch_ActionInvoked,
         NULL
     );
     if (ret < 0) {

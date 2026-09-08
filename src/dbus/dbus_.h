@@ -21,7 +21,7 @@ struct scran_dbus {
 extern struct scran_dbus g_dbus;
 
 
-int Dbus_AddMatch_callback__generic(sd_bus_message *message, void *data, sd_bus_error *ret_error);
+int dbus_reply_AddMatch(sd_bus_message *message, void *data, sd_bus_error *ret_error);
 
 
 static inline void
