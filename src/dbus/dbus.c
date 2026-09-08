@@ -16,6 +16,16 @@
 struct scran_dbus g_dbus = { .fd = -1 };
 
 
+static inline struct epoll_event
+dbus_get_epoll_event() {
+    // TODO: Is error-checking worthwhile here?
+    return (struct epoll_event) {
+        .events = sd_bus_get_events(g_dbus.bus),
+        .data.fd = sd_bus_get_fd(g_dbus.bus),
+    };
+}
+
+
 static int
 get_sd_bus_timeout_ms()
 {
@@ -86,12 +96,8 @@ scran_dbus_init(int epoll_fd, int *timeout_ms)
         eprintf("Warning: Failed to create tray icon\n.");
     }
 
-    int dbus_fd = sd_bus_get_fd(g_dbus.bus);
-    int _dbus_events = sd_bus_get_events(g_dbus.bus);
-    struct epoll_event epoll_event = {
-        .events = _dbus_events,
-        .data.fd = dbus_fd,
-    };
+    struct epoll_event epoll_event = dbus_get_epoll_event();
+    int dbus_fd = epoll_event.data.fd;
     if (-1 == epoll_ctl(epoll_fd, EPOLL_CTL_ADD, dbus_fd, &epoll_event)) {
         eprintf("Failed to add D-Bus connection to epoll.\n");
         goto fail;
@@ -143,12 +149,8 @@ scran_dbus_update(int epoll_fd, int *timeout_ms)
     }
 
     // sd_bus_get_events manpage implies we should always check for a new fd
-    int dbus_fd = sd_bus_get_fd(g_dbus.bus);
-    int _dbus_events = sd_bus_get_events(g_dbus.bus);
-    struct epoll_event epoll_event = {
-        .events = _dbus_events,
-        .data.fd = dbus_fd,
-    };
+    struct epoll_event epoll_event = dbus_get_epoll_event();
+    int dbus_fd = epoll_event.data.fd;
     if (dbus_fd == g_dbus.fd) {
         epoll_ctl(epoll_fd, EPOLL_CTL_MOD, g_dbus.fd, &epoll_event);
     } else {
