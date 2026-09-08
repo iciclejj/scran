@@ -148,10 +148,6 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         // TODO(libopenh264):
         // - Why does it have such bad performance (high cpu usage,
         //   stutters) compared to libx264?
-        // - Why is it just giving green frames on Fedora? (works on NixOS.)
-        //   - Packet sizes are all very small. First is much smaller than
-        //     normal, and subsequent ones are almost all at minimum size (14),
-        //     despite a lot of movement in the capture frame.
         "libopenh264",
         "mpeg4"
     };
