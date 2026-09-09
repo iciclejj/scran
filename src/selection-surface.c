@@ -314,7 +314,7 @@ draw_and_damage_ui(
         struct scran_ui_textline_geometry new_keymap_geometry = compute_textline_geometry(
             &capture_area_border_outline,
             buffer_width_px,
-            get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), item_spacing_px),
+            get_total_textline_width_px(SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap), item_spacing_px),
             item_height_px,
             SCRAN_ALIGN_LEFT,
             SCRAN_PLACE_BELOW
@@ -323,7 +323,7 @@ draw_and_damage_ui(
             selection_surface,
             st_buffer,
             capture_area_border_outline,
-            SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),
+            SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap),
             item_spacing_px,
             &st_buffer->ui_keymap_geometry_currently_drawn,
             &selection_surface->ui_keymap_geometry_last_drawn,
@@ -339,7 +339,7 @@ draw_and_damage_ui(
         struct scran_ui_textline_geometry new_statusline_geometry = compute_textline_geometry(
             &capture_area_border_outline,
             buffer_width_px,
-            get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline), item_spacing_px),
+            get_total_textline_width_px(SCRAN_UI_TEXTLINE(ui_ctx->ui_statusline), item_spacing_px),
             item_height_px,
             SCRAN_ALIGN_RIGHT,
             SCRAN_PLACE_ABOVE
@@ -348,7 +348,7 @@ draw_and_damage_ui(
             selection_surface,
             st_buffer,
             capture_area_border_outline,
-            SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),
+            SCRAN_UI_TEXTLINE(ui_ctx->ui_statusline),
             item_spacing_px,
             &st_buffer->ui_statusline_geometry_currently_drawn,
             &selection_surface->ui_statusline_geometry_last_drawn,
@@ -366,7 +366,7 @@ draw_and_damage_ui(
         struct scran_ui_textline_geometry new_greeting_geometry = compute_textline_geometry(
             &capture_area_border_outline,
             buffer_width_px,
-            get_total_textline_width_px(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting), item_spacing_px),
+            get_total_textline_width_px(SCRAN_UI_TEXTLINE(ui_ctx->ui_greeting), item_spacing_px),
             item_height_px,
             SCRAN_ALIGN_LEFT,
             SCRAN_PLACE_ABOVE
@@ -377,7 +377,7 @@ draw_and_damage_ui(
             selection_surface,
             st_buffer,
             capture_area_border_outline,
-            SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting),
+            SCRAN_UI_TEXTLINE(ui_ctx->ui_greeting),
             item_spacing_px,
             // We have these for greeting as well, despite it not moving,
             // so that it updates correctly on scale changes.

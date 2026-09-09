@@ -96,7 +96,7 @@ struct scran_ui_textline_view {
     struct scran_ui_textline_item     *items;
     int                                n_items;
 };
-#define SCRAN_UI_TEXTLINE_VIEW(textline) (          \
+#define SCRAN_UI_TEXTLINE(textline) (          \
     (struct scran_ui_textline_view){                \
         .meta = &(textline).meta,                   \
         .items = (textline).items,                  \
@@ -231,7 +231,7 @@ scran_ui_statusline_set_selection_size(
 ) {
     if (!blrecti_are_equal(statusline->selection_size, selection_size)) {
         statusline->selection_size = selection_size;
-        scran_ui_textline_item_set_dirty(SCRAN_UI_TEXTLINE_VIEW(*statusline), SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE);
+        scran_ui_textline_item_set_dirty(SCRAN_UI_TEXTLINE(*statusline), SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE);
     }
 }
 
@@ -243,7 +243,7 @@ scran_ui_statusline_set_timer(
 ) {
     if (statusline->timer_seconds != total_elapsed_seconds) {
         statusline->timer_seconds = total_elapsed_seconds;
-        scran_ui_textline_item_set_dirty(SCRAN_UI_TEXTLINE_VIEW(*statusline), SCRAN_UI_STATUSLINE_ITEM_I_TIMER);
+        scran_ui_textline_item_set_dirty(SCRAN_UI_TEXTLINE(*statusline), SCRAN_UI_STATUSLINE_ITEM_I_TIMER);
         return true;
     }
     return false;

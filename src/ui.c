@@ -39,38 +39,38 @@ struct ui_string {
     const char16_t *str;
     const size_t strlen;
 };
-#define INIT_UI_STRING(s) ((struct ui_string){ .str = (s), .strlen = CHAR16_STRLEN(s) })
+#define UI_STRING(s) ((struct ui_string){ .str = (s), .strlen = CHAR16_STRLEN(s) })
 
 static const struct ui_string ui_texts[] = {
-    [SCRAN_UI_TEXT_GREETING]                        = INIT_UI_STRING(u"Fullscreen capture · click and drag anywhere for custom selection"),
+    [SCRAN_UI_TEXT_GREETING]                        = UI_STRING(u"Fullscreen capture · click and drag anywhere for custom selection"),
 
-    [SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT]            = INIT_UI_STRING(u"[↵] Image & Exit"),
-    [SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD]                = INIT_UI_STRING(u"[↵] Image       "),
+    [SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT]            = UI_STRING(u"[↵] Image & Exit"),
+    [SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD]                = UI_STRING(u"[↵] Image       "),
 
-    [SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT]            = INIT_UI_STRING(u"[␣] Video \uf028"),
-    [SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD]                = INIT_UI_STRING(u"[␣] Video \uf026"),
+    [SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT]            = UI_STRING(u"[␣] Video \uf028"),
+    [SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD]                = UI_STRING(u"[␣] Video \uf026"),
 
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT]            = INIT_UI_STRING(u"[⇥] Release focus"),
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY]      = INIT_UI_STRING(u"[⇥] Click tray icon to retake focus."),
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP]      = INIT_UI_STRING(u"[⇥] Focus released. 'scran -h' for help."),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT]            = UI_STRING(u"[⇥] Release focus"),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY]      = UI_STRING(u"[⇥] Click tray icon to retake focus."),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP]      = UI_STRING(u"[⇥] Focus released. 'scran -h' for help."),
 
-    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON]      = INIT_UI_STRING(u"[Z] Freeze screens"),
-    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_OFF]     = INIT_UI_STRING(u"[Z] Unfreeze screens"),
+    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON]      = UI_STRING(u"[Z] Freeze screens"),
+    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_OFF]     = UI_STRING(u"[Z] Unfreeze screens"),
 
     // Placeholders for calculating metadata (currently just max pixel widths)
     // - actual text is dynamic for these.
-    [SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY] = INIT_UI_STRING(u"WWWWWxHHHHH"),
-    [SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY]          = INIT_UI_STRING(u"00:00:00"),
+    [SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY] = UI_STRING(u"WWWWWxHHHHH"),
+    [SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY]          = UI_STRING(u"00:00:00"),
 
-    [SCRAN_UI_TEXT_ATLAS_DIGITS]                    = INIT_UI_STRING(u"0123456789"),
-    [SCRAN_UI_TEXT_ATLAS_SEPARATORS]                = INIT_UI_STRING(u":x"),
+    [SCRAN_UI_TEXT_ATLAS_DIGITS]                    = UI_STRING(u"0123456789"),
+    [SCRAN_UI_TEXT_ATLAS_SEPARATORS]                = UI_STRING(u":x"),
 
-    [SCRAN_UI_TEXT_EMPTY]                           = INIT_UI_STRING(u""),
+    [SCRAN_UI_TEXT_EMPTY]                           = UI_STRING(u""),
 };
 static_assert(sizeof(ui_texts) / sizeof(ui_texts[0]) == SCRAN_UI_N_TEXTS,
               "ui_texts[] length must exactly cover all text enum values.");
 
-static inline void
+static void
 redraw_textline_item_image_impl(
     struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_item *item,
@@ -107,7 +107,7 @@ redraw_textline_item_image_impl(
     }
 }
 
-static inline void
+static void
 redraw_textline_item_image(
     struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_item *item,
@@ -142,7 +142,7 @@ get_glyph_atlas_dst_advance_px(struct scran_ui_context *ui_ctx) {
     return ceil(ui_ctx->font_advance_fixed_width);
 }
 
-static inline void
+static void
 blit_atlas_glyph(
     struct scran_ui_context *ui_ctx,
     BLContextCore *bl_ctx_destination,
@@ -198,7 +198,7 @@ blit_atlas_glyph(
 
 // TODO: Better name for this function, or combine with the old
 // redraw_textline_item_image() function?
-static inline void
+static void
 redraw_textline_item_image_using_atlas(
     struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_view textline,
@@ -237,7 +237,7 @@ redraw_textline_item_image_using_atlas(
                    : pen_position_px + SCRAN_SELECTION_SHADOW_OFFSET_PX;
 }
 
-static inline void
+static void
 redraw_glyph_atlas_item_image(
     struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_item *item,
@@ -271,7 +271,7 @@ redraw_glyph_atlas_item_image(
     item->width_px = string->strlen * cell_width_px;
 }
 
-static inline void
+static void
 redraw_glyph_atlas_textline(
     struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_view textline
@@ -288,7 +288,7 @@ redraw_glyph_atlas_textline(
     textline.meta->dirty_items_mask = 0;
 }
 
-static inline bool
+static bool
 redraw_static_textline(
     struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_view textline
@@ -320,7 +320,7 @@ fill_char16(char16_t *str, int n, char16_t char_) {
 }
 
 // Returns final cursor location
-static inline char16_t *
+static char16_t *
 append_char16_uint(char16_t *cursor, char16_t *right_bound, uint32_t uint_)
 {
     char16_t *const start = cursor;
@@ -359,7 +359,7 @@ prepend_char16_uint_two_digits(char16_t *start, uint32_t uint_) {
 static const size_t TIMER_STRLEN          = ui_texts[SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY].strlen;
 static const size_t SELECTION_SIZE_STRLEN = ui_texts[SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY].strlen;
 
-static inline void
+static void
 get_timer_string(
     char16_t string_char16[static TIMER_STRLEN],
     int seconds
@@ -389,7 +389,7 @@ get_timer_string(
     }
 }
 
-static inline void
+static void
 get_selection_size_string(
     char16_t string_char16[static SELECTION_SIZE_STRLEN],
     BLRectI size
@@ -405,7 +405,7 @@ get_selection_size_string(
     cursor = append_char16_uint(cursor, right_bound, abs(size.h)); // Rightmost value
 }
 
-static inline bool
+static bool
 redraw_statusline_textline(
     struct scran_ui_context *ui_ctx,
     struct scran_ui_textline_view textline,
@@ -452,20 +452,20 @@ scran_ui_redraw_elements(
 ) {
     enum scran_ui_redrawn_textline_mask redrawn_textline_mask = 0;
 
-    if (redraw_static_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting))) {
+    if (redraw_static_textline(ui_ctx, SCRAN_UI_TEXTLINE(ui_ctx->ui_greeting))) {
         redrawn_textline_mask |= SCRAN_UI_REDREW_GREETING;
     }
-    if (redraw_static_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap))) {
+    if (redraw_static_textline(ui_ctx, SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap))) {
         redrawn_textline_mask |= SCRAN_UI_REDREW_KEYMAP;
     }
-    if (redraw_statusline_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline), &ui_ctx->ui_statusline)) {
+    if (redraw_statusline_textline(ui_ctx, SCRAN_UI_TEXTLINE(ui_ctx->ui_statusline), &ui_ctx->ui_statusline)) {
         redrawn_textline_mask |= SCRAN_UI_REDREW_STATUSLINE;
     }
 
     return redrawn_textline_mask;
 }
 
-static inline struct BLTextMetrics
+static struct BLTextMetrics
 get_bl_text_metrics(
     BLFontCore *font,
     const char16_t *text,
@@ -483,7 +483,7 @@ get_bl_text_metrics(
     return text_metrics;
 }
 
-static inline int
+static int
 calculate_bl_text_width_px(
     BLFontCore *font,
     const char16_t *text,
@@ -496,7 +496,7 @@ calculate_bl_text_width_px(
     return width_px;
 }
 
-static inline void
+static void
 reinit_textline(
     struct scran_ui_textline_view textline,
     int w_px, int h_px
@@ -589,15 +589,15 @@ reinit_scran_ui(
         assert(width_px_max != 0);
 
         // Redraw the glyph atlas first, since it's used by the other UI elements.
-        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.digits),         width_px_max, height_px_max);
-        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators),     width_px_max, height_px_max);
-        redraw_glyph_atlas_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.digits));
-        redraw_glyph_atlas_textline(ui_ctx, SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators));
+        reinit_textline(SCRAN_UI_TEXTLINE(ui_ctx->glyph_atlas.digits),         width_px_max, height_px_max);
+        reinit_textline(SCRAN_UI_TEXTLINE(ui_ctx->glyph_atlas.separators),     width_px_max, height_px_max);
+        redraw_glyph_atlas_textline(ui_ctx, SCRAN_UI_TEXTLINE(ui_ctx->glyph_atlas.digits));
+        redraw_glyph_atlas_textline(ui_ctx, SCRAN_UI_TEXTLINE(ui_ctx->glyph_atlas.separators));
 
         // TODO: Fix the need to manually list each textline here, in init and in redraw?
-        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting),          width_px_max, height_px_max);
-        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),            width_px_max, height_px_max);
-        reinit_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),        width_px_max, height_px_max);
+        reinit_textline(SCRAN_UI_TEXTLINE(ui_ctx->ui_greeting),          width_px_max, height_px_max);
+        reinit_textline(SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap),            width_px_max, height_px_max);
+        reinit_textline(SCRAN_UI_TEXTLINE(ui_ctx->ui_statusline),        width_px_max, height_px_max);
         scran_ui_redraw_elements(ui_ctx);
 
     }
@@ -634,7 +634,7 @@ static_assert(ARRAY_LENGTH(m_keymap_defaults)            == SCRAN_UI_KEYMAP_N_IT
 static_assert(ARRAY_LENGTH(m_atlas_digits_defaults)      == ARRAY_LENGTH((struct glyph_atlas){}.digits.items),     "");
 static_assert(ARRAY_LENGTH(m_atlas_separators_defaults)  == ARRAY_LENGTH((struct glyph_atlas){}.separators.items), "");
 
-static inline void
+static void
 assign_textline_defaults(
     struct scran_ui_textline_view textline,
     const struct default_textline_values *defaults,
@@ -651,7 +651,7 @@ assign_textline_defaults(
     }
 }
 
-static inline void
+static void
 init_textline(
     struct scran_ui_textline_view textline,
     const struct default_textline_values *defaults,
@@ -674,14 +674,14 @@ init_scran_ui_pre_selection(
     bl_font_init(&ui_ctx->font);
     bl_context_init(&ui_ctx->bl_ctx);
 
-    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting),           m_greeting_defaults,          ARRAY_LENGTH(m_greeting_defaults));
-    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap),             m_keymap_defaults,            ARRAY_LENGTH(m_keymap_defaults));
-    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline),         m_statusline_defaults,        ARRAY_LENGTH(m_statusline_defaults));
-    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.digits),    m_atlas_digits_defaults,      ARRAY_LENGTH(m_atlas_digits_defaults));
-    init_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators),m_atlas_separators_defaults,  ARRAY_LENGTH(m_atlas_separators_defaults));
+    init_textline(SCRAN_UI_TEXTLINE(ui_ctx->ui_greeting),           m_greeting_defaults,          ARRAY_LENGTH(m_greeting_defaults));
+    init_textline(SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap),             m_keymap_defaults,            ARRAY_LENGTH(m_keymap_defaults));
+    init_textline(SCRAN_UI_TEXTLINE(ui_ctx->ui_statusline),         m_statusline_defaults,        ARRAY_LENGTH(m_statusline_defaults));
+    init_textline(SCRAN_UI_TEXTLINE(ui_ctx->glyph_atlas.digits),    m_atlas_digits_defaults,      ARRAY_LENGTH(m_atlas_digits_defaults));
+    init_textline(SCRAN_UI_TEXTLINE(ui_ctx->glyph_atlas.separators),m_atlas_separators_defaults,  ARRAY_LENGTH(m_atlas_separators_defaults));
 
     for (int i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
-        scran_ui_textline_item_set_disabled(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), i, SCRAN_UI_DISABLE_REASON_NOT_ACTIVE_SURFACE, true);
+        scran_ui_textline_item_set_disabled(SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap), i, SCRAN_UI_DISABLE_REASON_NOT_ACTIVE_SURFACE, true);
     }
 
     reinit_scran_ui(ui_ctx, scale);
@@ -689,7 +689,7 @@ init_scran_ui_pre_selection(
     return true;
 }
 
-static inline void
+static void
 destroy_textline(
     struct scran_ui_textline_view textline
 ) {
@@ -705,9 +705,9 @@ destroy_scran_ui(
     bl_font_destroy(&ui_ctx->font);
     bl_context_destroy(&ui_ctx->bl_ctx);
 
-    destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_greeting));
-    destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap));
-    destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_statusline));
-    destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.digits));
-    destroy_textline(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->glyph_atlas.separators));
+    destroy_textline(SCRAN_UI_TEXTLINE(ui_ctx->ui_greeting));
+    destroy_textline(SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap));
+    destroy_textline(SCRAN_UI_TEXTLINE(ui_ctx->ui_statusline));
+    destroy_textline(SCRAN_UI_TEXTLINE(ui_ctx->glyph_atlas.digits));
+    destroy_textline(SCRAN_UI_TEXTLINE(ui_ctx->glyph_atlas.separators));
 }

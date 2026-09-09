@@ -17,7 +17,7 @@ update_focus_keymap_texts(bool have_tray_icon)
 
     FOR_EACH_OUTPUT(i, output) {
         struct scran_ui_context *ui_ctx = &output->selection_surface.ui_ctx;
-        scran_ui_textline_item_set_text(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FOCUS, text);
+        scran_ui_textline_item_set_text(SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FOCUS, text);
         request_selection_surface_frame_callback(output);
     }
 }
@@ -42,7 +42,7 @@ seat_apply_mod_key_state(
 
     struct scran_output           *st_output       = wl_container_of(selection_surface, st_output, selection_surface);
     struct scran_ui_context       *ui_ctx          = &st_output->selection_surface.ui_ctx;
-    struct scran_ui_textline_view  keymap_textline = SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap);
+    struct scran_ui_textline_view  keymap_textline = SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap);
 
     if (state) {
         scran_ui_textline_item_set_text( keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD);
@@ -75,7 +75,7 @@ get_keymap_pressed_state(
         return 0;
     }
     return scran_ui_textline_item_get_pressed_mask(
-        SCRAN_UI_TEXTLINE_VIEW(selection_surface->ui_ctx.ui_keymap)
+        SCRAN_UI_TEXTLINE(selection_surface->ui_ctx.ui_keymap)
     );
 }
 
@@ -90,7 +90,7 @@ set_keymap_pressed_state(
 
     struct scran_output           *st_output       = wl_container_of(selection_surface, st_output, selection_surface);
     struct scran_ui_context       *ui_ctx          = &st_output->selection_surface.ui_ctx;
-    struct scran_ui_textline_view  keymap_textline = SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap);
+    struct scran_ui_textline_view  keymap_textline = SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap);
 
     scran_ui_textline_item_set_pressed_mask(keymap_textline, pressed_mask);
 
@@ -108,7 +108,7 @@ set_keymap_disabled_state(
 
     struct scran_output           *st_output       = wl_container_of(selection_surface, st_output, selection_surface);
     struct scran_ui_context       *ui_ctx          = &st_output->selection_surface.ui_ctx;
-    struct scran_ui_textline_view  keymap_textline = SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap);
+    struct scran_ui_textline_view  keymap_textline = SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap);
 
     for (int i = 0; i < SCRAN_UI_KEYMAP_N_ITEMS; ++i) {
         scran_ui_textline_item_set_disabled(keymap_textline, i, SCRAN_UI_DISABLE_REASON_NOT_ACTIVE_SURFACE, disabled);
