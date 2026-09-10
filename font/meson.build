@@ -1,26 +1,40 @@
-# TODO: Allow other archs?
-if host_machine.cpu_family() != 'x86_64'
-  error('Embedded font objcopy currently only supported on x86_64')
-endif
+font_python = import('python').find_installation(
+  'python3',
+  modules: ['fontTools'],
+)
 
-# Copy the file to get predictable objcopy path-based symbol names
-font_ttf = configure_file(input: 'font.ttf', output: 'font.ttf', copy: true)
-
-font_obj = custom_target(
-  'embedded-font-object',
-  input: font_ttf,
-  output: 'font.o',
-  command: [
-    find_program('objcopy'),
-    '--input-target'       , 'binary',
-    '--output-target'      , 'elf64-x86-64',
-    '--binary-architecture', 'i386:x86-64',
-    '--redefine-sym'       , '_binary_font_font_ttf_start=scran_font_ttf_start',
-    '--redefine-sym'       , '_binary_font_font_ttf_end=scran_font_ttf_end',
-    '--redefine-sym'       , '_binary_font_font_ttf_size=scran_font_ttf_size',
-    '--rename-section'     , '.data=.rodata,alloc,load,readonly,data,contents',
-    '--add-section'        , '.note.GNU-stack=/dev/null',
-    '--set-section-flags'  , '.note.GNU-stack=contents,readonly',
-    '@INPUT@', '@OUTPUT@',
+generated_font = custom_target(
+  'generated-font',
+  input: files(
+    'IosevkaFixed-Regular.ttf.xz',
+    'SymbolsNerdFontMono-Regular.ttf.xz',
+  ),
+  depend_files: files('scripts/ui_strings_list.py'),
+  output: [
+    'ScranUI-Regular.ttf',
+    'scran-font.c',
+    'scran-font.h',
+    'ui-strings.h',
   ],
+  command: [
+    font_python,
+    '-B',
+    files('scripts/generate_font.py'),
+    '--iosevka-font', '@INPUT0@',
+    '--nerd-font', '@INPUT1@',
+    '--outpath-ttf', '@OUTPUT0@',
+    '--outpath-c-source', '@OUTPUT1@',
+    '--outpath-c-header', '@OUTPUT2@',
+    '--outpath-ui-strings-header', '@OUTPUT3@',
+  ],
+)
+
+font_source = generated_font[1]
+font_header = generated_font[2]
+ui_strings_header = generated_font[3]
+
+install_data(
+  'Iosevka.license',
+  'NerdFontsSymbolsOnly.license',
+  install_dir: get_option('datadir') / 'licenses' / meson.project_name(),
 )

@@ -5,7 +5,9 @@
 #include <blend2d/blend2d.h>
 
 #include "init.h"
+#include "scran-font.h"
 #include "ui.h"
+#include "ui-strings.h"
 #include "selection-surface.h"
 #include "util/blend2d.h"
 #include "util/lib-interop.h"
@@ -16,15 +18,6 @@
 #define SCRAN_SELECTION_SHADOW_COLOR     ((struct BLRgba32){ 0xDD0E0E0E })
 
 #define CHAR16_STRLEN(s) ( (sizeof(s) / sizeof(char16_t)) - 1)
-
-extern const char scran_font_ttf_start[];
-extern const char scran_font_ttf_end[];
-static inline size_t get_font_size() {
-    return scran_font_ttf_end - scran_font_ttf_start;
-}
-static inline const void * get_font_data() {
-    return scran_font_ttf_start;
-}
 
 static const BLRgba32 ui_colors[] = {
     [SCRAN_UI_COLOR_DEFAULT]              = { 0xFFDDDDDD },
@@ -42,30 +35,31 @@ struct ui_string {
 #define UI_STRING(s) ((struct ui_string){ .str = (s), .strlen = CHAR16_STRLEN(s) })
 
 static const struct ui_string ui_texts[] = {
-    [SCRAN_UI_TEXT_GREETING]                        = UI_STRING(u"Fullscreen capture · click and drag anywhere for custom selection"),
+    // Enum and literals generated from `font/scripts/ui_strings_list.py`
 
-    [SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT]            = UI_STRING(u"[↵] Image & Exit"),
-    [SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD]                = UI_STRING(u"[↵] Image       "),
+    [SCRAN_UI_TEXT_GREETING]                        = UI_STRING(SCRAN_UI_STRING_GREETING),
 
-    [SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT]            = UI_STRING(u"[␣] Video \uf028"),
-    [SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD]                = UI_STRING(u"[␣] Video \uf026"),
+    [SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT]            = UI_STRING(SCRAN_UI_STRING_KEYMAP_IMAGE_DEFAULT),
+    [SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD]                = UI_STRING(SCRAN_UI_STRING_KEYMAP_IMAGE_MOD),
 
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT]            = UI_STRING(u"[⇥] Release focus"),
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY]      = UI_STRING(u"[⇥] Click tray icon to retake focus."),
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP]      = UI_STRING(u"[⇥] Focus released. 'scran -h' for help."),
+    [SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT]            = UI_STRING(SCRAN_UI_STRING_KEYMAP_VIDEO_DEFAULT),
+    [SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD]                = UI_STRING(SCRAN_UI_STRING_KEYMAP_VIDEO_MOD),
 
-    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON]      = UI_STRING(u"[Z] Freeze screens"),
-    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_OFF]     = UI_STRING(u"[Z] Unfreeze screens"),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT]            = UI_STRING(SCRAN_UI_STRING_KEYMAP_FOCUS_DEFAULT),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY]      = UI_STRING(SCRAN_UI_STRING_KEYMAP_FOCUS_RELEASED_TRAY),
+    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP]      = UI_STRING(SCRAN_UI_STRING_KEYMAP_FOCUS_RELEASED_HELP),
 
-    // Placeholders for calculating metadata (currently just max pixel widths)
-    // - actual text is dynamic for these.
-    [SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY] = UI_STRING(u"WWWWWxHHHHH"),
-    [SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY]          = UI_STRING(u"00:00:00"),
+    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON]      = UI_STRING(SCRAN_UI_STRING_KEYMAP_FREEZEFRAME_TURN_ON),
+    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_OFF]     = UI_STRING(SCRAN_UI_STRING_KEYMAP_FREEZEFRAME_TURN_OFF),
 
-    [SCRAN_UI_TEXT_ATLAS_DIGITS]                    = UI_STRING(u"0123456789"),
-    [SCRAN_UI_TEXT_ATLAS_SEPARATORS]                = UI_STRING(u":x"),
+    [SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY] = UI_STRING(SCRAN_UI_STRING_STATUSLINE_SELECTION_SIZE_DUMMY),
+    [SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY]          = UI_STRING(SCRAN_UI_STRING_STATUSLINE_TIMER_DUMMY),
 
-    [SCRAN_UI_TEXT_EMPTY]                           = UI_STRING(u""),
+    [SCRAN_UI_TEXT_ATLAS_DIGITS]                    = UI_STRING(SCRAN_UI_STRING_ATLAS_DIGITS),
+    [SCRAN_UI_TEXT_ATLAS_SEPARATORS]                = UI_STRING(SCRAN_UI_STRING_ATLAS_SEPARATORS),
+    [SCRAN_UI_TEXT_SPACE]                           = UI_STRING(SCRAN_UI_STRING_SPACE),
+
+    [SCRAN_UI_TEXT_EMPTY]                           = UI_STRING(SCRAN_UI_STRING_EMPTY),
 };
 static_assert(sizeof(ui_texts) / sizeof(ui_texts[0]) == SCRAN_UI_N_TEXTS,
               "ui_texts[] length must exactly cover all text enum values.");
@@ -527,7 +521,7 @@ reinit_scran_ui(
     {
         BLFontDataCore font_data;
         bl_font_data_init(&font_data);
-        bl_font_data_create_from_data(&font_data, get_font_data(), get_font_size(), NULL, NULL);
+        bl_font_data_create_from_data(&font_data, scran_font_ttf, scran_font_ttf_size, NULL, NULL);
 
         BLFontFaceCore font_face;
         bl_font_face_init(&font_face);
@@ -671,6 +665,11 @@ init_scran_ui_pre_selection(
     struct scran_ui_context *ui_ctx,
     double scale
 ) {
+    for (int i = 0; i < SCRAN_UI_N_TEXTS; ++i) {
+        // Verify we actually included all the generated strings
+        assert(ui_texts[i].str != NULL);
+    }
+
     bl_font_init(&ui_ctx->font);
     bl_context_init(&ui_ctx->bl_ctx);
 

@@ -100,10 +100,13 @@ subdir('font')
 executable(
   'scran',
   scran_sources,
+  font_source,
+  font_header,
+  ui_strings_header,
   include_directories: [
     include_directories('include'),
+    include_directories('font'),
   ],
-  objects: font_obj,
   dependencies: [
     cc.find_library('m', required: true),
     # ffmpeg
