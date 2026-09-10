@@ -34,6 +34,6 @@ package() {
     meson install -C build --destdir "$pkgdir"
 
     install -D -m 644 "$srcdir/$pkgname-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-    install -D -m 644 "$srcdir/$pkgname-$pkgver/assets/Iosevka.license" "$pkgdir/usr/share/licenses/$pkgname/Iosevka.license"
-    install -D -m 644 "$srcdir/$pkgname-$pkgver/assets/NerdFontsSymbolsOnly.license" "$pkgdir/usr/share/licenses/$pkgname/NerdFontsSymbolsOnly.license"
+    install -D -m 644 "$srcdir/$pkgname-$pkgver/font/Iosevka.license" "$pkgdir/usr/share/licenses/$pkgname/Iosevka.license"
+    install -D -m 644 "$srcdir/$pkgname-$pkgver/font/NerdFontsSymbolsOnly.license" "$pkgdir/usr/share/licenses/$pkgname/NerdFontsSymbolsOnly.license"
 }

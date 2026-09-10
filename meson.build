@@ -3,7 +3,7 @@ project(
   version: files('VERSION'),
   meson_version: '>=1.1.0',
   license: 'MIT AND OFL-1.1',
-  license_files: ['./LICENSE', 'assets/Iosevka.license', 'assets/NerdFontsSymbolsOnly.license',],
+  license_files: ['./LICENSE', 'font/Iosevka.license', 'font/NerdFontsSymbolsOnly.license',],
   default_options: [
     'warning_level=2', # -Wall -Wextra
     'c_std=gnu11',
@@ -95,7 +95,7 @@ scran_sources = files(
 
 subdir('scranrot')
 subdir('wayland-protocol-extensions')
-subdir('assets')
+subdir('font')
 
 executable(
   'scran',
