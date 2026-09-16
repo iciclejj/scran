@@ -159,9 +159,10 @@ struct scran_output_surface {
 };
 
 struct scran_ui_textline_geometry {
-    BLPointI origin;
+    BLPointI pen_origin;
     // get height_px from ui's font-height getter
-    int total_width_px;
+    // TODO: Don't store entire metrics?
+    struct atlas_text_metrics text_metrics;
 };
 
 struct scran_output_selectionSurface_buffer {
@@ -178,7 +179,7 @@ struct scran_output_selectionSurface_buffer {
     struct scran_ui_textline_geometry ui_statusline_geometry_currently_drawn;
 
     bool force_redraw;
-    enum scran_ui_redrawn_textline_mask redrawn_textline_mask;
+    enum scran_ui_textlines_pending_redraw_mask textlines_pending_redraw_mask;
 };
 
 enum surface_theme {

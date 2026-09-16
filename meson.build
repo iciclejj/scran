@@ -65,6 +65,7 @@ scran_sources = files(
   'src/selection-surface.c',
   'src/signal-handlers.c',
   'src/ui.c',
+  'src/ui/atlas.c',
 
   'src/event-handlers/buffer.c',
   'src/event-handlers/data-control.c',

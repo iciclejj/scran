@@ -102,33 +102,28 @@ draw_and_damage_background(
 }
 
 
-static inline int
-get_total_textline_width_px(
-    struct scran_ui_textline_view textline,
-    int item_spacing_px
-) {
-    int total_width_px = 0;
-
-    for (int i = 0; i < textline.n_items; ++i) {
-        struct scran_ui_textline_item *item = &textline.items[i];
-        if (item->width_px != 0) {
-            total_width_px += item->width_px + item_spacing_px;
-        }
-    }
-
-    total_width_px -= (total_width_px == 0) ? 0 : item_spacing_px;
-
-    return total_width_px;
-}
-
-
 static inline bool
 textline_geometry_changed(
     struct scran_ui_textline_geometry *prev,
     struct scran_ui_textline_geometry *new
 ) {
-    return !blpointi_are_equal(prev->origin, new->origin)
-        || prev->total_width_px != new->total_width_px;
+    return
+        !blpointi_are_equal(prev->pen_origin, new->pen_origin)
+        || atlas_metrics_bbox_width(&prev->text_metrics)
+           != atlas_metrics_bbox_width(&new->text_metrics);
+}
+
+static inline BLRectI
+geometry_to_surface_rect_px(
+    struct scran_output_selectionSurface *selection_surface,
+    struct scran_ui_textline_geometry *geometry
+) {
+    return (BLRectI){
+        .x = geometry->pen_origin.x + geometry->text_metrics.bbox.x0,
+        .y = geometry->pen_origin.y, // TODO: bbox_height
+        .w = atlas_metrics_bbox_width(&geometry->text_metrics),
+        .h = scran_ui_atlas_font_height_px(&selection_surface->ui_ctx.glyph_atlas_2),
+    };
 }
 
 static inline void
@@ -136,12 +131,11 @@ draw_and_damage_ui_textline(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
     BLBoxI capture_area_border_outline,
-    struct scran_ui_textline_view textline,
-    int textline_item_spacing_px,
     struct scran_ui_textline_geometry *prev_geometry,
     struct scran_ui_textline_geometry *prev_geometry_any_buffer,
     struct scran_ui_textline_geometry *new_geometry,
-    bool textline_changed
+    bool textline_changed,
+    scran_ui_blit_fn blit_fn
 ) {
     if ( !(textline_changed || st_buffer->force_redraw || textline_geometry_changed(prev_geometry, new_geometry))) {
         return;
@@ -157,19 +151,8 @@ draw_and_damage_ui_textline(
         BLCompOp comp_op = bl_context_get_comp_op(&st_buffer->bl_ctx);
         bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
 
-        BLRectI text_rect_prev = {
-            .x = prev_geometry->origin.x,
-            .y = prev_geometry->origin.y,
-            .w = prev_geometry->total_width_px,
-            .h = textline.meta->height_px,
-        };
-
-        BLRectI text_rect_prev_any_buffer = {
-            .x = prev_geometry_any_buffer->origin.x,
-            .y = prev_geometry_any_buffer->origin.y,
-            .w = prev_geometry_any_buffer->total_width_px,
-            .h = textline.meta->height_px,
-        };
+        BLRectI text_rect_prev            = geometry_to_surface_rect_px(selection_surface, prev_geometry);
+        BLRectI text_rect_prev_any_buffer = geometry_to_surface_rect_px(selection_surface, prev_geometry_any_buffer);
 
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, SCRAN_SELECTION_BACKGROUND_COLOR.value);
 
@@ -207,32 +190,17 @@ draw_and_damage_ui_textline(
     struct scran_ui_context *ui_ctx = &selection_surface->ui_ctx;
 
     // Blit new ui
-    BLPointI _origin_new_curr_item = new_geometry->origin;
-    for (int i = 0; i < textline.n_items; ++i) {
-        struct scran_ui_textline_item *item = &textline.items[i];
+    struct atlas_text_metrics _blit_metrics = blit_fn(ui_ctx, &st_buffer->bl_ctx, &new_geometry->pen_origin);
+    assert(atlas_metrics_equal(&_blit_metrics, &new_geometry->text_metrics));
+    (void)_blit_metrics;
 
-        const int width_px  = item->width_px;
-        const int height_px = scran_ui_font_height_px(ui_ctx);
-
-        if (width_px != 0) {
-            // Allocated BLImage dimensions may be larger than its current contents.
-            BLRectI area = {
-                .x = 0,
-                .y = 0,
-                .w = width_px,
-                .h = height_px,
-            };
-            bl_context_blit_image_i(&st_buffer->bl_ctx, &_origin_new_curr_item, &item->bl_img, &area);
-            _origin_new_curr_item.x += width_px + textline_item_spacing_px;
-        }
-    }
-
+    BLRectI text_rect_new = geometry_to_surface_rect_px(selection_surface, new_geometry);
     wl_surface_damage_buffer(
         selection_surface->surface.wl_surface,
-        new_geometry->origin.x,
-        new_geometry->origin.y,
-        new_geometry->total_width_px,
-        textline.meta->height_px
+        text_rect_new.x,
+        text_rect_new.y,
+        text_rect_new.w,
+        text_rect_new.h
     );
 
     *prev_geometry            = *new_geometry;
@@ -249,18 +217,23 @@ enum scran_vertical_placement {
     SCRAN_PLACE_BELOW,
 };
 
+// Returned geometry.origin is *blit* origin, not pen origin.
+// E.g. leading bearing might be to the left of the pen origin, and also needs
+// to be blitted.
 static inline struct scran_ui_textline_geometry
-compute_textline_geometry(
+compute_textline_blit_geometry(
     const BLBoxI *capture_area_border_outline,
     int surface_width_px,
-    int width_px,
+    struct atlas_text_metrics *textline_metrics,
     int height_px,
     enum scran_horizontal_alignment alignment,
     enum scran_vertical_placement placement
 ) {
+    const int advance_px = atlas_metrics_pen_x_px(textline_metrics);
+
     int origin_x = alignment == SCRAN_ALIGN_LEFT
         ? capture_area_border_outline->x0
-        : capture_area_border_outline->x1 - width_px;
+        : capture_area_border_outline->x1 - advance_px;
 
     // Clamp to selection's left edge
     if (origin_x < capture_area_border_outline->x0) {
@@ -268,11 +241,11 @@ compute_textline_geometry(
     }
 
     // Clamp to surface's right edge
-    if (origin_x + width_px > surface_width_px
+    if (origin_x + advance_px > surface_width_px
         // Unless that would clip the surface's left edge
-        && width_px <= surface_width_px
+        && advance_px <= surface_width_px
     ) {
-        origin_x = surface_width_px - width_px;
+        origin_x = surface_width_px - advance_px;
     }
 
     int origin_y = placement == SCRAN_PLACE_ABOVE
@@ -280,14 +253,9 @@ compute_textline_geometry(
         : capture_area_border_outline->y1;
 
     return (struct scran_ui_textline_geometry) {
-        .origin = (BLPointI) { origin_x, origin_y },
-        .total_width_px = width_px,
+        .pen_origin = (BLPointI){ origin_x, origin_y },
+        .text_metrics = *textline_metrics,
     };
-}
-
-static inline int
-get_item_spacing_px(struct scran_ui_context *ui_ctx) {
-    return round(3 * ui_ctx->font_advance_fixed_width);
 }
 
 static inline void
@@ -300,21 +268,39 @@ draw_and_damage_ui(
     struct scran_ui_context *ui_ctx = &selection_surface->ui_ctx;
 
     {
-        enum scran_ui_redrawn_textline_mask mask = scran_ui_redraw_elements(ui_ctx);
+        enum scran_ui_textlines_pending_redraw_mask mask = 0;
+
+        // XXX: Left a bit ugly since we will remove this entirely soon
+        if (ui_ctx->ui_keymap.meta.dirty) {
+            mask |= SCRAN_UI_KEYMAP_PENDING_REDRAW;
+            ui_ctx->ui_keymap.meta.dirty = false;
+        }
+        if (ui_ctx->ui_statusline.meta.dirty) {
+            mask |= SCRAN_UI_STATUSLINE_PENDING_REDRAW;
+            ui_ctx->ui_statusline.meta.dirty = false;
+        }
+        if (ui_ctx->ui_greeting.meta.dirty) {
+            mask |= SCRAN_UI_GREETING_PENDING_REDRAW;
+            ui_ctx->ui_greeting.meta.dirty = false;
+        }
+
         for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
-            selection_surface->double_buffer[i].redrawn_textline_mask |= mask;
+            selection_surface->double_buffer[i].textlines_pending_redraw_mask |= mask;
         }
     }
-    const int item_spacing_px = get_item_spacing_px(ui_ctx);
-    const int item_height_px  = scran_ui_font_height_px(ui_ctx);
+
+    const int item_height_px  = scran_ui_atlas_font_height_px(&ui_ctx->glyph_atlas_2);
     const int buffer_width_px = selection_surface->surface.width_px_buffer;
 
     // Draw below-selection keymap
     {
-        struct scran_ui_textline_geometry new_keymap_geometry = compute_textline_geometry(
+        struct scran_ui_textline_view textline = SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap);
+        struct atlas_text_metrics textline_metrics = scran_ui_compute_textline_metrics_px(ui_ctx, &textline);
+        struct scran_ui_textline_geometry new_keymap_geometry = compute_textline_blit_geometry(
+            // TODO: Make a struct to collect these
             &capture_area_border_outline,
             buffer_width_px,
-            get_total_textline_width_px(SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap), item_spacing_px),
+            &textline_metrics,
             item_height_px,
             SCRAN_ALIGN_LEFT,
             SCRAN_PLACE_BELOW
@@ -323,23 +309,23 @@ draw_and_damage_ui(
             selection_surface,
             st_buffer,
             capture_area_border_outline,
-            SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap),
-            item_spacing_px,
             &st_buffer->ui_keymap_geometry_currently_drawn,
             &selection_surface->ui_keymap_geometry_last_drawn,
             &new_keymap_geometry,
-            st_buffer->redrawn_textline_mask & SCRAN_UI_REDREW_KEYMAP
+            st_buffer->textlines_pending_redraw_mask & SCRAN_UI_KEYMAP_PENDING_REDRAW,
+            scran_ui_blit_keymap
         );
-        st_buffer->redrawn_textline_mask &= ~SCRAN_UI_REDREW_KEYMAP;
+        st_buffer->textlines_pending_redraw_mask &= ~SCRAN_UI_KEYMAP_PENDING_REDRAW;
     }
 
 
     // Draw above-selection statusline
     {
-        struct scran_ui_textline_geometry new_statusline_geometry = compute_textline_geometry(
+        struct atlas_text_metrics textline_metrics = scran_ui_compute_statusline_metrics_px(ui_ctx);
+        struct scran_ui_textline_geometry new_statusline_geometry = compute_textline_blit_geometry(
             &capture_area_border_outline,
             buffer_width_px,
-            get_total_textline_width_px(SCRAN_UI_TEXTLINE(ui_ctx->ui_statusline), item_spacing_px),
+            &textline_metrics,
             item_height_px,
             SCRAN_ALIGN_RIGHT,
             SCRAN_PLACE_ABOVE
@@ -348,14 +334,13 @@ draw_and_damage_ui(
             selection_surface,
             st_buffer,
             capture_area_border_outline,
-            SCRAN_UI_TEXTLINE(ui_ctx->ui_statusline),
-            item_spacing_px,
             &st_buffer->ui_statusline_geometry_currently_drawn,
             &selection_surface->ui_statusline_geometry_last_drawn,
             &new_statusline_geometry,
-            st_buffer->redrawn_textline_mask & SCRAN_UI_REDREW_STATUSLINE
+            st_buffer->textlines_pending_redraw_mask & SCRAN_UI_STATUSLINE_PENDING_REDRAW,
+            scran_ui_blit_statusline
         );
-        st_buffer->redrawn_textline_mask &= ~SCRAN_UI_REDREW_STATUSLINE;
+        st_buffer->textlines_pending_redraw_mask &= ~SCRAN_UI_STATUSLINE_PENDING_REDRAW;
     }
 
 
@@ -363,30 +348,31 @@ draw_and_damage_ui(
     //   XXX: Must currently be at the end to play nice with scale updates.
     //   TODO: unlikely() ?
     if (greeting_screen) {
-        struct scran_ui_textline_geometry new_greeting_geometry = compute_textline_geometry(
+        struct scran_ui_textline_view textline = SCRAN_UI_TEXTLINE(ui_ctx->ui_greeting);
+        struct atlas_text_metrics textline_metrics = scran_ui_compute_textline_metrics_px(ui_ctx, &textline);
+        struct scran_ui_textline_geometry new_greeting_geometry = compute_textline_blit_geometry(
             &capture_area_border_outline,
             buffer_width_px,
-            get_total_textline_width_px(SCRAN_UI_TEXTLINE(ui_ctx->ui_greeting), item_spacing_px),
+            &textline_metrics,
             item_height_px,
             SCRAN_ALIGN_LEFT,
             SCRAN_PLACE_ABOVE
         );
         // HACK: Move it to a separate line above (see get_selection_surface_pre_selection_box())
-        new_greeting_geometry.origin.y -= item_height_px;
+        new_greeting_geometry.pen_origin.y -= item_height_px;
         draw_and_damage_ui_textline(
             selection_surface,
             st_buffer,
             capture_area_border_outline,
-            SCRAN_UI_TEXTLINE(ui_ctx->ui_greeting),
-            item_spacing_px,
             // We have these for greeting as well, despite it not moving,
             // so that it updates correctly on scale changes.
             &st_buffer->ui_greeting_geometry_currently_drawn,
             &selection_surface->ui_greeting_geometry_last_drawn,
             &new_greeting_geometry,
-            st_buffer->redrawn_textline_mask & SCRAN_UI_REDREW_GREETING
+            st_buffer->textlines_pending_redraw_mask & SCRAN_UI_GREETING_PENDING_REDRAW,
+            scran_ui_blit_greeting
         );
-        st_buffer->redrawn_textline_mask &= ~SCRAN_UI_REDREW_GREETING;
+        st_buffer->textlines_pending_redraw_mask &= ~SCRAN_UI_GREETING_PENDING_REDRAW;
     }
 }
 

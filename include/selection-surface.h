@@ -30,7 +30,7 @@ set_force_redraw_selection_surface_buffers(
 
 static inline BLBoxI
 get_selection_surface_pre_selection_box(struct scran_output *st_output) {
-    int font_height_px = scran_ui_font_height_px(&st_output->selection_surface.ui_ctx);
+    int font_height_px = scran_ui_atlas_font_height_px(&st_output->selection_surface.ui_ctx.glyph_atlas_2);
     assert(font_height_px);
 
     int margin_px = round(font_height_px * 0.5) + SCRAN_SELECTION_BORDER_THICKNESS_PX;

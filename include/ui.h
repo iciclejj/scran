@@ -12,6 +12,11 @@
 #include "compiler.h"
 #include "scran-font.h"
 #include "print.h"
+#include "ui-strings.h"
+
+
+#define SCRAN_UI_GLYPH_SHADOW_SIZE_PX 1
+
 
 enum scran_ui_disable_reason {
     SCRAN_UI_DISABLE_REASON_CAPTURING_VIDEO,
@@ -45,18 +50,14 @@ enum scran_ui_color {
 } SCRAN_PACKED;
 
 struct scran_ui_textline_metadata {
-    int height_px;
     uint32_t pressed_items_mask;
-    uint32_t dirty_items_mask;
+    bool dirty;
 };
 struct scran_ui_textline_item_lockable_state {
     enum scran_ui_text  text;
     enum scran_ui_color color;
 };
 struct scran_ui_textline_item {
-    BLImageCore bl_img;
-    int width_px; // width of currently displayed text. height_px is shared for entire textline.
-
     struct scran_ui_textline_item_lockable_state live_state;
     struct scran_ui_textline_item_lockable_state locked_state;
 
@@ -79,15 +80,52 @@ struct scran_ui_textline_view {
     }                                               \
 )
 
+struct ui_string {
+    const char16_t *str;
+    const size_t strlen;
+};
+#define CHAR16_STRLEN(s) ( (sizeof(s) / sizeof(char16_t)) - 1)
+#define UI_STRING(s) ((struct ui_string){ .str = (s), .strlen = CHAR16_STRLEN(s) })
+
+extern const struct ui_string g_scran_ui_atlas_string;
+#define SCRAN_UI_ATLAS_GLYPHS_STRLEN (CHAR16_STRLEN(SCRAN_UI_STRING_UNIQUE_GLYPHS_SORTED))
+
+struct atlas_text_metrics {
+
+    // IF MODIFYING:
+    //     Remember to update implicated code and getters, including the getter
+    //     for the entire metrics struct.
+
+    // Values are signed.
+    //   atlas_pen_origin.x == atlas_x - bbox.x0
+    struct atlas_text_metrics_bbox {
+        int x0;
+        int x1;
+    } bbox;
+
+    struct atlas_text_metrics_advance {
+        // Keep this as floating point to avoid drift in glyph runs.
+        double x;
+    } advance;
+};
+
+struct atlas_glyph {
+    int atlas_x;
+    struct atlas_text_metrics metrics;
+};
+
 struct glyph_atlas {
-    struct {
-        struct scran_ui_textline_metadata meta;
-        struct scran_ui_textline_item     items[1];
-    } digits;
-    struct {
-        struct scran_ui_textline_metadata meta;
-        struct scran_ui_textline_item     items[1];
-    } separators;
+    BLImageCore bl_img;
+    BLContextCore bl_ctx;
+    BLFontCore font;
+
+    // TODO: Rename to _px or _scaled?
+    float font_ascent;
+    float font_height; // ascent + descent + shadow TODO: Rename to text_height?
+    struct atlas_text_metrics_advance fallback_glyph_advance;
+
+    // TODO: Make this size more directly connected to the global variable's size
+    struct atlas_glyph glyphs[SCRAN_UI_ATLAS_GLYPHS_STRLEN];
 };
 
 struct scran_ui_greeting {
@@ -110,49 +148,71 @@ struct scran_ui_context {
     struct scran_ui_keymap_textline            ui_keymap;
     struct scran_ui_statusline_textline        ui_statusline;
 
-    struct glyph_atlas glyph_atlas;
-
-    BLContextCore bl_ctx;
-    BLFontCore font;
-
-    // Must be cached per output in case of different scale factors.
-    int cached_text_widths_px[SCRAN_UI_N_TEXTS];
-
-    float font_ascent;
-    float font_height;
-    float font_advance_fixed_width;
+    struct glyph_atlas glyph_atlas_2;
 };
 
+typedef struct atlas_text_metrics (*scran_ui_blit_fn)(
+    struct scran_ui_context *ui_ctx,
+    BLContextCore *bl_ctx_destination,
+    const BLPointI *origin
+);
+
+static inline bool
+atlas_metrics_equal(
+    const struct atlas_text_metrics *a,
+    const struct atlas_text_metrics *b
+) {
+    return
+        a->advance.x == b->advance.x
+        && a->bbox.x0 == b->bbox.x0
+        && a->bbox.x1 == b->bbox.x1;
+}
+
+static inline int
+atlas_metrics_pen_x_px(const struct atlas_text_metrics *metrics) {
+    return lround(metrics->advance.x);
+}
+static inline int
+atlas_metrics_bbox_width(const struct atlas_text_metrics *metrics) {
+    assert(metrics->bbox.x0 <= metrics->bbox.x1);
+    return metrics->bbox.x1 - metrics->bbox.x0;
+}
+static inline bool
+atlas_metrics_bbox_has_ink(const struct atlas_text_metrics *metrics) {
+    return metrics->bbox.x0 < metrics->bbox.x1;
+}
 
 bool init_scran_ui_pre_selection(struct scran_ui_context *ui_ctx, double scale);
  void destroy_scran_ui(struct scran_ui_context *ui_ctx);
-bool reinit_scran_ui(struct scran_ui_context *ui_ctx, double scale);
+struct atlas_text_metrics scran_ui_compute_textline_metrics_px(
+    struct scran_ui_context *ui_ctx,
+    struct scran_ui_textline_view *textline
+);
+struct atlas_text_metrics scran_ui_compute_statusline_metrics_px(struct scran_ui_context *ui_ctx);
+struct atlas_text_metrics scran_ui_blit_greeting(struct scran_ui_context *ui_ctx, BLContextCore *bl_ctx_destination, const BLPointI *origin);
+struct atlas_text_metrics scran_ui_blit_keymap(struct scran_ui_context *ui_ctx, BLContextCore *bl_ctx_destination, const BLPointI *origin);
+struct atlas_text_metrics scran_ui_blit_statusline(struct scran_ui_context *ui_ctx, BLContextCore *bl_ctx_destination, const BLPointI *origin);
+bool scran_ui_reinit_atlas(struct scran_ui_context *ui_ctx, double scale);
 
-enum scran_ui_redrawn_textline_mask {
-    SCRAN_UI_REDREW_GREETING          = 1U << 0,
-    SCRAN_UI_REDREW_KEYMAP            = 1U << 1,
-    SCRAN_UI_REDREW_STATUSLINE        = 1U << 2,
+enum scran_ui_textlines_pending_redraw_mask {
+    SCRAN_UI_GREETING_PENDING_REDRAW          = 1U << 0,
+    SCRAN_UI_KEYMAP_PENDING_REDRAW            = 1U << 1,
+    SCRAN_UI_STATUSLINE_PENDING_REDRAW        = 1U << 2,
 } SCRAN_PACKED;
-enum scran_ui_redrawn_textline_mask scran_ui_redraw_elements(struct scran_ui_context *ui_ctx);
-
 
 static inline int
-scran_ui_font_height_px(struct scran_ui_context *ui_ctx) {
-    return ceil(ui_ctx->font_height);
+scran_ui_atlas_font_height_px(const struct glyph_atlas *atlas) {
+    // XXX TODO: Replace this function entirely with glyph run metrics
+    return ceil(atlas->font_height);
 }
 
-static inline uint32_t
-scran_ui_textline_all_items_mask(
-    struct scran_ui_textline_view textline
-) {
-    assert(0 <= textline.n_items && textline.n_items <= 31);
-    return (1U << textline.n_items) - 1U;
-}
 static inline void
-scran_ui_textline_set_all_items_dirty(
-    struct scran_ui_textline_view textline
+scran_ui_set_all_items_dirty(
+    struct scran_ui_context *ui_ctx
 ) {
-    textline.meta->dirty_items_mask |= scran_ui_textline_all_items_mask(textline);
+    ui_ctx->ui_keymap.meta.dirty = true;
+    ui_ctx->ui_statusline.meta.dirty = true;
+    ui_ctx->ui_greeting.meta.dirty = true;
 }
 static inline bool
 scran_ui_textline_get_items_mask_bit(
@@ -175,20 +235,11 @@ scran_ui_textline_set_items_mask_bit(
     }
 }
 
-static inline bool
-scran_ui_textline_item_is_dirty(
-    struct scran_ui_textline_view textline,
-    int item_index
-) {
-    return scran_ui_textline_get_items_mask_bit(textline.meta->dirty_items_mask, item_index);
-}
-
 static inline void
-scran_ui_textline_item_set_dirty(
-    struct scran_ui_textline_view textline,
-    int item_index
+scran_ui_textline_set_dirty(
+    struct scran_ui_textline_view textline
 ) {
-    scran_ui_textline_set_items_mask_bit(&textline.meta->dirty_items_mask, item_index, true);
+    textline.meta->dirty = true;
 }
 
 static inline bool
@@ -206,7 +257,7 @@ scran_ui_statusline_set_selection_size(
 ) {
     if (!blrecti_are_equal(statusline->selection_size, selection_size)) {
         statusline->selection_size = selection_size;
-        scran_ui_textline_item_set_dirty(SCRAN_UI_TEXTLINE(*statusline), SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE);
+        scran_ui_textline_set_dirty(SCRAN_UI_TEXTLINE(*statusline));
     }
 }
 
@@ -218,7 +269,7 @@ scran_ui_statusline_set_timer(
 ) {
     if (statusline->timer_seconds != total_elapsed_seconds) {
         statusline->timer_seconds = total_elapsed_seconds;
-        scran_ui_textline_item_set_dirty(SCRAN_UI_TEXTLINE(*statusline), SCRAN_UI_STATUSLINE_ITEM_I_TIMER);
+        scran_ui_textline_set_dirty(SCRAN_UI_TEXTLINE(*statusline));
         return true;
     }
     return false;
@@ -236,8 +287,10 @@ scran_ui_textline_item_set_pressed_mask(
     struct scran_ui_textline_view textline,
     uint32_t pressed_items_mask
 ) {
-    textline.meta->dirty_items_mask |= pressed_items_mask ^ textline.meta->pressed_items_mask;
-    textline.meta->pressed_items_mask = pressed_items_mask;
+    if (textline.meta->pressed_items_mask != pressed_items_mask) {
+        textline.meta->pressed_items_mask = pressed_items_mask;
+        textline.meta->dirty = true;
+    }
 }
 
 static inline void
@@ -247,7 +300,7 @@ scran_ui_textline_item_set_pressed(
     bool pressed
 ) {
     scran_ui_textline_set_items_mask_bit(&textline.meta->pressed_items_mask, item_index, pressed);
-    scran_ui_textline_item_set_dirty(textline, item_index);
+    scran_ui_textline_set_dirty(textline);
 }
 
 static inline void
@@ -261,7 +314,7 @@ scran_ui_textline_item_set_color(
     item->live_state.color = color;
 
     if (!item->locked) {
-        scran_ui_textline_item_set_dirty(textline, item_index);
+        scran_ui_textline_set_dirty(textline);
     }
 }
 
@@ -276,7 +329,7 @@ scran_ui_textline_item_set_text(
     item->live_state.text = text;
 
     if (!item->locked) {
-        scran_ui_textline_item_set_dirty(textline, item_index);
+        scran_ui_textline_set_dirty(textline);
     }
 }
 
@@ -297,7 +350,7 @@ scran_ui_textline_item_set_disabled(
         item->disable_reason_mask &= ~bit;
     }
 
-    scran_ui_textline_item_set_dirty(textline, item_index);
+    scran_ui_textline_set_dirty(textline);
 }
 
 static inline void
@@ -315,7 +368,7 @@ scran_ui_textline_item_set_locked(
     item->locked_state = item->live_state;
     item->locked = locked;
 
-    scran_ui_textline_item_set_dirty(textline, item_index);
+    scran_ui_textline_set_dirty(textline);
 }
 
 

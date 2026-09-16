@@ -299,6 +299,7 @@ def generate_font(
 
 
 def generate_c_header() -> str:
+    # XXX TODO: REMOVE ENUMERATIONS WHEN DONE WITH ATLAS
     enumerations = ',\n'.join(
         "    SCRAN_UI_TEXT_{}".format(key.upper()) for key in UI_STRINGS
     )
@@ -347,11 +348,25 @@ def as_c_utf16_string_literal(string: str) -> str:
 
 
 def generate_ui_strings_c_header() -> str:
-    definitions = "\n".join(
+    ui_string_definitions = "\n".join(
         "#define SCRAN_UI_STRING_{} {}".format(
             name.upper(), as_c_utf16_string_literal(ui_string)
         )
         for name, ui_string in UI_STRINGS.items()
+    )
+
+    ui_strings_max_strlen_definition = (
+        "#define SCRAN_UI_STRING_STRLEN_MAX {}".format(
+            max(len(s) for s in UI_STRINGS.values())
+        )
+    )
+
+    unique_glyphs_definition = (
+        "#define SCRAN_UI_STRING_UNIQUE_GLYPHS_SORTED {}".format(
+            as_c_utf16_string_literal(
+                "".join(sorted(set(char for s in UI_STRINGS.values() for char in s)))
+            )
+        )
     )
 
     return dedent(
@@ -360,11 +375,18 @@ def generate_ui_strings_c_header() -> str:
         #ifndef SCRAN_UI_STRINGS_H
         #define SCRAN_UI_STRINGS_H
 
-        {definitions}
+        {ui_string_definitions}
+
+        {ui_strings_max_strlen_definition}
+        {unique_glyphs_definition}
 
         #endif
         """
-    ).format(definitions=definitions)
+    ).format(
+        ui_string_definitions=ui_string_definitions,
+        ui_strings_max_strlen_definition=ui_strings_max_strlen_definition,
+        unique_glyphs_definition=unique_glyphs_definition,
+    )
 
 
 def generate_c_source(font_bytes: bytes, header_filename: str) -> str:
