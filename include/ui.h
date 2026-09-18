@@ -10,12 +10,19 @@
 #include <util/util.h>
 
 #include "compiler.h"
-#include "scran-font.h"
+#include "scran-ui-text.h"
 #include "print.h"
-#include "ui-strings.h"
 
 
 #define SCRAN_UI_GLYPH_SHADOW_SIZE_PX 1
+
+
+struct ui_string {
+    const char16_t *str;
+    size_t strlen;
+};
+#define CHAR16_STRLEN(s) ( (sizeof(s) / sizeof(char16_t)) - 1)
+#define UI_STRING(s) ((struct ui_string){ .str = (s), .strlen = CHAR16_STRLEN(s) })
 
 
 enum scran_ui_disable_reason {
@@ -54,7 +61,7 @@ struct scran_ui_textline_metadata {
     bool dirty;
 };
 struct scran_ui_textline_item_lockable_state {
-    enum scran_ui_text  text;
+    struct ui_string    text;
     enum scran_ui_color color;
 };
 struct scran_ui_textline_item {
@@ -80,15 +87,8 @@ struct scran_ui_textline_view {
     }                                               \
 )
 
-struct ui_string {
-    const char16_t *str;
-    const size_t strlen;
-};
-#define CHAR16_STRLEN(s) ( (sizeof(s) / sizeof(char16_t)) - 1)
-#define UI_STRING(s) ((struct ui_string){ .str = (s), .strlen = CHAR16_STRLEN(s) })
-
 extern const struct ui_string g_scran_ui_atlas_string;
-#define SCRAN_UI_ATLAS_GLYPHS_STRLEN (CHAR16_STRLEN(SCRAN_UI_STRING_UNIQUE_GLYPHS_SORTED))
+#define SCRAN_UI_ATLAS_GLYPHS_STRLEN (CHAR16_STRLEN(g_ui_strings.unique_glyphs_sorted))
 
 struct atlas_text_metrics {
 
@@ -322,7 +322,7 @@ static inline void
 scran_ui_textline_item_set_text(
     struct scran_ui_textline_view textline,
     int item_index,
-    enum scran_ui_text text
+    struct ui_string text
 ) {
     struct scran_ui_textline_item *item = &textline.items[item_index];
 

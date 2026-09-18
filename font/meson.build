@@ -3,8 +3,8 @@ font_python = import('python').find_installation(
   modules: ['fontTools'],
 )
 
-generated_font = custom_target(
-  'generated-font',
+generated_ui_text_and_font = custom_target(
+  'generated-ui-text',
   input: files(
     'IosevkaFixed-Regular.ttf.xz',
     'SymbolsNerdFontMono-Regular.ttf.xz',
@@ -12,9 +12,8 @@ generated_font = custom_target(
   depend_files: files('scripts/ui_strings_list.py'),
   output: [
     'ScranUI-Regular.ttf',
-    'scran-font.c',
-    'scran-font.h',
-    'ui-strings.h',
+    'scran-ui-text.c',
+    'scran-ui-text.h',
   ],
   command: [
     font_python,
@@ -25,13 +24,11 @@ generated_font = custom_target(
     '--outpath-ttf', '@OUTPUT0@',
     '--outpath-c-source', '@OUTPUT1@',
     '--outpath-c-header', '@OUTPUT2@',
-    '--outpath-ui-strings-header', '@OUTPUT3@',
   ],
 )
 
-font_source = generated_font[1]
-font_header = generated_font[2]
-ui_strings_header = generated_font[3]
+ui_text_and_font_source = generated_ui_text_and_font[1]
+ui_text_and_font_header = generated_ui_text_and_font[2]
 
 install_data(
   'Iosevka.license',

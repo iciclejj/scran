@@ -4,9 +4,8 @@
 
 #include <blend2d/blend2d.h>
 
-#include "scran-font.h"
+#include "scran-ui-text.h"
 #include "ui.h"
-#include "ui-strings.h"
 #include "selection-surface.h"
 #include "util/util.h"
 // XXX XXX TODO: Move ui.c into this folder too, probably
@@ -23,36 +22,6 @@ static const BLRgba32 ui_colors[] = {
 };
 static_assert(sizeof(ui_colors) / sizeof(ui_colors[0]) == SCRAN_UI_N_COLORS,
               "ui_colors[] length must exactly cover all color enum values.");
-
-static const struct ui_string ui_texts[] = {
-    // Enum and literals generated from `font/scripts/ui_strings_list.py`
-
-    [SCRAN_UI_TEXT_GREETING]                        = UI_STRING(SCRAN_UI_STRING_GREETING),
-
-    [SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT]            = UI_STRING(SCRAN_UI_STRING_KEYMAP_IMAGE_DEFAULT),
-    [SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD]                = UI_STRING(SCRAN_UI_STRING_KEYMAP_IMAGE_MOD),
-
-    [SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT]            = UI_STRING(SCRAN_UI_STRING_KEYMAP_VIDEO_DEFAULT),
-    [SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD]                = UI_STRING(SCRAN_UI_STRING_KEYMAP_VIDEO_MOD),
-
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT]            = UI_STRING(SCRAN_UI_STRING_KEYMAP_FOCUS_DEFAULT),
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY]      = UI_STRING(SCRAN_UI_STRING_KEYMAP_FOCUS_RELEASED_TRAY),
-    [SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP]      = UI_STRING(SCRAN_UI_STRING_KEYMAP_FOCUS_RELEASED_HELP),
-
-    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON]      = UI_STRING(SCRAN_UI_STRING_KEYMAP_FREEZEFRAME_TURN_ON),
-    [SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_OFF]     = UI_STRING(SCRAN_UI_STRING_KEYMAP_FREEZEFRAME_TURN_OFF),
-
-    [SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY] = UI_STRING(SCRAN_UI_STRING_STATUSLINE_SELECTION_SIZE_DUMMY),
-    [SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY]          = UI_STRING(SCRAN_UI_STRING_STATUSLINE_TIMER_DUMMY),
-
-    [SCRAN_UI_TEXT_ATLAS_DIGITS]                    = UI_STRING(SCRAN_UI_STRING_ATLAS_DIGITS),
-    [SCRAN_UI_TEXT_ATLAS_SEPARATORS]                = UI_STRING(SCRAN_UI_STRING_ATLAS_SEPARATORS),
-    [SCRAN_UI_TEXT_SPACE]                           = UI_STRING(SCRAN_UI_STRING_SPACE),
-
-    [SCRAN_UI_TEXT_EMPTY]                           = UI_STRING(SCRAN_UI_STRING_EMPTY),
-};
-static_assert(sizeof(ui_texts) / sizeof(ui_texts[0]) == SCRAN_UI_N_TEXTS,
-              "ui_texts[] length must exactly cover all text enum values.");
 
 static inline struct atlas_text_metrics
 get_item_spacing(struct scran_ui_context *ui_ctx) {
@@ -105,8 +74,8 @@ prepend_char16_uint_two_digits(char16_t *start, uint32_t uint_) {
     return start;
 }
 
-static const size_t TIMER_STRLEN          = ui_texts[SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY].strlen;
-static const size_t SELECTION_SIZE_STRLEN = ui_texts[SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY].strlen;
+static const size_t TIMER_STRLEN          = CHAR16_STRLEN(g_ui_strings.statusline_timer_dummy);
+static const size_t SELECTION_SIZE_STRLEN = CHAR16_STRLEN(g_ui_strings.statusline_selection_size_dummy);
 
 static void
 get_timer_string(
@@ -205,7 +174,7 @@ blit_static_textline(
             .y = origin->y,
         };
         const struct text_blit_data blit_data = {
-            .text = &ui_texts[state->text],
+            .text = &state->text,
         };
         const struct atlas_text_metrics item_metrics = blit_text(ui_ctx, bl_ctx, &item_origin, &blit_data);
 
@@ -348,7 +317,7 @@ scran_ui_compute_textline_metrics_px(
         const struct scran_ui_textline_item_lockable_state *state = item->locked
             ? &item->locked_state
             : &item->live_state;
-        const struct ui_string *text = &ui_texts[state->text];
+        const struct ui_string *text = &state->text;
 
         if (i > 0) {
             struct atlas_text_metrics item_spacing = get_item_spacing(ui_ctx);
@@ -366,21 +335,21 @@ scran_ui_compute_textline_metrics_px(
 }
 
 struct default_textline_values {
-    enum scran_ui_text  text;
+    struct ui_string    text;
     enum scran_ui_color color;
 };
 static const struct default_textline_values m_greeting_defaults[] = {
-    [SCRAN_UI_GREETING_ITEM_I_GREETING]             = { SCRAN_UI_TEXT_GREETING,                        SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_GREETING_ITEM_I_GREETING]             = { UI_STRING(g_ui_strings.greeting),                        SCRAN_UI_COLOR_DEFAULT },
 };
 static const struct default_textline_values m_statusline_defaults[] = {
-    [SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE]     = { SCRAN_UI_TEXT_STATUSLINE_SELECTION_SIZE_DUMMY, SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_STATUSLINE_ITEM_I_TIMER]              = { SCRAN_UI_TEXT_STATUSLINE_TIMER_DUMMY,          SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_STATUSLINE_ITEM_I_SELECTION_SIZE]     = { UI_STRING(g_ui_strings.statusline_selection_size_dummy), SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_STATUSLINE_ITEM_I_TIMER]              = { UI_STRING(g_ui_strings.statusline_timer_dummy),          SCRAN_UI_COLOR_DEFAULT },
 };
 static const struct default_textline_values m_keymap_defaults[] = {
-    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE]                  = { SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO]                  = { SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME]            = { SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON,      SCRAN_UI_COLOR_DEFAULT },
-    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS]                  = { SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT,            SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_IMAGE]                  = { UI_STRING(g_ui_strings.keymap_image_default),            SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_VIDEO]                  = { UI_STRING(g_ui_strings.keymap_video_default),            SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME]            = { UI_STRING(g_ui_strings.keymap_freezeframe_turn_on),      SCRAN_UI_COLOR_DEFAULT },
+    [SCRAN_UI_KEYMAP_ITEM_I_FOCUS]                  = { UI_STRING(g_ui_strings.keymap_focus_default),            SCRAN_UI_COLOR_DEFAULT },
 };
 static_assert(ARRAY_LENGTH(m_greeting_defaults)          == SCRAN_UI_GREETING_N_ITEMS,                             "");
 static_assert(ARRAY_LENGTH(m_statusline_defaults)        == SCRAN_UI_STATUSLINE_N_ITEMS,                           "");
@@ -418,11 +387,6 @@ init_scran_ui_pre_selection(
     struct scran_ui_context *ui_ctx,
     double scale
 ) {
-    for (int i = 0; i < SCRAN_UI_N_TEXTS; ++i) {
-        // Verify we actually included all the generated strings
-        assert(ui_texts[i].str != NULL);
-    }
-
     init_textline(SCRAN_UI_TEXTLINE(ui_ctx->ui_greeting),           m_greeting_defaults,          ARRAY_LENGTH(m_greeting_defaults));
     init_textline(SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap),             m_keymap_defaults,            ARRAY_LENGTH(m_keymap_defaults));
     init_textline(SCRAN_UI_TEXTLINE(ui_ctx->ui_statusline),         m_statusline_defaults,        ARRAY_LENGTH(m_statusline_defaults));

@@ -8,12 +8,12 @@
 void
 update_focus_keymap_texts(bool have_tray_icon)
 {
-    const enum scran_ui_text text =
+    const struct ui_string text =
         g_state.focused
-          ? SCRAN_UI_TEXT_KEYMAP_FOCUS_DEFAULT
+          ? UI_STRING(g_ui_strings.keymap_focus_default)
         : have_tray_icon
-          ? SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_TRAY
-          : SCRAN_UI_TEXT_KEYMAP_FOCUS_RELEASED_HELP;
+          ? UI_STRING(g_ui_strings.keymap_focus_released_tray)
+          : UI_STRING(g_ui_strings.keymap_focus_released_help);
 
     FOR_EACH_OUTPUT(i, output) {
         struct scran_ui_context *ui_ctx = &output->selection_surface.ui_ctx;
@@ -45,14 +45,14 @@ seat_apply_mod_key_state(
     struct scran_ui_textline_view  keymap_textline = SCRAN_UI_TEXTLINE(ui_ctx->ui_keymap);
 
     if (state) {
-        scran_ui_textline_item_set_text( keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_TEXT_KEYMAP_IMAGE_MOD);
+        scran_ui_textline_item_set_text( keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, UI_STRING(g_ui_strings.keymap_image_mod));
         scran_ui_textline_item_set_color(keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_COLOR_KEYMAP_MOD);
-        scran_ui_textline_item_set_text( keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_TEXT_KEYMAP_VIDEO_MOD);
+        scran_ui_textline_item_set_text( keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, UI_STRING(g_ui_strings.keymap_video_mod));
         scran_ui_textline_item_set_color(keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_KEYMAP_MOD);
     } else {
-        scran_ui_textline_item_set_text( keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_TEXT_KEYMAP_IMAGE_DEFAULT);
+        scran_ui_textline_item_set_text( keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, UI_STRING(g_ui_strings.keymap_image_default));
         scran_ui_textline_item_set_color(keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_IMAGE, SCRAN_UI_COLOR_DEFAULT);
-        scran_ui_textline_item_set_text( keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_TEXT_KEYMAP_VIDEO_DEFAULT);
+        scran_ui_textline_item_set_text( keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, UI_STRING(g_ui_strings.keymap_video_default));
         scran_ui_textline_item_set_color(keymap_textline, SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_DEFAULT);
     }
 

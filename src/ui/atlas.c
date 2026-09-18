@@ -10,7 +10,7 @@
 #include "./atlas.h"
 
 
-const struct ui_string g_scran_ui_atlas_string = UI_STRING(SCRAN_UI_STRING_UNIQUE_GLYPHS_SORTED);
+const struct ui_string g_scran_ui_atlas_string = UI_STRING(g_ui_strings.unique_glyphs_sorted);
 
 
 static size_t
