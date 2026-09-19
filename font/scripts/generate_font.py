@@ -16,9 +16,9 @@ from fontTools.ttLib import TTFont
 from fontTools.ttLib.scaleUpem import scale_upem
 
 if __package__:
-    from .ui_strings_list import (FONT_AWESOME_PUA_CODEPOINTS, UI_STRINGS,)
+    from .ui_strings_list import (FALLBACK_GLYPH, FONT_AWESOME_PUA_CODEPOINTS, UI_STRINGS,)
 else:
-    from ui_strings_list import (FONT_AWESOME_PUA_CODEPOINTS, UI_STRINGS,)
+    from ui_strings_list import (FALLBACK_GLYPH, FONT_AWESOME_PUA_CODEPOINTS, UI_STRINGS,)
 
 
 IOSEVKA_FAMILY_NAME = "Iosevka Fixed"
@@ -311,7 +311,14 @@ def generate_c_header() -> str:
         "    char16_t {}[{}];".format(name, utf16_strlen(ui_string) + 1)
         for name, ui_string in UI_STRINGS.items()
     )
-    unique_glyphs_arr_len = utf16_strlen(get_unique_glyphs_sorted()) + 1
+    unique_glyphs_sorted = get_unique_glyphs_sorted()
+    unique_glyphs_arr_len = utf16_strlen(unique_glyphs_sorted) + 1
+    # We take the proper utf16_strlen, in case we will ever switch to a
+    # non-bmp fallback, i.e. >0xFFFF. (The C atlas does not currently support
+    # non-bmp characters.)
+    fallback_glyph_index = utf16_strlen(
+        unique_glyphs_sorted[:unique_glyphs_sorted.index(FALLBACK_GLYPH)]
+    )
 
     return dedent(
         """\
@@ -321,6 +328,8 @@ def generate_c_header() -> str:
 
         #include <stddef.h>
         #include <uchar.h>
+
+        #define SCRAN_UI_ATLAS_FALLBACK_GLYPH_INDEX {fallback_glyph_index}
 
         extern const unsigned char scran_font_ttf[];
         extern const size_t scran_font_ttf_size;
@@ -336,6 +345,7 @@ def generate_c_header() -> str:
         """
     ).format(
         fields=fields,
+        fallback_glyph_index=fallback_glyph_index,
         unique_glyphs_arr_len=unique_glyphs_arr_len,
     )
 

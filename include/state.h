@@ -26,8 +26,8 @@
 #include "wlr-output-management-unstable-v1.h"
 #include "cosmic-output-management-unstable-v1.h"
 
+#include "atlas.h" // TODO: redo folder structure for this
 #include "compiler.h"
-#include "ui.h"
 #include "cursor.h"
 
 #define MAX_OUTPUTS 64
@@ -158,11 +158,43 @@ struct scran_output_surface {
     struct wp_viewport *viewport;
 };
 
-struct scran_ui_textline_geometry {
+enum ui_keymap_item_index {
+    UI_KEYMAP_ITEM_IMAGE,
+    UI_KEYMAP_ITEM_VIDEO,
+    UI_KEYMAP_ITEM_FREEZEFRAME,
+    UI_KEYMAP_ITEM_FOCUS,
+    UI_KEYMAP_N_ITEMS,
+};
+
+struct ui_item_geometry {
     BLPointI pen_origin;
-    // get height_px from ui's font-height getter
-    // TODO: Don't store entire metrics?
     struct atlas_text_metrics text_metrics;
+};
+
+struct ui_description {
+
+    struct ui_greeting_description {
+        struct ui_item_geometry geometry;
+        struct ui_greeting_content {
+            bool visible;
+        } content;
+    } greeting;
+
+    struct ui_keymap_description {
+        struct ui_item_geometry geometry;
+        struct ui_keymap_content {
+            struct atlas_blit_data blit_data[UI_KEYMAP_N_ITEMS];
+        } content;
+    } keymap;
+
+    struct ui_statusline_description {
+        struct ui_item_geometry geometry;
+        struct ui_statusline_content {
+            int selection_width;
+            int selection_height;
+            int timer_seconds;
+        } content;
+    } statusline;
 };
 
 struct scran_output_selectionSurface_buffer {
@@ -174,12 +206,10 @@ struct scran_output_selectionSurface_buffer {
     // now that we have more things going on in the selection surface (like ui_keymap)?
     BLBoxI box_currently_drawn;
 
-    struct scran_ui_textline_geometry ui_greeting_geometry_currently_drawn;
-    struct scran_ui_textline_geometry ui_keymap_geometry_currently_drawn;
-    struct scran_ui_textline_geometry ui_statusline_geometry_currently_drawn;
+    // What is currently rendered into this particular buffer.
+    struct ui_description ui;
 
     bool force_redraw;
-    enum scran_ui_textlines_pending_redraw_mask textlines_pending_redraw_mask;
 };
 
 enum surface_theme {
@@ -205,15 +235,15 @@ struct scran_output_selectionSurface {
     struct scran_output_surface surface;
     struct scran_output_selectionSurface_buffer double_buffer[SELECTION_SURFACE_BUF_COUNT];
 
-    struct scran_ui_context ui_ctx;
+    // Glyph atlas. TODO: Rename to clarify?
+    struct atlas atlas;
 
     BLPathCore bl_path;
     // XXX TODO: Turn this into a pointer once we remove the ugly redraw hack
     // in set_selection_surface_theme(). TODO: Redraw hack is gone now.
     BLBoxI box_last_drawn;
-    struct scran_ui_textline_geometry ui_greeting_geometry_last_drawn;
-    struct scran_ui_textline_geometry ui_keymap_geometry_last_drawn;
-    struct scran_ui_textline_geometry ui_statusline_geometry_last_drawn;
+
+    struct ui_description ui_last_committed;
 
     // Disables frame callbacks and hiding/unhiding.
     enum scran_selection_surface_disable_reason disable_reason_mask;
@@ -315,6 +345,12 @@ struct scran_seat_keyboard {
     struct xkb_state *xkb_state;
 
     struct scran_output_selectionSurface *focused_selection_surface;
+
+    struct {
+        bool image;
+        bool video;
+        bool freezeframe;
+    } pressed_keys;
 
     bool last_press_was_untrusted_escape;
 };

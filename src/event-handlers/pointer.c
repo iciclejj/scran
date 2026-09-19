@@ -8,8 +8,6 @@
 #include "cursor.h"
 #include "seat.h"
 #include "selection-surface.h"
-#include "ui.h"
-#include "util/blend2d.h"
 #include "event-handlers.h"
 #include "selection.h"
 
@@ -100,11 +98,6 @@ handle_pointer_motion(
             selection_set_box_px(selection_ctx, box_px);
         }
 
-        scran_ui_statusline_set_selection_size(
-            &st_output->selection_surface.ui_ctx.ui_statusline,
-            blboxi_to_blrecti(selection_get_box_px(selection_ctx))
-        );
-
         request_selection_surface_frame_callback(st_output);
         break;
     case SELECTION_COMPLETE:
@@ -187,7 +180,7 @@ handle_pointer_motion(
 
             selection_set_box_px(selection_ctx, resized_box);
         }
-        scran_ui_statusline_set_selection_size(&st_output->selection_surface.ui_ctx.ui_statusline, blboxi_to_blrecti(selection_get_box_px(selection_ctx)));
+
         request_selection_surface_frame_callback(st_output);
         break;
     }
@@ -282,15 +275,9 @@ handle_pointer_button(
 
             // TODO: Create set_selection_initializing()/set_selection_stage(),
             // analogous to current set_selection_initialized()?
-            scran_ui_statusline_set_selection_size(
-                &st_output->selection_surface.ui_ctx.ui_statusline,
-                blboxi_to_blrecti(initial_selection_area)
-            );
 
             selection_surface_set_theme(st_output, SURFACE_THEME_DEFAULT);
-
             request_selection_surface_frame_callback(st_output);
-
             break;
         case SELECTION_INITIALIZING:
             assert(!selection_ctx->size_is_frozen);

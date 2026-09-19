@@ -3,7 +3,7 @@
 #include "state.h"
 #include "state-util.h"
 #include "capture.h"
-#include "ui.h"
+#include "atlas.h"
 #include "cursor.h"
 #include "freezeframe.h"
 #include "print.h"
@@ -201,8 +201,8 @@ do_scale_updates(struct scran_output *st_output)
 {
     update_surface_scale_bufsize_viewport(st_output);
     cursor_reinit(st_output);
-    scran_ui_reinit_atlas(
-        &st_output->selection_surface.ui_ctx,
+    atlas_reinit(
+        &st_output->selection_surface.atlas,
         st_output->selection_surface.surface.final_scale_factor_normalized
     );
     // Do not update if size_is_frozen, since there might be an active capture.
