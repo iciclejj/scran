@@ -68,7 +68,7 @@ get_fullscreen_selection_box(const struct scran_output *st_output) {
 }
 
 static inline bool
-selection_is_none(struct scran_output_selectionContext *selection_ctx) {
+selection_is_none(const struct scran_output_selectionContext *selection_ctx) {
     return selection_ctx->selection_state == SELECTION_NONE;
 }
 
