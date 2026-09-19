@@ -19,23 +19,21 @@
 
 #define SCRAN_SELECTION_BORDER_THICKNESS_PX 1
 
-void draw_selection_and_damage_buffer(struct scran_output_selectionSurface *selection_surface, struct scran_output_selectionSurface_buffer *st_buffer, struct scran_output_selectionContext *selection_ctx, struct BLBoxI capture_area);
-void request_selection_surface_frame_callback(struct scran_output *st_output);
-void init_selection_surface_content(struct scran_output *st_output);
+void draw_selection_and_damage_buffer(struct scran_output *output, struct scran_output_selectionSurface_buffer *st_buffer, struct BLBoxI capture_area);
+void request_selection_surface_frame_callback(struct scran_output *output);
+void init_selection_surface_content(struct scran_output *output);
 
 static inline void
-set_force_redraw_selection_surface_buffers(
-    struct scran_output *st_output
-) {
+set_force_redraw_selection_surface_buffers(struct scran_output *output) {
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
-        struct scran_output_selectionSurface_buffer *st_buffer = &st_output->selection_surface.double_buffer[i];
+        struct scran_output_selectionSurface_buffer *st_buffer = &output->selection_surface.double_buffer[i];
         st_buffer->force_redraw = true;
     }
 }
 
 static inline BLBoxI
-get_selection_surface_pre_selection_box(struct scran_output *st_output) {
-    int font_height_px = atlas_font_height_px(&st_output->selection_surface.atlas);
+get_selection_surface_pre_selection_box(struct scran_output *output) {
+    int font_height_px = atlas_font_height_px(&output->selection_surface.atlas);
     assert(font_height_px);
 
     int margin_px = round(font_height_px * 0.5) + SCRAN_SELECTION_BORDER_THICKNESS_PX;

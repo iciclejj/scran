@@ -20,6 +20,11 @@
 #include "util/util.h"
 
 
+static inline bool
+on_greeting_screen(struct scran_output *output) {
+    return selection_is_none(&output->selection_ctx);
+}
+
 static inline struct atlas_text_metrics
 get_item_spacing(const struct atlas *atlas) {
     return (struct atlas_text_metrics) {
@@ -85,15 +90,16 @@ draw_and_damage_selection_border(
 
 static inline void
 draw_and_damage_background(
-    struct scran_output_selectionSurface *selection_surface,
+    struct scran_output *output,
     struct scran_output_selectionSurface_buffer *st_buffer,
     BLBoxI capture_area_max_bounds,
     BLBoxI capture_area_border_outline,
     const BLRectI *damage_regions_wayland,
     const BLRectI *damage_regions_buffer,
-    uint8_t n_damage_regions, // shared between 'damage_regions_wayland' and 'damage_regions_buffer'
-    bool greeting_screen
+    uint8_t n_damage_regions // shared between 'damage_regions_wayland' and 'damage_regions_buffer'
 ) {
+    struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
+
     // TODO: Just store the fill styles in state
     BLVarCore prev_fill_style = { };
     bl_context_get_fill_style(&st_buffer->bl_ctx, &prev_fill_style);
@@ -101,7 +107,7 @@ draw_and_damage_background(
     bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, UI_COLOR_BG_DIM);
 
     bl_path_add_box_i(&selection_surface->bl_path, &capture_area_max_bounds,     BL_GEOMETRY_DIRECTION_NONE);
-    if (!greeting_screen) { // TODO: likely()
+    if (!on_greeting_screen(output)) { // TODO: likely()
         bl_path_add_box_i(&selection_surface->bl_path, &capture_area_border_outline, BL_GEOMETRY_DIRECTION_NONE);
     }
 
@@ -527,11 +533,10 @@ collect_keymap_content(struct scran_output *output) {
 static struct ui_statusline_content
 collect_statusline_content(
     struct scran_output *output,
-    BLBoxI capture_area,
-    bool greeting_screen
+    BLBoxI capture_area
 ) {
     const BLPointI selection = blboxi_get_dimensions(
-        greeting_screen
+        on_greeting_screen(output)
         ? get_fullscreen_selection_box(output)
         : capture_area
     );
@@ -545,14 +550,14 @@ collect_statusline_content(
 
 static void
 draw_and_damage_ui(
-    struct scran_output_selectionSurface *selection_surface,
+    struct scran_output *output,
     struct scran_output_selectionSurface_buffer *st_buffer,
     BLBoxI capture_area,
-    BLBoxI capture_area_border_outline,
-    bool greeting_screen
+    BLBoxI capture_area_border_outline
 ) {
-    const struct atlas  *atlas  = &selection_surface->atlas;
-    struct scran_output *output = wl_container_of(selection_surface, output, selection_surface);
+    struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
+    const struct atlas *atlas = &selection_surface->atlas;
+
     const int item_height_px  = atlas_font_height_px(atlas);
     const int buffer_width_px = selection_surface->surface.width_px_buffer;
 
@@ -586,7 +591,7 @@ draw_and_damage_ui(
 
     // Draw the above-selection selection size and recording timer.
     {
-        const struct ui_statusline_content content = collect_statusline_content(output, capture_area, greeting_screen);
+        const struct ui_statusline_content content = collect_statusline_content(output, capture_area);
 
         char16_t selection_size[SELECTION_SIZE_STRLEN];
         char16_t timer[TIMER_STRLEN];
@@ -630,7 +635,7 @@ draw_and_damage_ui(
     // Greeting
     {
         const struct ui_greeting_content content = {
-            .visible = greeting_screen
+            .visible = on_greeting_screen(output),
         };
 
         struct ui_greeting_description description = {
@@ -701,11 +706,12 @@ get_border_outline_from_inline(BLBoxI border_inline) {
 
 void
 draw_selection_and_damage_buffer(
-    struct scran_output_selectionSurface *selection_surface,
+    struct scran_output *output,
     struct scran_output_selectionSurface_buffer *st_buffer,
-    struct scran_output_selectionContext *selection_ctx,
     struct BLBoxI capture_area
 ) {
+    struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
+
     if (g_state.options.hide_ui_level >= SCRAN_OPT_HIDE_UI_EVERYTHING) {
         // XXX: Slightly spaghetti, but required for updating the capture area.
         st_buffer->box_currently_drawn = capture_area;
@@ -743,8 +749,6 @@ draw_selection_and_damage_buffer(
     const BLBoxI capture_area_border_outline_last_used_in_any_buffer     = get_border_outline_from_inline(capture_area_border_inline_last_used_in_any_buffer);
     const BLBoxI capture_area_border_outline_last_used_in_current_buffer = get_border_outline_from_inline(capture_area_border_inline_last_used_in_current_buffer);
 
-    // TODO: Make helper wrapper for this so we don't need to pass this bool around.
-    bool greeting_screen = selection_is_none(selection_ctx);
     bool selection_changed =
         !blboxi_are_equal(capture_area, st_buffer->box_currently_drawn)
         || !blboxi_are_equal(capture_area, selection_surface->box_last_drawn);
@@ -772,17 +776,17 @@ draw_selection_and_damage_buffer(
             n_damage_regions = 8;
         }
 
-        draw_and_damage_background(selection_surface, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, n_damage_regions, greeting_screen);
+        draw_and_damage_background(output, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, n_damage_regions);
     }
 
     if (g_state.options.hide_ui_level < SCRAN_OPT_HIDE_UI_ITEMS) {
         // UI items must be drawn after/on top of the background.
-        draw_and_damage_ui(selection_surface, st_buffer, capture_area, capture_area_border_outline, greeting_screen);
+        draw_and_damage_ui(output, st_buffer, capture_area, capture_area_border_outline);
     }
 
     // Draw selection border
     if (selection_changed || st_buffer->force_redraw) {
-        if (greeting_screen) { // TODO: unlikely()
+        if (on_greeting_screen(output)) { // TODO: unlikely()
             st_buffer->box_currently_drawn = capture_area;
         } else {
             BLRectI damage_regions[4];
@@ -803,16 +807,16 @@ draw_selection_and_damage_buffer(
 
 static inline void
 arm_selection_surface_frame_callback(
-    struct scran_output *st_output,
+    struct scran_output *output,
     bool commit_if_armed // used as template specialization (if passing a literal)
 ) {
-    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+    struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
 
     if (!selection_surface->awaiting_frame_callback && !selection_surface->disable_reason_mask) {
         wl_callback_add_listener(
             wl_surface_frame(selection_surface->surface.wl_surface),
             &selection_surface_frame_callback_listener,
-            st_output
+            output
         );
         selection_surface->awaiting_frame_callback = true;
 
@@ -823,10 +827,9 @@ arm_selection_surface_frame_callback(
 }
 
 void
-request_selection_surface_frame_callback(
-    struct scran_output *st_output
-) {
-    arm_selection_surface_frame_callback(st_output, true);
+request_selection_surface_frame_callback(struct scran_output *output)
+{
+    arm_selection_surface_frame_callback(output, true);
 }
 
 
@@ -835,34 +838,32 @@ request_selection_surface_frame_callback(
 // Caller is responsible for making sure buffer, surface etc. is valid (e.g.
 // not busy).
 //
-// st_output.selection_surface.initial_box initialization must also happen
+// output.selection_surface.initial_box initialization must also happen
 // prior to calling this function.
 void
-init_selection_surface_content(
-    struct scran_output *st_output
-) {
+init_selection_surface_content(struct scran_output *output)
+{
     DEBUG("  init_selection_surface_content()\n");
 
-    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
-    struct BLBoxI                         initial_box       =  st_output->initial_selection;
+    struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
+    struct BLBoxI                         initial_box       =  output->initial_selection;
 
     const bool no_initial_selection = blboxi_are_equal(initial_box, SCRAN_INITIAL_SELECTION_NONE);
 
     if (no_initial_selection) {
-        initial_box = get_selection_surface_pre_selection_box(st_output);
-        selection_set_box_px(&st_output->selection_ctx, initial_box);
-
-        selection_surface_set_theme(st_output, SURFACE_THEME_PRE_SELECTION);
+        initial_box = get_selection_surface_pre_selection_box(output);
+        selection_set_box_px(&output->selection_ctx, initial_box);
+        selection_surface_set_theme(output, SURFACE_THEME_PRE_SELECTION);
     } else {
         // This must be set prior to set_selection_initialized()
-        selection_set_box_px(&st_output->selection_ctx, initial_box);
+        selection_set_box_px(&output->selection_ctx, initial_box);
         // These are usually called at "runtime"/main-loop-time, so call these
         // AFTER init_postmem__selection(), to ensure all relevant runtime
         // state has been set up.
         // ALSO make sure it's called somewhere that the freezeframe init path
         // (and potential future alternate init paths) will reach.
-        selection_surface_set_theme(st_output, SURFACE_THEME_DEFAULT);
-        selection_set_initialized(st_output);
+        selection_surface_set_theme(output, SURFACE_THEME_DEFAULT);
+        selection_set_initialized(output);
     }
 
     for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
@@ -874,12 +875,7 @@ init_selection_surface_content(
         // force-redraw, since collected ui state equal to zero-initialized
         // cached state does not necessarily imply nothing should be drawn
         st_buffer->force_redraw = true;
-        draw_selection_and_damage_buffer(
-            selection_surface,
-            st_buffer,
-            &st_output->selection_ctx,
-            initial_box
-        );
+        draw_selection_and_damage_buffer(output, st_buffer, initial_box);
     }
 
     struct scran_output_selectionSurface_buffer *initial_buffer = &selection_surface->double_buffer[0];
@@ -894,6 +890,6 @@ init_selection_surface_content(
         selection_surface->surface.height_px_buffer
     );
 
-    arm_selection_surface_frame_callback(st_output, false);
+    arm_selection_surface_frame_callback(output, false);
     wl_surface_commit(selection_surface->surface.wl_surface);
 }
