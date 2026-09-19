@@ -4,7 +4,9 @@
 
 #include "dbus.h"
 #include "seat.h"
+#include "selection-surface.h"
 #include "selection.h"
+#include "state-util.h"
 #include "util/util.h"
 
 #include "./dbus_.h"
@@ -239,7 +241,9 @@ static inline void
 sni_set_registered_with_watcher(bool registered)
 {
     m_sni.registered_with_watcher = registered;
-    update_focus_keymap_texts(scran_tray_is_registered());
+
+    // TODO(DIRTY_CHECK_UI_IN_MAIN_LOOP):
+    update_focus_keymap_texts();
 }
 
 static int
@@ -458,5 +462,7 @@ scran_tray_destroy()
     }
 
     m_sni.registered_with_watcher = false;
-    update_focus_keymap_texts(scran_tray_is_registered());
+
+    // TODO(DIRTY_CHECK_UI_IN_MAIN_LOOP):
+    update_focus_keymap_texts();
 }

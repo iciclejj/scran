@@ -1,6 +1,7 @@
 # Nerd Fonts uses Font Awesome's Private Use Area codepoints.
 FONT_AWESOME_SPEAKER_OFF = "\uf026"
 FONT_AWESOME_SPEAKER_ON = "\uf028"
+FALLBACK_GLYPH = "�"
 FONT_AWESOME_PUA_CODEPOINTS = {
     ord(FONT_AWESOME_SPEAKER_OFF),
     ord(FONT_AWESOME_SPEAKER_ON),
@@ -27,6 +28,7 @@ UI_STRINGS = {
     # Just for filling the atlas:
     "atlas_digits":                    "0123456789",
     "atlas_separators":                ":x",
+    "fallback_glyph":                  FALLBACK_GLYPH,
 
     # Ensure the dynamic strings have a space
     "space":                           " ",

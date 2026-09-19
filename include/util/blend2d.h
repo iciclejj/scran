@@ -1,13 +1,16 @@
 #ifndef SCRAN_UTIL_BLEND2D_H
 #define SCRAN_UTIL_BLEND2D_H
 
-#include <stdlib.h>
 #include <assert.h>
 #include <limits.h>
+#include <stdint.h>
+#include <stdlib.h>
 
+#include <blend2d/core/api.h>
 #include <blend2d/blend2d.h>
 
 
+// TODO: Move this into util/util.h
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
@@ -101,43 +104,44 @@ blboxi_is_inverted(BLBoxI box) {
     return box.x1 < box.x0 || box.y1 < box.y0;
 }
 
-struct scran_rgba32 {
+struct blrgba32_channels {
     uint8_t r;
     uint8_t g;
     uint8_t b;
     uint8_t a;
 };
-static inline struct scran_rgba32
-blrgba32_to_scran_rgba32(BLRgba32 *color) {
-    // : value((r << 16) | (g << 8) | b | (a << 24)) {}
-    return (struct scran_rgba32) {
-        .r = color->value >> 16,
-        .g = color->value >>  8,
-        .b = color->value >>  0,
-        .a = color->value >> 24,
+static inline struct blrgba32_channels
+blrgba32_unpack(uint32_t color) {
+    return (struct blrgba32_channels) {
+        .r = (uint8_t)(color >> 16),
+        .g = (uint8_t)(color >>  8),
+        .b = (uint8_t)(color >>  0),
+        .a = (uint8_t)(color >> 24),
     };
 }
-
-static inline void
-blrgba32_set_values(BLRgba32 *color, struct scran_rgba32 scran_color) {
-    color->value = (
-        (uint32_t)scran_color.r << 16 |
-        (uint32_t)scran_color.g <<  8 |
-        (uint32_t)scran_color.b <<  0 |
-        (uint32_t)scran_color.a << 24
+static inline uint32_t
+blrgba32_pack(struct blrgba32_channels channels) {
+    return (
+        (uint32_t)channels.r << 16 |
+        (uint32_t)channels.g <<  8 |
+        (uint32_t)channels.b <<  0 |
+        (uint32_t)channels.a << 24
     );
 }
 
-static inline void
-blrgba32_scale_colors(BLRgba32 *color, float scale) {
-    struct scran_rgba32 scran_color = blrgba32_to_scran_rgba32(color);
-    scran_color.r = ceil(scran_color.r * scale);
-    scran_color.g = ceil(scran_color.g * scale);
-    scran_color.b = ceil(scran_color.b * scale);
-    scran_color.a = ceil(scran_color.a * scale);
-    blrgba32_set_values(color, scran_color);
-}
+static inline uint32_t
+blrgba32_scale_channels(uint32_t color, float scale) {
+    assert(scale >= 0.0f && scale <= 1.0f);
 
+    struct blrgba32_channels channels = blrgba32_unpack(color);
+
+    channels.r = (uint8_t)(channels.r * scale);
+    channels.g = (uint8_t)(channels.g * scale);
+    channels.b = (uint8_t)(channels.b * scale);
+    channels.a = (uint8_t)(channels.a * scale);
+
+    return blrgba32_pack(channels);
+}
 
 static inline bool
 blpointi_are_equal(BLPointI a, BLPointI b) {
