@@ -31,7 +31,6 @@
 #include "cursor.h"
 #include "capture.h"
 #include "selection-surface.h"
-#include "ui.h"
 #include "event-handlers.h"
 #include "init.h"
 #include "print.h"
@@ -709,6 +708,8 @@ get_smallest_timeout(int a, int b)
     return MIN(a, b);
 }
 
+// TODO(DIRTY_CHECK_UI_IN_MAIN_LOOP):
+//          This function should essentially become the new generalized one
 static inline void
 update_video_timers(int *timeout_ms_)
 {
@@ -722,15 +723,14 @@ update_video_timers(int *timeout_ms_)
 
     FOR_EACH_OUTPUT(i, st_output) {
         if (capture_video_is_live(st_output)) {
-            int64_t timer_ns = (now_ns - st_output->capture.video_presentation_time_nsec_start);
-            int     timer_s  = timer_ns / NSEC_PER_SEC;
+            int seconds = get_video_timer_seconds(st_output, now_ns);
+            int committed_seconds = st_output->selection_surface.ui_last_committed.statusline.content.timer_seconds;
 
-            bool dirty = scran_ui_statusline_set_timer(&st_output->selection_surface.ui_ctx.ui_statusline, timer_s);
-            if (dirty) {
+            if (committed_seconds != seconds) {
                 request_selection_surface_frame_callback(st_output);
             }
 
-            int64_t timer_ms = timer_ns / NSEC_PER_MS;
+            int64_t timer_ms = (now_ns - st_output->capture.video_presentation_time_nsec_start) / NSEC_PER_MS;
             int ms_until_next_sec = MS_PER_SEC - (timer_ms % MS_PER_SEC);
 
             timeout_ms = MIN(timeout_ms, ms_until_next_sec);

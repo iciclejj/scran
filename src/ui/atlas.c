@@ -2,12 +2,12 @@
 
 #include <blend2d/blend2d.h>
 
-#include "ui.h"
 #include "init.h"
+#include "scran-ui-text.h"
 #include "util/blend2d.h"
 #include "util/lib-interop.h"
 
-#include "./atlas.h"
+#include "atlas.h"
 
 
 const struct ui_string g_scran_ui_atlas_string = UI_STRING(g_ui_strings.unique_glyphs_sorted);
@@ -15,7 +15,7 @@ const struct ui_string g_scran_ui_atlas_string = UI_STRING(g_ui_strings.unique_g
 
 static size_t
 get_glyph_index(
-    const struct glyph_atlas *atlas,
+    const struct atlas *atlas,
     char16_t target_char
 ) {
     // binary search
@@ -62,7 +62,7 @@ get_bl_text_metrics(
 //          Use bl_font_get_glyph_bounds for the vertical extents
 
 void
-scran_atlas_append_text_metrics(
+atlas_append_text_metrics(
     struct atlas_text_metrics *left,
     const struct atlas_text_metrics *right
 ) {
@@ -87,16 +87,15 @@ scran_atlas_append_text_metrics(
 // This also only computes what we actually need, in our own code, and uses
 // cached values from our initialized atlas-glyphs array.
 struct atlas_text_metrics
-scran_atlas_get_text_metrics_px(
-    const struct glyph_atlas *atlas,
-    const char16_t *str,
-    size_t strlen
+atlas_get_text_metrics_px(
+    const struct atlas *atlas,
+    const struct ui_string *string
 ) {
     struct atlas_text_metrics run_metrics = {0};
 
-    for (size_t i = 0; i < strlen; ++i) {
-        size_t i_glyph = get_glyph_index(atlas, str[i]);
-        scran_atlas_append_text_metrics(&run_metrics, &atlas->glyphs[i_glyph].metrics);
+    for (size_t i = 0; i < string->strlen; ++i) {
+        size_t i_glyph = get_glyph_index(atlas, string->str[i]);
+        atlas_append_text_metrics(&run_metrics, &atlas->glyphs[i_glyph].metrics);
     }
 
     return run_metrics;
@@ -104,7 +103,7 @@ scran_atlas_get_text_metrics_px(
 
 // Returns total required atlas image width
 static int
-init_atlas_glyph_metrics(struct glyph_atlas *atlas)
+init_atlas_glyph_metrics(struct atlas *atlas)
 {
     int atlas_cell_x = 0;
 
@@ -126,7 +125,7 @@ init_atlas_glyph_metrics(struct glyph_atlas *atlas)
 }
 
 static void
-redraw_glyph_atlas(struct glyph_atlas *atlas)
+redraw_glyph_atlas(struct atlas *atlas)
 {
     const size_t n_glyphs = g_scran_ui_atlas_string.strlen;
 
@@ -155,11 +154,10 @@ redraw_glyph_atlas(struct glyph_atlas *atlas)
 
 // Should be called on scale changes to resize fonts etc.
 bool
-scran_ui_reinit_atlas(
-    struct scran_ui_context *ui_ctx,
+atlas_reinit(
+    struct atlas *atlas,
     double scale
 ) {
-    struct glyph_atlas *atlas = &ui_ctx->glyph_atlas_2;
     BLFontCore *font = &atlas->font;
 
     if (scale == 0) {
@@ -187,11 +185,11 @@ scran_ui_reinit_atlas(
         BLFontMetrics font_metrics;
         bl_font_get_metrics(font, &font_metrics);
         atlas->font_ascent = font_metrics.ascent;
-        atlas->font_height = font_metrics.ascent + font_metrics.descent + SCRAN_UI_GLYPH_SHADOW_SIZE_PX;
+        atlas->font_height = font_metrics.ascent + font_metrics.descent;
     }
 
     int required_atlas_width_px  = init_atlas_glyph_metrics(atlas);
-    int required_atlas_height_px = scran_ui_atlas_font_height_px(atlas);
+    int required_atlas_height_px = atlas_font_height_px(atlas);
 
     // Don't move this before glyph metrics initialization
     atlas->fallback_glyph_advance = atlas->glyphs[get_glyph_index(atlas, u' ')].metrics.advance;
@@ -201,19 +199,17 @@ scran_ui_reinit_atlas(
         &atlas->bl_img,
         required_atlas_width_px,
         required_atlas_height_px,
-        wl_shm_format_to_blend2d(SURFACE_SHM_FORMAT)
+        // Alpha-only mask - colors are supplied by blit caller.
+        BL_FORMAT_A8
     );
     redraw_glyph_atlas(atlas);
-    scran_ui_set_all_items_dirty(ui_ctx);
 
     return true;
 }
 
 void
-scran_ui_init_atlas(struct scran_ui_context *ui_ctx, double scale)
+atlas_init(struct atlas *atlas, double scale)
 {
-    struct glyph_atlas *atlas = &ui_ctx->glyph_atlas_2;
-
 #ifndef NDEBUG
     // Assert sorted array of unique glyphs
     // TODO: Generate the atlas string in a cache-friendly bsearch layout.
@@ -229,31 +225,31 @@ scran_ui_init_atlas(struct scran_ui_context *ui_ctx, double scale)
     bl_image_init(&atlas->bl_img);
     bl_context_init(&atlas->bl_ctx);
     bl_font_init(&atlas->font);
-    scran_ui_reinit_atlas(ui_ctx, scale);
+    atlas_reinit(atlas, scale);
 }
 
 void
-scran_ui_destroy_atlas(struct glyph_atlas *atlas)
+atlas_destroy(struct atlas *atlas)
 {
     bl_image_destroy(&atlas->bl_img);
     bl_context_destroy(&atlas->bl_ctx);
     bl_font_destroy(&atlas->font);
 }
 
-struct atlas_text_metrics
-scran_ui_atlas_blit_glyph(
-    const struct glyph_atlas *atlas,
+static struct atlas_text_metrics
+blit_glyph(
+    const struct atlas *atlas,
     BLContextCore *dst_bl_ctx,
     const BLPointI *dst_pen_origin,
-    char16_t glyph_char
+    const struct atlas_blit_data *data
 ) {
-    const struct atlas_glyph *glyph = &atlas->glyphs[get_glyph_index(atlas, glyph_char)];
+    const struct atlas_glyph *glyph = &atlas->glyphs[get_glyph_index(atlas, *data->string.str)];
 
     const BLRectI src_img_area = {
         .x = glyph->atlas_x,
         .y = 0,
         .w = atlas_metrics_bbox_width(&glyph->metrics),
-        .h = scran_ui_atlas_font_height_px(atlas),
+        .h = atlas_font_height_px(atlas),
     };
 
     const BLPointI dst_origin = {
@@ -261,7 +257,44 @@ scran_ui_atlas_blit_glyph(
         .y = dst_pen_origin->y, // TODO: + glyph->metrics.bbox.y0
     };
 
-    bl_context_blit_image_i(dst_bl_ctx, &dst_origin, &atlas->bl_img, &src_img_area);
+    bl_context_fill_mask_i_rgba32(
+        dst_bl_ctx,
+        &dst_origin,
+        &atlas->bl_img,
+        &src_img_area,
+        data->color
+    );
 
     return glyph->metrics;
+}
+
+struct atlas_text_metrics
+atlas_blit_string(
+    const struct atlas *atlas,
+    BLContextCore *bl_ctx_destination,
+    const BLPointI *origin,
+    const struct atlas_blit_data *blit_data
+) {
+    struct atlas_text_metrics text_metrics = {0};
+
+    BLPointI glyph_origin = *origin;
+    struct atlas_blit_data glyph_blit_data = *blit_data;
+
+    const char16_t *str_end = blit_data->string.str + blit_data->string.strlen;
+
+    while (glyph_blit_data.string.str < str_end) {
+        const struct atlas_text_metrics glyph_metrics = blit_glyph(
+            atlas,
+            bl_ctx_destination,
+            &glyph_origin,
+            &glyph_blit_data
+        );
+
+        atlas_append_text_metrics(&text_metrics, &glyph_metrics);
+
+        glyph_origin.x = origin->x + atlas_metrics_pen_x_px(&text_metrics);
+        ++glyph_blit_data.string.str;
+    }
+
+    return text_metrics;
 }

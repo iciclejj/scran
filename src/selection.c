@@ -30,16 +30,16 @@ selection_surface_set_theme(
     case SURFACE_THEME_PRE_SELECTION:
         // Alpha channel must be respected for invisibility.
         assert(SURFACE_SHM_FORMAT_BL == BL_FORMAT_PRGB32);
-        fill_style = SCRAN_SELECTION_BORDER_COLOR_INVISIBLE;
+        fill_style.value = 0x00000000;
         break;
     case SURFACE_THEME_DEFAULT:
-        fill_style = SCRAN_SELECTION_BORDER_COLOR_DEFAULT;
+        fill_style.value = UI_COLOR_SELECTION_DEFAULT;
         break;
     case SURFACE_THEME_VIDEO_CAPTURE:
-        fill_style = SCRAN_SELECTION_BORDER_COLOR_VIDEO_CAPTURE;
+        fill_style.value = UI_COLOR_VIDEO_CAPTURE;
         break;
     default:
-        fill_style = SCRAN_SELECTION_BORDER_COLOR_DEFAULT;
+        fill_style.value = UI_COLOR_SELECTION_DEFAULT;
         break;
     }
     st_output->selection_surface.theme = theme;
