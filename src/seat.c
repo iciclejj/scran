@@ -4,24 +4,6 @@
 #include <wayland-util.h>
 
 
-void
-update_focus_keymap_texts()
-{
-    FOR_EACH_OUTPUT(i, output) {
-        // TODO(DIRTY_CHECK_UI_IN_MAIN_LOOP):
-        request_selection_surface_frame_callback(output);
-    }
-}
-
-static inline void
-set_global_focus_state(bool focused)
-{
-    if (g_state.focused != focused) {
-        g_state.focused = focused;
-        update_focus_keymap_texts();
-    }
-}
-
 // TODO: Merge this with seat_set_mod_key_state() now?
 void
 seat_apply_mod_key_state(
@@ -37,9 +19,6 @@ seat_apply_mod_key_state(
     // This is only used during video init, so just set this unconditionally
     // to avoid future possible sticky key bugs...
     st_output->capture.audio_disable_modifier_active = state;
-
-    // TODO(DIRTY_CHECK_UI_IN_MAIN_LOOP):
-    request_selection_surface_frame_callback(st_output);
 }
 
 void
@@ -69,9 +48,9 @@ seat_update_active_selection_surface(struct scran_seat *seat)
 
         if (new_surface) {
             seat_apply_mod_key_state(new_surface, seat->mod_key_active);
-            set_global_focus_state(true);
+            g_state.focused = true;
         } else {
-            set_global_focus_state(false);
+            g_state.focused = false;
         }
 
         seat->active_selection_surface = new_surface;
