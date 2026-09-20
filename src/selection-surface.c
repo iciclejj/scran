@@ -804,6 +804,14 @@ draw_and_damage_ui(
             continue;
         }
 
+        // We must control the bounds ourselves so we can prevent text from
+        // appearing inside the capture area.
+        //     TODO: Vertical bbox metrics aren't actually implemented yet,
+        //     at time of writing. When they are, this to_surface_rect function
+        //     should be updated accordingly.
+        const BLRectI clip_rect = geometry_to_surface_rect_px(selection_surface, item->new_geometry);
+        bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &clip_rect);
+
         const struct atlas_text_metrics _metrics = blit_ui_line(
             &selection_surface->atlas,
             &st_buffer->bl_ctx,
@@ -813,6 +821,8 @@ draw_and_damage_ui(
         );
         assert(atlas_metrics_equal(&_metrics, &item->new_geometry->text_metrics));
         (void)_metrics;
+
+        bl_context_restore_clipping(&st_buffer->bl_ctx);
     }
 
     // Submit Wayland damage
