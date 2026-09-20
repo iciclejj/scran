@@ -306,39 +306,6 @@ blit_ui_line(
     return line_metrics;
 }
 
-static void
-update_and_damage_ui_line(
-    struct scran_output_selectionSurface *selection_surface,
-    struct scran_output_selectionSurface_buffer *st_buffer,
-    BLBoxI capture_area_border_outline,
-    bool buffer_contents_changed,
-    const struct ui_item_geometry *buffer_geometry,
-    bool surface_contents_changed,
-    const struct ui_item_geometry *surface_geometry,
-    const struct ui_item_geometry *new_geometry,
-    const struct atlas_blit_data *blit_data,
-    size_t n_items
-) {
-    if (buffer_contents_changed) {
-        // Force-redraw clears the entire buffer before arriving here,
-        // so we don't need to clear it again.
-        if (!st_buffer->force_redraw) {
-            clear_old_ui_item(selection_surface, st_buffer, capture_area_border_outline, buffer_geometry);
-        }
-
-        const struct atlas_text_metrics blit_metrics = blit_ui_line(&selection_surface->atlas, &st_buffer->bl_ctx, &new_geometry->pen_origin, blit_data, n_items);
-        assert(atlas_metrics_equal(&blit_metrics, &new_geometry->text_metrics));
-        (void)blit_metrics;
-    }
-
-    if (surface_contents_changed) {
-        // Damage the compositor's old rendered geometry
-        damage_ui_item(selection_surface, surface_geometry);
-        // Damage the new/desired geometry
-        damage_ui_item(selection_surface, new_geometry);
-    }
-}
-
 static inline void
 fill_char16(char16_t *string, size_t length, char16_t character) {
     for (size_t i = 0; i < length; ++i) {
@@ -720,64 +687,85 @@ draw_and_damage_ui(
     struct ui_render_data render_data;
     make_ui_description(output, capture_area, capture_clock_gettime_nsec(), &new_ui, &render_data);
 
-    // Draw the keymap.
-    {
-        const struct ui_keymap_description *keymap_in_buffer = &st_buffer->ui.keymap;
-        const struct ui_keymap_description *keymap_in_surface = &selection_surface->ui_last_committed.keymap;
+    const bool update_buffer_greeting =
+        st_buffer->force_redraw || !greeting_description_equal(&st_buffer->ui.greeting, &new_ui.greeting);
+    const bool update_buffer_statusline =
+        st_buffer->force_redraw || !statusline_description_equal(&st_buffer->ui.statusline, &new_ui.statusline);
+    const bool update_buffer_keymap =
+        st_buffer->force_redraw || !keymap_description_equal(&st_buffer->ui.keymap, &new_ui.keymap);
 
-        const bool buffer_changed = st_buffer->force_redraw || !keymap_description_equal(keymap_in_buffer, &new_ui.keymap);
-        const bool surface_changed = !keymap_description_equal(keymap_in_surface, &new_ui.keymap);
+    const bool update_surface_greeting =
+        !greeting_description_equal(&selection_surface->ui_last_committed.greeting, &new_ui.greeting);
+    const bool update_surface_statusline =
+        !statusline_description_equal(&selection_surface->ui_last_committed.statusline, &new_ui.statusline);
+    const bool update_surface_keymap =
+        !keymap_description_equal(&selection_surface->ui_last_committed.keymap, &new_ui.keymap);
 
-        update_and_damage_ui_line(
-            selection_surface, st_buffer, capture_area_border_outline,
-            buffer_changed, &keymap_in_buffer->geometry,
-            surface_changed, &keymap_in_surface->geometry,
-            &new_ui.keymap.geometry, new_ui.keymap.content.blit_data, ARRAY_LENGTH(new_ui.keymap.content.blit_data)
-        );
-        st_buffer->ui.keymap = new_ui.keymap;
-        selection_surface->ui_last_committed.keymap = new_ui.keymap;
+    // Batch-clear all items first, so later items don't clear out earlier ones
+    //
+    // Force-redraw clears the entire buffer before arriving here,
+    // so we don't need to clear it again.
+    if (!st_buffer->force_redraw) {
+        if (update_buffer_greeting) {
+            clear_old_ui_item(selection_surface, st_buffer, capture_area_border_outline, &st_buffer->ui.greeting.geometry);
+        }
+        if (update_buffer_statusline) {
+            clear_old_ui_item(selection_surface, st_buffer, capture_area_border_outline, &st_buffer->ui.statusline.geometry);
+        }
+        if (update_buffer_keymap) {
+            clear_old_ui_item(selection_surface, st_buffer, capture_area_border_outline, &st_buffer->ui.keymap.geometry);
+        }
     }
 
-    // Draw the statusline
-    {
-        const struct ui_statusline_description *description_in_buffer = &st_buffer->ui.statusline;
-        const struct ui_statusline_description *description_in_surface = &selection_surface->ui_last_committed.statusline;
-
-        const bool buffer_changed =
-                st_buffer->force_redraw || !statusline_description_equal(description_in_buffer, &new_ui.statusline);
-        const bool surface_changed = !statusline_description_equal(description_in_surface, &new_ui.statusline);
-
-        update_and_damage_ui_line(
-            selection_surface, st_buffer, capture_area_border_outline,
-            buffer_changed, &description_in_buffer->geometry,
-            surface_changed, &description_in_surface->geometry,
-            &new_ui.statusline.geometry, render_data.statusline, ARRAY_LENGTH(render_data.statusline)
+    if (update_buffer_greeting) {
+        const struct atlas_text_metrics _metrics = blit_ui_line(
+            &selection_surface->atlas,
+            &st_buffer->bl_ctx,
+            &new_ui.greeting.geometry.pen_origin,
+            render_data.greeting,
+            ARRAY_LENGTH(render_data.greeting)
         );
-
-        st_buffer->ui.statusline = new_ui.statusline;
-        selection_surface->ui_last_committed.statusline = new_ui.statusline;
+        assert(atlas_metrics_equal(&_metrics, &new_ui.greeting.geometry.text_metrics));
+        (void)_metrics;
+    }
+    if (update_buffer_statusline) {
+        const struct atlas_text_metrics _metrics = blit_ui_line(
+            &selection_surface->atlas,
+            &st_buffer->bl_ctx,
+            &new_ui.statusline.geometry.pen_origin,
+            render_data.statusline,
+            ARRAY_LENGTH(render_data.statusline)
+        );
+        assert(atlas_metrics_equal(&_metrics, &new_ui.statusline.geometry.text_metrics));
+        (void)_metrics;
+    }
+    if (update_buffer_keymap) {
+        const struct atlas_text_metrics _metrics = blit_ui_line(
+            &selection_surface->atlas,
+            &st_buffer->bl_ctx,
+            &new_ui.keymap.geometry.pen_origin,
+            new_ui.keymap.content.blit_data,
+            ARRAY_LENGTH(new_ui.keymap.content.blit_data)
+        );
+        assert(atlas_metrics_equal(&_metrics, &new_ui.keymap.geometry.text_metrics));
+        (void)_metrics;
     }
 
-    // Greeting
-    {
-        const struct ui_greeting_description *description_in_buffer = &st_buffer->ui.greeting;
-        const struct ui_greeting_description *description_in_surface = &selection_surface->ui_last_committed.greeting;
-
-        const bool buffer_changed =
-                st_buffer->force_redraw || !greeting_description_equal(description_in_buffer, &new_ui.greeting);
-        const bool surface_changed = !greeting_description_equal(description_in_surface, &new_ui.greeting);
-
-        update_and_damage_ui_line(
-            selection_surface, st_buffer, capture_area_border_outline,
-            buffer_changed,
-            &description_in_buffer->geometry,
-            surface_changed,
-            &description_in_surface->geometry, &new_ui.greeting.geometry,
-            render_data.greeting, ARRAY_LENGTH(render_data.greeting)
-        );
-        st_buffer->ui.greeting = new_ui.greeting;
-        selection_surface->ui_last_committed.greeting = new_ui.greeting;
+    if (update_surface_greeting) {
+        damage_ui_item(selection_surface, &selection_surface->ui_last_committed.greeting.geometry);
+        damage_ui_item(selection_surface, &new_ui.greeting.geometry);
     }
+    if (update_surface_statusline) {
+        damage_ui_item(selection_surface, &selection_surface->ui_last_committed.statusline.geometry);
+        damage_ui_item(selection_surface, &new_ui.statusline.geometry);
+    }
+    if (update_surface_keymap) {
+        damage_ui_item(selection_surface, &selection_surface->ui_last_committed.keymap.geometry);
+        damage_ui_item(selection_surface, &new_ui.keymap.geometry);
+    }
+
+    st_buffer->ui = new_ui;
+    selection_surface->ui_last_committed = new_ui;
 }
 
 void
