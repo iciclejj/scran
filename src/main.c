@@ -720,9 +720,9 @@ update_ui()
     int64_t now_ns = capture_clock_gettime_nsec();
 
     FOR_EACH_OUTPUT(i, output) {
-        const BLBoxI capture_area = selection_get_box_px(&output->selection_ctx);
+        const BLBoxI selection = selection_get_box_px(&output->selection_ctx);
 
-        if (!ui_contents_equal(output, &capture_area, now_ns)) {
+        if (!ui_contents_equal(output, &selection, now_ns)) {
             request_selection_surface_frame_callback(output);
         }
 
