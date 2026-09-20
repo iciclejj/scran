@@ -59,19 +59,9 @@ selection_surface_frame_callback_handler(
 
     // This is the capture area that the rest of this function is assuming will
     // be in use for the frame in which this selection area is presented.
-    const struct BLBoxI capture_area = selection_get_box_px(&st_output->selection_ctx);
-    assert(capture_area.x1 <= get_transformed_output_width(st_output));
-    assert(capture_area.y1 <= get_transformed_output_height(st_output));
-
-    // XXX TODO: Does this even make any sense to have anymore, after the
-    // on-demand redraw changes from ~a month ago? (Commented out due to the
-    // check being too strict now with the new keymap ui. But check the above
-    // before remaking it for ui keymap)
-    //
-    // const struct BLBoxI capture_area_previous_surface_commit = st_output->selection_surface.box_last_drawn;
-    // if (!st_buffer->force_redraw && blboxi_are_equal(capture_area, capture_area_previous_surface_commit)) {
-    //     goto done;
-    // }
+    const struct BLBoxI selection = selection_get_box_px(&st_output->selection_ctx);
+    assert(selection.x1 <= get_transformed_output_width(st_output));
+    assert(selection.y1 <= get_transformed_output_height(st_output));
 
     st_buffer->scran_wl_buffer.busy = true;
 
@@ -85,11 +75,10 @@ selection_surface_frame_callback_handler(
         // XXX TODO: Check whether we're actually sway more robustly, and assign
         // it as part of our state. (So we don't need to assume the user is
         // running either cosmic or sway.)
-        capture_update_selection(st_output, capture_area);
+        capture_update_selection(st_output, selection);
     }
 
-    draw_selection_and_damage_buffer(st_output, st_buffer, capture_area);
-    st_output->selection_surface.box_last_drawn = capture_area;
+    draw_selection_and_damage_buffer(st_output, st_buffer, selection);
 
     wl_surface_attach(st_output->selection_surface.surface.wl_surface, st_buffer->scran_wl_buffer.wl_buffer, 0, 0);
     wp_presentation_feedback_add_listener(
@@ -98,6 +87,7 @@ selection_surface_frame_callback_handler(
         st_buffer
     );
     wl_surface_commit(st_output->selection_surface.surface.wl_surface);
+    st_output->selection_surface.committed_selection = selection;
 }
 
 
