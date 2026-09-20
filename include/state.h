@@ -158,12 +158,23 @@ struct scran_output_surface {
     struct wp_viewport *viewport;
 };
 
+enum ui_greeting_item_index {
+    UI_GREETING_ITEM_GREETING,
+    UI_GREETING_N_ITEMS,
+};
+
 enum ui_keymap_item_index {
     UI_KEYMAP_ITEM_IMAGE,
     UI_KEYMAP_ITEM_VIDEO,
     UI_KEYMAP_ITEM_FREEZEFRAME,
     UI_KEYMAP_ITEM_FOCUS,
     UI_KEYMAP_N_ITEMS,
+};
+
+enum ui_statusline_item_index {
+    UI_STATUSLINE_ITEM_SELECTION_SIZE,
+    UI_STATUSLINE_ITEM_TIMER,
+    UI_STATUSLINE_N_ITEMS,
 };
 
 struct ui_item_geometry {

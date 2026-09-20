@@ -32,6 +32,29 @@ get_item_spacing(const struct atlas *atlas) {
     };
 }
 
+// We trunc/ceil like this to make sure that fractionally scaled displays
+// will not be able to bleed our capture border into the captured frame,
+// not matter how they do their rounding/down-/upscaling.
+// This does make our frame not always pixel-perfect with fractional scaling,
+// but should not affect non-scaled displays.
+static inline BLBoxI
+get_scalesafe_border_inline(
+    BLBoxI border_inline,
+    double normalized_scale_factor
+) {
+    return (BLBoxI) {
+        .x0 = trunc(trunc(border_inline.x0 / normalized_scale_factor) * normalized_scale_factor),
+        .y0 = trunc(trunc(border_inline.y0 / normalized_scale_factor) * normalized_scale_factor),
+        .x1 = ceil( ceil( border_inline.x1 / normalized_scale_factor) * normalized_scale_factor),
+        .y1 = ceil( ceil( border_inline.y1 / normalized_scale_factor) * normalized_scale_factor),
+    };
+}
+
+static inline BLBoxI
+get_border_outline_from_inline(BLBoxI border_inline) {
+    return blboxi_get_inflated(border_inline, SCRAN_SELECTION_BORDER_THICKNESS_PX);
+}
+
 static inline void
 draw_and_damage_region(
     struct scran_output_selectionSurface *selection_surface,
@@ -462,8 +485,57 @@ statusline_description_equal(const struct ui_statusline_description *a, const st
         && ui_item_geometry_equal(&a->geometry, &b->geometry);
 }
 
-static struct ui_keymap_content
-collect_keymap_content(struct scran_output *output) {
+// For UI elements that don't store their blit data in their description struct
+struct ui_render_data {
+    struct atlas_blit_data greeting[UI_GREETING_N_ITEMS];
+
+    char16_t selection_size[SELECTION_SIZE_STRLEN];
+    char16_t timer[TIMER_STRLEN];
+    struct atlas_blit_data statusline[UI_STATUSLINE_N_ITEMS];
+};
+
+static inline void
+make_greeting_description(
+    struct scran_output *output,
+    BLBoxI capture_area_border_outline,
+    struct ui_greeting_description *description,
+    struct ui_render_data *render_data
+) {
+    const struct ui_greeting_content content = {
+        .visible = on_greeting_screen(output),
+    };
+
+    *description = (struct ui_greeting_description){
+        .content = content,
+    };
+
+    render_data->greeting[UI_GREETING_ITEM_GREETING] = (struct atlas_blit_data){
+        .string = content.visible ? UI_STRING(g_ui_strings.greeting) : UI_STRING(g_ui_strings.empty),
+        .color = UI_COLOR_TEXT_DEFAULT,
+    };
+
+    const int item_height_px = atlas_font_height_px(&output->selection_surface.atlas);
+
+    if (content.visible) {
+        const struct atlas_text_metrics metrics = measure_ui_line(
+            &output->selection_surface.atlas, render_data->greeting, ARRAY_LENGTH(render_data->greeting)
+        );
+        description->geometry = get_ui_item_geometry(
+            &capture_area_border_outline,
+            output->selection_surface.surface.width_px_buffer,
+            &metrics,
+            item_height_px,
+            SCRAN_ALIGN_LEFT,
+            SCRAN_PLACE_ABOVE
+        );
+        description->geometry.pen_origin.y -= item_height_px;
+    }
+}
+
+static inline struct ui_keymap_content
+collect_keymap_content(
+    struct scran_output *output
+) {
     const bool surface_focused = g_state.seat.active_selection_surface == &output->selection_surface;
     const bool modifier_active = surface_focused && g_state.seat.mod_key_active;
     const bool video_is_live = capture_video_is_live(output);
@@ -530,10 +602,35 @@ collect_keymap_content(struct scran_output *output) {
     return content;
 }
 
-static struct ui_statusline_content
+static void
+make_keymap_description(
+    struct scran_output *output,
+    BLBoxI capture_area_border_outline,
+    struct ui_keymap_description *description
+) {
+    const struct ui_keymap_content content = collect_keymap_content(output);
+
+    const struct atlas_text_metrics metrics = measure_ui_line(&output->selection_surface.atlas, content.blit_data, ARRAY_LENGTH(content.blit_data));
+    const struct ui_item_geometry geometry = get_ui_item_geometry(
+        &capture_area_border_outline,
+        output->selection_surface.surface.width_px_buffer,
+        &metrics,
+        atlas_font_height_px(&output->selection_surface.atlas),
+        SCRAN_ALIGN_LEFT,
+        SCRAN_PLACE_BELOW
+    );
+
+    *description = (struct ui_keymap_description){
+        .geometry = geometry,
+        .content = content,
+    };
+}
+
+static inline struct ui_statusline_content
 collect_statusline_content(
     struct scran_output *output,
-    BLBoxI capture_area
+    BLBoxI capture_area,
+    int64_t now_ns
 ) {
     const BLPointI selection = blboxi_get_dimensions(
         on_greeting_screen(output)
@@ -541,11 +638,73 @@ collect_statusline_content(
         : capture_area
     );
 
-    return (struct ui_statusline_content) {
+    return (struct ui_statusline_content){
         .selection_width = selection.x,
         .selection_height = selection.y,
-        .timer_seconds = get_video_timer_seconds(output, capture_clock_gettime_nsec()),
+        .timer_seconds = get_video_timer_seconds(output, now_ns),
     };
+}
+
+static void
+make_statusline_description(
+    struct scran_output *output,
+    BLBoxI capture_area,
+    BLBoxI capture_area_border_outline,
+    int64_t now_ns,
+    struct ui_statusline_description *description,
+    struct ui_render_data *render_data
+) {
+    const struct ui_statusline_content content = collect_statusline_content(output, capture_area, now_ns);
+
+    get_selection_size_string(render_data->selection_size, &content);
+    get_timer_string(render_data->timer, content.timer_seconds);
+
+    render_data->statusline[UI_STATUSLINE_ITEM_SELECTION_SIZE] = (struct atlas_blit_data){
+        .string = { .str = render_data->selection_size, .strlen = ARRAY_LENGTH(render_data->selection_size) },
+        .color =  UI_COLOR_TEXT_DEFAULT,
+    };
+
+    render_data->statusline[UI_STATUSLINE_ITEM_TIMER] = (struct atlas_blit_data){
+        .string = { .str = render_data->timer, .strlen = ARRAY_LENGTH(render_data->timer) },
+        .color =  UI_COLOR_TEXT_DEFAULT,
+    };
+
+    const struct atlas_text_metrics metrics = measure_ui_line(&output->selection_surface.atlas, render_data->statusline, ARRAY_LENGTH(render_data->statusline));
+
+    const struct ui_item_geometry geometry = get_ui_item_geometry(
+        &capture_area_border_outline,
+        output->selection_surface.surface.width_px_buffer,
+        &metrics,
+        atlas_font_height_px(&output->selection_surface.atlas),
+        SCRAN_ALIGN_RIGHT,
+        SCRAN_PLACE_ABOVE
+    );
+
+    *description = (struct ui_statusline_description){
+        .geometry = geometry,
+        .content = content,
+    };
+}
+
+static void
+make_ui_description(
+    struct scran_output *output,
+    BLBoxI capture_area,
+    int64_t now_ns,
+    struct ui_description *description,
+    struct ui_render_data *render_data
+) {
+    const BLBoxI capture_area_border_inline = get_scalesafe_border_inline(
+        capture_area,
+        output->selection_surface.surface.final_scale_factor_normalized
+    );
+    const BLBoxI capture_area_border_outline = get_border_outline_from_inline(capture_area_border_inline);
+
+    make_greeting_description(output, capture_area_border_outline, &description->greeting, render_data);
+    make_keymap_description(output, capture_area_border_outline, &description->keymap);
+    make_statusline_description(
+        output, capture_area, capture_area_border_outline, now_ns, &description->statusline, render_data
+    );
 }
 
 static void
@@ -556,152 +715,69 @@ draw_and_damage_ui(
     BLBoxI capture_area_border_outline
 ) {
     struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
-    const struct atlas *atlas = &selection_surface->atlas;
 
-    const int item_height_px  = atlas_font_height_px(atlas);
-    const int buffer_width_px = selection_surface->surface.width_px_buffer;
+    struct ui_description new_ui;
+    struct ui_render_data render_data;
+    make_ui_description(output, capture_area, capture_clock_gettime_nsec(), &new_ui, &render_data);
 
-    // Draw the below-selection keymap.
+    // Draw the keymap.
     {
-        const struct ui_keymap_content content = collect_keymap_content(output);
+        const struct ui_keymap_description *keymap_in_buffer = &st_buffer->ui.keymap;
+        const struct ui_keymap_description *keymap_in_surface = &selection_surface->ui_last_committed.keymap;
 
-        const struct atlas_text_metrics metrics = measure_ui_line(atlas, content.blit_data, ARRAY_LENGTH(content.blit_data));
-
-        const struct ui_keymap_description description = {
-            .geometry = get_ui_item_geometry(
-                &capture_area_border_outline, buffer_width_px, &metrics, item_height_px, SCRAN_ALIGN_LEFT, SCRAN_PLACE_BELOW
-            ),
-            .content = content,
-        };
-        const struct ui_keymap_description *description_in_buffer = &st_buffer->ui.keymap;
-        const struct ui_keymap_description *description_in_surface = &selection_surface->ui_last_committed.keymap;
-
-        const bool buffer_changed = st_buffer->force_redraw || !keymap_description_equal(description_in_buffer, &description);
-        const bool surface_changed = !keymap_description_equal(description_in_surface, &description);
+        const bool buffer_changed = st_buffer->force_redraw || !keymap_description_equal(keymap_in_buffer, &new_ui.keymap);
+        const bool surface_changed = !keymap_description_equal(keymap_in_surface, &new_ui.keymap);
 
         update_and_damage_ui_line(
             selection_surface, st_buffer, capture_area_border_outline,
-            buffer_changed, &description_in_buffer->geometry,
-            surface_changed, &description_in_surface->geometry,
-            &description.geometry, content.blit_data, ARRAY_LENGTH(content.blit_data)
+            buffer_changed, &keymap_in_buffer->geometry,
+            surface_changed, &keymap_in_surface->geometry,
+            &new_ui.keymap.geometry, new_ui.keymap.content.blit_data, ARRAY_LENGTH(new_ui.keymap.content.blit_data)
         );
-        st_buffer->ui.keymap = description;
-        selection_surface->ui_last_committed.keymap = description;
+        st_buffer->ui.keymap = new_ui.keymap;
+        selection_surface->ui_last_committed.keymap = new_ui.keymap;
     }
 
-    // Draw the above-selection selection size and recording timer.
+    // Draw the statusline
     {
-        const struct ui_statusline_content content = collect_statusline_content(output, capture_area);
-
-        char16_t selection_size[SELECTION_SIZE_STRLEN];
-        char16_t timer[TIMER_STRLEN];
-        get_selection_size_string(selection_size, &content);
-        get_timer_string(timer, content.timer_seconds);
-
-        const struct atlas_blit_data blit_data[] = {
-            {
-                .string = { .str = selection_size, .strlen = ARRAY_LENGTH(selection_size) },
-                .color =  UI_COLOR_TEXT_DEFAULT,
-            }, {
-                .string = { .str = timer,          .strlen = ARRAY_LENGTH(timer) },
-                .color =  UI_COLOR_TEXT_DEFAULT,
-            },
-        };
-        const struct atlas_text_metrics metrics = measure_ui_line(atlas, blit_data, ARRAY_LENGTH(blit_data));
-
-        const struct ui_statusline_description description = {
-            .geometry = get_ui_item_geometry(
-                &capture_area_border_outline, buffer_width_px, &metrics, item_height_px, SCRAN_ALIGN_RIGHT, SCRAN_PLACE_ABOVE
-            ),
-            .content = content,
-        };
         const struct ui_statusline_description *description_in_buffer = &st_buffer->ui.statusline;
         const struct ui_statusline_description *description_in_surface = &selection_surface->ui_last_committed.statusline;
 
-        const bool buffer_changed = st_buffer->force_redraw || !statusline_description_equal(description_in_buffer, &description);
-        const bool surface_changed = !statusline_description_equal(description_in_surface, &description);
+        const bool buffer_changed =
+                st_buffer->force_redraw || !statusline_description_equal(description_in_buffer, &new_ui.statusline);
+        const bool surface_changed = !statusline_description_equal(description_in_surface, &new_ui.statusline);
 
         update_and_damage_ui_line(
             selection_surface, st_buffer, capture_area_border_outline,
             buffer_changed, &description_in_buffer->geometry,
             surface_changed, &description_in_surface->geometry,
-            &description.geometry, blit_data, ARRAY_LENGTH(blit_data)
+            &new_ui.statusline.geometry, render_data.statusline, ARRAY_LENGTH(render_data.statusline)
         );
 
-        st_buffer->ui.statusline = description;
-        selection_surface->ui_last_committed.statusline = description;
+        st_buffer->ui.statusline = new_ui.statusline;
+        selection_surface->ui_last_committed.statusline = new_ui.statusline;
     }
 
     // Greeting
     {
-        const struct ui_greeting_content content = {
-            .visible = on_greeting_screen(output),
-        };
-
-        struct ui_greeting_description description = {
-            .content = content,
-        };
-
-        const struct atlas_blit_data blit_data[] = {
-            {
-                .string = content.visible ? UI_STRING(g_ui_strings.greeting) : UI_STRING(g_ui_strings.empty),
-                .color = UI_COLOR_TEXT_DEFAULT,
-            },
-        };
-
-        if (content.visible) {
-            const struct atlas_text_metrics metrics = measure_ui_line(atlas, blit_data, ARRAY_LENGTH(blit_data));
-            description.geometry = get_ui_item_geometry(
-                &capture_area_border_outline,
-                buffer_width_px,
-                &metrics,
-                item_height_px,
-                SCRAN_ALIGN_LEFT,
-                SCRAN_PLACE_ABOVE
-            );
-            description.geometry.pen_origin.y -= item_height_px;
-        }
-
         const struct ui_greeting_description *description_in_buffer = &st_buffer->ui.greeting;
         const struct ui_greeting_description *description_in_surface = &selection_surface->ui_last_committed.greeting;
 
-        const bool buffer_changed = st_buffer->force_redraw || !greeting_description_equal(description_in_buffer, &description);
-        const bool surface_changed = !greeting_description_equal(description_in_surface, &description);
+        const bool buffer_changed =
+                st_buffer->force_redraw || !greeting_description_equal(description_in_buffer, &new_ui.greeting);
+        const bool surface_changed = !greeting_description_equal(description_in_surface, &new_ui.greeting);
 
         update_and_damage_ui_line(
             selection_surface, st_buffer, capture_area_border_outline,
             buffer_changed,
             &description_in_buffer->geometry,
             surface_changed,
-            &description_in_surface->geometry, &description.geometry,
-            blit_data, ARRAY_LENGTH(blit_data)
+            &description_in_surface->geometry, &new_ui.greeting.geometry,
+            render_data.greeting, ARRAY_LENGTH(render_data.greeting)
         );
-        st_buffer->ui.greeting = description;
-        selection_surface->ui_last_committed.greeting = description;
+        st_buffer->ui.greeting = new_ui.greeting;
+        selection_surface->ui_last_committed.greeting = new_ui.greeting;
     }
-}
-
-// We trunc/ceil like this to make sure that fractionally scaled displays
-// will not be able to bleed our capture border into the captured frame,
-// not matter how they do their rounding/down-/upscaling.
-// This does make our frame not always pixel-perfect with fractional scaling,
-// but should not affect non-scaled displays.
-static inline BLBoxI
-get_scalesafe_border_inline(
-    BLBoxI border_inline,
-    double normalized_scale_factor
-) {
-    return (BLBoxI) {
-        .x0 = trunc(trunc(border_inline.x0 / normalized_scale_factor) * normalized_scale_factor),
-        .y0 = trunc(trunc(border_inline.y0 / normalized_scale_factor) * normalized_scale_factor),
-        .x1 = ceil( ceil( border_inline.x1 / normalized_scale_factor) * normalized_scale_factor),
-        .y1 = ceil( ceil( border_inline.y1 / normalized_scale_factor) * normalized_scale_factor),
-    };
-}
-
-static inline BLBoxI
-get_border_outline_from_inline(BLBoxI border_inline) {
-    return blboxi_get_inflated(border_inline, SCRAN_SELECTION_BORDER_THICKNESS_PX);
 }
 
 void
