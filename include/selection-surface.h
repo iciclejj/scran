@@ -22,6 +22,7 @@
 void draw_selection_and_damage_buffer(struct scran_output *output, struct scran_output_selectionSurface_buffer *st_buffer, struct BLBoxI capture_area);
 void request_selection_surface_frame_callback(struct scran_output *output);
 void init_selection_surface_content(struct scran_output *output);
+bool ui_contents_equal(struct scran_output *output, const BLBoxI *capture_area, int64_t now_ns);
 
 static inline void
 set_force_redraw_selection_surface_buffers(struct scran_output *output) {

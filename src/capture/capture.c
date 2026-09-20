@@ -206,8 +206,7 @@ capture_video_start(struct scran_output *st_output)
     st_output->capture.pre_capture_selection_theme = st_output->selection_surface.theme;
     selection_surface_set_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
     cursor_set_theme(st_output, SCRAN_CURSOR_THEME_VIDEO_CAPTURE);
-    // TODO(DIRTY_CHECK_UI_IN_MAIN_LOOP):
-    //      We should probably cache cursor/surface themes and add it to the coming ui dirty-check loop
+    // TODO: We should probably cache cursor/surface themes and add it to main.c::update_ui()
     request_selection_surface_frame_callback(st_output);
 
     st_output->capture.video_presentation_time_nsec_start = capture_clock_gettime_nsec();

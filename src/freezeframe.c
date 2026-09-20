@@ -108,14 +108,10 @@ freezeframe_hide_if_showing(struct scran_output *st_output)
     // properly update the screen to remove our freezeframe, in areas where it
     // doesn't detect any change.
     selection_do_some_damage(st_output);
+    request_selection_surface_frame_callback(st_output);
 
     // XXX: These should theoretically be set after the commit goes through
     freezeframe->showing = false;
-
-    // TODO(DIRTY_CHECK_UI_IN_MAIN_LOOP):
-    //          For this one we still should keep this call, but probably place
-    //          it below selection_do_some_damage().
-    request_selection_surface_frame_callback(st_output);
 }
 
 static void

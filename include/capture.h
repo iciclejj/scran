@@ -205,21 +205,5 @@ capture_clock_gettime_nsec() {
     return ts.tv_sec * NSEC_PER_SEC + ts.tv_nsec;
 }
 
-static inline int
-get_video_timer_seconds(struct scran_output *output, int64_t now_ns) {
-    if (!capture_video_is_live(output)) {
-        return 0;
-    }
-
-    const int64_t elapsed_nsec = now_ns - output->capture.video_presentation_time_nsec_start;
-    if (elapsed_nsec <= 0) {
-        return 0;
-    }
-
-    const int64_t elapsed_seconds = elapsed_nsec / NSEC_PER_SEC;
-
-    return MIN(elapsed_seconds, INT_MAX);
-}
-
 
 #endif
