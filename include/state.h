@@ -252,7 +252,7 @@ struct scran_output_selectionSurface {
     BLPathCore bl_path;
     // XXX TODO: Turn this into a pointer once we remove the ugly redraw hack
     // in set_selection_surface_theme(). TODO: Redraw hack is gone now.
-    BLBoxI box_last_drawn;
+    BLBoxI committed_selection;
 
     struct ui_description ui_last_committed;
 

@@ -32,27 +32,32 @@ get_item_spacing(const struct atlas *atlas) {
     };
 }
 
+struct selection_border {
+    BLBoxI inner;
+    BLBoxI outer;
+};
+
 // We trunc/ceil like this to make sure that fractionally scaled displays
 // will not be able to bleed our capture border into the captured frame,
 // not matter how they do their rounding/down-/upscaling.
 // This does make our frame not always pixel-perfect with fractional scaling,
 // but should not affect non-scaled displays.
-static inline BLBoxI
-get_scalesafe_border_inline(
-    BLBoxI border_inline,
+static inline struct selection_border
+get_selection_border(
+    BLBoxI selection,
     double normalized_scale_factor
 ) {
-    return (BLBoxI) {
-        .x0 = trunc(trunc(border_inline.x0 / normalized_scale_factor) * normalized_scale_factor),
-        .y0 = trunc(trunc(border_inline.y0 / normalized_scale_factor) * normalized_scale_factor),
-        .x1 = ceil( ceil( border_inline.x1 / normalized_scale_factor) * normalized_scale_factor),
-        .y1 = ceil( ceil( border_inline.y1 / normalized_scale_factor) * normalized_scale_factor),
+    const BLBoxI inner_edge = {
+        .x0 = trunc(trunc(selection.x0 / normalized_scale_factor) * normalized_scale_factor),
+        .y0 = trunc(trunc(selection.y0 / normalized_scale_factor) * normalized_scale_factor),
+        .x1 = ceil( ceil( selection.x1 / normalized_scale_factor) * normalized_scale_factor),
+        .y1 = ceil( ceil( selection.y1 / normalized_scale_factor) * normalized_scale_factor),
     };
-}
 
-static inline BLBoxI
-get_border_outline_from_inline(BLBoxI border_inline) {
-    return blboxi_get_inflated(border_inline, SCRAN_SELECTION_BORDER_THICKNESS_PX);
+    return (struct selection_border) {
+        .inner = inner_edge,
+        .outer = blboxi_get_inflated(inner_edge, SCRAN_SELECTION_BORDER_THICKNESS_PX),
+    };
 }
 
 static inline void
@@ -92,15 +97,14 @@ static inline void
 draw_and_damage_selection_border(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
-    BLBoxI capture_area,
-    BLBoxI capture_area_border_outline,
-    BLBoxI capture_area_border_inline,
+    BLBoxI selection,
+    const struct selection_border *border,
     const BLRectI *damage_regions_wayland,
     const BLRectI *damage_regions_buffer,
     uint8_t n_damage_regions // shared between 'damage_regions_wayland' and 'damage_regions_buffer'
 ) {
-    bl_path_add_box_i(&selection_surface->bl_path, &capture_area_border_inline,  BL_GEOMETRY_DIRECTION_NONE);
-    bl_path_add_box_i(&selection_surface->bl_path, &capture_area_border_outline, BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&selection_surface->bl_path, &border->inner, BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&selection_surface->bl_path, &border->outer, BL_GEOMETRY_DIRECTION_NONE);
 
     for (int i = 0; i < n_damage_regions; ++i) {
         draw_and_damage_region(selection_surface, st_buffer, damage_regions_wayland[i], damage_regions_buffer[i]);
@@ -108,15 +112,15 @@ draw_and_damage_selection_border(
 
     bl_path_clear(&selection_surface->bl_path);
 
-    st_buffer->box_currently_drawn = capture_area;
+    st_buffer->box_currently_drawn = selection;
 }
 
 static inline void
 draw_and_damage_background(
     struct scran_output *output,
     struct scran_output_selectionSurface_buffer *st_buffer,
-    BLBoxI capture_area_max_bounds,
-    BLBoxI capture_area_border_outline,
+    const BLBoxI *surface_bounds,
+    const struct selection_border *border,
     const BLRectI *damage_regions_wayland,
     const BLRectI *damage_regions_buffer,
     uint8_t n_damage_regions // shared between 'damage_regions_wayland' and 'damage_regions_buffer'
@@ -129,9 +133,9 @@ draw_and_damage_background(
 
     bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, UI_COLOR_BG_DIM);
 
-    bl_path_add_box_i(&selection_surface->bl_path, &capture_area_max_bounds,     BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&selection_surface->bl_path, surface_bounds, BL_GEOMETRY_DIRECTION_NONE);
     if (!on_greeting_screen(output)) { // TODO: likely()
-        bl_path_add_box_i(&selection_surface->bl_path, &capture_area_border_outline, BL_GEOMETRY_DIRECTION_NONE);
+        bl_path_add_box_i(&selection_surface->bl_path, &border->outer, BL_GEOMETRY_DIRECTION_NONE);
     }
 
     for (int i = 0; i < n_damage_regions; ++i) {
@@ -163,7 +167,7 @@ static void
 clear_old_ui_item(
     struct scran_output_selectionSurface *selection_surface,
     struct scran_output_selectionSurface_buffer *st_buffer,
-    BLBoxI capture_area_border_outline,
+    const struct selection_border *border,
     const struct ui_item_geometry *geometry
 ) {
     const BLRectI text_rect = geometry_to_surface_rect_px(selection_surface, geometry);
@@ -181,7 +185,7 @@ clear_old_ui_item(
     // Do not overwrite the current transparent capture area or its border.
     // Background/border drawing has already updated any old text pixels there.
     BLRectI uncovered[4];
-    blboxi_get_difference_as_4_rects(blrecti_to_blboxi(text_rect), capture_area_border_outline, uncovered);
+    blboxi_get_difference_as_4_rects(blrecti_to_blboxi(text_rect), border->outer, uncovered);
     for (size_t i = 0; i < ARRAY_LENGTH(uncovered); ++i) {
         if (uncovered[i].w > 0 && uncovered[i].h > 0) {
             bl_context_fill_rect_i(&st_buffer->bl_ctx, &uncovered[i]);
@@ -219,7 +223,7 @@ enum scran_vertical_placement {
 // left when the first glyph has a negative left-side bearing.
 static struct ui_item_geometry
 get_ui_item_geometry(
-    const BLBoxI *capture_area_border_outline,
+    const struct selection_border *border,
     int surface_width_px,
     const struct atlas_text_metrics *textline_metrics,
     int height_px,
@@ -229,19 +233,19 @@ get_ui_item_geometry(
     const int advance_px = atlas_metrics_pen_x_px(textline_metrics);
 
     int origin_x = alignment == SCRAN_ALIGN_LEFT
-        ? capture_area_border_outline->x0
-        : capture_area_border_outline->x1 - advance_px;
+        ? border->outer.x0
+        : border->outer.x1 - advance_px;
 
-    if (origin_x < capture_area_border_outline->x0) {
-        origin_x = capture_area_border_outline->x0;
+    if (origin_x < border->outer.x0) {
+        origin_x = border->outer.x0;
     }
     if (origin_x + advance_px > surface_width_px && advance_px <= surface_width_px) {
         origin_x = surface_width_px - advance_px;
     }
 
     const int origin_y = placement == SCRAN_PLACE_ABOVE
-        ? capture_area_border_outline->y0 - height_px
-        : capture_area_border_outline->y1;
+        ? border->outer.y0 - height_px
+        : border->outer.y1;
 
     return (struct ui_item_geometry) {
         .pen_origin = { origin_x, origin_y },
@@ -471,7 +475,7 @@ collect_greeting_content(struct scran_output *output) {
 static inline void
 make_greeting_description(
     struct scran_output *output,
-    BLBoxI capture_area_border_outline,
+    const struct selection_border *border,
     struct ui_greeting_description *description,
     struct ui_render_data *render_data
 ) {
@@ -493,7 +497,7 @@ make_greeting_description(
             &output->selection_surface.atlas, render_data->greeting, ARRAY_LENGTH(render_data->greeting)
         );
         description->geometry = get_ui_item_geometry(
-            &capture_area_border_outline,
+            border,
             output->selection_surface.surface.width_px_buffer,
             &metrics,
             item_height_px,
@@ -577,14 +581,14 @@ collect_keymap_content(
 static void
 make_keymap_description(
     struct scran_output *output,
-    BLBoxI capture_area_border_outline,
+    const struct selection_border *border,
     struct ui_keymap_description *description
 ) {
     const struct ui_keymap_content content = collect_keymap_content(output);
 
     const struct atlas_text_metrics metrics = measure_ui_line(&output->selection_surface.atlas, content.blit_data, ARRAY_LENGTH(content.blit_data));
     const struct ui_item_geometry geometry = get_ui_item_geometry(
-        &capture_area_border_outline,
+        border,
         output->selection_surface.surface.width_px_buffer,
         &metrics,
         atlas_font_height_px(&output->selection_surface.atlas),
@@ -617,18 +621,18 @@ get_video_timer_seconds(struct scran_output *output, int64_t now_ns) {
 static inline struct ui_statusline_content
 collect_statusline_content(
     struct scran_output *output,
-    BLBoxI capture_area,
+    BLBoxI selection,
     int64_t now_ns
 ) {
-    const BLPointI selection = blboxi_get_dimensions(
+    const BLBoxI effective_selection =
         on_greeting_screen(output)
         ? get_fullscreen_selection_box(output)
-        : capture_area
-    );
+        : selection;
+    const BLPointI effective_selection_dimensions = blboxi_get_dimensions(effective_selection);
 
     return (struct ui_statusline_content){
-        .selection_width = selection.x,
-        .selection_height = selection.y,
+        .selection_width = effective_selection_dimensions.x,
+        .selection_height = effective_selection_dimensions.y,
         .timer_seconds = get_video_timer_seconds(output, now_ns),
     };
 }
@@ -636,12 +640,12 @@ collect_statusline_content(
 bool
 ui_contents_equal(
     struct scran_output *output,
-    const BLBoxI *capture_area,
+    const BLBoxI *selection,
     int64_t now_ns
 ) {
     struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
 
-    struct ui_statusline_content statusline_content = collect_statusline_content(output, *capture_area, now_ns);
+    struct ui_statusline_content statusline_content = collect_statusline_content(output, *selection, now_ns);
     struct ui_keymap_content keymap_content = collect_keymap_content(output);
     struct ui_greeting_content greeting_content = collect_greeting_content(output);
 
@@ -654,13 +658,13 @@ ui_contents_equal(
 static void
 make_statusline_description(
     struct scran_output *output,
-    BLBoxI capture_area,
-    BLBoxI capture_area_border_outline,
+    BLBoxI selection,
+    const struct selection_border *border,
     int64_t now_ns,
     struct ui_statusline_description *description,
     struct ui_render_data *render_data
 ) {
-    const struct ui_statusline_content content = collect_statusline_content(output, capture_area, now_ns);
+    const struct ui_statusline_content content = collect_statusline_content(output, selection, now_ns);
 
     get_selection_size_string(render_data->selection_size, &content);
     get_timer_string(render_data->timer, content.timer_seconds);
@@ -678,7 +682,7 @@ make_statusline_description(
     const struct atlas_text_metrics metrics = measure_ui_line(&output->selection_surface.atlas, render_data->statusline, ARRAY_LENGTH(render_data->statusline));
 
     const struct ui_item_geometry geometry = get_ui_item_geometry(
-        &capture_area_border_outline,
+        border,
         output->selection_surface.surface.width_px_buffer,
         &metrics,
         atlas_font_height_px(&output->selection_surface.atlas),
@@ -695,21 +699,16 @@ make_statusline_description(
 static void
 make_ui_description(
     struct scran_output *output,
-    BLBoxI capture_area,
+    BLBoxI selection,
+    const struct selection_border *border,
     int64_t now_ns,
     struct ui_description *description,
     struct ui_render_data *render_data
 ) {
-    const BLBoxI capture_area_border_inline = get_scalesafe_border_inline(
-        capture_area,
-        output->selection_surface.surface.final_scale_factor_normalized
-    );
-    const BLBoxI capture_area_border_outline = get_border_outline_from_inline(capture_area_border_inline);
-
-    make_greeting_description(output, capture_area_border_outline, &description->greeting, render_data);
-    make_keymap_description(output, capture_area_border_outline, &description->keymap);
+    make_greeting_description(output, border, &description->greeting, render_data);
+    make_keymap_description(output, border, &description->keymap);
     make_statusline_description(
-        output, capture_area, capture_area_border_outline, now_ns, &description->statusline, render_data
+        output, selection, border, now_ns, &description->statusline, render_data
     );
 }
 
@@ -717,14 +716,14 @@ static void
 draw_and_damage_ui(
     struct scran_output *output,
     struct scran_output_selectionSurface_buffer *st_buffer,
-    BLBoxI capture_area,
-    BLBoxI capture_area_border_outline
+    BLBoxI selection,
+    const struct selection_border *border
 ) {
     struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
 
     struct ui_description new_ui;
     struct ui_render_data render_data;
-    make_ui_description(output, capture_area, capture_clock_gettime_nsec(), &new_ui, &render_data);
+    make_ui_description(output, selection, border, capture_clock_gettime_nsec(), &new_ui, &render_data);
 
 
     struct ui_item_render_plan {
@@ -792,7 +791,7 @@ draw_and_damage_ui(
         for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
             const struct ui_item_render_plan *item = &render_plan[i];
             if (item->redraw_buffer) {
-                clear_old_ui_item(selection_surface, st_buffer, capture_area_border_outline, item->buffer_geometry);
+                clear_old_ui_item(selection_surface, st_buffer, border, item->buffer_geometry);
             }
         }
     }
@@ -842,50 +841,42 @@ void
 draw_selection_and_damage_buffer(
     struct scran_output *output,
     struct scran_output_selectionSurface_buffer *st_buffer,
-    struct BLBoxI capture_area
+    struct BLBoxI desired_selection
 ) {
     struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
 
     if (g_state.options.hide_ui_level >= SCRAN_OPT_HIDE_UI_EVERYTHING) {
         // XXX: Slightly spaghetti, but required for updating the capture area.
-        st_buffer->box_currently_drawn = capture_area;
+        st_buffer->box_currently_drawn = desired_selection;
         return;
     }
 
     // TODO: Assert bl_ctx has already begun
 
     // What the compositor has to overwrite:
-    const struct BLBoxI capture_area_last_used_in_any_buffer = selection_surface->box_last_drawn;
+    const struct BLBoxI committed_selection = selection_surface->committed_selection;
     // What we have to overwrite:
-    const struct BLBoxI capture_area_last_used_in_current_buffer = st_buffer->box_currently_drawn;
+    const struct BLBoxI buffer_selection = st_buffer->box_currently_drawn;
 
-    assert(!blboxi_is_inverted(capture_area));
-    assert(!blboxi_is_inverted(capture_area_last_used_in_any_buffer));
+    assert(!blboxi_is_inverted(desired_selection));
+    assert(!blboxi_is_inverted(committed_selection));
     // TODO: Assert box_bounds fully surrounds box_to_draw
 
-    const struct BLBoxI capture_area_bounds = {
-        0,
-        0,
+    const struct BLBoxI surface_bounds = {
+        0, 0,
         selection_surface->surface.width_px_buffer,
         selection_surface->surface.height_px_buffer,
     };
 
     const double scale = selection_surface->surface.final_scale_factor_normalized;
 
-    // TODO: Maybe make this all more readable and not 200 columns wide...
-
-    const BLBoxI capture_area_border_inline                             = get_scalesafe_border_inline(capture_area                            , scale);
-    const BLBoxI capture_area_border_inline_last_used_in_any_buffer     = get_scalesafe_border_inline(capture_area_last_used_in_any_buffer    , scale);
-    const BLBoxI capture_area_border_inline_last_used_in_current_buffer = get_scalesafe_border_inline(capture_area_last_used_in_current_buffer, scale);
-
-    // XXX: Remake the "stroke width" macros
-    const BLBoxI capture_area_border_outline                             = get_border_outline_from_inline(capture_area_border_inline);
-    const BLBoxI capture_area_border_outline_last_used_in_any_buffer     = get_border_outline_from_inline(capture_area_border_inline_last_used_in_any_buffer);
-    const BLBoxI capture_area_border_outline_last_used_in_current_buffer = get_border_outline_from_inline(capture_area_border_inline_last_used_in_current_buffer);
+    const struct selection_border desired_border   = get_selection_border(desired_selection, scale);
+    const struct selection_border committed_border = get_selection_border(committed_selection, scale);
+    const struct selection_border buffer_border    = get_selection_border(buffer_selection, scale);
 
     bool selection_changed =
-        !blboxi_are_equal(capture_area, st_buffer->box_currently_drawn)
-        || !blboxi_are_equal(capture_area, selection_surface->box_last_drawn);
+        !blboxi_are_equal(desired_selection, st_buffer->box_currently_drawn)
+        || !blboxi_are_equal(desired_selection, selection_surface->committed_selection);
 
     // Draw background dim
     if (selection_changed || st_buffer->force_redraw) {
@@ -896,36 +887,52 @@ draw_selection_and_damage_buffer(
         // TODO: Just do redraw/damage directly whenever we need to redraw, rather than
         // needing to branch within this function?
         if (st_buffer->force_redraw) {
-            const BLRectI damage_region_everything = blboxi_to_blrecti(capture_area_bounds);
+            const BLRectI damage_region_everything = blboxi_to_blrecti(surface_bounds);
             damage_regions_wayland[0] = damage_region_everything;
             damage_regions_buffer[0] = damage_region_everything;
             n_damage_regions = 1;
         } else {
             static const int i_background_diffs = 0;
-            blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_outline                           , damage_regions_wayland + i_background_diffs);
-            blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_outline                           , damage_regions_buffer  + i_background_diffs);
+            blboxi_get_symmetric_difference_as_4_rects(committed_border.outer, desired_border.outer, damage_regions_wayland + i_background_diffs);
+            blboxi_get_symmetric_difference_as_4_rects(buffer_border.outer,    desired_border.outer, damage_regions_buffer  + i_background_diffs);
             static const int i_old_border_diffs = 4;
-            blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline_last_used_in_any_buffer    , capture_area_border_inline_last_used_in_any_buffer    , damage_regions_wayland + i_old_border_diffs);
-            blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline_last_used_in_current_buffer, capture_area_border_inline_last_used_in_current_buffer, damage_regions_buffer  + i_old_border_diffs);
+            blboxi_get_symmetric_difference_as_4_rects(committed_border.outer, committed_border.inner, damage_regions_wayland + i_old_border_diffs);
+            blboxi_get_symmetric_difference_as_4_rects(buffer_border.outer,    buffer_border.inner,    damage_regions_buffer  + i_old_border_diffs);
             n_damage_regions = 8;
         }
 
-        draw_and_damage_background(output, st_buffer, capture_area_bounds, capture_area_border_outline, damage_regions_wayland, damage_regions_buffer, n_damage_regions);
+        draw_and_damage_background(
+            output,
+            st_buffer,
+            &surface_bounds,
+            &desired_border,
+            damage_regions_wayland,
+            damage_regions_buffer,
+            n_damage_regions
+        );
     }
 
     if (g_state.options.hide_ui_level < SCRAN_OPT_HIDE_UI_ITEMS) {
         // UI items must be drawn after/on top of the background.
-        draw_and_damage_ui(output, st_buffer, capture_area, capture_area_border_outline);
+        draw_and_damage_ui(output, st_buffer, desired_selection, &desired_border);
     }
 
     // Draw selection border
     if (selection_changed || st_buffer->force_redraw) {
         if (on_greeting_screen(output)) { // TODO: unlikely()
-            st_buffer->box_currently_drawn = capture_area;
+            st_buffer->box_currently_drawn = desired_selection;
         } else {
             BLRectI damage_regions[4];
-            blboxi_get_symmetric_difference_as_4_rects(capture_area_border_outline, capture_area_border_inline, damage_regions);
-            draw_and_damage_selection_border(selection_surface, st_buffer, capture_area, capture_area_border_outline, capture_area_border_inline, damage_regions, damage_regions, 4);
+            blboxi_get_symmetric_difference_as_4_rects(desired_border.outer, desired_border.inner, damage_regions);
+            draw_and_damage_selection_border(
+                selection_surface,
+                st_buffer,
+                desired_selection,
+                &desired_border,
+                damage_regions,
+                damage_regions,
+                4
+            );
         }
     }
 
@@ -1026,4 +1033,5 @@ init_selection_surface_content(struct scran_output *output)
 
     arm_selection_surface_frame_callback(output, false);
     wl_surface_commit(selection_surface->surface.wl_surface);
+    selection_surface->committed_selection = initial_box;
 }
