@@ -32,6 +32,12 @@ set_force_redraw_selection_surface_buffers(struct scran_output *output) {
     }
 }
 
+static inline void
+selection_surface_set_border_color(struct scran_output *output, uint32_t color) {
+    output->selection_surface.border_color = color;
+    set_force_redraw_selection_surface_buffers(output);
+}
+
 static inline BLBoxI
 get_selection_surface_pre_selection_box(struct scran_output *output) {
     int font_height_px = atlas_font_height_px(&output->selection_surface.atlas);

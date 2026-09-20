@@ -223,16 +223,6 @@ struct scran_output_selectionSurface_buffer {
     bool force_redraw;
 };
 
-enum surface_theme {
-    // HACK: Using this to make selection invisible
-    //       TODO: Rework the surface redraw functions for more granular
-    //       control over what to draw instead.
-    SURFACE_THEME_PRE_SELECTION,
-
-    SURFACE_THEME_DEFAULT,
-    SURFACE_THEME_VIDEO_CAPTURE,
-} SCRAN_PACKED;
-
 enum scran_selection_surface_disable_reason {
     SCRAN_SELECTION_SURFACE_DISABLE_REASON_NONE                   = 0,
     SCRAN_SELECTION_SURFACE_DISABLE_REASON_IMAGE_HIDE       = 1 << 0,
@@ -250,15 +240,14 @@ struct scran_output_selectionSurface {
     struct atlas atlas;
 
     BLPathCore bl_path;
-    // XXX TODO: Turn this into a pointer once we remove the ugly redraw hack
-    // in set_selection_surface_theme(). TODO: Redraw hack is gone now.
+    // TODO: Turn this into a pointer to the last committed buffer?
     BLBoxI committed_selection;
 
     struct ui_description ui_last_committed;
 
     // Disables frame callbacks and hiding/unhiding.
     enum scran_selection_surface_disable_reason disable_reason_mask;
-    enum surface_theme                          theme;
+    uint32_t border_color;
 
     bool awaiting_frame_callback;
 };
@@ -499,7 +488,7 @@ struct scran_output_capture {
     enum scran_capture_frame_consumers fullscreen_consumers;
     enum scran_capture_frame_consumers pending_fullscreen_consumers;
 
-    enum surface_theme pre_capture_selection_theme;
+    uint32_t pre_capture_border_color;
 
     enum scran_video_stage video_stage;
 

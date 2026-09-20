@@ -103,6 +103,10 @@ draw_and_damage_selection_border(
     const BLRectI *damage_regions_buffer,
     uint8_t n_damage_regions // shared between 'damage_regions_wayland' and 'damage_regions_buffer'
 ) {
+    bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
+    bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, selection_surface->border_color);
+    bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_EVEN_ODD);
+
     bl_path_add_box_i(&selection_surface->bl_path, &border->inner, BL_GEOMETRY_DIRECTION_NONE);
     bl_path_add_box_i(&selection_surface->bl_path, &border->outer, BL_GEOMETRY_DIRECTION_NONE);
 
@@ -127,11 +131,9 @@ draw_and_damage_background(
 ) {
     struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
 
-    // TODO: Just store the fill styles in state
-    BLVarCore prev_fill_style = { };
-    bl_context_get_fill_style(&st_buffer->bl_ctx, &prev_fill_style);
-
+    bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
     bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, UI_COLOR_BG_DIM);
+    bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_EVEN_ODD);
 
     bl_path_add_box_i(&selection_surface->bl_path, surface_bounds, BL_GEOMETRY_DIRECTION_NONE);
     if (!on_greeting_screen(output)) { // TODO: likely()
@@ -141,10 +143,6 @@ draw_and_damage_background(
     for (int i = 0; i < n_damage_regions; ++i) {
         draw_and_damage_region(selection_surface, st_buffer, damage_regions_wayland[i], damage_regions_buffer[i]);
     }
-
-    uint32_t prev_fill_style_rgba32;
-    bl_var_to_rgba32(&prev_fill_style, &prev_fill_style_rgba32);
-    bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, prev_fill_style_rgba32);
 
     bl_path_clear(&selection_surface->bl_path);
 }
@@ -175,10 +173,6 @@ clear_old_ui_item(
         return;
     }
 
-    BLVarCore prev_fill_style = { };
-    bl_context_get_fill_style(&st_buffer->bl_ctx, &prev_fill_style);
-    const BLCompOp prev_comp_op = bl_context_get_comp_op(&st_buffer->bl_ctx);
-
     bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
     bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, UI_COLOR_BG_DIM);
 
@@ -192,10 +186,6 @@ clear_old_ui_item(
         }
     }
 
-    bl_context_set_comp_op(&st_buffer->bl_ctx, prev_comp_op);
-    uint32_t prev_fill_style_rgba32;
-    bl_var_to_rgba32(&prev_fill_style, &prev_fill_style_rgba32);
-    bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, prev_fill_style_rgba32);
 }
 
 static void
@@ -292,6 +282,8 @@ blit_ui_line(
     size_t n_items
 ) {
     struct atlas_text_metrics line_metrics = {0};
+
+    bl_context_set_comp_op(bl_ctx, BL_COMP_OP_SRC_OVER);
 
     for (size_t i = 0; i < n_items; ++i) {
         if (i > 0) {
@@ -994,7 +986,9 @@ init_selection_surface_content(struct scran_output *output)
     if (no_initial_selection) {
         initial_box = get_selection_surface_pre_selection_box(output);
         selection_set_box_px(&output->selection_ctx, initial_box);
-        selection_surface_set_theme(output, SURFACE_THEME_PRE_SELECTION);
+        // Alpha channel must not be ignored for inivisibility.
+        assert(SURFACE_SHM_FORMAT_BL == BL_FORMAT_PRGB32);
+        selection_surface_set_border_color(output, 0x00000000U);
     } else {
         // This must be set prior to set_selection_initialized()
         selection_set_box_px(&output->selection_ctx, initial_box);
@@ -1003,7 +997,7 @@ init_selection_surface_content(struct scran_output *output)
         // state has been set up.
         // ALSO make sure it's called somewhere that the freezeframe init path
         // (and potential future alternate init paths) will reach.
-        selection_surface_set_theme(output, SURFACE_THEME_DEFAULT);
+        selection_surface_set_border_color(output, UI_COLOR_SELECTION_DEFAULT);
         selection_set_initialized(output);
     }
 

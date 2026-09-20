@@ -18,45 +18,6 @@
 #include "init.h"
 
 
-void
-selection_surface_set_theme(
-    struct scran_output *st_output,
-    enum surface_theme theme
-) {
-    struct BLRgba32 fill_style;
-    static const enum BLFillRule fill_rule = BL_FILL_RULE_EVEN_ODD;
-
-    switch (theme) {
-    case SURFACE_THEME_PRE_SELECTION:
-        // Alpha channel must be respected for invisibility.
-        assert(SURFACE_SHM_FORMAT_BL == BL_FORMAT_PRGB32);
-        fill_style.value = 0x00000000;
-        break;
-    case SURFACE_THEME_DEFAULT:
-        fill_style.value = UI_COLOR_SELECTION_DEFAULT;
-        break;
-    case SURFACE_THEME_VIDEO_CAPTURE:
-        fill_style.value = UI_COLOR_VIDEO_CAPTURE;
-        break;
-    default:
-        fill_style.value = UI_COLOR_SELECTION_DEFAULT;
-        break;
-    }
-    st_output->selection_surface.theme = theme;
-
-    for (int i = 0; i < SELECTION_SURFACE_BUF_COUNT; ++i) {
-        struct scran_output_selectionSurface_buffer *st_buffer = &st_output->selection_surface.double_buffer[i];
-
-        bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, fill_style.value);
-        bl_context_set_fill_rule(&st_buffer->bl_ctx, fill_rule);
-    }
-
-    // We need to force full redraw for the colors to change regardless of dirty
-    // rects etc.
-    set_force_redraw_selection_surface_buffers(st_output);
-}
-
-
 // TODO: Rename to set_selection_state_complete
 void
 selection_set_initialized(struct scran_output *st_output)

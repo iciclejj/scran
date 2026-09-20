@@ -276,7 +276,7 @@ handle_pointer_button(
             // TODO: Create set_selection_initializing()/set_selection_stage(),
             // analogous to current set_selection_initialized()?
 
-            selection_surface_set_theme(st_output, SURFACE_THEME_DEFAULT);
+            selection_surface_set_border_color(st_output, UI_COLOR_SELECTION_DEFAULT);
             request_selection_surface_frame_callback(st_output);
             break;
         case SELECTION_INITIALIZING:
