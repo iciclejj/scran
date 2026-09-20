@@ -461,6 +461,13 @@ struct ui_render_data {
     struct atlas_blit_data statusline[UI_STATUSLINE_N_ITEMS];
 };
 
+static inline struct ui_greeting_content
+collect_greeting_content(struct scran_output *output) {
+    return (struct ui_greeting_content){
+        .visible = on_greeting_screen(output),
+    };
+}
+
 static inline void
 make_greeting_description(
     struct scran_output *output,
@@ -468,9 +475,7 @@ make_greeting_description(
     struct ui_greeting_description *description,
     struct ui_render_data *render_data
 ) {
-    const struct ui_greeting_content content = {
-        .visible = on_greeting_screen(output),
-    };
+    const struct ui_greeting_content content = collect_greeting_content(output);
 
     *description = (struct ui_greeting_description){
         .content = content,
@@ -593,6 +598,22 @@ make_keymap_description(
     };
 }
 
+static inline int
+get_video_timer_seconds(struct scran_output *output, int64_t now_ns) {
+    if (!capture_video_is_live(output)) {
+        return 0;
+    }
+
+    const int64_t elapsed_nsec = now_ns - output->capture.video_presentation_time_nsec_start;
+    if (elapsed_nsec <= 0) {
+        return 0;
+    }
+
+    const int64_t elapsed_seconds = elapsed_nsec / NSEC_PER_SEC;
+
+    return MIN(elapsed_seconds, INT_MAX);
+}
+
 static inline struct ui_statusline_content
 collect_statusline_content(
     struct scran_output *output,
@@ -610,6 +631,24 @@ collect_statusline_content(
         .selection_height = selection.y,
         .timer_seconds = get_video_timer_seconds(output, now_ns),
     };
+}
+
+bool
+ui_contents_equal(
+    struct scran_output *output,
+    const BLBoxI *capture_area,
+    int64_t now_ns
+) {
+    struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
+
+    struct ui_statusline_content statusline_content = collect_statusline_content(output, *capture_area, now_ns);
+    struct ui_keymap_content keymap_content = collect_keymap_content(output);
+    struct ui_greeting_content greeting_content = collect_greeting_content(output);
+
+    return
+        greeting_content_equal(&selection_surface->ui_last_committed.greeting.content, &greeting_content)
+        && statusline_content_equal(&selection_surface->ui_last_committed.statusline.content, &statusline_content)
+        && keymap_content_equal(&selection_surface->ui_last_committed.keymap.content, &keymap_content);
 }
 
 static void

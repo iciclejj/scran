@@ -78,12 +78,7 @@ handle_keyboard_leave (
     struct scran *state = data;
 
     seat_update_keyboard_focus(&state->seat, NULL);
-
     memset(&state->seat.keyboard.pressed_keys, 0, sizeof(state->seat.keyboard.pressed_keys));
-    FOR_EACH_OUTPUT(i, output) {
-        // TODO(DIRTY_CHECK_UI_IN_MAIN_LOOP):
-        request_selection_surface_frame_callback(output);
-    }
 }
 
 
@@ -186,12 +181,6 @@ esc_exit_scran:
             return;
         }
 
-        if (active_selection_surface) {
-            // TODO(DIRTY_CHECK_UI_IN_MAIN_LOOP):
-            struct scran_output *st_output = wl_container_of(active_selection_surface, st_output, selection_surface);
-            request_selection_surface_frame_callback(st_output);
-        }
-
         return;
     }
 
@@ -228,8 +217,6 @@ esc_exit_scran:
     case XKB_KEY_z:
     case XKB_KEY_Z:
         state->seat.keyboard.pressed_keys.freezeframe = true;
-        // TODO(DIRTY_CHECK_UI_IN_MAIN_LOOP):
-        request_selection_surface_frame_callback(st_output);
 
         bool pretend_all_hidden = true;
         FOR_EACH_OUTPUT(i, st_output) {
@@ -270,13 +257,6 @@ z_done:
             capture_image_start_fullscreen(st_output, exit_after_capture);
         } else {
             capture_image_start(st_output, exit_after_capture);
-            // TODO(DIRTY_CHECK_UI_IN_MAIN_LOOP):
-            //          Also remember to check again whether the behavior here is worth
-            //          replicating, e.g. by checking pending_fullscreen_consumers.
-            //
-            //          Also remember that non-pending fullscreen_consumers should
-            //          be always trigger a skip, in any case.
-            request_selection_surface_frame_callback(st_output);
         }
 
         break;
@@ -311,8 +291,6 @@ z_done:
             break;
         }
 
-        // TODO(DIRTY_CHECK_UI_IN_MAIN_LOOP):
-        request_selection_surface_frame_callback(st_output);
         break;
     }
 }

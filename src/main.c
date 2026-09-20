@@ -708,40 +708,32 @@ get_smallest_timeout(int a, int b)
     return MIN(a, b);
 }
 
-// TODO(DIRTY_CHECK_UI_IN_MAIN_LOOP):
-//          This function should essentially become the new generalized one
-static inline void
-update_video_timers(int *timeout_ms_)
+// Returns maximum epoll timeout_ms before next re-run of this function
+static int
+update_ui()
 {
     if (g_state.options.hide_ui_level >= SCRAN_OPT_HIDE_UI_ITEMS) {
-        *timeout_ms_ = -1;
-        return;
+        return -1;
     }
 
-    int timeout_ms = INT_MAX;
+    int timeout_ms = -1;
     int64_t now_ns = capture_clock_gettime_nsec();
 
-    FOR_EACH_OUTPUT(i, st_output) {
-        if (capture_video_is_live(st_output)) {
-            int seconds = get_video_timer_seconds(st_output, now_ns);
-            int committed_seconds = st_output->selection_surface.ui_last_committed.statusline.content.timer_seconds;
+    FOR_EACH_OUTPUT(i, output) {
+        const BLBoxI capture_area = selection_get_box_px(&output->selection_ctx);
 
-            if (committed_seconds != seconds) {
-                request_selection_surface_frame_callback(st_output);
-            }
+        if (!ui_contents_equal(output, &capture_area, now_ns)) {
+            request_selection_surface_frame_callback(output);
+        }
 
-            int64_t timer_ms = (now_ns - st_output->capture.video_presentation_time_nsec_start) / NSEC_PER_MS;
+        if (capture_video_is_live(output)) {
+            int64_t timer_ms = (now_ns - output->capture.video_presentation_time_nsec_start) / NSEC_PER_MS;
             int ms_until_next_sec = MS_PER_SEC - (timer_ms % MS_PER_SEC);
-
-            timeout_ms = MIN(timeout_ms, ms_until_next_sec);
+            timeout_ms = get_smallest_timeout(timeout_ms, ms_until_next_sec);
         }
     }
 
-    if (timeout_ms == INT_MAX) {
-        *timeout_ms_ = -1;
-    } else {
-        *timeout_ms_ = timeout_ms;
-    }
+    return timeout_ms;
 }
 
 
@@ -849,7 +841,7 @@ run_main_loop(struct scran_signal_masks *signal_masks)
             g_state.sig_focus_requested = false;
         }
 
-        update_video_timers(&scran_ui_timeout_ms);
+        scran_ui_timeout_ms = update_ui();
     };
 
     scran_pipewire_destroy();
