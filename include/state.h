@@ -183,6 +183,9 @@ struct ui_item_geometry {
 };
 
 struct ui_description {
+    struct ui_shared_content {
+        bool ui_inside_selection;
+    } shared_contents;
 
     struct ui_greeting_description {
         struct ui_item_geometry geometry;
@@ -249,6 +252,7 @@ struct scran_output_selectionSurface {
     enum scran_selection_surface_disable_reason disable_reason_mask;
     uint32_t border_color;
 
+    bool ui_inside_selection;
     bool awaiting_frame_callback;
 };
 
