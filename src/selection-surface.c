@@ -220,18 +220,17 @@ get_ui_item_geometry(
     enum scran_horizontal_alignment alignment,
     enum scran_vertical_placement placement
 ) {
-    const int advance_px = atlas_metrics_advance_x_px(textline_metrics);
+    const int line_advance_px = atlas_metrics_advance_x_px(textline_metrics);
 
     int origin_x = alignment == SCRAN_ALIGN_LEFT
-        ? border->outer.x0
-        : border->outer.x1 - advance_px;
+        ? border->inner.x0
+        : border->inner.x1 - line_advance_px;
 
-    if (origin_x < border->outer.x0) {
-        origin_x = border->outer.x0;
-    }
-    if (origin_x + advance_px > surface_width_px && advance_px <= surface_width_px) {
-        origin_x = surface_width_px - advance_px;
-    }
+    // Do not start left of the selection...
+    origin_x = MAX(origin_x, border->inner.x0);
+    // ...unless it would clip on the right (but stop before clipping on the left)
+    const int right_edge_limit_x = MAX(surface_width_px - line_advance_px, 0);
+    origin_x = MIN(origin_x, right_edge_limit_x);
 
     const int origin_y = placement == SCRAN_PLACE_ABOVE
         ? border->outer.y0 - height_px
