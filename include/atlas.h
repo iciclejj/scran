@@ -64,7 +64,6 @@ struct atlas {
 
     // TODO: Make this size more directly connected to the global variable's size
     struct atlas_glyph glyphs[SCRAN_UI_ATLAS_GLYPHS_STRLEN];
-
 };
 
 
