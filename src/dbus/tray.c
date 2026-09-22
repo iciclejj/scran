@@ -239,7 +239,6 @@ static inline void
 sni_set_registered_with_watcher(bool registered)
 {
     m_sni.registered_with_watcher = registered;
-    update_focus_keymap_texts(scran_tray_is_registered());
 }
 
 static int
@@ -458,5 +457,4 @@ scran_tray_destroy()
     }
 
     m_sni.registered_with_watcher = false;
-    update_focus_keymap_texts(scran_tray_is_registered());
 }

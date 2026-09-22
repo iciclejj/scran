@@ -4,7 +4,6 @@
 #include <wayland-client-protocol.h>
 
 #include "selection.h"
-#include "ui.h"
 #include "viewporter.h"
 
 #include "state.h"
@@ -109,15 +108,10 @@ freezeframe_hide_if_showing(struct scran_output *st_output)
     // properly update the screen to remove our freezeframe, in areas where it
     // doesn't detect any change.
     selection_do_some_damage(st_output);
+    request_selection_surface_frame_callback(st_output);
 
     // XXX: These should theoretically be set after the commit goes through
     freezeframe->showing = false;
-    {
-        struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        scran_ui_textline_item_set_text( SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_ON);
-        scran_ui_textline_item_set_color(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_COLOR_DEFAULT);
-        request_selection_surface_frame_callback(st_output);
-    }
 }
 
 static void
@@ -221,11 +215,6 @@ freezeframe_capture_handle_frame_ready(struct scran_output *output)
     wl_surface_damage_buffer(freezeframe->subsurface.wl_surface, 0, 0, final_width_px, final_height_px);
     wl_surface_commit(freezeframe->subsurface.wl_surface);
     freezeframe->showing = true;
-    {
-        struct scran_ui_context *ui_ctx = &output->selection_surface.ui_ctx;
-        scran_ui_textline_item_set_text( SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_TEXT_KEYMAP_FREEZEFRAME_TURN_OFF);
-        scran_ui_textline_item_set_color(SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_FREEZEFRAME, SCRAN_UI_COLOR_KEYMAP_FREEZEFRAME);
-    }
 
     freezeframe_capture_finish(output);
 }

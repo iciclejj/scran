@@ -203,14 +203,11 @@ capture_video_start(struct scran_output *st_output)
         goto capture_video_start_fail_2;
     }
 
-    {
-        struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        scran_ui_textline_item_set_color(   SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_KEYMAP_VIDEO_CAPTURE);
-        scran_ui_textline_item_set_locked(  SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, true);
-    }
-    st_output->capture.pre_capture_selection_theme = st_output->selection_surface.theme;
-    selection_surface_set_theme(st_output, SURFACE_THEME_VIDEO_CAPTURE);
+    st_output->capture.pre_capture_border_color = st_output->selection_surface.border_color;
+    selection_surface_set_border_color(st_output, UI_COLOR_VIDEO_CAPTURE);
     cursor_set_theme(st_output, SCRAN_CURSOR_THEME_VIDEO_CAPTURE);
+    // TODO: We should probably cache the cursor theme and surface border color
+    // and add them to main.c::update_ui().
     request_selection_surface_frame_callback(st_output);
 
     st_output->capture.video_presentation_time_nsec_start = capture_clock_gettime_nsec();
@@ -328,13 +325,7 @@ capture_video_finish(struct scran_output *st_output)
     }
     capture_video_destroy_video_writer(st_output);
 
-    {
-        struct scran_ui_context *ui_ctx = &st_output->selection_surface.ui_ctx;
-        scran_ui_textline_item_set_color(   SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, SCRAN_UI_COLOR_DEFAULT);
-        scran_ui_textline_item_set_locked(  SCRAN_UI_TEXTLINE_VIEW(ui_ctx->ui_keymap), SCRAN_UI_KEYMAP_ITEM_I_VIDEO, false);
-        scran_ui_statusline_set_timer(&st_output->selection_surface.ui_ctx.ui_statusline, 0);
-    }
-    selection_surface_set_theme(st_output, st_output->capture.pre_capture_selection_theme);
+    selection_surface_set_border_color(st_output, st_output->capture.pre_capture_border_color);
     cursor_set_theme(st_output, SCRAN_CURSOR_THEME_DEFAULT);
     request_selection_surface_frame_callback(st_output);
 

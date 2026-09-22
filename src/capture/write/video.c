@@ -3,6 +3,7 @@
 #include "pipewires.h"
 #include "state-util.h"
 #include "util/lib-interop.h"
+#include "util/util.h"
 
 
 // XXX: Seems like the underlying FFOutputFormat structs aren't exposed in the
@@ -272,6 +273,8 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     av_dict_free(&format_opts);
     if (format_ret < 0) {
         eprintf("Failed to write file header (filepath: %s)\n", output_filepath);
+
+        // FIXME: Also clear audio-enabled flag and destroy ffmpeg_audio
         destroy_ffmpeg_video(st_output); // TODO: goto fail?
         return false;
     }

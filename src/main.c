@@ -31,7 +31,6 @@
 #include "cursor.h"
 #include "capture.h"
 #include "selection-surface.h"
-#include "ui.h"
 #include "event-handlers.h"
 #include "init.h"
 #include "print.h"
@@ -709,39 +708,32 @@ get_smallest_timeout(int a, int b)
     return MIN(a, b);
 }
 
-static inline void
-update_video_timers(int *timeout_ms_)
+// Returns maximum epoll timeout_ms before next re-run of this function
+static int
+update_ui()
 {
     if (g_state.options.hide_ui_level >= SCRAN_OPT_HIDE_UI_ITEMS) {
-        *timeout_ms_ = -1;
-        return;
+        return -1;
     }
 
-    int timeout_ms = INT_MAX;
+    int timeout_ms = -1;
     int64_t now_ns = capture_clock_gettime_nsec();
 
-    FOR_EACH_OUTPUT(i, st_output) {
-        if (capture_video_is_live(st_output)) {
-            int64_t timer_ns = (now_ns - st_output->capture.video_presentation_time_nsec_start);
-            int     timer_s  = timer_ns / NSEC_PER_SEC;
+    FOR_EACH_OUTPUT(i, output) {
+        const BLBoxI selection = selection_get_box_px(&output->selection_ctx);
 
-            bool dirty = scran_ui_statusline_set_timer(&st_output->selection_surface.ui_ctx.ui_statusline, timer_s);
-            if (dirty) {
-                request_selection_surface_frame_callback(st_output);
-            }
+        if (!ui_contents_equal(output, &selection, now_ns)) {
+            request_selection_surface_frame_callback(output);
+        }
 
-            int64_t timer_ms = timer_ns / NSEC_PER_MS;
+        if (capture_video_is_live(output)) {
+            int64_t timer_ms = (now_ns - output->capture.video_presentation_time_nsec_start) / NSEC_PER_MS;
             int ms_until_next_sec = MS_PER_SEC - (timer_ms % MS_PER_SEC);
-
-            timeout_ms = MIN(timeout_ms, ms_until_next_sec);
+            timeout_ms = get_smallest_timeout(timeout_ms, ms_until_next_sec);
         }
     }
 
-    if (timeout_ms == INT_MAX) {
-        *timeout_ms_ = -1;
-    } else {
-        *timeout_ms_ = timeout_ms;
-    }
+    return timeout_ms;
 }
 
 
@@ -849,7 +841,7 @@ run_main_loop(struct scran_signal_masks *signal_masks)
             g_state.sig_focus_requested = false;
         }
 
-        update_video_timers(&scran_ui_timeout_ms);
+        scran_ui_timeout_ms = update_ui();
     };
 
     scran_pipewire_destroy();
