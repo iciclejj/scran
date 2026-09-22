@@ -14,6 +14,15 @@ struct scran_output;
 #define SCRAN_CURSOR_MAX_SCALE 4
 #define SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX (SCRAN_CURSOR_WIDTH_HEIGHT * SCRAN_CURSOR_MAX_SCALE)
 
+// This is only treated as a hard requirement because not all compositors have
+// cursor-hiding implemented for software-cursors yet.
+//     See [Hyprland #15883], [wlroots #5443].
+_Static_assert(
+    SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX <= 256 && SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX <= 256,
+    "Cursor buffer size exceeds common hardware-cursor limit of 256x256"
+);
+
+
 enum scran_cursor_theme {
     SCRAN_CURSOR_THEME_DEFAULT = 0,
     SCRAN_CURSOR_THEME_VIDEO_CAPTURE,
