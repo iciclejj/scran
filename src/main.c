@@ -269,9 +269,29 @@ init_premem__destroy()
 
 // TODO: Separate arena module?
 
-// Just bump this if/when we need more
-// TODO: Make this cleaner...
-#define SCRAN_ARENA_BLOCKS_MAX (MAX_OUTPUTS * 8)
+// XXX TODO: Make this more maintainable.
+//
+//   Probably just run do the alignment calculations during the
+//   pointer-distribution as well, instead of caching them in the arena,
+//   with one shared, authoritative function for both offset-calculation
+//   and recipient-distribution.
+//
+//        init_arena(&measuring_arena) // collect
+//        mmap()
+//        copy_measurements(&mesauring_arena, &assignment_arena)
+//        init_arena(&assignment_arena) // distribute
+enum {
+    SCRAN_SHM_ARENA_BLOCKS_PER_OUTPUT =
+        SELECTION_SURFACE_BUF_COUNT
+        + SCRAN_CURSOR_N_THEMES * SCRAN_CURSOR_N_TOOLTIPS
+        + 2 // Freezeframe's capture and surface buffers
+        + 1, // Capture buffer
+    SCRAN_SHM_ARENA_GLOBAL_BLOCKS =
+        1, // Transparent single-pixel buffer
+    SCRAN_ARENA_BLOCKS_MAX =
+        MAX_OUTPUTS * SCRAN_SHM_ARENA_BLOCKS_PER_OUTPUT
+        + SCRAN_SHM_ARENA_GLOBAL_BLOCKS,
+};
 
 struct scran_arena_context {
     void *addr;
@@ -390,16 +410,18 @@ init_meminit(
         };
 
         const size_t cursor_buf_size = get_framebuffer_size(
-            SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
-            SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
+            SCRAN_CURSOR_BUFFER_WIDTH_PX,
+            SCRAN_CURSOR_BUFFER_HEIGHT_PX,
             SURFACE_PIXEL_STRIDE
         );
-        for (int i_buffer = 0; i_buffer < SCRAN_CURSOR_N_THEMES; ++i_buffer) {
-            struct scran_cursor_buffer *buffer = &st_output->cursor.buffers[i_buffer];
-            scran_arena_add_block(
-                shm_arena,
-                cursor_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &buffer->scran_wl_buffer.data
-            );
+        for (int i_buf = 0; i_buf < SCRAN_CURSOR_N_THEMES; ++i_buf) {
+            for (int j_buf = 0; j_buf < SCRAN_CURSOR_N_TOOLTIPS; ++j_buf) {
+                struct scran_cursor_buffer *buffer = &st_output->cursor.buffers[i_buf][j_buf];
+                scran_arena_add_block(
+                    shm_arena,
+                    cursor_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &buffer->scran_wl_buffer.data
+                );
+            }
         }
 
         if (st_output->freezeframe.session.session_ctx.shm_format == SCRAN_SHM_FORMAT_UNSET) {
@@ -499,17 +521,19 @@ init_meminit(
             );
         }
 
-        for (int i_buffer = 0; i_buffer < SCRAN_CURSOR_N_THEMES; ++i_buffer) {
-            struct scran_cursor_buffer *buffer = &st_output->cursor.buffers[i_buffer];
-            init_wl_shm_buffer(
-                shm_arena,
-                global_pool_wl,
-                &buffer->scran_wl_buffer,
-                SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
-                SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
-                SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX * SURFACE_PIXEL_STRIDE,
-                SURFACE_SHM_FORMAT
-            );
+        for (int i_buf = 0; i_buf < SCRAN_CURSOR_N_THEMES; ++i_buf) {
+            for (int j_buf = 0; j_buf < SCRAN_CURSOR_N_TOOLTIPS; ++j_buf) {
+                struct scran_cursor_buffer *buffer = &st_output->cursor.buffers[i_buf][j_buf];
+                init_wl_shm_buffer(
+                    shm_arena,
+                    global_pool_wl,
+                    &buffer->scran_wl_buffer,
+                    SCRAN_CURSOR_BUFFER_WIDTH_PX,
+                    SCRAN_CURSOR_BUFFER_HEIGHT_PX,
+                    SCRAN_CURSOR_BUFFER_WIDTH_PX * SURFACE_PIXEL_STRIDE,
+                    SURFACE_SHM_FORMAT
+                );
+            }
         }
 
         {
@@ -581,8 +605,11 @@ init_meminit__destroy(
             struct scran_output_selectionSurface_buffer *selection_surface_buffer = &st_output->selection_surface.double_buffer[i_buf];
             wl_buffer_destroy(selection_surface_buffer->scran_wl_buffer.wl_buffer);
         }
+
         for (int i_buf = 0; i_buf < SCRAN_CURSOR_N_THEMES; ++i_buf) {
-            wl_buffer_destroy(st_output->cursor.buffers[i_buf].scran_wl_buffer.wl_buffer);
+            for (int j_buf = 0; j_buf < SCRAN_CURSOR_N_TOOLTIPS; ++j_buf) {
+                wl_buffer_destroy(st_output->cursor.buffers[i_buf][j_buf].scran_wl_buffer.wl_buffer);
+            }
         }
 
         wl_buffer_destroy(st_output->capture.session.frame_ctx.scran_wl_buffer.wl_buffer);
