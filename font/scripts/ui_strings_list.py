@@ -25,6 +25,8 @@ UI_STRINGS = {
     "statusline_selection_size_dummy": "WWWWWxHHHHH",
     "statusline_timer_dummy":          "00:00:00",
 
+    "cursor_tooltip_flipped_ui":       "[S]",
+
     # Just for filling the atlas:
     "atlas_digits":                    "0123456789",
     "atlas_separators":                ":x",

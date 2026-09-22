@@ -6,6 +6,7 @@
 
 #include <blend2d/blend2d.h>
 
+#include "cursor.h"
 #include "selection.h"
 #include "state.h"
 #include "selection-surface.h"
@@ -901,6 +902,46 @@ draw_and_damage_ui(
         if (item->damage_surface) {
             damage_ui_item(selection_surface, item->committed_geometry);
             damage_ui_item(selection_surface, item->new_geometry);
+        }
+    }
+
+    // Update cursor
+    {
+        // Keep the ui_inside toggle tooltip visible while
+        //   1. the UI is inside the capture area, or
+        //   2. the UI is clipping against the edge of the surface.
+        //   XXX TODO: Rework fullscreen capture pipeline to allow showing UI
+        //   inside during fullscreen captures.
+        bool ui_is_clipping = false;
+        const bool ui_inside = new_ui.shared_contents.ui_inside_selection;
+
+        if (!ui_inside) {
+            const BLBoxI surface_bounds = {
+                0, 0,
+                selection_surface->surface.width_px_buffer,
+                selection_surface->surface.height_px_buffer,
+            };
+
+            for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
+                const struct ui_item_render_plan *item = &render_plan[i];
+                const BLBoxI item_bounds = blrecti_to_blboxi(
+                    geometry_to_surface_rect_px(selection_surface, item->new_geometry)
+                );
+
+                if (!blboxi_contains(surface_bounds, item_bounds)) {
+                    ui_is_clipping = true;
+                    break;
+                }
+            }
+        }
+
+        const enum scran_cursor_tooltip tooltip =
+            (ui_inside || ui_is_clipping)
+            ? SCRAN_CURSOR_TOOLTIP_FLIP_UI
+            : SCRAN_CURSOR_TOOLTIP_NONE;
+
+        if (output->cursor.tooltip != tooltip) {
+            cursor_set_tooltip(output, tooltip);
         }
     }
 
