@@ -168,33 +168,6 @@ geometry_to_surface_rect_px(
 }
 
 static void
-clear_old_ui_item(
-    struct scran_output_selectionSurface *selection_surface,
-    struct scran_output_selectionSurface_buffer *st_buffer,
-    const struct selection_border *border,
-    const struct ui_item_geometry *geometry
-) {
-    const BLRectI text_rect = geometry_to_surface_rect_px(selection_surface, geometry);
-    if (text_rect.w <= 0 || text_rect.h <= 0) {
-        return;
-    }
-
-    bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
-    bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, UI_COLOR_BG_DIM);
-
-    // Do not overwrite the current transparent capture area or its border.
-    // Background/border drawing has already updated any old text pixels there.
-    BLRectI uncovered[4];
-    blboxi_get_difference_as_4_rects(blrecti_to_blboxi(text_rect), border->outer, uncovered);
-    for (size_t i = 0; i < ARRAY_LENGTH(uncovered); ++i) {
-        if (uncovered[i].w > 0 && uncovered[i].h > 0) {
-            bl_context_fill_rect_i(&st_buffer->bl_ctx, &uncovered[i]);
-        }
-    }
-
-}
-
-static void
 damage_ui_item(
     struct scran_output_selectionSurface *selection_surface,
     const struct ui_item_geometry *geometry
@@ -787,8 +760,28 @@ draw_and_damage_ui(
     if (!st_buffer->force_redraw) {
         for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
             const struct ui_item_render_plan *item = &render_plan[i];
-            if (item->redraw_buffer) {
-                clear_old_ui_item(selection_surface, st_buffer, &borders->desired, item->buffer_geometry);
+            if (!item->redraw_buffer) {
+                continue;
+            }
+
+            const BLRectI text_rect = geometry_to_surface_rect_px(selection_surface, item->buffer_geometry);
+            if (text_rect.w <= 0 || text_rect.h <= 0) {
+                continue;
+            }
+
+            // Do not overwrite the current transparent capture area or its border.
+            // Background/border drawing has already updated any old text pixels there.
+            BLRectI outsides[4];
+            blboxi_get_difference_as_4_rects(blrecti_to_blboxi(text_rect), borders->desired.outer, outsides);
+            bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
+            bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, UI_COLOR_BG_DIM);
+
+            for (size_t i_outside = 0; i_outside < ARRAY_LENGTH(outsides); ++i_outside) {
+                const BLRectI *outside = &outsides[i_outside];
+
+                if (outside->w > 0 && outside->h > 0) {
+                    bl_context_fill_rect_i(&st_buffer->bl_ctx, outside);
+                }
             }
         }
     }
