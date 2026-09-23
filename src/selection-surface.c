@@ -178,14 +178,14 @@ damage_ui_item(
     }
 }
 
-enum scran_horizontal_alignment {
-    SCRAN_ALIGN_LEFT,
-    SCRAN_ALIGN_RIGHT,
+enum ui_alignment {
+    UI_ALIGN_LEFT,
+    UI_ALIGN_RIGHT,
 };
 
-enum scran_vertical_placement {
-    SCRAN_PLACE_ABOVE,
-    SCRAN_PLACE_BELOW,
+enum ui_placement {
+    UI_ABOVE_SELECTION,
+    UI_BELOW_SELECTION,
 };
 
 // Returned geometry contains the text pen origin. The ink can begin to its
@@ -196,12 +196,12 @@ get_ui_item_geometry(
     int surface_width_px,
     const struct atlas_text_metrics *textline_metrics,
     int height_px,
-    enum scran_horizontal_alignment alignment,
-    enum scran_vertical_placement placement
+    enum ui_alignment alignment,
+    enum ui_placement placement
 ) {
     const int line_advance_px = atlas_metrics_advance_x_px(textline_metrics);
 
-    int origin_x = alignment == SCRAN_ALIGN_LEFT
+    int origin_x = alignment == UI_ALIGN_LEFT
         ? border->inner.x0
         : border->inner.x1 - line_advance_px;
 
@@ -211,7 +211,7 @@ get_ui_item_geometry(
     const int right_edge_limit_x = MAX(surface_width_px - line_advance_px, 0);
     origin_x = MIN(origin_x, right_edge_limit_x);
 
-    const int origin_y = placement == SCRAN_PLACE_ABOVE
+    const int origin_y = placement == UI_ABOVE_SELECTION
         ? border->outer.y0 - height_px
         : border->outer.y1;
 
@@ -471,8 +471,8 @@ make_greeting_description(
             output->selection_surface.surface.width_px_buffer,
             &metrics,
             item_height_px,
-            SCRAN_ALIGN_LEFT,
-            SCRAN_PLACE_ABOVE
+            UI_ALIGN_LEFT,
+            UI_ABOVE_SELECTION
         );
         description->geometry.pen_origin.y -= item_height_px;
     }
@@ -562,8 +562,8 @@ make_keymap_description(
         output->selection_surface.surface.width_px_buffer,
         &metrics,
         atlas_font_height_px(&output->selection_surface.atlas),
-        SCRAN_ALIGN_LEFT,
-        SCRAN_PLACE_BELOW
+        UI_ALIGN_LEFT,
+        UI_BELOW_SELECTION
     );
 
     *description = (struct ui_keymap_description){
@@ -656,8 +656,8 @@ make_statusline_description(
         output->selection_surface.surface.width_px_buffer,
         &metrics,
         atlas_font_height_px(&output->selection_surface.atlas),
-        SCRAN_ALIGN_RIGHT,
-        SCRAN_PLACE_ABOVE
+        UI_ALIGN_RIGHT,
+        UI_ABOVE_SELECTION
     );
 
     *description = (struct ui_statusline_description){
@@ -703,6 +703,7 @@ draw_and_damage_ui(
         const struct ui_item_geometry *committed_geometry;
         const struct ui_item_geometry *new_geometry;
         const struct atlas_blit_data *blit_data;
+        enum ui_placement placement;
         size_t n_blit_items;
     };
 
@@ -798,7 +799,7 @@ draw_and_damage_ui(
         //     TODO: Vertical bbox metrics aren't actually implemented yet,
         //     at time of writing. When they are, this to_surface_rect function
         //     should be updated accordingly.
-        const BLRectI clip_rect = geometry_to_surface_rect_px(selection_surface, item->new_geometry);
+        BLRectI clip_rect = geometry_to_surface_rect_px(selection_surface, item->new_geometry);
         bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &clip_rect);
 
         const struct atlas_text_metrics _metrics = blit_ui_line(
