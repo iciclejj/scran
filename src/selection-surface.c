@@ -37,6 +37,12 @@ struct selection_border {
     BLBoxI outer;
 };
 
+struct selection_borders {
+    struct selection_border desired;
+    struct selection_border committed;
+    struct selection_border buffer;
+};
+
 // We trunc/ceil like this to make sure that fractionally scaled displays
 // will not be able to bleed our capture border into the captured frame,
 // not matter how they do their rounding/down-/upscaling.
@@ -708,13 +714,13 @@ draw_and_damage_ui(
     struct scran_output *output,
     struct scran_output_selectionSurface_buffer *st_buffer,
     BLBoxI selection,
-    const struct selection_border *border
+    const struct selection_borders *borders
 ) {
     struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
 
     struct ui_description new_ui;
     struct ui_render_data render_data;
-    make_ui_description(output, selection, border, capture_clock_gettime_nsec(), &new_ui, &render_data);
+    make_ui_description(output, selection, &borders->desired, capture_clock_gettime_nsec(), &new_ui, &render_data);
 
 
     struct ui_item_render_plan {
@@ -782,7 +788,7 @@ draw_and_damage_ui(
         for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
             const struct ui_item_render_plan *item = &render_plan[i];
             if (item->redraw_buffer) {
-                clear_old_ui_item(selection_surface, st_buffer, border, item->buffer_geometry);
+                clear_old_ui_item(selection_surface, st_buffer, &borders->desired, item->buffer_geometry);
             }
         }
     }
@@ -861,9 +867,11 @@ draw_selection_and_damage_buffer(
 
     const double scale = selection_surface->surface.final_scale_factor_normalized;
 
-    const struct selection_border desired_border   = get_selection_border(desired_selection, scale);
-    const struct selection_border committed_border = get_selection_border(committed_selection, scale);
-    const struct selection_border buffer_border    = get_selection_border(buffer_selection, scale);
+    const struct selection_borders borders = {
+        .desired   = get_selection_border(desired_selection, scale),
+        .committed = get_selection_border(committed_selection, scale),
+        .buffer    = get_selection_border(buffer_selection, scale),
+    };
 
     bool selection_changed =
         !blboxi_are_equal(desired_selection, st_buffer->box_currently_drawn)
@@ -884,11 +892,11 @@ draw_selection_and_damage_buffer(
             n_damage_regions = 1;
         } else {
             static const int i_background_diffs = 0;
-            blboxi_get_symmetric_difference_as_4_rects(committed_border.outer, desired_border.outer, damage_regions_wayland + i_background_diffs);
-            blboxi_get_symmetric_difference_as_4_rects(buffer_border.outer,    desired_border.outer, damage_regions_buffer  + i_background_diffs);
+            blboxi_get_symmetric_difference_as_4_rects(borders.committed.outer, borders.desired.outer, damage_regions_wayland + i_background_diffs);
+            blboxi_get_symmetric_difference_as_4_rects(borders.buffer.outer,    borders.desired.outer, damage_regions_buffer  + i_background_diffs);
             static const int i_old_border_diffs = 4;
-            blboxi_get_symmetric_difference_as_4_rects(committed_border.outer, committed_border.inner, damage_regions_wayland + i_old_border_diffs);
-            blboxi_get_symmetric_difference_as_4_rects(buffer_border.outer,    buffer_border.inner,    damage_regions_buffer  + i_old_border_diffs);
+            blboxi_get_symmetric_difference_as_4_rects(borders.committed.outer, borders.committed.inner, damage_regions_wayland + i_old_border_diffs);
+            blboxi_get_symmetric_difference_as_4_rects(borders.buffer.outer,    borders.buffer.inner,    damage_regions_buffer  + i_old_border_diffs);
             n_damage_regions = 8;
         }
 
@@ -896,7 +904,7 @@ draw_selection_and_damage_buffer(
             output,
             st_buffer,
             &surface_bounds,
-            &desired_border,
+            &borders.desired,
             damage_regions_wayland,
             damage_regions_buffer,
             n_damage_regions
@@ -905,7 +913,7 @@ draw_selection_and_damage_buffer(
 
     if (g_state.options.hide_ui_level < SCRAN_OPT_HIDE_UI_ITEMS) {
         // UI items must be drawn after/on top of the background.
-        draw_and_damage_ui(output, st_buffer, desired_selection, &desired_border);
+        draw_and_damage_ui(output, st_buffer, desired_selection, &borders);
     }
 
     // Draw selection border
@@ -914,12 +922,12 @@ draw_selection_and_damage_buffer(
             st_buffer->box_currently_drawn = desired_selection;
         } else {
             BLRectI damage_regions[4];
-            blboxi_get_symmetric_difference_as_4_rects(desired_border.outer, desired_border.inner, damage_regions);
+            blboxi_get_symmetric_difference_as_4_rects(borders.desired.outer, borders.desired.inner, damage_regions);
             draw_and_damage_selection_border(
                 selection_surface,
                 st_buffer,
                 desired_selection,
-                &desired_border,
+                &borders.desired,
                 damage_regions,
                 damage_regions,
                 4
