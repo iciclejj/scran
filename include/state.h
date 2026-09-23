@@ -158,6 +158,11 @@ struct scran_output_surface {
     struct wp_viewport *viewport;
 };
 
+enum ui_placement {
+    UI_ABOVE_SELECTION,
+    UI_BELOW_SELECTION,
+} SCRAN_PACKED;
+
 enum ui_greeting_item_index {
     UI_GREETING_ITEM_GREETING,
     UI_GREETING_N_ITEMS,
@@ -180,6 +185,7 @@ enum ui_statusline_item_index {
 struct ui_item_geometry {
     BLPointI pen_origin;
     struct atlas_text_metrics text_metrics;
+    enum ui_placement placement;
 };
 
 struct ui_description {

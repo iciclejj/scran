@@ -183,11 +183,6 @@ enum ui_alignment {
     UI_ALIGN_RIGHT,
 };
 
-enum ui_placement {
-    UI_ABOVE_SELECTION,
-    UI_BELOW_SELECTION,
-};
-
 // Returned geometry contains the text pen origin. The ink can begin to its
 // left when the first glyph has a negative left-side bearing.
 static struct ui_item_geometry
@@ -218,6 +213,7 @@ get_ui_item_geometry(
     return (struct ui_item_geometry) {
         .pen_origin = { origin_x, origin_y },
         .text_metrics = *textline_metrics,
+        .placement = placement,
     };
 }
 
@@ -228,7 +224,8 @@ ui_item_geometry_equal(
 ) {
     return
         blpointi_are_equal(a->pen_origin, b->pen_origin)
-        && atlas_metrics_equal(&a->text_metrics, &b->text_metrics);
+        && atlas_metrics_equal(&a->text_metrics, &b->text_metrics)
+        && a->placement == b->placement;
 }
 
 static struct atlas_text_metrics
@@ -794,13 +791,26 @@ draw_and_damage_ui(
             continue;
         }
 
-        // We must control the bounds ourselves so we can prevent text from
-        // appearing inside the capture area.
-        //     TODO: Vertical bbox metrics aren't actually implemented yet,
-        //     at time of writing. When they are, this to_surface_rect function
-        //     should be updated accordingly.
-        BLRectI clip_rect = geometry_to_surface_rect_px(selection_surface, item->new_geometry);
-        bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &clip_rect);
+        // Note: All clipping in the redraw loop is currently mainly a defensive
+        // measure against bugs.
+        //
+        // Clip to the same bounds as we clear and damage
+        BLRectI clip = geometry_to_surface_rect_px(selection_surface, item->new_geometry);
+
+        // Further clamp the clip's Y-axis to stay outside the border
+        const int clip_y1 = clip.y + clip.h;
+        switch (item->new_geometry->placement) {
+        case UI_ABOVE_SELECTION:
+            clip.h = MIN(clip_y1, borders->desired.outer.y0) - clip.y;
+            break;
+        case UI_BELOW_SELECTION:
+            clip.y = MAX(clip.y, borders->desired.outer.y1);
+            clip.h = clip_y1 - clip.y;
+            break;
+        }
+        clip.h = MAX(clip.h, 0);
+
+        bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &clip);
 
         const struct atlas_text_metrics _metrics = blit_ui_line(
             &selection_surface->atlas,
