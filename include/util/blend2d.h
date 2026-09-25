@@ -95,6 +95,11 @@ blboxi_is_empty(BLBoxI box) {
 }
 
 static inline bool
+blrecti_is_inverted_or_empty(BLRectI rect) {
+    return rect.w <= 0 || rect.h <= 0;
+}
+
+static inline bool
 blboxi_is_inverted_or_empty(BLBoxI box) {
     return box.x1 <= box.x0 || box.y1 <= box.y0;
 }
@@ -284,6 +289,16 @@ blboxi_to_blrecti(BLBoxI box) {
         box.y0,
         blboxi_width(box),
         blboxi_height(box),
+    };
+}
+
+static inline BLRectI
+blrecti_get_inflated(struct BLRectI box, int inflation) {
+    return (BLRectI) {
+        box.x - inflation,
+        box.y - inflation,
+        box.w + 2 * inflation,
+        box.h + 2 * inflation,
     };
 }
 

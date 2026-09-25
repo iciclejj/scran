@@ -43,6 +43,47 @@ struct selection_borders {
     struct selection_border buffer;
 };
 
+static void
+blpath_add_box_difference(
+    BLPathCore *bl_path,
+    BLBoxI box,
+    BLBoxI excluded
+) {
+    BLRectI outsides[4];
+    blboxi_get_difference_as_4_rects(box, excluded, outsides);
+
+    for (size_t i_outside = 0; i_outside < ARRAY_LENGTH(outsides); ++i_outside) {
+        const BLRectI *outside = &outsides[i_outside];
+
+        if (outside->w > 0 && outside->h > 0) {
+            bl_path_add_rect_i(bl_path, outside, BL_GEOMETRY_DIRECTION_NONE);
+        }
+    }
+}
+
+static inline int
+ui_item_backplate_padding_px(const struct scran_output_selectionSurface *selection_surface) {
+    return lround(0.2 * atlas_font_height_px(&selection_surface->atlas));
+}
+
+static inline int
+ui_item_width_px(
+    const struct scran_output_selectionSurface *selection_surface,
+    const struct atlas_text_metrics *textline_metrics
+) {
+    return
+        atlas_metrics_advance_x_px(textline_metrics)
+        + 2 * ui_item_backplate_padding_px(selection_surface);
+}
+
+static inline int
+ui_item_height_px(const struct scran_output_selectionSurface *selection_surface) {
+    assert(atlas_font_height_px(&selection_surface->atlas));
+    return
+        atlas_font_height_px(&selection_surface->atlas)
+        + 2 * ui_item_backplate_padding_px(selection_surface);
+}
+
 // We trunc/ceil like this to make sure that fractionally scaled displays
 // will not be able to bleed our capture border into the captured frame,
 // not matter how they do their rounding/down-/upscaling.
@@ -153,9 +194,8 @@ draw_and_damage_background(
     bl_path_clear(&selection_surface->bl_path);
 }
 
-
 static inline BLRectI
-geometry_to_surface_rect_px(
+geometry_to_surface_text_rect_px(
     const struct scran_output_selectionSurface *selection_surface,
     const struct ui_item_geometry *geometry
 ) {
@@ -167,14 +207,59 @@ geometry_to_surface_rect_px(
     };
 }
 
+static inline BLRectI
+geometry_to_surface_backplate_rect_px(
+    const struct scran_output_selectionSurface *selection_surface,
+    const struct ui_item_geometry *geometry,
+    const struct BLRectI *text_rect
+) {
+    if (blrecti_is_inverted_or_empty(*text_rect)) {
+        return (BLRectI){0};
+    }
+
+    return blrecti_get_inflated(
+        (BLRectI){
+            .x = geometry->pen_origin.x,
+            .y = geometry->pen_origin.y,
+            .w = atlas_metrics_advance_x_px(&geometry->text_metrics),
+            .h = atlas_font_height_px(&selection_surface->atlas),
+        },
+        ui_item_backplate_padding_px(selection_surface)
+    );
+}
+
+static inline BLRoundRect
+geometry_to_surface_backplate_round_rect_px(
+    const struct scran_output_selectionSurface *selection_surface,
+    const struct ui_item_geometry *geometry,
+    const struct BLRectI *text_rect
+) {
+    const BLRectI backplate_rect = geometry_to_surface_backplate_rect_px(selection_surface, geometry, text_rect);
+    const double r = 0.22 * ui_item_height_px(selection_surface);
+    return (BLRoundRect){
+        .x = backplate_rect.x,
+        .y = backplate_rect.y,
+        .w = backplate_rect.w,
+        .h = backplate_rect.h,
+        .rx = r,
+        .ry = r,
+    };
+}
+
 static void
 damage_ui_item(
     struct scran_output_selectionSurface *selection_surface,
     const struct ui_item_geometry *geometry
 ) {
-    const BLRectI rect = geometry_to_surface_rect_px(selection_surface, geometry);
-    if (rect.w > 0 && rect.h > 0) {
-        wl_surface_damage_buffer(selection_surface->surface.wl_surface, rect.x, rect.y, rect.w, rect.h);
+    const BLRectI text      = geometry_to_surface_text_rect_px(selection_surface, geometry);
+    const BLRectI backplate = geometry_to_surface_backplate_rect_px(selection_surface, geometry, &text);
+
+    if (backplate.w > 0 && backplate.h > 0) {
+        wl_surface_damage_buffer(selection_surface->surface.wl_surface, backplate.x, backplate.y, backplate.w, backplate.h);
+    }
+
+    if (text.w > 0 && text.h > 0) {
+        wl_surface_damage_buffer(selection_surface->surface.wl_surface, text.x, text.y, text.w, text.h);
     }
 }
 
@@ -184,48 +269,44 @@ enum ui_alignment {
 };
 
 static inline int
-fit_ui_origin_x(
-    int preferred_x,
-    int surface_width_px,
-    const struct atlas_text_metrics *textline_metrics
-) {
+rect_x_best_fit(int preferred_x, int rect_width, int container_width) {
     // Don't let it clip on the right...
-    const int rightmost_origin_x = MAX(
-        surface_width_px - atlas_metrics_advance_x_px(textline_metrics),
-        0
-    );
+    int no_right_clip_x = MIN(preferred_x, container_width - rect_width);
     // ...but stop before clipping on the left
-    return MIN(preferred_x, rightmost_origin_x);
+    return MAX(no_right_clip_x, 0);
 }
 
 // Returned geometry contains the text pen origin. The ink can begin to its
 // left when the first glyph has a negative left-side bearing.
 static struct ui_item_geometry
 get_ui_item_geometry(
+    const struct scran_output_selectionSurface *selection_surface,
     const struct selection_border *border,
-    int surface_width_px,
     const struct atlas_text_metrics *textline_metrics,
-    int height_px,
     enum ui_alignment alignment,
     enum ui_placement placement
 ) {
-    const int line_advance_px = atlas_metrics_advance_x_px(textline_metrics);
+    const int padding       = ui_item_backplate_padding_px(selection_surface);
+    const int height        = ui_item_height_px(selection_surface);
+    const int width         = ui_item_width_px(selection_surface, textline_metrics);
+    const int surface_width = selection_surface->surface.width_px_buffer;
 
-    int origin_x = alignment == UI_ALIGN_LEFT
-        ? border->inner.x0
-        : border->inner.x1 - line_advance_px;
+    // Ideal placement:
+    BLPointI origin = {
+        .x = alignment == UI_ALIGN_LEFT      ? border->outer.x0          : border->outer.x1 - width,
+        .y = placement == UI_ABOVE_SELECTION ? border->outer.y0 - height : border->outer.y1,
+    };
 
     // Do not start left of the selection...
-    origin_x = MAX(origin_x, border->inner.x0);
+    origin.x = MAX(origin.x, border->outer.x0);
     // ...unless it would help minimize clipping
-    origin_x = fit_ui_origin_x(origin_x, surface_width_px, textline_metrics);
-
-    const int origin_y = placement == UI_ABOVE_SELECTION
-        ? border->outer.y0 - height_px
-        : border->outer.y1;
+    origin.x = rect_x_best_fit(origin.x, width, surface_width);
 
     return (struct ui_item_geometry) {
-        .pen_origin = { origin_x, origin_y },
+        .pen_origin = (BLPointI){
+            .x = origin.x + padding,
+            .y = origin.y + padding,
+        },
         .text_metrics = *textline_metrics,
         .placement = placement,
     };
@@ -471,17 +552,14 @@ make_greeting_description(
         .color = UI_COLOR_TEXT_DEFAULT,
     };
 
-    const int item_height_px = atlas_font_height_px(&output->selection_surface.atlas);
-
     if (content.visible) {
         const struct atlas_text_metrics metrics = measure_ui_line(
             &output->selection_surface.atlas, render_data->greeting, ARRAY_LENGTH(render_data->greeting)
         );
         description->geometry = get_ui_item_geometry(
+            &output->selection_surface,
             border,
-            output->selection_surface.surface.width_px_buffer,
             &metrics,
-            item_height_px,
             UI_ALIGN_LEFT,
             UI_ABOVE_SELECTION
         );
@@ -568,10 +646,9 @@ make_keymap_description(
 
     const struct atlas_text_metrics metrics = measure_ui_line(&output->selection_surface.atlas, content.blit_data, ARRAY_LENGTH(content.blit_data));
     const struct ui_item_geometry geometry = get_ui_item_geometry(
+        &output->selection_surface,
         border,
-        output->selection_surface.surface.width_px_buffer,
         &metrics,
-        atlas_font_height_px(&output->selection_surface.atlas),
         UI_ALIGN_LEFT,
         UI_BELOW_SELECTION
     );
@@ -662,10 +739,9 @@ make_statusline_description(
     const struct atlas_text_metrics metrics = measure_ui_line(&output->selection_surface.atlas, render_data->statusline, ARRAY_LENGTH(render_data->statusline));
 
     const struct ui_item_geometry geometry = get_ui_item_geometry(
+        &output->selection_surface,
         border,
-        output->selection_surface.surface.width_px_buffer,
         &metrics,
-        atlas_font_height_px(&output->selection_surface.atlas),
         UI_ALIGN_RIGHT,
         UI_ABOVE_SELECTION
     );
@@ -682,6 +758,8 @@ position_pre_selection_ui(
     struct ui_description *description
 ) {
     const int font_height_px = atlas_font_height_px(&selection_surface->atlas);
+    const int item_padding_px = ui_item_backplate_padding_px(selection_surface);
+    const int item_height_px = ui_item_height_px(selection_surface);
     const int surface_margin_px = round(font_height_px * 0.5);
     const int row_gap_px = 2 * SCRAN_SELECTION_BORDER_THICKNESS_PX;
     const int surface_width_px = selection_surface->surface.width_px_buffer;
@@ -692,14 +770,16 @@ position_pre_selection_ui(
         &description->keymap.geometry,
     };
 
-    int row_y = surface_margin_px;
+    int row_y = surface_margin_px + item_padding_px;
 
     for (size_t i = 0; i < ARRAY_LENGTH(rows); ++i) {
+        const int item_width_px = ui_item_width_px(selection_surface, &rows[i]->text_metrics);
+
         rows[i]->pen_origin = (BLPointI){
-            .x = fit_ui_origin_x(surface_margin_px, surface_width_px, &rows[i]->text_metrics),
+            .x = item_padding_px + rect_x_best_fit(surface_margin_px, item_width_px, surface_width_px),
             .y = row_y,
         };
-        row_y += font_height_px + row_gap_px;
+        row_y += item_height_px + row_gap_px;
     }
 }
 
@@ -721,6 +801,27 @@ make_ui_description(
     if (selection_is_none(&output->selection_ctx)) {
         position_pre_selection_ui(&output->selection_surface, description);
     }
+}
+
+// Clamp the clip's Y-axis to stay outside the border.
+static inline BLRectI
+clamp_clip_y_outside_border(
+    BLRectI clip,
+    enum ui_placement placement,
+    const struct selection_border *border
+) {
+    const int clip_y1 = clip.y + clip.h;
+    switch (placement) {
+    case UI_ABOVE_SELECTION:
+        clip.h = MIN(clip_y1, border->outer.y0) - clip.y;
+        break;
+    case UI_BELOW_SELECTION:
+        clip.y = MAX(clip.y, border->outer.y1);
+        clip.h = clip_y1 - clip.y;
+        break;
+    }
+    clip.h = MAX(clip.h, 0);
+    return clip;
 }
 
 static void
@@ -806,33 +907,88 @@ draw_and_damage_ui(
                 continue;
             }
 
-            const BLRectI text_rect = geometry_to_surface_rect_px(selection_surface, item->buffer_geometry);
-            if (text_rect.w <= 0 || text_rect.h <= 0) {
-                continue;
-            }
-
-            bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
-            bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, UI_COLOR_BG_DIM);
+            const BLRectI text = geometry_to_surface_text_rect_px(selection_surface, item->buffer_geometry);
+            const BLRectI backplate = geometry_to_surface_backplate_rect_px(selection_surface, item->buffer_geometry, &text);
 
             if (selection_is_none(&output->selection_ctx)) {
-                bl_context_fill_rect_i(&st_buffer->bl_ctx, &text_rect);
+                if (backplate.w > 0 && backplate.h > 0) {
+                    bl_path_add_rect_i(&selection_surface->bl_path, &backplate, BL_GEOMETRY_DIRECTION_NONE);
+                }
+                if (text.w > 0 && text.h > 0) {
+                    bl_path_add_rect_i(&selection_surface->bl_path, &text, BL_GEOMETRY_DIRECTION_NONE);
+                }
             } else {
-                // Do not overwrite the current transparent capture area or its border.
-                // Background/border drawing has already updated any old text pixels there.
-                BLRectI outsides[4];
-                blboxi_get_difference_as_4_rects(
-                    blrecti_to_blboxi(text_rect), borders->desired.outer, outsides
-                );
-
-                for (size_t i_outside = 0; i_outside < ARRAY_LENGTH(outsides); ++i_outside) {
-                    const BLRectI *outside = &outsides[i_outside];
-
-                    if (outside->w > 0 && outside->h > 0) {
-                        bl_context_fill_rect_i(&st_buffer->bl_ctx, outside);
-                    }
+                // Add only the portions outside the current transparent capture area and its border,
+                // since background/border drawing has already updated any old pixels there.
+                if (backplate.w > 0 && backplate.h > 0) {
+                    blpath_add_box_difference(
+                        &selection_surface->bl_path,
+                        blrecti_to_blboxi(backplate),
+                        borders->desired.outer
+                    );
+                }
+                if (text.w > 0 && text.h > 0) {
+                    blpath_add_box_difference(
+                        &selection_surface->bl_path,
+                        blrecti_to_blboxi(text),
+                        borders->desired.outer
+                    );
                 }
             }
         }
+
+        bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
+        bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_NON_ZERO);
+        bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, UI_COLOR_BG_DIM);
+        bl_context_fill_path_d(&st_buffer->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, &selection_surface->bl_path);
+
+        bl_path_clear(&selection_surface->bl_path);
+    }
+
+    // Draw backplates
+    bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_OVER);
+    bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_NON_ZERO);
+    bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, UI_COLOR_BACKPLATE);
+
+    for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
+        const struct ui_item_render_plan *item = &render_plan[i];
+        if (!item->redraw_buffer) {
+            continue;
+        }
+
+        // TODO: Separate backplate for each item within a line "item"
+        //         (Must manually construct the bl_path for the rounded edge-items)
+        const BLRectI text = geometry_to_surface_text_rect_px(selection_surface, item->new_geometry);
+        const BLRoundRect backplate =
+                geometry_to_surface_backplate_round_rect_px(selection_surface, item->new_geometry, &text);
+
+        // Note: All clipping in the redraw loop is currently mainly a defensive
+        // measure against bugs.
+        //
+        // Clip to the same bounds as we clear and damage
+        BLRectI clip = {
+            .x = backplate.x,
+            .y = backplate.y,
+            .w = ceil(backplate.w),
+            .h = ceil(backplate.h),
+        };
+
+        if (!selection_is_none(&output->selection_ctx)) {
+            clip = clamp_clip_y_outside_border(clip, item->new_geometry->placement, &borders->desired);
+        }
+
+        bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &clip);
+        bl_path_add_geometry(
+            &selection_surface->bl_path,
+            BL_GEOMETRY_TYPE_ROUND_RECT,
+            &backplate,
+            NULL,
+            BL_GEOMETRY_DIRECTION_NONE
+        );
+        bl_context_fill_path_d(&st_buffer->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, &selection_surface->bl_path);
+
+        bl_path_clear(&selection_surface->bl_path);
+        bl_context_restore_clipping(&st_buffer->bl_ctx);
     }
 
     // Redraw buffer contents
@@ -846,21 +1002,10 @@ draw_and_damage_ui(
         // measure against bugs.
         //
         // Clip to the same bounds as we clear and damage
-        BLRectI clip = geometry_to_surface_rect_px(selection_surface, item->new_geometry);
+        BLRectI clip = geometry_to_surface_text_rect_px(selection_surface, item->new_geometry);
 
         if (!selection_is_none(&output->selection_ctx)) {
-            // Further clamp the clip's Y-axis to stay outside the border.
-            const int clip_y1 = clip.y + clip.h;
-            switch (item->new_geometry->placement) {
-            case UI_ABOVE_SELECTION:
-                clip.h = MIN(clip_y1, borders->desired.outer.y0) - clip.y;
-                break;
-            case UI_BELOW_SELECTION:
-                clip.y = MAX(clip.y, borders->desired.outer.y1);
-                clip.h = clip_y1 - clip.y;
-                break;
-            }
-            clip.h = MAX(clip.h, 0);
+            clip = clamp_clip_y_outside_border(clip, item->new_geometry->placement, &borders->desired);
         }
 
         bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &clip);
