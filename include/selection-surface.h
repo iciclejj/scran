@@ -38,21 +38,4 @@ selection_surface_set_border_color(struct scran_output *output, uint32_t color) 
     set_force_redraw_selection_surface_buffers(output);
 }
 
-static inline BLBoxI
-get_selection_surface_pre_selection_box(struct scran_output *output) {
-    int font_height_px = atlas_font_height_px(&output->selection_surface.atlas);
-    assert(font_height_px);
-
-    int margin_px = round(font_height_px * 0.5) + SCRAN_SELECTION_BORDER_THICKNESS_PX;
-
-    // Show all of the UI in the top left corner, including splash/greeting line
-    return (BLBoxI){
-        .x0 = margin_px + 0,
-        .y0 = margin_px + 2 * font_height_px,
-        .x1 = margin_px + 0,
-        .y1 = margin_px + 2 * font_height_px,
-    };
-}
-
-
 #endif

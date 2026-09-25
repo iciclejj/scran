@@ -142,7 +142,7 @@ draw_and_damage_background(
     bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_EVEN_ODD);
 
     bl_path_add_box_i(&selection_surface->bl_path, surface_bounds, BL_GEOMETRY_DIRECTION_NONE);
-    if (!on_greeting_screen(output)) { // TODO: likely()
+    if (!selection_is_none(&output->selection_ctx)) { // TODO: likely()
         bl_path_add_box_i(&selection_surface->bl_path, &border->outer, BL_GEOMETRY_DIRECTION_NONE);
     }
 
@@ -183,6 +183,21 @@ enum ui_alignment {
     UI_ALIGN_RIGHT,
 };
 
+static inline int
+fit_ui_origin_x(
+    int preferred_x,
+    int surface_width_px,
+    const struct atlas_text_metrics *textline_metrics
+) {
+    // Don't let it clip on the right...
+    const int rightmost_origin_x = MAX(
+        surface_width_px - atlas_metrics_advance_x_px(textline_metrics),
+        0
+    );
+    // ...but stop before clipping on the left
+    return MIN(preferred_x, rightmost_origin_x);
+}
+
 // Returned geometry contains the text pen origin. The ink can begin to its
 // left when the first glyph has a negative left-side bearing.
 static struct ui_item_geometry
@@ -202,9 +217,8 @@ get_ui_item_geometry(
 
     // Do not start left of the selection...
     origin_x = MAX(origin_x, border->inner.x0);
-    // ...unless it would clip on the right (but stop before clipping on the left)
-    const int right_edge_limit_x = MAX(surface_width_px - line_advance_px, 0);
-    origin_x = MIN(origin_x, right_edge_limit_x);
+    // ...unless it would help minimize clipping
+    origin_x = fit_ui_origin_x(origin_x, surface_width_px, textline_metrics);
 
     const int origin_y = placement == UI_ABOVE_SELECTION
         ? border->outer.y0 - height_px
@@ -471,7 +485,6 @@ make_greeting_description(
             UI_ALIGN_LEFT,
             UI_ABOVE_SELECTION
         );
-        description->geometry.pen_origin.y -= item_height_px;
     }
 }
 
@@ -664,6 +677,33 @@ make_statusline_description(
 }
 
 static void
+position_pre_selection_ui(
+    const struct scran_output_selectionSurface *selection_surface,
+    struct ui_description *description
+) {
+    const int font_height_px = atlas_font_height_px(&selection_surface->atlas);
+    const int surface_margin_px = round(font_height_px * 0.5);
+    const int row_gap_px = 2 * SCRAN_SELECTION_BORDER_THICKNESS_PX;
+    const int surface_width_px = selection_surface->surface.width_px_buffer;
+
+    struct ui_item_geometry *rows[] = {
+        &description->greeting.geometry,
+        &description->statusline.geometry,
+        &description->keymap.geometry,
+    };
+
+    int row_y = surface_margin_px;
+
+    for (size_t i = 0; i < ARRAY_LENGTH(rows); ++i) {
+        rows[i]->pen_origin = (BLPointI){
+            .x = fit_ui_origin_x(surface_margin_px, surface_width_px, &rows[i]->text_metrics),
+            .y = row_y,
+        };
+        row_y += font_height_px + row_gap_px;
+    }
+}
+
+static void
 make_ui_description(
     struct scran_output *output,
     BLBoxI selection,
@@ -677,6 +717,10 @@ make_ui_description(
     make_statusline_description(
         output, selection, border, now_ns, &description->statusline, render_data
     );
+
+    if (selection_is_none(&output->selection_ctx)) {
+        position_pre_selection_ui(&output->selection_surface, description);
+    }
 }
 
 static void
@@ -767,18 +811,25 @@ draw_and_damage_ui(
                 continue;
             }
 
-            // Do not overwrite the current transparent capture area or its border.
-            // Background/border drawing has already updated any old text pixels there.
-            BLRectI outsides[4];
-            blboxi_get_difference_as_4_rects(blrecti_to_blboxi(text_rect), borders->desired.outer, outsides);
             bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
             bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, UI_COLOR_BG_DIM);
 
-            for (size_t i_outside = 0; i_outside < ARRAY_LENGTH(outsides); ++i_outside) {
-                const BLRectI *outside = &outsides[i_outside];
+            if (selection_is_none(&output->selection_ctx)) {
+                bl_context_fill_rect_i(&st_buffer->bl_ctx, &text_rect);
+            } else {
+                // Do not overwrite the current transparent capture area or its border.
+                // Background/border drawing has already updated any old text pixels there.
+                BLRectI outsides[4];
+                blboxi_get_difference_as_4_rects(
+                    blrecti_to_blboxi(text_rect), borders->desired.outer, outsides
+                );
 
-                if (outside->w > 0 && outside->h > 0) {
-                    bl_context_fill_rect_i(&st_buffer->bl_ctx, outside);
+                for (size_t i_outside = 0; i_outside < ARRAY_LENGTH(outsides); ++i_outside) {
+                    const BLRectI *outside = &outsides[i_outside];
+
+                    if (outside->w > 0 && outside->h > 0) {
+                        bl_context_fill_rect_i(&st_buffer->bl_ctx, outside);
+                    }
                 }
             }
         }
@@ -797,18 +848,20 @@ draw_and_damage_ui(
         // Clip to the same bounds as we clear and damage
         BLRectI clip = geometry_to_surface_rect_px(selection_surface, item->new_geometry);
 
-        // Further clamp the clip's Y-axis to stay outside the border
-        const int clip_y1 = clip.y + clip.h;
-        switch (item->new_geometry->placement) {
-        case UI_ABOVE_SELECTION:
-            clip.h = MIN(clip_y1, borders->desired.outer.y0) - clip.y;
-            break;
-        case UI_BELOW_SELECTION:
-            clip.y = MAX(clip.y, borders->desired.outer.y1);
-            clip.h = clip_y1 - clip.y;
-            break;
+        if (!selection_is_none(&output->selection_ctx)) {
+            // Further clamp the clip's Y-axis to stay outside the border.
+            const int clip_y1 = clip.y + clip.h;
+            switch (item->new_geometry->placement) {
+            case UI_ABOVE_SELECTION:
+                clip.h = MIN(clip_y1, borders->desired.outer.y0) - clip.y;
+                break;
+            case UI_BELOW_SELECTION:
+                clip.y = MAX(clip.y, borders->desired.outer.y1);
+                clip.h = clip_y1 - clip.y;
+                break;
+            }
+            clip.h = MAX(clip.h, 0);
         }
-        clip.h = MAX(clip.h, 0);
 
         bl_context_clip_to_rect_i(&st_buffer->bl_ctx, &clip);
 
@@ -922,7 +975,7 @@ draw_selection_and_damage_buffer(
 
     // Draw selection border
     if (selection_changed || st_buffer->force_redraw) {
-        if (on_greeting_screen(output)) { // TODO: unlikely()
+        if (selection_is_none(&output->selection_ctx)) { // TODO: unlikely()
             st_buffer->box_currently_drawn = desired_selection;
         } else {
             BLRectI damage_regions[4];
@@ -995,7 +1048,10 @@ init_selection_surface_content(struct scran_output *output)
     const bool no_initial_selection = blboxi_are_equal(initial_box, SCRAN_INITIAL_SELECTION_NONE);
 
     if (no_initial_selection) {
-        initial_box = get_selection_surface_pre_selection_box(output);
+        // Normalize it to a zeroed empty box.
+        //   (Technically not necessary, since relevant places should be guarded
+        //   with a selection_state==SELECTION_NONE check.)
+        initial_box = (BLBoxI){0};
         selection_set_box_px(&output->selection_ctx, initial_box);
         // Alpha channel must not be ignored for inivisibility.
         assert(SURFACE_SHM_FORMAT_BL == BL_FORMAT_PRGB32);
