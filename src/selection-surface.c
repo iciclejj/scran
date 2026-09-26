@@ -624,12 +624,16 @@ collect_keymap_content(
         [UI_KEYMAP_ITEM_FREEZEFRAME] = g_state.seat.keyboard.pressed_keys.freezeframe,
     };
 
-    const bool dim_all_items = !surface_focused;
-    const float color_multiplier = dim_all_items ? 0.64f : 0.80f;
-
     for (size_t i = 0; i < ARRAY_LENGTH(content.blit_data); ++i) {
-        if (dim_all_items || item_pressed[i]) {
-            content.blit_data[i].color = blrgba32_scale_channels(content.blit_data[i].color, color_multiplier);
+        if (!surface_focused) {
+            // HACK: We use a separate scaling for the unfocused red video button
+            // just to keep the contrast somewhat reasonable (still below 4.5:1).
+            // Would be better to do this in a more maintainable way.
+            const bool button_is_live_video = i == UI_KEYMAP_ITEM_VIDEO && video_is_live;
+            const float alpha_scale = button_is_live_video ? 0.80f : 0.60f;
+            content.blit_data[i].color = blrgba32_scale_alpha(content.blit_data[i].color, alpha_scale);
+        } else if (item_pressed[i]) {
+            content.blit_data[i].color = blrgba32_scale_rgb(content.blit_data[i].color, 0.85f);
         }
     }
 

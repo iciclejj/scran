@@ -135,7 +135,7 @@ blrgba32_pack(struct blrgba32_channels channels) {
 }
 
 static inline uint32_t
-blrgba32_scale_channels(uint32_t color, float scale) {
+blrgba32_scale_rgb(uint32_t color, float scale) {
     assert(scale >= 0.0f && scale <= 1.0f);
 
     struct blrgba32_channels channels = blrgba32_unpack(color);
@@ -143,8 +143,16 @@ blrgba32_scale_channels(uint32_t color, float scale) {
     channels.r = (uint8_t)(channels.r * scale);
     channels.g = (uint8_t)(channels.g * scale);
     channels.b = (uint8_t)(channels.b * scale);
-    channels.a = (uint8_t)(channels.a * scale);
 
+    return blrgba32_pack(channels);
+}
+
+static inline uint32_t
+blrgba32_scale_alpha(uint32_t color, float scale) {
+    assert(scale >= 0.0f && scale <= 1.0f);
+
+    struct blrgba32_channels channels = blrgba32_unpack(color);
+    channels.a = (uint8_t)(channels.a * scale);
     return blrgba32_pack(channels);
 }
 
