@@ -497,6 +497,12 @@ statusline_content_equal(const struct ui_statusline_content *a, const struct ui_
         && a->timer_seconds == b->timer_seconds;
 }
 
+static bool
+shared_content_equal(const struct ui_shared_content *a, const struct ui_shared_content *b) {
+    return
+        a->backplate_color == b->backplate_color;
+}
+
 static inline bool
 greeting_description_equal(const struct ui_greeting_description *a, const struct ui_greeting_description *b) {
     return
@@ -698,6 +704,18 @@ collect_statusline_content(
     };
 }
 
+static inline struct ui_shared_content
+collect_shared_content(const struct scran_output *output) {
+    const bool surface_focused = g_state.seat.active_selection_surface == &output->selection_surface;
+
+    return (struct ui_shared_content){
+        .backplate_color =
+            surface_focused
+            ? UI_COLOR_BACKPLATE
+            : UI_COLOR_BACKPLATE_UNFOCUSED
+    };
+}
+
 bool
 ui_contents_equal(
     struct scran_output *output,
@@ -709,11 +727,13 @@ ui_contents_equal(
     struct ui_statusline_content statusline_content = collect_statusline_content(output, *selection, now_ns);
     struct ui_keymap_content keymap_content = collect_keymap_content(output);
     struct ui_greeting_content greeting_content = collect_greeting_content(output);
+    struct ui_shared_content shared_content = collect_shared_content(output);
 
     return
         greeting_content_equal(&selection_surface->ui_last_committed.greeting.content, &greeting_content)
         && statusline_content_equal(&selection_surface->ui_last_committed.statusline.content, &statusline_content)
-        && keymap_content_equal(&selection_surface->ui_last_committed.keymap.content, &keymap_content);
+        && keymap_content_equal(&selection_surface->ui_last_committed.keymap.content, &keymap_content)
+        && shared_content_equal(&selection_surface->ui_last_committed.shared_content, &shared_content);
 }
 
 static void
@@ -798,9 +818,9 @@ make_ui_description(
 ) {
     make_greeting_description(output, border, &description->greeting, render_data);
     make_keymap_description(output, border, &description->keymap);
-    make_statusline_description(
-        output, selection, border, now_ns, &description->statusline, render_data
-    );
+    make_statusline_description(output, selection, border, now_ns, &description->statusline, render_data);
+
+    description->shared_content = collect_shared_content(output);
 
     if (selection_is_none(&output->selection_ctx)) {
         position_pre_selection_ui(&output->selection_surface, description);
@@ -853,11 +873,9 @@ draw_and_damage_ui(
         size_t n_blit_items;
     };
 
-    const struct ui_item_render_plan render_plan[] = {
+    struct ui_item_render_plan render_plan[] = {
         { // Greeting
-            .redraw_buffer =
-                st_buffer->force_redraw
-                || !greeting_description_equal(&st_buffer->ui.greeting, &new_ui.greeting),
+            .redraw_buffer = !greeting_description_equal(&st_buffer->ui.greeting, &new_ui.greeting),
             .damage_surface = !greeting_description_equal(
                 &selection_surface->ui_last_committed.greeting,
                 &new_ui.greeting
@@ -869,9 +887,7 @@ draw_and_damage_ui(
             .n_blit_items = ARRAY_LENGTH(render_data.greeting),
         },
         { // Status line
-            .redraw_buffer =
-                st_buffer->force_redraw
-                || !statusline_description_equal(&st_buffer->ui.statusline, &new_ui.statusline),
+            .redraw_buffer = !statusline_description_equal(&st_buffer->ui.statusline, &new_ui.statusline),
             .damage_surface = !statusline_description_equal(
                 &selection_surface->ui_last_committed.statusline,
                 &new_ui.statusline
@@ -883,9 +899,7 @@ draw_and_damage_ui(
             .n_blit_items = ARRAY_LENGTH(render_data.statusline),
         },
         { // Keymap
-            .redraw_buffer =
-                st_buffer->force_redraw
-                || !keymap_description_equal(&st_buffer->ui.keymap, &new_ui.keymap),
+            .redraw_buffer = !keymap_description_equal(&st_buffer->ui.keymap, &new_ui.keymap),
             .damage_surface = !keymap_description_equal(
                 &selection_surface->ui_last_committed.keymap,
                 &new_ui.keymap
@@ -897,6 +911,14 @@ draw_and_damage_ui(
             .n_blit_items = ARRAY_LENGTH(new_ui.keymap.content.blit_data),
         },
     };
+
+    for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
+        render_plan[i].redraw_buffer |=
+            st_buffer->force_redraw
+            | !shared_content_equal(&st_buffer->ui.shared_content, &new_ui.shared_content);
+        render_plan[i].damage_surface |=
+            !shared_content_equal(&selection_surface->ui_last_committed.shared_content, &new_ui.shared_content);
+    }
 
     // Clear previous items
     //   We clear all stale items before drawing any new items,
@@ -952,7 +974,7 @@ draw_and_damage_ui(
     // Draw backplates
     bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_OVER);
     bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_NON_ZERO);
-    bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, UI_COLOR_BACKPLATE);
+    bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, new_ui.shared_content.backplate_color);
 
     for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
         const struct ui_item_render_plan *item = &render_plan[i];

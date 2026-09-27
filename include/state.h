@@ -190,6 +190,10 @@ struct ui_item_geometry {
 
 struct ui_description {
 
+    struct ui_shared_content {
+        uint32_t backplate_color;
+    } shared_content;
+
     struct ui_greeting_description {
         struct ui_item_geometry geometry;
         struct ui_greeting_content {
