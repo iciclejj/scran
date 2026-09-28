@@ -5,6 +5,7 @@
 #include <wayland-client.h>
 #include <xkbcommon/xkbcommon.h>
 
+#include "cursor.h"
 #include "state.h"
 #include "state-util.h"
 #include "seat.h"
