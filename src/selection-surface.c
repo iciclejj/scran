@@ -974,7 +974,8 @@ draw_and_damage_ui(
     struct scran_output *output,
     struct scran_output_selectionSurface_buffer *st_buffer,
     BLBoxI selection,
-    const struct selection_borders *borders
+    const struct selection_borders *borders,
+    bool selection_redrawn
 ) {
     struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
 
@@ -1033,10 +1034,18 @@ draw_and_damage_ui(
         },
     };
 
+    // When the selection is updated and crosses through an inside-mode
+    // item, it needs to be redrawn, since the buffer was updated.
+    // HACK: This condition is overly broad, but leaving it like this until
+    // a larger refactor (e.g. merging the border/background's stages with
+    // the UI items' stages).
+    const bool selection_could_have_erased_item = st_buffer->ui.shared_content.ui_inside_selection && selection_redrawn;
+
     for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
         render_plan[i].redraw_buffer |=
             st_buffer->force_redraw
-            | !shared_content_equal(&st_buffer->ui.shared_content, &new_ui.shared_content);
+            | !shared_content_equal(&st_buffer->ui.shared_content, &new_ui.shared_content)
+            | selection_could_have_erased_item;
         render_plan[i].damage_surface |=
             !shared_content_equal(&selection_surface->ui_last_committed.shared_content, &new_ui.shared_content);
     }
@@ -1234,15 +1243,15 @@ draw_selection_and_damage_buffer(
         .buffer    = get_selection_border(buffer_selection, scale),
     };
 
-    bool selection_changed =
-        !blboxi_are_equal(desired_selection, st_buffer->box_currently_drawn)
-        || !blboxi_are_equal(desired_selection, selection_surface->committed_selection);
+    // See draw_and_damage_region() comment.
+    const bool buffer_selection_changed = st_buffer->force_redraw || !blboxi_are_equal(desired_selection, buffer_selection);
+    const bool surface_selection_changed = st_buffer->force_redraw || !blboxi_are_equal(desired_selection, committed_selection);
 
     // Draw background dim
-    if (selection_changed || st_buffer->force_redraw) {
+    if (buffer_selection_changed || surface_selection_changed) {
         int n_damage_regions;
-        BLRectI damage_regions_wayland[8];
-        BLRectI damage_regions_buffer[8];
+        BLRectI damage_regions_wayland[8] = {0};
+        BLRectI damage_regions_buffer[8] = {0};
 
         // TODO: Just do redraw/damage directly whenever we need to redraw, rather than
         // needing to branch within this function?
@@ -1253,11 +1262,15 @@ draw_selection_and_damage_buffer(
             n_damage_regions = 1;
         } else {
             static const int i_background_diffs = 0;
-            blboxi_get_symmetric_difference_as_4_rects(borders.committed.outer, borders.desired.outer, damage_regions_wayland + i_background_diffs);
-            blboxi_get_symmetric_difference_as_4_rects(borders.buffer.outer,    borders.desired.outer, damage_regions_buffer  + i_background_diffs);
             static const int i_old_border_diffs = 4;
-            blboxi_get_symmetric_difference_as_4_rects(borders.committed.outer, borders.committed.inner, damage_regions_wayland + i_old_border_diffs);
-            blboxi_get_symmetric_difference_as_4_rects(borders.buffer.outer,    borders.buffer.inner,    damage_regions_buffer  + i_old_border_diffs);
+            if (surface_selection_changed) {
+                blboxi_get_symmetric_difference_as_4_rects(borders.committed.outer, borders.desired.outer, damage_regions_wayland + i_background_diffs);
+                blboxi_get_symmetric_difference_as_4_rects(borders.committed.outer, borders.committed.inner, damage_regions_wayland + i_old_border_diffs);
+            }
+            if (buffer_selection_changed) {
+                blboxi_get_symmetric_difference_as_4_rects(borders.buffer.outer, borders.desired.outer, damage_regions_buffer + i_background_diffs);
+                blboxi_get_symmetric_difference_as_4_rects(borders.buffer.outer, borders.buffer.inner, damage_regions_buffer + i_old_border_diffs);
+            }
             n_damage_regions = 8;
         }
 
@@ -1273,19 +1286,20 @@ draw_selection_and_damage_buffer(
     }
 
     // Draw selection border
-    if (selection_changed || st_buffer->force_redraw) {
+    if (buffer_selection_changed || surface_selection_changed) {
         if (selection_is_none(&output->selection_ctx)) { // TODO: unlikely()
             st_buffer->box_currently_drawn = desired_selection;
         } else {
             BLRectI damage_regions[4];
+            const BLRectI empty_regions[4] = {0};
             blboxi_get_symmetric_difference_as_4_rects(borders.desired.outer, borders.desired.inner, damage_regions);
             draw_and_damage_selection_border(
                 selection_surface,
                 st_buffer,
                 desired_selection,
                 &borders.desired,
-                damage_regions,
-                damage_regions,
+                surface_selection_changed ? damage_regions : empty_regions,
+                buffer_selection_changed ? damage_regions : empty_regions,
                 4
             );
         }
@@ -1294,7 +1308,7 @@ draw_selection_and_damage_buffer(
 
     if (g_state.options.hide_ui_level < SCRAN_OPT_HIDE_UI_ITEMS) {
         // UI items must be drawn after/on top of the background and border.
-        draw_and_damage_ui(output, st_buffer, desired_selection, &borders);
+        draw_and_damage_ui(output, st_buffer, desired_selection, &borders, buffer_selection_changed);
     }
 
     // NOTE: Don't reset the BLContext here, unless intending to fully
