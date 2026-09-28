@@ -194,6 +194,10 @@ esc_exit_scran:
     bool fullscreen_capture = pre_selection;
 
     switch (xkb_key) {
+    case XKB_KEY_s:
+    case XKB_KEY_S:
+        active_selection_surface->ui_inside_selection = !active_selection_surface->ui_inside_selection;
+        break;
     case XKB_KEY_Left:
         if (!pre_selection) {
             shift_selection(st_output, -1,  0);
