@@ -111,10 +111,20 @@ struct scran_cursor_buffer {
 struct scran_cursor {
     struct wl_surface *wl_surface;
     struct wp_viewport *viewport;
-    struct scran_cursor_buffer buffers[SCRAN_CURSOR_N_THEMES];
+    struct scran_cursor_buffer buffers[SCRAN_CURSOR_N_THEMES][SCRAN_CURSOR_N_TOOLTIPS];
 
-    int width_height_px;
+    BLRectI viewport_source_px[SCRAN_CURSOR_N_THEMES][SCRAN_CURSOR_N_TOOLTIPS];
+    BLRectI viewport_source_scaled[SCRAN_CURSOR_N_THEMES][SCRAN_CURSOR_N_TOOLTIPS];
+
+    int cursor_size_px; // == width_px == height_px
+
     enum scran_cursor_theme theme;
+    enum scran_cursor_tooltip tooltip;
+
+    // Cursor needs its own atlas, since it's currently using integer scaling,
+    // while the selection-surface's atlas uses the surface's fractional
+    // scaling. TODO: Remove this if/when we allow fractional cursor scaling.
+    struct atlas atlas;
 };
 
 struct scran_output_subsurface {
