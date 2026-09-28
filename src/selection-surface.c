@@ -371,27 +371,47 @@ get_ui_item_geometry(
 
     const BLBoxI anchor = ui_inside_selection ? border->inner : border->outer;
 
-    // Ideal placement
-    BLPointI origin = {
-        .x =
-            alignment == UI_ALIGN_LEFT
-            ? anchor.x0
-            : anchor.x1 - width,
-        .y =
-            placement == UI_ABOVE_SELECTION
-            ? anchor.y0 - (ui_inside_selection ? 0 : height)
-            : anchor.y1 - (ui_inside_selection ? height : 0),
-    };
+    // Ideal Y values
+    int above_y0 = anchor.y0 - (ui_inside_selection ? 0 : height);
+    int below_y0 = anchor.y1 - (ui_inside_selection ? height : 0);
+    // Don't let items collide
+    if (ui_inside_selection) {
+        const BLBoxI surface_bounds = get_surface_bounds(selection_surface);
+        const int above_y1 = above_y0 + height;
+        const int below_y1 = below_y0 + height;
 
+        const int overlap = above_y1 - below_y0;
+        if (overlap > 0) {
+            const int space_above = above_y0 - surface_bounds.y0;
+            const int space_below = surface_bounds.y1 - below_y1;
+
+            // Prioritize displacing the above item
+            if (space_above >= overlap) {
+                above_y0 -= overlap;
+            } else if (space_below >= overlap) {
+                below_y0 += overlap;
+            } else {
+                // TODO: Handle not having space in either direction?
+            }
+        }
+    }
+
+    // Ideal X value
+    int x0 = alignment == UI_ALIGN_LEFT ? anchor.x0 : anchor.x1 - width;
     // Do not start left of the selection...
-    origin.x = MAX(origin.x, anchor.x0);
+    x0 = MAX(x0, anchor.x0);
     // ...unless it would help minimize clipping
-    origin.x = rect_x_best_fit(origin.x, width, surface_width);
+    x0 = rect_x_best_fit(x0, width, surface_width);
+
+    const BLPointI backplate_origin = {
+        .y = placement == UI_ABOVE_SELECTION ? above_y0  : below_y0,
+        .x = x0,
+    };
 
     return (struct ui_item_geometry) {
         .pen_origin = (BLPointI){
-            .x = origin.x + padding,
-            .y = origin.y + padding,
+            .x = backplate_origin.x + padding,
+            .y = backplate_origin.y + padding,
         },
         .text_metrics = *textline_metrics,
         .placement = placement,
