@@ -17,11 +17,12 @@ bool
 init_premem__freezeframe(
     struct scran_output *st_output
 ) {
-    struct scran_output_subsurface       *st_subsurface     = &st_output->freezeframe.subsurface;
+    struct scran_output_subsurface *st_subsurface = &st_output->freezeframe.subsurface;
 
     capture_session_init(
         &st_output->freezeframe.session,
-        st_output->capture.source
+        st_output->capture.source,
+        false
     );
     st_output->freezeframe.session.frame_ctx.output = st_output;
 

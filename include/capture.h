@@ -36,7 +36,7 @@ struct capture_buffer_area_context {
     uint32_t source_row_bytes;
 };
 
-void capture_session_init(struct capture_session *session, struct ext_image_capture_source_v1 *source);
+void capture_session_init(struct capture_session *session, struct ext_image_capture_source_v1 *source, bool capture_cursor);
 
 void capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px);
 
