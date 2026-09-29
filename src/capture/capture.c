@@ -41,7 +41,7 @@ capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_bo
 bool
 capture_request_frame(
     struct capture_session *session,
-    enum scran_capture_frame_consumers consumer,
+    enum scran_capture_frame_consumer_mask consumer,
     const BLRectI *damage
 ) {
     struct capture_frame_context *frame_ctx = &session->frame_ctx;
@@ -72,12 +72,12 @@ capture_request_frame(
 
 static inline void capture_video_cancel_pending_fullscreen_capture(struct scran_output *output);
 
-enum scran_capture_frame_consumers
+enum scran_capture_frame_consumer_mask
 capture_fullscreen_dispatch_pending_consumers(
     struct scran_output *st_output,
-    enum scran_capture_frame_consumers pending
+    enum scran_capture_frame_consumer_mask pending
 ) {
-    enum scran_capture_frame_consumers started = 0;
+    enum scran_capture_frame_consumer_mask started = 0;
     st_output->capture.fullscreen_consumers.active |= pending;
 
     if (pending & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
@@ -103,7 +103,7 @@ capture_fullscreen_dispatch_pending_consumers(
         freezeframe_capture_start_retain_callback(st_output);
     }
 
-    enum scran_capture_frame_consumers failed = pending & ~started;
+    enum scran_capture_frame_consumer_mask failed = pending & ~started;
     if (failed) {
         capture_fullscreen_end(st_output, failed);
     }
@@ -112,14 +112,14 @@ capture_fullscreen_dispatch_pending_consumers(
 }
 
 // TODO: returns added or dispatched consumers
-enum scran_capture_frame_consumers
+enum scran_capture_frame_consumer_mask
 capture_fullscreen_start(
     struct scran_output *st_output,
-    enum scran_capture_frame_consumers consumers
+    enum scran_capture_frame_consumer_mask consumers
 ) {
-    enum scran_capture_frame_consumers prev_consumers = st_output->capture.fullscreen_consumers.active;
-    enum scran_capture_frame_consumers prev_pending   = st_output->capture.fullscreen_consumers.pending;
-    enum scran_capture_frame_consumers new_consumers  = consumers & ~(prev_pending | prev_consumers);
+    enum scran_capture_frame_consumer_mask prev_consumers = st_output->capture.fullscreen_consumers.active;
+    enum scran_capture_frame_consumer_mask prev_pending   = st_output->capture.fullscreen_consumers.pending;
+    enum scran_capture_frame_consumer_mask new_consumers  = consumers & ~(prev_pending | prev_consumers);
 
     if (!new_consumers) {
         return 0;
@@ -149,7 +149,7 @@ capture_fullscreen_start(
 void
 capture_fullscreen_end(
     struct scran_output *st_output,
-    enum scran_capture_frame_consumers consumers
+    enum scran_capture_frame_consumer_mask consumers
 ) {
     st_output->capture.fullscreen_consumers.active &= ~consumers;
 
