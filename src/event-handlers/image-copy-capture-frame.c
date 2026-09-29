@@ -98,7 +98,7 @@ handle_image_copy_capture_frame_ready(
         const struct capture_session_context *session = &output->capture.session.session_ctx;
 
         if (image_requested) {
-            bool fullscreen = output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE;
+            bool fullscreen = output->capture.fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE;
             struct capture_buffer_area_context buffer_area_ctx;
             capture_create_buffer_area_context(output, session, frame_ctx, fullscreen, &buffer_area_ctx);
 
@@ -107,7 +107,7 @@ handle_image_copy_capture_frame_ready(
         }
 
         if (video_requested) {
-            bool fullscreen = output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
+            bool fullscreen = output->capture.fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
             struct capture_buffer_area_context buffer_area_ctx;
             capture_create_buffer_area_context(output, session, frame_ctx, fullscreen, &buffer_area_ctx);
 

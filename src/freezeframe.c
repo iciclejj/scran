@@ -125,7 +125,7 @@ freezeframe_capture_finish(
 
     // We can also come here during startup with -z, in which case we can bypass
     // the regular fullscreen capture pipeline
-    if (output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME) {
+    if (output->capture.fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME) {
         capture_fullscreen_end(output, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME);
     }
 

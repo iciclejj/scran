@@ -478,6 +478,11 @@ enum scran_video_stage {
     SCRAN_VIDEO_STAGE_STOP_REQUESTED,
 } SCRAN_PACKED;
 
+struct scran_fullscreen_consumers {
+    enum scran_capture_frame_consumers active;
+    enum scran_capture_frame_consumers pending;
+};
+
 struct scran_output_capture {
     struct ext_image_capture_source_v1 *source;
 
@@ -507,8 +512,7 @@ struct scran_output_capture {
 
     struct scran_stdout_reservation stdout_reservation;
 
-    enum scran_capture_frame_consumers fullscreen_consumers;
-    enum scran_capture_frame_consumers pending_fullscreen_consumers;
+    struct scran_fullscreen_consumers fullscreen_consumers;
 
     uint32_t pre_capture_border_color;
 
