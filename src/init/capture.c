@@ -17,7 +17,8 @@
 void
 capture_session_init(
     struct capture_session *session,
-    struct ext_image_capture_source_v1 *source
+    struct ext_image_capture_source_v1 *source,
+    bool capture_cursor
 ) {
     assert(source);
 
@@ -26,7 +27,7 @@ capture_session_init(
     session_ctx->wl_session = ext_image_copy_capture_manager_v1_create_session(
         g_state.globals.image_copy_capture_manager,
         source,
-        g_state.options.disable_cursor_capture ? 0 : EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS
+        capture_cursor ? EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS : 0
     );
     // XXX: Maybe there's a nicer way to do this or to properly assert this
     //      initialization in the listener somewhere?
@@ -51,7 +52,8 @@ init_premem__capture(
     );
     capture_session_init(
         &st_output->capture.session,
-        st_output->capture.source
+        st_output->capture.source,
+        !g_state.options.disable_cursor_capture
     );
     st_output->capture.session.frame_ctx.output = st_output;
 
