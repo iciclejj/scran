@@ -31,7 +31,7 @@ void scran_focus_release(void);
 static inline void
 selection_freeze_size(struct scran_output *output) {
     if (output->selection_ctx.selection_state == SELECTION_NONE) {
-        assert(output->capture.pending_fullscreen_consumers || output->capture.fullscreen_consumers);
+        assert(output->capture.fullscreen_consumers.pending || output->capture.fullscreen_consumers.active);
     }
 
     output->selection_ctx.size_is_frozen = true;

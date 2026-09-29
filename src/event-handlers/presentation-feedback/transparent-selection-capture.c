@@ -10,8 +10,8 @@ static void
 do_handle_presented(
     struct scran_output *output
 ) {
-    const enum scran_capture_frame_consumers pending = output->capture.pending_fullscreen_consumers;
-    output->capture.pending_fullscreen_consumers = 0;
+    const enum scran_capture_frame_consumers pending = output->capture.fullscreen_consumers.pending;
+    output->capture.fullscreen_consumers.pending = 0;
 
     capture_fullscreen_dispatch_pending_consumers(output, pending);
 }

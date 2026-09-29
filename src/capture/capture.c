@@ -78,7 +78,7 @@ capture_fullscreen_dispatch_pending_consumers(
     enum scran_capture_frame_consumers pending
 ) {
     enum scran_capture_frame_consumers started = 0;
-    st_output->capture.fullscreen_consumers |= pending;
+    st_output->capture.fullscreen_consumers.active |= pending;
 
     if (pending & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
         if (capture_image_start(st_output, st_output->capture.exit_after_capture)) {
@@ -117,8 +117,8 @@ capture_fullscreen_start(
     struct scran_output *st_output,
     enum scran_capture_frame_consumers consumers
 ) {
-    enum scran_capture_frame_consumers prev_consumers = st_output->capture.fullscreen_consumers;
-    enum scran_capture_frame_consumers prev_pending   = st_output->capture.pending_fullscreen_consumers;
+    enum scran_capture_frame_consumers prev_consumers = st_output->capture.fullscreen_consumers.active;
+    enum scran_capture_frame_consumers prev_pending   = st_output->capture.fullscreen_consumers.pending;
     enum scran_capture_frame_consumers new_consumers  = consumers & ~(prev_pending | prev_consumers);
 
     if (!new_consumers) {
@@ -131,7 +131,7 @@ capture_fullscreen_start(
         return capture_fullscreen_dispatch_pending_consumers(st_output, new_consumers);
     }
 
-    st_output->capture.pending_fullscreen_consumers |= new_consumers;
+    st_output->capture.fullscreen_consumers.pending |= new_consumers;
 
     if (prev_pending) {
         return new_consumers;
@@ -151,10 +151,10 @@ capture_fullscreen_end(
     struct scran_output *st_output,
     enum scran_capture_frame_consumers consumers
 ) {
-    st_output->capture.fullscreen_consumers &= ~consumers;
+    st_output->capture.fullscreen_consumers.active &= ~consumers;
 
-    if (st_output->capture.pending_fullscreen_consumers ||
-        st_output->capture.fullscreen_consumers
+    if (st_output->capture.fullscreen_consumers.pending ||
+        st_output->capture.fullscreen_consumers.active
     ) {
         return;
     }
@@ -182,7 +182,7 @@ capture_video_start(struct scran_output *st_output)
 
     selection_freeze_size(st_output);
 
-    const bool fullscreen = st_output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
+    const bool fullscreen = st_output->capture.fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
     const BLPointI dimensions = fullscreen
         ? blboxi_get_dimensions(get_fullscreen_selection_box(st_output))
         : blboxi_get_dimensions(st_output->capture.selection_ctx_box_px);
@@ -333,7 +333,7 @@ capture_video_finish(struct scran_output *st_output)
 
     selection_unfreeze_size(st_output);
 
-    if (capture->fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO) {
+    if (capture->fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO) {
         capture_fullscreen_end(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO);
     }
 
@@ -469,7 +469,7 @@ capture_image_start(struct scran_output *st_output, bool exit_after_capture)
 void
 capture_image_finish(struct scran_output *output)
 {
-    if (output->capture.fullscreen_consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
+    if (output->capture.fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
         capture_fullscreen_end(output, SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE);
     }
 
