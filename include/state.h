@@ -277,7 +277,7 @@ struct scran_output_selectionSurface {
 struct scran_output;
 typedef void (*scran_output_callback)(struct scran_output *);
 
-enum scran_capture_frame_consumers {
+enum scran_capture_frame_consumer_mask {
     SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE       = 1 << 0,
     SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO       = 1 << 1,
     SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME = 1 << 2,
@@ -296,7 +296,7 @@ struct capture_frame_context {
     int64_t presentation_time_nsec;
 
 
-    enum scran_capture_frame_consumers consumers;
+    enum scran_capture_frame_consumer_mask consumers;
 };
 
 struct capture_session_context {
@@ -479,8 +479,8 @@ enum scran_video_stage {
 } SCRAN_PACKED;
 
 struct scran_fullscreen_consumers {
-    enum scran_capture_frame_consumers active;
-    enum scran_capture_frame_consumers pending;
+    enum scran_capture_frame_consumer_mask active;
+    enum scran_capture_frame_consumer_mask pending;
 };
 
 struct scran_output_capture {
