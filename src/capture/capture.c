@@ -21,8 +21,8 @@
 
 // `selection_ctx_box_px` has `scran_output_selectionContext.box_px` coordinate space!
 void
-capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px) {
-    struct scran_output_capture *capture = &st_output->capture;
+capture_update_selection(struct scran_output *output, BLBoxI selection_ctx_box_px) {
+    struct scran_output_capture *capture = &output->capture;
 
     bool size_changed =
            blboxi_width_abs_unsafe(capture->selection_ctx_box_px)  != blboxi_width_abs_unsafe(selection_ctx_box_px)
@@ -30,7 +30,7 @@ capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_bo
 
     // Presentation feedback for an older selection-surface buffer can arrive
     // after video capture has frozen the selection size.
-    if (st_output->selection_ctx.size_is_frozen && size_changed) {
+    if (output->selection_ctx.size_is_frozen && size_changed) {
         return;
     }
 
@@ -62,7 +62,7 @@ capture_request_frame(
         capture_damage_buffer(frame_ctx, frame, damage->x, damage->y, damage->w, damage->h);
     }
 
-    frame_ctx->frame     = frame;
+    frame_ctx->frame = frame;
     frame_ctx->consumers |= consumer;
 
     ext_image_copy_capture_frame_v1_capture(frame);
@@ -74,38 +74,40 @@ static inline void capture_video_cancel_pending_fullscreen_capture(struct scran_
 
 enum scran_capture_frame_consumer_mask
 capture_fullscreen_dispatch_pending_consumers(
-    struct scran_output *st_output,
+    struct scran_output *output,
     enum scran_capture_frame_consumer_mask pending
 ) {
+    struct scran_output_capture *capture = &output->capture;
     enum scran_capture_frame_consumer_mask started = 0;
-    st_output->capture.fullscreen_consumers.active |= pending;
+
+    capture->fullscreen_consumers.active |= pending;
 
     if (pending & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
-        if (capture_image_start(st_output, st_output->capture.exit_after_capture)) {
+        if (capture_image_start(output, capture->exit_after_capture)) {
             started |= SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE;
         }
     }
 
     if (pending & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO) {
-        st_output->capture.audio_disable_modifier_active = st_output->capture.fullscreen_video_pending_audio_disabled;
-        st_output->capture.fullscreen_video_pending_audio_disabled = false;
+        capture->audio_disable_modifier_active = capture->fullscreen_video_pending_audio_disabled;
+        capture->fullscreen_video_pending_audio_disabled = false;
 
-        if (!g_state.exit_requested && capture_video_start(st_output)) {
+        if (!g_state.exit_requested && capture_video_start(output)) {
             started |= SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
         } else {
-            capture_video_cancel_pending_fullscreen_capture(st_output);
+            capture_video_cancel_pending_fullscreen_capture(output);
         }
     }
 
     if (pending & SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME) {
         // TODO: Make freezeframe able to not set started?
         started |= SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME;
-        freezeframe_capture_start_retain_callback(st_output);
+        freezeframe_capture_start_retain_callback(output);
     }
 
     enum scran_capture_frame_consumer_mask failed = pending & ~started;
     if (failed) {
-        capture_fullscreen_end(st_output, failed);
+        capture_fullscreen_end(output, failed);
     }
 
     return started;
@@ -114,11 +116,11 @@ capture_fullscreen_dispatch_pending_consumers(
 // TODO: returns added or dispatched consumers
 enum scran_capture_frame_consumer_mask
 capture_fullscreen_start(
-    struct scran_output *st_output,
+    struct scran_output *output,
     enum scran_capture_frame_consumer_mask consumers
 ) {
-    enum scran_capture_frame_consumer_mask prev_consumers = st_output->capture.fullscreen_consumers.active;
-    enum scran_capture_frame_consumer_mask prev_pending   = st_output->capture.fullscreen_consumers.pending;
+    enum scran_capture_frame_consumer_mask prev_consumers = output->capture.fullscreen_consumers.active;
+    enum scran_capture_frame_consumer_mask prev_pending   = output->capture.fullscreen_consumers.pending;
     enum scran_capture_frame_consumer_mask new_consumers  = consumers & ~(prev_pending | prev_consumers);
 
     if (!new_consumers) {
@@ -128,10 +130,10 @@ capture_fullscreen_start(
     // If we have live consumers, it means fullscreen-capture is already set up
     if (prev_consumers) {
         assert(!prev_pending);
-        return capture_fullscreen_dispatch_pending_consumers(st_output, new_consumers);
+        return capture_fullscreen_dispatch_pending_consumers(output, new_consumers);
     }
 
-    st_output->capture.fullscreen_consumers.pending |= new_consumers;
+    output->capture.fullscreen_consumers.pending |= new_consumers;
 
     if (prev_pending) {
         return new_consumers;
@@ -141,27 +143,31 @@ capture_fullscreen_start(
     // capture not having started yet. This adds a "fake" capture to the counter.
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
-    selection_surface_acquire_hide_then(st_output, &presentation_feedback_listener__transparent_selection_capture, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
+    selection_surface_acquire_hide_then(
+        output,
+        &presentation_feedback_listener__transparent_selection_capture,
+        SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE
+    );
 
     return new_consumers;
 }
 
 void
 capture_fullscreen_end(
-    struct scran_output *st_output,
+    struct scran_output *output,
     enum scran_capture_frame_consumer_mask consumers
 ) {
-    st_output->capture.fullscreen_consumers.active &= ~consumers;
+    output->capture.fullscreen_consumers.active &= ~consumers;
 
-    if (st_output->capture.fullscreen_consumers.pending ||
-        st_output->capture.fullscreen_consumers.active
+    if (output->capture.fullscreen_consumers.pending ||
+        output->capture.fullscreen_consumers.active
     ) {
         return;
     }
 
     // We don't want to flash a frame of selection/background dim if we're exiting anyways
-    if (!st_output->capture.exit_after_capture) {
-        selection_surface_release_hide(st_output, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
+    if (!output->capture.exit_after_capture) {
+        selection_surface_release_hide(output, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
     }
 
     // HACK: See comment in start_fullscreen_capture().
@@ -170,83 +176,83 @@ capture_fullscreen_end(
 
 
 bool
-capture_video_start(struct scran_output *st_output)
+capture_video_start(struct scran_output *output)
 {
-    const BLPointI source_dimensions_px = st_output->capture.session.session_ctx.source_dimensions_px;
+    const BLPointI source_dimensions_px = output->capture.session.session_ctx.source_dimensions_px;
 
     // TODO: Assert instead?
-    if (capture_video_is_live(st_output)) {
+    if (capture_video_is_live(output)) {
         DEBUG("Already capturing...\n");
         return false;
     }
 
-    selection_freeze_size(st_output);
+    selection_freeze_size(output);
 
-    const bool fullscreen = st_output->capture.fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
+    const bool fullscreen = output->capture.fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
     const BLPointI dimensions = fullscreen
-        ? blboxi_get_dimensions(get_fullscreen_selection_box(st_output))
-        : blboxi_get_dimensions(st_output->capture.selection_ctx_box_px);
+        ? blboxi_get_dimensions(get_fullscreen_selection_box(output))
+        : blboxi_get_dimensions(output->capture.selection_ctx_box_px);
 
     // TODO: Assert box is within output dimensions
     assert(dimensions.x && dimensions.y);
 
     if (g_state.options.output_to_stdout) {
-        if (!scran_stdout_try_reserve(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO)) {
+        if (!scran_stdout_try_reserve(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO)) {
             scran_stdout_print_busy_message();
             goto capture_video_start_fail_1;
         }
     }
 
-    if (!capture_video_init_writers(st_output, dimensions)) {
+    if (!capture_video_init_writers(output, dimensions)) {
         eprintf("Error: Failed to initialize ffmpeg libraries.\n");
         // TODO: goto fail if this becomes more complicated
         goto capture_video_start_fail_2;
     }
 
-    st_output->capture.pre_capture_border_color = st_output->selection_surface.border_color;
-    selection_surface_set_border_color(st_output, UI_COLOR_VIDEO_CAPTURE);
-    cursor_set_theme(st_output, SCRAN_CURSOR_THEME_VIDEO_CAPTURE);
+    output->capture.pre_capture_border_color = output->selection_surface.border_color;
+    selection_surface_set_border_color(output, UI_COLOR_VIDEO_CAPTURE);
+    cursor_set_theme(output, SCRAN_CURSOR_THEME_VIDEO_CAPTURE);
     // TODO: We should probably cache the cursor theme and surface border color
     // and add them to main.c::update_ui().
-    request_selection_surface_frame_callback(st_output);
+    request_selection_surface_frame_callback(output);
 
-    st_output->capture.video_presentation_time_nsec_start = capture_clock_gettime_nsec();
+    output->capture.video_presentation_time_nsec_start = capture_clock_gettime_nsec();
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
     capture_request_frame_forced(
-        &st_output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
+        &output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
         // Ensure the first frame is fully rendered
         &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
     );
 
 
-    if (st_output->capture.audio_active) {
+    if (output->capture.audio_active) {
         scran_pipewire_connect();
     }
 
-    st_output->capture.video_stage = SCRAN_VIDEO_STAGE_CAPTURING;
+    output->capture.video_stage = SCRAN_VIDEO_STAGE_CAPTURING;
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     return true;
 
 capture_video_start_fail_2:
-    scran_stdout_release(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO);
+    scran_stdout_release(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO);
 capture_video_start_fail_1:
-    selection_unfreeze_size(st_output);
+    selection_unfreeze_size(output);
     return false;
 }
 
 bool
-capture_video_start_fullscreen(struct scran_output *st_output)
+capture_video_start_fullscreen(struct scran_output *output)
 {
-    struct scran_output_capture *capture = &st_output->capture;
+    struct scran_output_capture *capture = &output->capture;
 
     // TODO: Reserve stdout already here, once we have better capture-state
     // tracking with e.g. an enum
 
     // TODO: Assert instead?
-    if (capture_video_is_live(st_output)) {
+    if (capture_video_is_live(output)) {
         DEBUG("Already capturing...\n");
         return false;
     }
@@ -259,7 +265,7 @@ capture_video_start_fullscreen(struct scran_output *st_output)
     capture->video_stage                             = SCRAN_VIDEO_STAGE_FULLSCREEN_START_PENDING;
 
     if (!capture_fullscreen_start(
-            st_output,
+            output,
             SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO)
     ) {
         capture->fullscreen_video_pending_audio_disabled = prev_pending_audio_disabled;
@@ -268,7 +274,7 @@ capture_video_start_fullscreen(struct scran_output *st_output)
     }
 
     // Freeze already here to block entering SELECTION_INITIALIZING
-    selection_freeze_size(st_output);
+    selection_freeze_size(output);
 
     return true;
 }
@@ -284,26 +290,26 @@ capture_video_cancel_pending_fullscreen_capture(struct scran_output *output) {
 // Should only be called once the video capture event loop is finished.
 //    Call video_capture_request_stop() instead to initiate graceful completion.
 void
-capture_video_finish(struct scran_output *st_output)
+capture_video_finish(struct scran_output *output)
 {
-    struct scran_output_capture *capture    = &st_output->capture;
+    struct scran_output_capture *capture    = &output->capture;
     struct ffmpeg_context       *ffmpeg_ctx = &capture->ffmpeg_ctx;
 
     if (capture->audio_active) {
         scran_pipewire_reset();
         capture_video_drain_writer(
-            st_output,
+            output,
             ffmpeg_ctx->av_codec_ctx_audio,
             ffmpeg_ctx->av_packet_audio,
             capture_video_write_audio_packet,
             "audio"
         );
-        capture_video_destroy_audio_writer(st_output);
+        capture_video_destroy_audio_writer(output);
         capture->audio_active = false;
     }
 
     capture_video_drain_writer(
-        st_output,
+        output,
         ffmpeg_ctx->av_codec_ctx,
         ffmpeg_ctx->av_packet,
         capture_video_write_video_packet,
@@ -323,33 +329,33 @@ capture_video_finish(struct scran_output *st_output)
             scran_portal_notify_file_saved(output_path);
         }
     }
-    capture_video_destroy_video_writer(st_output);
+    capture_video_destroy_video_writer(output);
 
-    selection_surface_set_border_color(st_output, st_output->capture.pre_capture_border_color);
-    cursor_set_theme(st_output, SCRAN_CURSOR_THEME_DEFAULT);
-    request_selection_surface_frame_callback(st_output);
+    selection_surface_set_border_color(output, output->capture.pre_capture_border_color);
+    cursor_set_theme(output, SCRAN_CURSOR_THEME_DEFAULT);
+    request_selection_surface_frame_callback(output);
 
-    scran_stdout_release(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO);
+    scran_stdout_release(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO);
 
-    selection_unfreeze_size(st_output);
+    selection_unfreeze_size(output);
 
     if (capture->fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO) {
-        capture_fullscreen_end(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO);
+        capture_fullscreen_end(output, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO);
     }
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
-    st_output->capture.video_stage = SCRAN_VIDEO_STAGE_NONE;
+    output->capture.video_stage = SCRAN_VIDEO_STAGE_NONE;
 
     DEBUG("FINISHED RECORDING.\n");
 }
 
 void
-capture_video_request_stop(struct scran_output *st_output)
+capture_video_request_stop(struct scran_output *output)
 {
-    struct scran_output_capture *capture = &st_output->capture;
+    struct scran_output_capture *capture = &output->capture;
     struct capture_frame_context *frame_ctx = &capture->session.frame_ctx;
-    const BLPointI source_dimensions_px = st_output->capture.session.session_ctx.source_dimensions_px;
+    const BLPointI source_dimensions_px = output->capture.session.session_ctx.source_dimensions_px;
 
     // TODO: Just assert instead?
     if (capture->video_stage == SCRAN_VIDEO_STAGE_STOP_REQUESTED) {
@@ -367,7 +373,7 @@ capture_video_request_stop(struct scran_output *st_output)
     // recording and clean up as soon as possible.
 
     capture_request_frame_forced(
-        &st_output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
+        &output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
         // XXX: This damage request is probably normally redundant with
         // capture_request_frame_forced(), but should stay regardless, in case
         // the initial frame was interrupted before it came back (i.e. making
@@ -387,11 +393,11 @@ print_slurp_string(BLRectI rect)
 }
 
 static void
-print_slurp_string_selection(struct scran_output *st_output)
+print_slurp_string_selection(struct scran_output *output)
 {
-    const double scale = st_output->selection_surface.surface.final_scale_factor_normalized;
-    const struct scran_output_xdg_geometry geometry = st_output->xdg_geometry;
-    const struct BLBoxI box_px = selection_get_box_px(&st_output->selection_ctx);
+    const double scale = output->selection_surface.surface.final_scale_factor_normalized;
+    const struct scran_output_xdg_geometry geometry = output->xdg_geometry;
+    const struct BLBoxI box_px = selection_get_box_px(&output->selection_ctx);
 
     const struct BLRectI rect_logical = {
         .x = round(  box_px.x0              / scale),
@@ -411,22 +417,22 @@ print_slurp_string_selection(struct scran_output *st_output)
 }
 
 static void
-print_slurp_string_fullscreen(struct scran_output *st_output)
+print_slurp_string_fullscreen(struct scran_output *output)
 {
     print_slurp_string(
         (BLRectI){
-            .x = st_output->xdg_geometry.x_logical,
-            .y = st_output->xdg_geometry.y_logical,
-            .w = st_output->xdg_geometry.w_logical,
-            .h = st_output->xdg_geometry.h_logical,
+            .x = output->xdg_geometry.x_logical,
+            .y = output->xdg_geometry.y_logical,
+            .w = output->xdg_geometry.w_logical,
+            .h = output->xdg_geometry.h_logical,
         }
     );
 }
 
 bool
-capture_image_start(struct scran_output *st_output, bool exit_after_capture)
+capture_image_start(struct scran_output *output, bool exit_after_capture)
 {
-    struct capture_session *session              = &st_output->capture.session;
+    struct capture_session *session              = &output->capture.session;
     const BLPointI          source_dimensions_px = session->session_ctx.source_dimensions_px;
 
     bool success = false;
@@ -436,18 +442,18 @@ capture_image_start(struct scran_output *st_output, bool exit_after_capture)
             scran_stdout_print_busy_message();
             exit_after_capture = false;
         } else {
-            print_slurp_string_selection(st_output);
+            print_slurp_string_selection(output);
             success = true;
         }
     } else if (session->frame_ctx.consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
         eprintf("Image capture already in progress...\n");
     } else if (g_state.options.output_to_stdout
-               && !scran_stdout_try_reserve(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE)
+               && !scran_stdout_try_reserve(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE)
     ) {
         scran_stdout_print_busy_message();
         // Only allow upgrading pending *images* to exit_after_capture.
         // Our consumers check above should have ensured the assert holds.
-        assert(!scran_stdout_check_reservation(&st_output->capture.stdout_reservation,SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE));
+        assert(!scran_stdout_check_reservation(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE));
         exit_after_capture = false;
     } else {
         capture_request_frame_forced(
@@ -483,7 +489,7 @@ capture_image_finish(struct scran_output *output)
 
 
 bool
-capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_capture)
+capture_image_start_fullscreen(struct scran_output *output, bool exit_after_capture)
 {
 
     if (g_state.options.produce_slurp) {
@@ -491,7 +497,7 @@ capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_c
             scran_stdout_print_busy_message();
             return false;
         } else {
-            print_slurp_string_fullscreen(st_output);
+            print_slurp_string_fullscreen(output);
             if (exit_after_capture) {
                 // XXX TODO: Put this in a generic end_capture() function.
                 scran_request_exit();
@@ -500,19 +506,19 @@ capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_c
         return true;
     }
 
-    bool prev_exit_after_capture = st_output->capture.exit_after_capture;
+    bool prev_exit_after_capture = output->capture.exit_after_capture;
 
     // Must be set prior to capture_fullscreen_start(), since it will dispatch
     // the capture instantly when possible.
-    st_output->capture.exit_after_capture = exit_after_capture;
+    output->capture.exit_after_capture = exit_after_capture;
 
     if (capture_fullscreen_start(
-            st_output,
+            output,
             SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE)
     ) {
         return true;
     } else {
-        st_output->capture.exit_after_capture = prev_exit_after_capture;
+        output->capture.exit_after_capture = prev_exit_after_capture;
     }
 
     return false;
