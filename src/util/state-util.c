@@ -18,9 +18,9 @@ scran_request_exit()
     FOR_EACH_OUTPUT(i, st_output) {
         struct scran_output_capture *capture = &st_output->capture;
 
-        enum scran_capture_frame_consumer_mask pending = capture->fullscreen_consumers.pending;
+        enum scran_capture_frame_consumer_mask pending = capture->fullscreen_consumers.awaiting_ui_hide;
         if (pending) {
-            capture->fullscreen_consumers.pending = 0;
+            capture->fullscreen_consumers.awaiting_ui_hide = 0;
             capture->fullscreen_video_pending_audio_disabled = false; // (not really needed)
             capture_fullscreen_end(st_output, pending);
         }

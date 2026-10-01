@@ -10,10 +10,16 @@ static void
 do_handle_presented(
     struct scran_output *output
 ) {
-    const enum scran_capture_frame_consumer_mask pending = output->capture.fullscreen_consumers.pending;
-    output->capture.fullscreen_consumers.pending = 0;
+    assert(output->capture.fullscreen_ui_state == SCRAN_FULLSCREEN_UI_HIDE_PENDING);
+    assert(output->selection_surface.disable_reason_mask & SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
+
+    const enum scran_capture_frame_consumer_mask pending = output->capture.fullscreen_consumers.awaiting_ui_hide;
+    output->capture.fullscreen_consumers.awaiting_ui_hide = 0;
+    output->capture.fullscreen_ui_state = SCRAN_FULLSCREEN_UI_HIDDEN;
+    DEBUG("Acquired fullscreen hide\n");
 
     capture_fullscreen_dispatch_pending_consumers(output, pending);
+    capture_fullscreen_sync_ui_hide(output);
 }
 
 static void
