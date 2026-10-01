@@ -468,6 +468,12 @@ struct ffmpeg_context {
     AVAudioFifo     *av_audio_fifo;
 };
 
+enum scran_fullscreen_ui_state {
+    SCRAN_FULLSCREEN_UI_SHOWN,
+    SCRAN_FULLSCREEN_UI_HIDE_PENDING,  // Hide acquired and awaiting ::presented
+    SCRAN_FULLSCREEN_UI_HIDDEN,
+} SCRAN_PACKED;
+
 enum scran_video_stage {
     SCRAN_VIDEO_STAGE_NONE,
     SCRAN_VIDEO_STAGE_FULLSCREEN_START_PENDING,
@@ -477,7 +483,7 @@ enum scran_video_stage {
 
 struct scran_fullscreen_consumers {
     enum scran_capture_frame_consumer_mask active;
-    enum scran_capture_frame_consumer_mask pending;
+    enum scran_capture_frame_consumer_mask awaiting_ui_hide;
 };
 
 struct scran_output_capture {
@@ -510,6 +516,7 @@ struct scran_output_capture {
     struct scran_stdout_reservation stdout_reservation;
 
     struct scran_fullscreen_consumers fullscreen_consumers;
+    enum scran_fullscreen_ui_state fullscreen_ui_state;
 
     uint32_t pre_capture_border_color;
 

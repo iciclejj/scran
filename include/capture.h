@@ -42,6 +42,7 @@ void capture_update_selection(struct scran_output *st_output, BLBoxI selection_c
 
 enum scran_capture_frame_consumer_mask capture_fullscreen_dispatch_pending_consumers(struct scran_output *st_output, enum scran_capture_frame_consumer_mask consumers);
 enum scran_capture_frame_consumer_mask capture_fullscreen_start(struct scran_output *st_output, enum scran_capture_frame_consumer_mask consumers);
+void capture_fullscreen_sync_ui_hide(struct scran_output *output);
 void capture_fullscreen_end(struct scran_output *st_output, enum scran_capture_frame_consumer_mask consumers);
 
 bool capture_request_frame(struct capture_session *session, enum scran_capture_frame_consumer_mask consumer, const BLRectI *buffer_damage);

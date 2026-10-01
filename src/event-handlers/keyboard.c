@@ -198,6 +198,7 @@ esc_exit_scran:
     case XKB_KEY_s:
     case XKB_KEY_S:
         active_selection_surface->ui_inside_selection = !active_selection_surface->ui_inside_selection;
+        capture_fullscreen_sync_ui_hide(st_output);
         break;
     case XKB_KEY_Left:
         if (!pre_selection) {
