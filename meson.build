@@ -3,7 +3,7 @@ project(
   version: files('VERSION'),
   meson_version: '>=1.1.0',
   license: 'MIT AND OFL-1.1',
-  license_files: ['./LICENSE', 'assets/Iosevka.license', 'assets/NerdFontsSymbolsOnly.license',],
+  license_files: ['./LICENSE', 'font/Iosevka.license', 'font/NerdFontsSymbolsOnly.license',],
   default_options: [
     'warning_level=2', # -Wall -Wextra
     'c_std=gnu11',
@@ -64,7 +64,7 @@ scran_sources = files(
   'src/selection.c',
   'src/selection-surface.c',
   'src/signal-handlers.c',
-  'src/ui.c',
+  'src/ui/atlas.c',
 
   'src/event-handlers/buffer.c',
   'src/event-handlers/data-control.c',
@@ -95,15 +95,17 @@ scran_sources = files(
 
 subdir('scranrot')
 subdir('wayland-protocol-extensions')
-subdir('assets')
+subdir('font')
 
 executable(
   'scran',
   scran_sources,
+  ui_text_and_font_source,
+  ui_text_and_font_header,
   include_directories: [
     include_directories('include'),
+    include_directories('font'),
   ],
-  objects: font_obj,
   dependencies: [
     cc.find_library('m', required: true),
     # ffmpeg

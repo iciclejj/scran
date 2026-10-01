@@ -128,7 +128,7 @@ in
    <details open> <summary><ins>Arch</ins></summary>
 
    ```bash
-   pacman -S base-devel meson ninja wayland wayland-protocols libxkbcommon libsystemd libpipewire ffmpeg
+   pacman -S base-devel meson ninja wayland wayland-protocols libxkbcommon libsystemd libpipewire ffmpeg python-fonttools
    # Install Blend2D through the AUR (See below if you prefer to build Blend2D manually.)
    yay -S blend2d
    ```
@@ -136,13 +136,13 @@ in
    <details> <summary><ins>Ubuntu</ins></summary>
 
    ```bash
-   apt install meson ninja-build gcc pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libsystemd-dev libpipewire-0.3-dev libavcodec-dev libavutil-dev libavformat-dev
+   apt install meson ninja-build gcc pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libsystemd-dev libpipewire-0.3-dev libavcodec-dev libavutil-dev libavformat-dev python3-fonttools
    ```
    </details>
    <details> <summary><ins>Fedora</ins></summary>
 
    ```bash
-   dnf install meson ninja gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel systemd-devel pipewire-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel blend2d-devel
+   dnf install meson ninja gcc pkg-config wayland-devel wayland-protocols-devel libxkbcommon-devel systemd-devel pipewire-devel libavcodec-free-devel libavutil-free-devel libavformat-free-devel blend2d-devel python3-fonttools
    ```
    </details>
 

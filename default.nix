@@ -2,7 +2,6 @@
   stdenv,
   lib,
   pkg-config,
-  bintools,
   wayland,
   wayland-scanner,
   wayland-protocols,
@@ -15,6 +14,7 @@
   makeDesktopItem,
   meson,
   ninja,
+  python3,
 
   # overridable to ease installation from outside of nixpkgs, among other things
   _src ? ./.,
@@ -33,10 +33,12 @@ stdenv.mkDerivation {
     wayland-scanner
     wayland-protocols
     pkg-config
-    bintools
     meson
     ninja
     copyDesktopItems
+    (python3.withPackages (ps: with ps; [
+      fonttools
+    ]))
   ];
 
   buildInputs = [
