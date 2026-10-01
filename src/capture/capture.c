@@ -166,7 +166,7 @@ capture_fullscreen_end(
     }
 
     // We don't want to flash a frame of selection/background dim if we're exiting anyways
-    if (!output->capture.exit_after_capture) {
+    if (!g_state.exit_requested) {
         selection_surface_release_hide(output, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
     }
 
