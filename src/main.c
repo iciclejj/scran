@@ -751,22 +751,7 @@ update_ui()
             request_selection_surface_frame_callback(output);
         }
 
-        {
-            const bool ui_inside_selection  = output->selection_surface.ui_inside_selection;
-            const bool ui_clipping          = output->selection_surface.ui_is_clipping;
-            const bool ui_optionally_hidden =
-                output->capture.fullscreen_consumers.active
-                && capture_fullscreen_consumers_allow_ui(output->capture.fullscreen_consumers.active);
-
-            const enum scran_cursor_tooltip tooltip =
-                ui_inside_selection || ui_clipping || ui_optionally_hidden
-                ? SCRAN_CURSOR_TOOLTIP_FLIP_UI
-                : SCRAN_CURSOR_TOOLTIP_NONE;
-
-            if (output->cursor.tooltip != tooltip) {
-                cursor_set_tooltip(output, tooltip);
-            }
-        }
+        cursor_update(output, false);
 
         if (capture_video_is_live(output)) {
             int64_t timer_ms = (now_ns - output->capture.video_presentation_time_nsec_start) / NSEC_PER_MS;

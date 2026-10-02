@@ -48,8 +48,6 @@ bool init_postmem__cursor(struct scran_output *st_output);
  void init_postmem__cursor__destroy(struct scran_output *st_output);
 
 bool cursor_reinit(struct scran_output *st_output);
-void cursor_set_theme(struct scran_output *st_output, enum scran_cursor_theme theme);
-void cursor_set_tooltip(struct scran_output *output, enum scran_cursor_tooltip tooltip);
-
+void cursor_update(struct scran_output *output, bool force);
 
 #endif

@@ -116,6 +116,8 @@ struct scran_cursor {
 
     int cursor_size_px; // == width_px == height_px
 
+    uint32_t committed_enter_serial;
+
     enum scran_cursor_theme theme;
     enum scran_cursor_tooltip tooltip;
 

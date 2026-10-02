@@ -10,6 +10,7 @@
 
 #include "state.h"
 #include "cursor.h"
+#include "capture.h"
 #include "init.h"
 #include "selection-surface.h"
 #include "util/util.h"
@@ -229,9 +230,11 @@ update_buffer(struct scran_output *output)
         wl_fixed_from_int(viewport_source_scaled.h)
     );
 
+    uint32_t last_enter_serial = g_state.seat.pointer_ctx.last_enter_serial;
+
     wl_pointer_set_cursor(
         g_state.seat.wl_pointer,
-        g_state.seat.pointer_ctx.last_enter_serial,
+        last_enter_serial,
         cursor->wl_surface,
         SCRAN_CURSOR_SIZE / 2,
         SCRAN_CURSOR_SIZE / 2
@@ -245,37 +248,50 @@ update_buffer(struct scran_output *output)
         viewport_source_px.h
     );
     wl_surface_commit(cursor->wl_surface);
-}
 
-// Store the states, since pointer::leave/enter events need the cursor to be re-set.
-// Also for cursor_reinit().
-static inline void
-set_theme_state(struct scran_output *output, enum scran_cursor_theme theme) {
-    output->cursor.theme = theme;
-}
-static inline void
-set_tooltip_state(struct scran_output *output, enum scran_cursor_tooltip tooltip) {
-    output->cursor.tooltip = tooltip;
+    cursor->committed_enter_serial = last_enter_serial;
 }
 
 void
-cursor_set_theme(
-    struct scran_output *output,
-    enum scran_cursor_theme theme
-) {
-    set_theme_state(output, theme);
-    // TODO: Check if buffer needs update in the main loop UI update checker instead?
-    update_buffer(output);
-}
+cursor_update(struct scran_output *output, bool force)
+{
+    struct scran_cursor *cursor = &output->cursor;
 
-void
-cursor_set_tooltip(
-    struct scran_output *output,
-    enum scran_cursor_tooltip tooltip
-) {
-    set_tooltip_state(output, tooltip);
-    // TODO: Check if buffer needs update in the main loop UI update checker instead?
-    update_buffer(output);
+    const bool ui_inside_selection  = output->selection_surface.ui_inside_selection;
+    const bool ui_clipping          = output->selection_surface.ui_is_clipping;
+    const bool ui_optionally_hidden =
+        output->capture.fullscreen_consumers.active
+        && capture_fullscreen_consumers_allow_ui(output->capture.fullscreen_consumers.active);
+
+    const enum scran_cursor_theme theme =
+        output->capture.video_stage == SCRAN_VIDEO_STAGE_CAPTURING
+        || output->capture.video_stage == SCRAN_VIDEO_STAGE_STOP_REQUESTED
+        ? SCRAN_CURSOR_THEME_VIDEO_CAPTURE
+        : SCRAN_CURSOR_THEME_DEFAULT;
+    const enum scran_cursor_tooltip tooltip =
+        ui_inside_selection || ui_clipping || ui_optionally_hidden
+        ? SCRAN_CURSOR_TOOLTIP_FLIP_UI
+        : SCRAN_CURSOR_TOOLTIP_NONE;
+
+    bool changed = false;
+
+    // Store the states, since pointer::leave/enter events need the cursor to be re-set.
+    // Also for cursor_reinit().
+    if (cursor->theme != theme) {
+        cursor->theme = theme;
+        changed = true;
+    }
+    if (cursor->tooltip != tooltip) {
+        cursor->tooltip = tooltip;
+        changed = true;
+    }
+
+    // "When a seat's focus enters a surface, the pointer image is undefined..."
+    const bool new_enter = cursor->committed_enter_serial != g_state.seat.pointer_ctx.last_enter_serial;
+
+    if (force || changed || new_enter) {
+        update_buffer(output);
+    }
 }
 
 bool
@@ -386,9 +402,7 @@ cursor_reinit(struct scran_output *output)
         SCRAN_CURSOR_BUFFER_HEIGHT_PX
     );
 
-    set_theme_state(output, cursor->theme);
-    set_tooltip_state(output, cursor->tooltip);
-    update_buffer(output);
+    cursor_update(output, true);
 
     return true;
 }
