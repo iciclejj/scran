@@ -70,14 +70,17 @@ freezeframe_capture_refresh(
     }
 
     assert(freezeframe->callback == NULL);
-
     freezeframe->stage    = SCRAN_FREEZEFRAME_STAGE_REFRESHING;
     freezeframe->callback = callback;
 
     // Old freezeframe is not necessarily already hidden, since this function
     // can be triggered without releasing focus first.
     freezeframe_hide_if_showing(st_output);
-    capture_fullscreen_start(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME);
+    if (!capture_fullscreen_start(st_output, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME)) {
+        eprintf("Failed to start freezeframe capture.\n");
+        freezeframe->stage    = SCRAN_FREEZEFRAME_STAGE_IDLE;
+        freezeframe->callback = NULL;
+    }
 }
 
 

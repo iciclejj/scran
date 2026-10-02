@@ -1329,6 +1329,10 @@ get_free_double_buffer(struct scran_output_selectionSurface *selection_surface)
 void
 draw_selection_and_commit(struct scran_output *output)
 {
+    if (output->selection_surface.disable_reason_mask) {
+        return;
+    }
+
     struct scran_output_selectionSurface_buffer *buffer = get_free_double_buffer(&output->selection_surface);
 
     if (buffer == NULL) {
