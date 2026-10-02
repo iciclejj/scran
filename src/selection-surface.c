@@ -6,6 +6,7 @@
 
 #include <blend2d/blend2d.h>
 
+#include "cursor.h"
 #include "selection.h"
 #include "state.h"
 #include "selection-surface.h"
@@ -22,7 +23,9 @@
 
 static inline bool
 on_greeting_screen(struct scran_output *output) {
-    return selection_is_none(&output->selection_ctx);
+    return
+        selection_is_none(&output->selection_ctx)
+        && !selection_surface_draws_fullscreen_capture(output);
 }
 
 static inline struct atlas_text_metrics
@@ -107,6 +110,51 @@ get_selection_border(
     };
 }
 
+static inline BLBoxI
+get_surface_bounds(const struct scran_output_selectionSurface *selection_surface) {
+    return (BLBoxI){
+        0, 0,
+        selection_surface->surface.width_px_buffer,
+        selection_surface->surface.height_px_buffer,
+    };
+}
+
+// Sets up the context and bl_path for filling the background dim:
+// everything within bounds, minus the hole for the selection (border included).
+static inline void
+prepare_background_fill(
+    struct scran_output *output,
+    struct scran_output_selectionSurface_buffer *st_buffer,
+    const struct selection_border *border,
+    const BLBoxI *surface_bounds
+) {
+    struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
+
+    bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
+    bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, UI_COLOR_BG_DIM);
+    bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_EVEN_ODD);
+
+    bl_path_add_box_i(&selection_surface->bl_path, surface_bounds, BL_GEOMETRY_DIRECTION_NONE);
+    if (!on_greeting_screen(output)) { // TODO: likely()
+        bl_path_add_box_i(&selection_surface->bl_path, &border->outer, BL_GEOMETRY_DIRECTION_NONE);
+    }
+}
+
+// Sets up the context and bl_path for filling the selection border.
+static inline void
+prepare_selection_border_fill(
+    struct scran_output_selectionSurface *selection_surface,
+    struct scran_output_selectionSurface_buffer *st_buffer,
+    const struct selection_border *border
+) {
+    bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
+    bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, selection_surface->border_color);
+    bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_EVEN_ODD);
+
+    bl_path_add_box_i(&selection_surface->bl_path, &border->inner,  BL_GEOMETRY_DIRECTION_NONE);
+    bl_path_add_box_i(&selection_surface->bl_path, &border->outer, BL_GEOMETRY_DIRECTION_NONE);
+}
+
 static inline void
 draw_and_damage_region(
     struct scran_output_selectionSurface *selection_surface,
@@ -150,12 +198,7 @@ draw_and_damage_selection_border(
     const BLRectI *damage_regions_buffer,
     uint8_t n_damage_regions // shared between 'damage_regions_wayland' and 'damage_regions_buffer'
 ) {
-    bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
-    bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, selection_surface->border_color);
-    bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_EVEN_ODD);
-
-    bl_path_add_box_i(&selection_surface->bl_path, &border->inner, BL_GEOMETRY_DIRECTION_NONE);
-    bl_path_add_box_i(&selection_surface->bl_path, &border->outer, BL_GEOMETRY_DIRECTION_NONE);
+    prepare_selection_border_fill(selection_surface, st_buffer, border);
 
     for (int i = 0; i < n_damage_regions; ++i) {
         draw_and_damage_region(selection_surface, st_buffer, damage_regions_wayland[i], damage_regions_buffer[i]);
@@ -178,14 +221,7 @@ draw_and_damage_background(
 ) {
     struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
 
-    bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
-    bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, UI_COLOR_BG_DIM);
-    bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_EVEN_ODD);
-
-    bl_path_add_box_i(&selection_surface->bl_path, surface_bounds, BL_GEOMETRY_DIRECTION_NONE);
-    if (!selection_is_none(&output->selection_ctx)) { // TODO: likely()
-        bl_path_add_box_i(&selection_surface->bl_path, &border->outer, BL_GEOMETRY_DIRECTION_NONE);
-    }
+    prepare_background_fill(output, st_buffer, border, surface_bounds);
 
     for (int i = 0; i < n_damage_regions; ++i) {
         draw_and_damage_region(selection_surface, st_buffer, damage_regions_wayland[i], damage_regions_buffer[i]);
@@ -246,6 +282,48 @@ geometry_to_surface_backplate_round_rect_px(
     };
 }
 
+// Clears out the rect and prepares the selection_surface.bl_path to re-fill
+// it with the selection and background, leaving a blank slate to (re)draw new
+// UI elements (keymap etc.)
+static void
+prepare_reset_ui_rect(
+    struct scran_output *output,
+    struct scran_output_selectionSurface_buffer *st_buffer,
+    const struct selection_border *border,
+    BLRectI rect
+) {
+    if (blrecti_is_inverted_or_empty(rect)) {
+        return;
+    }
+
+    struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
+    const BLBoxI box = blrecti_to_blboxi(rect);
+    const BLBoxI border_intersection = blboxi_intersection(box, border->outer);
+
+    // Skip border drawing for efficiency and to avoid potential future bugs
+    // when selection is none but the "none"-selection intersects.
+    if (on_greeting_screen(output) || blboxi_is_empty(border_intersection)) {
+        bl_path_add_rect_i(&selection_surface->bl_path, &rect, BL_GEOMETRY_DIRECTION_NONE);
+        return;
+    }
+
+    blpath_add_box_difference(&selection_surface->bl_path, box, border->outer);
+
+    const BLBoxI capture_intersection = blboxi_intersection(border_intersection, border->inner);
+    if (!blboxi_is_empty(capture_intersection)) {
+        const BLRectI capture_rect = blboxi_to_blrecti(capture_intersection);
+        bl_context_clear_rect_i(&st_buffer->bl_ctx, &capture_rect);
+    }
+
+    BLRectI border_rects[4];
+    blboxi_get_difference_as_4_rects(border_intersection, border->inner, border_rects);
+    for (size_t i = 0; i < ARRAY_LENGTH(border_rects); ++i) {
+        if (!blrecti_is_inverted_or_empty(border_rects[i])) {
+            bl_context_fill_rect_i(&st_buffer->bl_ctx, &border_rects[i]);
+        }
+    }
+}
+
 static void
 damage_ui_item(
     struct scran_output_selectionSurface *selection_surface,
@@ -281,31 +359,61 @@ rect_x_best_fit(int preferred_x, int rect_width, int container_width) {
 static struct ui_item_geometry
 get_ui_item_geometry(
     const struct scran_output_selectionSurface *selection_surface,
+    const struct ui_shared_content *shared_content,
     const struct selection_border *border,
     const struct atlas_text_metrics *textline_metrics,
     enum ui_alignment alignment,
     enum ui_placement placement
 ) {
-    const int padding       = ui_item_backplate_padding_px(selection_surface);
-    const int height        = ui_item_height_px(selection_surface);
-    const int width         = ui_item_width_px(selection_surface, textline_metrics);
-    const int surface_width = selection_surface->surface.width_px_buffer;
+    const int padding              = ui_item_backplate_padding_px(selection_surface);
+    const int height               = ui_item_height_px(selection_surface);
+    const int width                = ui_item_width_px(selection_surface, textline_metrics);
+    const int surface_width        = selection_surface->surface.width_px_buffer;
+    const bool ui_inside_selection = shared_content->ui_inside_selection;
 
-    // Ideal placement:
-    BLPointI origin = {
-        .x = alignment == UI_ALIGN_LEFT      ? border->outer.x0          : border->outer.x1 - width,
-        .y = placement == UI_ABOVE_SELECTION ? border->outer.y0 - height : border->outer.y1,
-    };
+    const BLBoxI anchor = ui_inside_selection ? border->inner : border->outer;
 
+    // Ideal Y values
+    int above_y0 = anchor.y0 - (ui_inside_selection ? 0 : height);
+    int below_y0 = anchor.y1 - (ui_inside_selection ? height : 0);
+    // Don't let items collide
+    if (ui_inside_selection) {
+        const BLBoxI surface_bounds = get_surface_bounds(selection_surface);
+        const int above_y1 = above_y0 + height;
+        const int below_y1 = below_y0 + height;
+
+        const int overlap = above_y1 - below_y0;
+        if (overlap > 0) {
+            const int space_above = above_y0 - surface_bounds.y0;
+            const int space_below = surface_bounds.y1 - below_y1;
+
+            // Prioritize displacing the above item
+            if (space_above >= overlap) {
+                above_y0 -= overlap;
+            } else if (space_below >= overlap) {
+                below_y0 += overlap;
+            } else {
+                // TODO: Handle not having space in either direction?
+            }
+        }
+    }
+
+    // Ideal X value
+    int x0 = alignment == UI_ALIGN_LEFT ? anchor.x0 : anchor.x1 - width;
     // Do not start left of the selection...
-    origin.x = MAX(origin.x, border->outer.x0);
+    x0 = MAX(x0, anchor.x0);
     // ...unless it would help minimize clipping
-    origin.x = rect_x_best_fit(origin.x, width, surface_width);
+    x0 = rect_x_best_fit(x0, width, surface_width);
+
+    const BLPointI backplate_origin = {
+        .y = placement == UI_ABOVE_SELECTION ? above_y0  : below_y0,
+        .x = x0,
+    };
 
     return (struct ui_item_geometry) {
         .pen_origin = (BLPointI){
-            .x = origin.x + padding,
-            .y = origin.y + padding,
+            .x = backplate_origin.x + padding,
+            .y = backplate_origin.y + padding,
         },
         .text_metrics = *textline_metrics,
         .placement = placement,
@@ -500,7 +608,8 @@ statusline_content_equal(const struct ui_statusline_content *a, const struct ui_
 static bool
 shared_content_equal(const struct ui_shared_content *a, const struct ui_shared_content *b) {
     return
-        a->backplate_color == b->backplate_color;
+        a->backplate_color == b->backplate_color
+        && a->ui_inside_selection == b->ui_inside_selection;
 }
 
 static inline bool
@@ -534,7 +643,10 @@ struct ui_render_data {
 };
 
 static inline struct ui_greeting_content
-collect_greeting_content(struct scran_output *output) {
+collect_greeting_content(
+    struct scran_output *output,
+    const struct ui_shared_content *shared_content
+) {
     return (struct ui_greeting_content){
         .visible = on_greeting_screen(output),
     };
@@ -543,11 +655,12 @@ collect_greeting_content(struct scran_output *output) {
 static inline void
 make_greeting_description(
     struct scran_output *output,
+    const struct ui_shared_content *shared_content,
     const struct selection_border *border,
     struct ui_greeting_description *description,
     struct ui_render_data *render_data
 ) {
-    const struct ui_greeting_content content = collect_greeting_content(output);
+    const struct ui_greeting_content content = collect_greeting_content(output, shared_content);
 
     *description = (struct ui_greeting_description){
         .content = content,
@@ -564,6 +677,7 @@ make_greeting_description(
         );
         description->geometry = get_ui_item_geometry(
             &output->selection_surface,
+            shared_content,
             border,
             &metrics,
             UI_ALIGN_LEFT,
@@ -574,7 +688,8 @@ make_greeting_description(
 
 static inline struct ui_keymap_content
 collect_keymap_content(
-    struct scran_output *output
+    struct scran_output *output,
+    const struct ui_shared_content *shared_content
 ) {
     const bool surface_focused = g_state.seat.active_selection_surface == &output->selection_surface;
     const bool modifier_active = surface_focused && g_state.seat.mod_key_active;
@@ -649,14 +764,16 @@ collect_keymap_content(
 static void
 make_keymap_description(
     struct scran_output *output,
+    const struct ui_shared_content *shared_content,
     const struct selection_border *border,
     struct ui_keymap_description *description
 ) {
-    const struct ui_keymap_content content = collect_keymap_content(output);
+    const struct ui_keymap_content content = collect_keymap_content(output, shared_content);
 
     const struct atlas_text_metrics metrics = measure_ui_line(&output->selection_surface.atlas, content.blit_data, ARRAY_LENGTH(content.blit_data));
     const struct ui_item_geometry geometry = get_ui_item_geometry(
         &output->selection_surface,
+        shared_content,
         border,
         &metrics,
         UI_ALIGN_LEFT,
@@ -688,6 +805,7 @@ get_video_timer_seconds(struct scran_output *output, int64_t now_ns) {
 static inline struct ui_statusline_content
 collect_statusline_content(
     struct scran_output *output,
+    const struct ui_shared_content *shared_content,
     BLBoxI selection,
     int64_t now_ns
 ) {
@@ -712,40 +830,43 @@ collect_shared_content(const struct scran_output *output) {
         .backplate_color =
             surface_focused
             ? UI_COLOR_BACKPLATE
-            : UI_COLOR_BACKPLATE_UNFOCUSED
+            : UI_COLOR_BACKPLATE_UNFOCUSED,
+        .ui_inside_selection = output->selection_surface.ui_inside_selection,
     };
 }
 
 bool
-ui_contents_equal(
+ui_needs_redraw(
     struct scran_output *output,
-    const BLBoxI *selection,
     int64_t now_ns
 ) {
     struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
+    const BLBoxI selection = selection_surface_box_to_draw(output);
 
-    struct ui_statusline_content statusline_content = collect_statusline_content(output, *selection, now_ns);
-    struct ui_keymap_content keymap_content = collect_keymap_content(output);
-    struct ui_greeting_content greeting_content = collect_greeting_content(output);
     struct ui_shared_content shared_content = collect_shared_content(output);
+    struct ui_statusline_content statusline_content = collect_statusline_content(output, &shared_content, selection, now_ns);
+    struct ui_keymap_content keymap_content = collect_keymap_content(output, &shared_content);
+    struct ui_greeting_content greeting_content = collect_greeting_content(output, &shared_content);
 
-    return
+    return !(
         greeting_content_equal(&selection_surface->ui_last_committed.greeting.content, &greeting_content)
         && statusline_content_equal(&selection_surface->ui_last_committed.statusline.content, &statusline_content)
         && keymap_content_equal(&selection_surface->ui_last_committed.keymap.content, &keymap_content)
-        && shared_content_equal(&selection_surface->ui_last_committed.shared_content, &shared_content);
+        && shared_content_equal(&selection_surface->ui_last_committed.shared_content, &shared_content)
+    );
 }
 
 static void
 make_statusline_description(
     struct scran_output *output,
+    const struct ui_shared_content *shared_content,
     BLBoxI selection,
     const struct selection_border *border,
     int64_t now_ns,
     struct ui_statusline_description *description,
     struct ui_render_data *render_data
 ) {
-    const struct ui_statusline_content content = collect_statusline_content(output, selection, now_ns);
+    const struct ui_statusline_content content = collect_statusline_content(output, shared_content, selection, now_ns);
 
     get_selection_size_string(render_data->selection_size, &content);
     get_timer_string(render_data->timer, content.timer_seconds);
@@ -764,6 +885,7 @@ make_statusline_description(
 
     const struct ui_item_geometry geometry = get_ui_item_geometry(
         &output->selection_surface,
+        shared_content,
         border,
         &metrics,
         UI_ALIGN_RIGHT,
@@ -816,13 +938,14 @@ make_ui_description(
     struct ui_description *description,
     struct ui_render_data *render_data
 ) {
-    make_greeting_description(output, border, &description->greeting, render_data);
-    make_keymap_description(output, border, &description->keymap);
-    make_statusline_description(output, selection, border, now_ns, &description->statusline, render_data);
+    const struct ui_shared_content shared_content = collect_shared_content(output);
+    description->shared_content = shared_content;
 
-    description->shared_content = collect_shared_content(output);
+    make_greeting_description(output, &shared_content, border, &description->greeting, render_data);
+    make_keymap_description(output, &shared_content, border, &description->keymap);
+    make_statusline_description(output, &shared_content, selection, border, now_ns, &description->statusline, render_data);
 
-    if (selection_is_none(&output->selection_ctx)) {
+    if (on_greeting_screen(output)) {
         position_pre_selection_ui(&output->selection_surface, description);
     }
 }
@@ -853,7 +976,8 @@ draw_and_damage_ui(
     struct scran_output *output,
     struct scran_output_selectionSurface_buffer *st_buffer,
     BLBoxI selection,
-    const struct selection_borders *borders
+    const struct selection_borders *borders,
+    bool selection_redrawn
 ) {
     struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
 
@@ -912,10 +1036,18 @@ draw_and_damage_ui(
         },
     };
 
+    // When the selection is updated and crosses through an inside-mode
+    // item, it needs to be redrawn, since the buffer was updated.
+    // HACK: This condition is overly broad, but leaving it like this until
+    // a larger refactor (e.g. merging the border/background's stages with
+    // the UI items' stages).
+    const bool selection_could_have_erased_item = st_buffer->ui.shared_content.ui_inside_selection && selection_redrawn;
+
     for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
         render_plan[i].redraw_buffer |=
             st_buffer->force_redraw
-            | !shared_content_equal(&st_buffer->ui.shared_content, &new_ui.shared_content);
+            | !shared_content_equal(&st_buffer->ui.shared_content, &new_ui.shared_content)
+            | selection_could_have_erased_item;
         render_plan[i].damage_surface |=
             !shared_content_equal(&selection_surface->ui_last_committed.shared_content, &new_ui.shared_content);
     }
@@ -927,6 +1059,11 @@ draw_and_damage_ui(
     //   `force_redraw` clears the entire buffer before arriving here,
     //   so we don't need to clear it again.
     if (!st_buffer->force_redraw) {
+        // prepare prepare reset ui rect
+        bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
+        bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_NON_ZERO);
+        bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, selection_surface->border_color);
+
         for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
             const struct ui_item_render_plan *item = &render_plan[i];
             if (!item->redraw_buffer) {
@@ -936,38 +1073,13 @@ draw_and_damage_ui(
             const BLRectI text = geometry_to_surface_text_rect_px(selection_surface, item->buffer_geometry);
             const BLRectI backplate = geometry_to_surface_backplate_rect_px(selection_surface, item->buffer_geometry, &text);
 
-            if (selection_is_none(&output->selection_ctx)) {
-                if (backplate.w > 0 && backplate.h > 0) {
-                    bl_path_add_rect_i(&selection_surface->bl_path, &backplate, BL_GEOMETRY_DIRECTION_NONE);
-                }
-                if (text.w > 0 && text.h > 0) {
-                    bl_path_add_rect_i(&selection_surface->bl_path, &text, BL_GEOMETRY_DIRECTION_NONE);
-                }
-            } else {
-                // Add only the portions outside the current transparent capture area and its border,
-                // since background/border drawing has already updated any old pixels there.
-                if (backplate.w > 0 && backplate.h > 0) {
-                    blpath_add_box_difference(
-                        &selection_surface->bl_path,
-                        blrecti_to_blboxi(backplate),
-                        borders->desired.outer
-                    );
-                }
-                if (text.w > 0 && text.h > 0) {
-                    blpath_add_box_difference(
-                        &selection_surface->bl_path,
-                        blrecti_to_blboxi(text),
-                        borders->desired.outer
-                    );
-                }
-            }
+            prepare_reset_ui_rect(output, st_buffer, &borders->desired, backplate);
+            prepare_reset_ui_rect(output, st_buffer, &borders->desired, text);
         }
 
-        bl_context_set_comp_op(&st_buffer->bl_ctx, BL_COMP_OP_SRC_COPY);
-        bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_NON_ZERO);
+        // finish reset ui rect
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, UI_COLOR_BG_DIM);
         bl_context_fill_path_d(&st_buffer->bl_ctx, &SURFACE_BLCONTEXT_ORIGIN, &selection_surface->bl_path);
-
         bl_path_clear(&selection_surface->bl_path);
     }
 
@@ -999,7 +1111,7 @@ draw_and_damage_ui(
             .h = ceil(backplate.h),
         };
 
-        if (!selection_is_none(&output->selection_ctx)) {
+        if (!on_greeting_screen(output) && !new_ui.shared_content.ui_inside_selection) {
             clip = clamp_clip_y_outside_border(clip, item->new_geometry->placement, &borders->desired);
         }
 
@@ -1030,7 +1142,7 @@ draw_and_damage_ui(
         // Clip to the same bounds as we clear and damage
         BLRectI clip = geometry_to_surface_text_rect_px(selection_surface, item->new_geometry);
 
-        if (!selection_is_none(&output->selection_ctx)) {
+        if (!on_greeting_screen(output) && !new_ui.shared_content.ui_inside_selection) {
             clip = clamp_clip_y_outside_border(clip, item->new_geometry->placement, &borders->desired);
         }
 
@@ -1056,6 +1168,30 @@ draw_and_damage_ui(
             damage_ui_item(selection_surface, item->committed_geometry);
             damage_ui_item(selection_surface, item->new_geometry);
         }
+    }
+
+    // Update ui clipping state
+    {
+        bool ui_is_clipping = false;
+        const bool ui_inside = new_ui.shared_content.ui_inside_selection;
+
+        if (!ui_inside) {
+            const BLBoxI surface_bounds = get_surface_bounds(selection_surface);
+
+            for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
+                const struct ui_item_render_plan *item = &render_plan[i];
+                const BLBoxI item_text_bounds = blrecti_to_blboxi(
+                    geometry_to_surface_text_rect_px(selection_surface, item->new_geometry)
+                );
+
+                if (!blboxi_contains(surface_bounds, item_text_bounds)) {
+                    ui_is_clipping = true;
+                    break;
+                }
+            }
+        }
+
+        selection_surface->ui_is_clipping = ui_is_clipping;
     }
 
     st_buffer->ui = new_ui;
@@ -1087,11 +1223,7 @@ draw_selection_and_damage_buffer(
     assert(!blboxi_is_inverted(committed_selection));
     // TODO: Assert box_bounds fully surrounds box_to_draw
 
-    const struct BLBoxI surface_bounds = {
-        0, 0,
-        selection_surface->surface.width_px_buffer,
-        selection_surface->surface.height_px_buffer,
-    };
+    const BLBoxI surface_bounds = get_surface_bounds(selection_surface);
 
     const double scale = selection_surface->surface.final_scale_factor_normalized;
 
@@ -1101,15 +1233,15 @@ draw_selection_and_damage_buffer(
         .buffer    = get_selection_border(buffer_selection, scale),
     };
 
-    bool selection_changed =
-        !blboxi_are_equal(desired_selection, st_buffer->box_currently_drawn)
-        || !blboxi_are_equal(desired_selection, selection_surface->committed_selection);
+    // See draw_and_damage_region() comment.
+    const bool buffer_selection_changed = st_buffer->force_redraw || !blboxi_are_equal(desired_selection, buffer_selection);
+    const bool surface_selection_changed = st_buffer->force_redraw || !blboxi_are_equal(desired_selection, committed_selection);
 
     // Draw background dim
-    if (selection_changed || st_buffer->force_redraw) {
+    if (buffer_selection_changed || surface_selection_changed) {
         int n_damage_regions;
-        BLRectI damage_regions_wayland[8];
-        BLRectI damage_regions_buffer[8];
+        BLRectI damage_regions_wayland[8] = {0};
+        BLRectI damage_regions_buffer[8] = {0};
 
         // TODO: Just do redraw/damage directly whenever we need to redraw, rather than
         // needing to branch within this function?
@@ -1120,11 +1252,15 @@ draw_selection_and_damage_buffer(
             n_damage_regions = 1;
         } else {
             static const int i_background_diffs = 0;
-            blboxi_get_symmetric_difference_as_4_rects(borders.committed.outer, borders.desired.outer, damage_regions_wayland + i_background_diffs);
-            blboxi_get_symmetric_difference_as_4_rects(borders.buffer.outer,    borders.desired.outer, damage_regions_buffer  + i_background_diffs);
             static const int i_old_border_diffs = 4;
-            blboxi_get_symmetric_difference_as_4_rects(borders.committed.outer, borders.committed.inner, damage_regions_wayland + i_old_border_diffs);
-            blboxi_get_symmetric_difference_as_4_rects(borders.buffer.outer,    borders.buffer.inner,    damage_regions_buffer  + i_old_border_diffs);
+            if (surface_selection_changed) {
+                blboxi_get_symmetric_difference_as_4_rects(borders.committed.outer, borders.desired.outer, damage_regions_wayland + i_background_diffs);
+                blboxi_get_symmetric_difference_as_4_rects(borders.committed.outer, borders.committed.inner, damage_regions_wayland + i_old_border_diffs);
+            }
+            if (buffer_selection_changed) {
+                blboxi_get_symmetric_difference_as_4_rects(borders.buffer.outer, borders.desired.outer, damage_regions_buffer + i_background_diffs);
+                blboxi_get_symmetric_difference_as_4_rects(borders.buffer.outer, borders.buffer.inner, damage_regions_buffer + i_old_border_diffs);
+            }
             n_damage_regions = 8;
         }
 
@@ -1139,30 +1275,31 @@ draw_selection_and_damage_buffer(
         );
     }
 
-    if (g_state.options.hide_ui_level < SCRAN_OPT_HIDE_UI_ITEMS) {
-        // UI items must be drawn after/on top of the background.
-        draw_and_damage_ui(output, st_buffer, desired_selection, &borders);
-    }
-
     // Draw selection border
-    if (selection_changed || st_buffer->force_redraw) {
-        if (selection_is_none(&output->selection_ctx)) { // TODO: unlikely()
+    if (buffer_selection_changed || surface_selection_changed) {
+        if (on_greeting_screen(output)) { // TODO: unlikely()
             st_buffer->box_currently_drawn = desired_selection;
         } else {
             BLRectI damage_regions[4];
+            const BLRectI empty_regions[4] = {0};
             blboxi_get_symmetric_difference_as_4_rects(borders.desired.outer, borders.desired.inner, damage_regions);
             draw_and_damage_selection_border(
                 selection_surface,
                 st_buffer,
                 desired_selection,
                 &borders.desired,
-                damage_regions,
-                damage_regions,
+                surface_selection_changed ? damage_regions : empty_regions,
+                buffer_selection_changed ? damage_regions : empty_regions,
                 4
             );
         }
     }
 
+
+    if (g_state.options.hide_ui_level < SCRAN_OPT_HIDE_UI_ITEMS) {
+        // UI items must be drawn after/on top of the background and border.
+        draw_and_damage_ui(output, st_buffer, desired_selection, &borders, buffer_selection_changed);
+    }
 
     // NOTE: Don't reset the BLContext here, unless intending to fully
     // re-initialize it. Its state is initialized outside of this ::frame
@@ -1171,6 +1308,83 @@ draw_selection_and_damage_buffer(
 
     // Assumes force-redraw logic was fully handled above
     st_buffer->force_redraw = false;
+}
+
+static inline struct scran_output_selectionSurface_buffer *
+get_free_double_buffer(struct scran_output_selectionSurface *selection_surface)
+{
+    struct scran_output_selectionSurface_buffer *buffer =
+        selection_surface->double_buffer[0].scran_wl_buffer.busy
+        ? &selection_surface->double_buffer[1]
+        : &selection_surface->double_buffer[0]
+    ;
+
+    if (buffer->scran_wl_buffer.busy) {
+        return NULL;
+    }
+
+    return buffer;
+}
+
+void
+draw_selection_and_commit(struct scran_output *output)
+{
+    if (output->selection_surface.disable_reason_mask) {
+        return;
+    }
+
+    struct scran_output_selectionSurface_buffer *buffer = get_free_double_buffer(&output->selection_surface);
+
+    if (buffer == NULL) {
+        DEBUG("Both buffers busy...\n");
+        request_selection_surface_frame_callback(output);
+        return;
+    }
+
+    // This is the capture area that the rest of this function is assuming will
+    // be in use for the frame in which this selection area is presented.
+    const BLBoxI selection = selection_surface_box_to_draw(output);
+    assert(selection.x1 <= get_transformed_output_width(output));
+    assert(selection.y1 <= get_transformed_output_height(output));
+
+    buffer->scran_wl_buffer.busy = true;
+    buffer->drew_fullscreen_ui = selection_surface_draws_fullscreen_capture(output);
+
+    // XXX HACK: Temporary (hopefully) workaround for regression introduced by
+    // trying to fix cosmic and hyprland sync by assigning on
+    // presentation_feedback::presented. Should be removed once the syncing
+    // logic is more robust.
+    if (   g_state.globals.cosmic_output_manager == NULL
+        && g_state.globals.hypr_surface_manager == NULL
+    ) {
+        // XXX TODO: Check whether we're actually sway more robustly, and assign
+        // it as part of our state. (So we don't need to assume the user is
+        // running either cosmic or sway.)
+        capture_update_selection(output, selection);
+    }
+
+    draw_selection_and_damage_buffer(output, buffer, selection);
+
+    wl_surface_attach(output->selection_surface.surface.wl_surface, buffer->scran_wl_buffer.wl_buffer, 0, 0);
+
+    if (output->selection_surface.single_pixel_buffer_committed) {
+        output->selection_surface.single_pixel_buffer_committed = false;
+        wl_surface_damage_buffer(
+            output->selection_surface.surface.wl_surface,
+            0, 0,
+            output->selection_surface.surface.width_px_buffer,
+            output->selection_surface.surface.height_px_buffer
+        );
+        update_selection_surface_viewport(output);
+    }
+
+    wp_presentation_feedback_add_listener(
+        wp_presentation_feedback(g_state.globals.presentation, output->selection_surface.surface.wl_surface),
+        &presentation_feedback_listener__selection,
+        buffer
+    );
+    wl_surface_commit(output->selection_surface.surface.wl_surface);
+    output->selection_surface.committed_selection = selection;
 }
 
 static inline void

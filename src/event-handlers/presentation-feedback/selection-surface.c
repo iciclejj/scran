@@ -48,6 +48,26 @@ handle_presentation_feedback_presented__selection(
     // delayed/skiped/etc. frames. Probably a frame history and multi-buffered
     // capture is required, with currently available sync/protocol guarantees.
     capture_update_selection(st_output, st_buffer->box_currently_drawn);
+
+    // TODO: Move this into capture.c?
+    {
+        enum scran_fullscreen_ui_state *fullscreen_ui_state = &st_output->capture.fullscreen_ui_state;
+
+        switch (*fullscreen_ui_state) {
+        case SCRAN_FULLSCREEN_UI_SHOW_PENDING:
+            if (st_buffer->drew_fullscreen_ui) {
+                DEBUG("Presented fullscreen UI\n");
+                *fullscreen_ui_state = SCRAN_FULLSCREEN_UI_SHOWN;
+                capture_fullscreen_sync_ui_and_dispatch(st_output);
+            }
+            break;
+        case SCRAN_FULLSCREEN_UI_SHOWN:
+        case SCRAN_FULLSCREEN_UI_HIDE_PENDING:
+        case SCRAN_FULLSCREEN_UI_NONE:
+        case SCRAN_FULLSCREEN_UI_HIDDEN:
+            break;
+        }
+    }
 }
 
 static inline void

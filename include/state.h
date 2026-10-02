@@ -18,7 +18,6 @@
 #include "wlr-layer-shell-unstable-v1.h"
 #include "ext-image-capture-source-v1.h"
 #include "ext-image-copy-capture-v1.h"
-#include "cursor-shape-v1.h"
 #include "xdg-output-unstable-v1.h"
 #include "ext-data-control-v1.h"
 #include "presentation-time.h"
@@ -70,7 +69,6 @@ struct scran_globals {
     struct wl_shm *shm;
     struct zxdg_output_manager_v1 *xdg_output_manager;
     struct zwlr_layer_shell_v1 *layer_shell;
-    struct wp_cursor_shape_manager_v1 *cursor_shape_manager;
     struct ext_output_image_capture_source_manager_v1 *output_image_capture_source_manager;
     struct ext_image_copy_capture_manager_v1 *image_copy_capture_manager;
     struct ext_data_control_manager_v1 *data_control_manager;
@@ -111,10 +109,22 @@ struct scran_cursor_buffer {
 struct scran_cursor {
     struct wl_surface *wl_surface;
     struct wp_viewport *viewport;
-    struct scran_cursor_buffer buffers[SCRAN_CURSOR_N_THEMES];
+    struct scran_cursor_buffer buffers[SCRAN_CURSOR_N_THEMES][SCRAN_CURSOR_N_TOOLTIPS];
 
-    int width_height_px;
+    BLRectI viewport_source_px[SCRAN_CURSOR_N_THEMES][SCRAN_CURSOR_N_TOOLTIPS];
+    BLRectI viewport_source_scaled[SCRAN_CURSOR_N_THEMES][SCRAN_CURSOR_N_TOOLTIPS];
+
+    int cursor_size_px; // == width_px == height_px
+
+    uint32_t committed_enter_serial;
+
     enum scran_cursor_theme theme;
+    enum scran_cursor_tooltip tooltip;
+
+    // Cursor needs its own atlas, since it's currently using integer scaling,
+    // while the selection-surface's atlas uses the surface's fractional
+    // scaling. TODO: Remove this if/when we allow fractional cursor scaling.
+    struct atlas atlas;
 };
 
 struct scran_output_subsurface {
@@ -192,6 +202,7 @@ struct ui_description {
 
     struct ui_shared_content {
         uint32_t backplate_color;
+        bool ui_inside_selection;
     } shared_content;
 
     struct ui_greeting_description {
@@ -231,15 +242,13 @@ struct scran_output_selectionSurface_buffer {
     struct ui_description ui;
 
     bool force_redraw;
+    bool drew_fullscreen_ui;
 };
 
 enum scran_selection_surface_disable_reason {
-    SCRAN_SELECTION_SURFACE_DISABLE_REASON_NONE                   = 0,
-    SCRAN_SELECTION_SURFACE_DISABLE_REASON_IMAGE_HIDE       = 1 << 0,
-    SCRAN_SELECTION_SURFACE_DISABLE_REASON_VIDEO_HIDE       = 1 << 0,
-    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FREEZEFRAME_HIDE = 1 << 0,
-    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE        = 1 << 1,
-    SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED      = 1 << 2,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_NONE              = 0,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE   = 1 << 1,
+    SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED = 1 << 2,
 } SCRAN_PACKED;
 
 struct scran_output_selectionSurface {
@@ -259,13 +268,19 @@ struct scran_output_selectionSurface {
     enum scran_selection_surface_disable_reason disable_reason_mask;
     uint32_t border_color;
 
+    bool ui_is_clipping;
+    bool ui_inside_selection;
+    // TODO: Replace single_pixel_buffer_committed with more
+    // robust viewport-updating logic and/or tie it in with
+    // the scran_fullscreen_ui_state todo.
+    bool single_pixel_buffer_committed;
     bool awaiting_frame_callback;
 };
 
 struct scran_output;
 typedef void (*scran_output_callback)(struct scran_output *);
 
-enum scran_capture_frame_consumers {
+enum scran_capture_frame_consumer_mask {
     SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE       = 1 << 0,
     SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO       = 1 << 1,
     SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME = 1 << 2,
@@ -284,7 +299,7 @@ struct capture_frame_context {
     int64_t presentation_time_nsec;
 
 
-    enum scran_capture_frame_consumers consumers;
+    enum scran_capture_frame_consumer_mask consumers;
 };
 
 struct capture_session_context {
@@ -345,8 +360,6 @@ struct scran_seat_pointerContext {
     // layer-surfaces. This is a compositor bug, so probably just remove all
     // code referencing this some time after it's fixed upstream.
     bool pointer_focus_trusted;
-
-    struct wp_cursor_shape_device_v1 *cursor_shape_device;
 };
 
 struct scran_seat_keyboard {
@@ -459,12 +472,25 @@ struct ffmpeg_context {
     AVAudioFifo     *av_audio_fifo;
 };
 
+enum scran_fullscreen_ui_state {
+    SCRAN_FULLSCREEN_UI_NONE = 0,      // Default UI
+    SCRAN_FULLSCREEN_UI_SHOW_PENDING,  // Capture UI drawn and awaiting ::presented
+    SCRAN_FULLSCREEN_UI_SHOWN,
+    SCRAN_FULLSCREEN_UI_HIDE_PENDING,  // Hide acquired and awaiting ::presented
+    SCRAN_FULLSCREEN_UI_HIDDEN,
+} SCRAN_PACKED;
+
 enum scran_video_stage {
     SCRAN_VIDEO_STAGE_NONE,
     SCRAN_VIDEO_STAGE_FULLSCREEN_START_PENDING,
     SCRAN_VIDEO_STAGE_CAPTURING,
     SCRAN_VIDEO_STAGE_STOP_REQUESTED,
 } SCRAN_PACKED;
+
+struct scran_fullscreen_consumers {
+    enum scran_capture_frame_consumer_mask active;
+    enum scran_capture_frame_consumer_mask awaiting_ui;
+};
 
 struct scran_output_capture {
     struct ext_image_capture_source_v1 *source;
@@ -495,8 +521,10 @@ struct scran_output_capture {
 
     struct scran_stdout_reservation stdout_reservation;
 
-    enum scran_capture_frame_consumers fullscreen_consumers;
-    enum scran_capture_frame_consumers pending_fullscreen_consumers;
+    struct scran_fullscreen_consumers fullscreen_consumers;
+    // TODO: Refactor this to simply be a selection-surface-owned description of
+    // the currently presented UI state?
+    enum scran_fullscreen_ui_state fullscreen_ui_state;
 
     uint32_t pre_capture_border_color;
 

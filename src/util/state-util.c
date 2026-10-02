@@ -18,11 +18,16 @@ scran_request_exit()
     FOR_EACH_OUTPUT(i, st_output) {
         struct scran_output_capture *capture = &st_output->capture;
 
-        enum scran_capture_frame_consumers pending = capture->pending_fullscreen_consumers;
-        if (pending) {
-            capture->pending_fullscreen_consumers = 0;
+        // We don't want to flash a frame of selection/background dim if
+        // seletion surface is hidden when we're exiting anyways, so make
+        // sure it's fused off from now.
+        st_output->selection_surface.disable_reason_mask |= SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED;
+
+        enum scran_capture_frame_consumer_mask awaiting = capture->fullscreen_consumers.awaiting_ui;
+        if (awaiting) {
+            capture->fullscreen_consumers.awaiting_ui = 0;
             capture->fullscreen_video_pending_audio_disabled = false; // (not really needed)
-            capture_fullscreen_end(st_output, pending);
+            capture_fullscreen_end(st_output, awaiting);
         }
 
         if (capture->video_stage == SCRAN_VIDEO_STAGE_CAPTURING) {
@@ -141,9 +146,7 @@ update_selection_surface_viewport(
     struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
     struct scran_output_surface          *st_surface         = &selection_surface->surface;
 
-    // A disabled selection surface may have the 1x1 transparent buffer
-    // attached. Don't call this function in that case.
-    assert(!selection_surface->disable_reason_mask);
+    assert(!selection_surface->single_pixel_buffer_committed);
 
     if (!(st_surface->viewport
           && st_surface->width_px_buffer && st_surface->height_px_buffer
@@ -186,10 +189,10 @@ update_surface_scale_bufsize_viewport(
     DEBUG("    Updating scale and size...\n");
     update_surface_scale_and_size(st_surface);
 
-    if (!st_output->selection_surface.disable_reason_mask) {
+    if (!st_output->selection_surface.single_pixel_buffer_committed) {
         update_selection_surface_viewport(st_output);
     } else {
-        DEBUG("    Selection surface disabled; deferring viewport update.\n");
+        DEBUG("    Single-pixel buffer attached; deferring viewport update.\n");
     }
 
     freezeframe_surface_update_scale_size_viewport(st_output);

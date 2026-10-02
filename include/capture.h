@@ -36,15 +36,16 @@ struct capture_buffer_area_context {
     uint32_t source_row_bytes;
 };
 
-void capture_session_init(struct capture_session *session, struct ext_image_capture_source_v1 *source);
+void capture_session_init(struct capture_session *session, struct ext_image_capture_source_v1 *source, bool capture_cursor);
 
 void capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px);
 
-enum scran_capture_frame_consumers capture_fullscreen_dispatch_pending_consumers(struct scran_output *st_output, enum scran_capture_frame_consumers consumers);
-enum scran_capture_frame_consumers capture_fullscreen_start(struct scran_output *st_output, enum scran_capture_frame_consumers consumers);
-void capture_fullscreen_end(struct scran_output *st_output, enum scran_capture_frame_consumers consumers);
+enum scran_capture_frame_consumer_mask capture_fullscreen_dispatch_awaiting_consumers(struct scran_output *st_output, enum scran_capture_frame_consumer_mask consumers);
+enum scran_capture_frame_consumer_mask capture_fullscreen_start(struct scran_output *st_output, enum scran_capture_frame_consumer_mask consumers);
+void capture_fullscreen_sync_ui_and_dispatch(struct scran_output *output);
+void capture_fullscreen_end(struct scran_output *st_output, enum scran_capture_frame_consumer_mask consumers);
 
-bool capture_request_frame(struct capture_session *session, enum scran_capture_frame_consumers consumer, const BLRectI *buffer_damage);
+bool capture_request_frame(struct capture_session *session, enum scran_capture_frame_consumer_mask consumer, const BLRectI *buffer_damage);
 
 typedef void capture_video_write_packet_fn(
     struct scran_output *,
@@ -70,6 +71,17 @@ bool capture_image_start(struct scran_output *st_output, bool exit_after_capture
  void capture_image_finish(struct scran_output *output);
 bool capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_capture);
 
+static inline bool
+capture_fullscreen_consumers_allow_ui(enum scran_capture_frame_consumer_mask consumers)
+{
+    static const enum scran_capture_frame_consumer_mask disallowing =
+        SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME
+        | SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE;
+
+    return
+        !(consumers & disallowing)
+        && g_state.options.hide_ui_level < SCRAN_OPT_HIDE_UI_ITEMS;
+}
 
 static inline bool
 capture_video_is_live(
@@ -117,7 +129,7 @@ capture_force_next_frame(
 static inline void
 capture_request_frame_forced(
     struct capture_session *session,
-    enum scran_capture_frame_consumers consumer,
+    enum scran_capture_frame_consumer_mask consumer,
     const BLRectI *damage
 ) {
     capture_request_frame(session, consumer, damage);
