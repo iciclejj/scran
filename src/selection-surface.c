@@ -1371,6 +1371,18 @@ draw_selection_and_commit(struct scran_output *output)
     draw_selection_and_damage_buffer(output, buffer, selection);
 
     wl_surface_attach(output->selection_surface.surface.wl_surface, buffer->scran_wl_buffer.wl_buffer, 0, 0);
+
+    if (output->selection_surface.single_pixel_buffer_committed) {
+        output->selection_surface.single_pixel_buffer_committed = false;
+        wl_surface_damage_buffer(
+            output->selection_surface.surface.wl_surface,
+            0, 0,
+            output->selection_surface.surface.width_px_buffer,
+            output->selection_surface.surface.height_px_buffer
+        );
+        update_selection_surface_viewport(output);
+    }
+
     wp_presentation_feedback_add_listener(
         wp_presentation_feedback(g_state.globals.presentation, output->selection_surface.surface.wl_surface),
         &presentation_feedback_listener__selection,

@@ -64,6 +64,7 @@ selection_surface_hide(struct scran_output *st_output)
     wl_surface_commit(
         st_surface->wl_surface
     );
+    st_output->selection_surface.single_pixel_buffer_committed = true;
 }
 
 void
@@ -89,50 +90,13 @@ selection_surface_acquire_hide_then(
     selection_surface_hide(st_output);
 }
 
-static inline void
-selection_surface_unhide(struct scran_output *st_output) {
-    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
-    // TODO: Get a free buffer instead, and handle the case where can't?
-    //         See wl_surface::get_release() (as of wayland 1.25.0, 2026-03-19).
-    struct scran_output_selectionSurface_buffer *selection_buffer = &selection_surface->double_buffer[0];
-
-    // Need to attach a correctly-sized buffer back again before re-setting
-    // the viewport.
-    wl_surface_attach(
-        selection_surface->surface.wl_surface,
-        selection_buffer->scran_wl_buffer.wl_buffer,
-        0, 0
-    );
-    update_selection_surface_viewport(st_output);
-    selection_buffer->scran_wl_buffer.busy = true;
-    wl_surface_damage_buffer(
-        selection_surface->surface.wl_surface,
-        0, 0,
-        selection_surface->surface.width_px_buffer,
-        selection_surface->surface.height_px_buffer
-    );
-    set_force_redraw_selection_surface_buffers(st_output);
-    // XXX: This commit is currently redundant in practice, but keeping it here
-    // so this function makes more sense on its own.
-    //
-    // TODO: Refactor the entire freezeframe_capture_refresh() chain so that we
-    // avoid all the redundant commits. Maybe move the hiding/unhiding
-    // responsibility out of any freezeframe.c function entirely, and have the
-    // caller ensure pre/post-recapture state like this manually.
-    wl_surface_commit(selection_surface->surface.wl_surface);
-
-    // Scale-triggered callback requests are suppressed while hidden. Ensure
-    // the forced redraw above is eventually presented after unhiding.
-    // TODO: Make this not double-commit with the above commit.
-    request_selection_surface_frame_callback(st_output);
-}
-
 void
 selection_surface_release_hide(struct scran_output *st_output, enum scran_selection_surface_disable_reason reason)
 {
     st_output->selection_surface.disable_reason_mask &= ~reason;
     if (!st_output->selection_surface.disable_reason_mask) {
-        selection_surface_unhide(st_output);
+        assert(st_output->selection_surface.single_pixel_buffer_committed == true);
+        draw_selection_and_commit(st_output);
     }
 }
 

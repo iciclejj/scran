@@ -268,6 +268,7 @@ struct scran_output_selectionSurface {
     uint32_t border_color;
 
     bool ui_inside_selection;
+    bool single_pixel_buffer_committed; // TODO: Replace this with more robust viewport-updating logic
     bool awaiting_frame_callback;
 };
 
