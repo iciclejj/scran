@@ -199,6 +199,20 @@ capture_fullscreen_sync_ui_and_dispatch(struct scran_output *output)
     }
 }
 
+// TODO:
+//
+//   Unify the fullscreen capture pipeline and the regular capture pipeline.
+//
+//      At time of writing, inside-mode UI is captured during non-fullscreen
+//      image capture.
+//
+//      This and potentially other similar behavior would be much easier to
+//      maintain and handle properly if we just merge everything into one
+//      capture_start()/capture_end() pipeline, which will route both
+//      fullscreen captures and regular captures through an equivalent
+//      UI-syncing mechanism to what fullscreen already uses, and so on.
+//
+
 enum scran_capture_frame_consumer_mask
 capture_fullscreen_start(
     struct scran_output *output,
