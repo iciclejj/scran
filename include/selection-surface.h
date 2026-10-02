@@ -20,7 +20,9 @@
 
 #define SCRAN_SELECTION_BORDER_THICKNESS_PX 1
 
+
 void draw_selection_and_damage_buffer(struct scran_output *output, struct scran_output_selectionSurface_buffer *st_buffer, struct BLBoxI selection);
+void draw_selection_and_commit(struct scran_output *output);
 void request_selection_surface_frame_callback(struct scran_output *output);
 void init_selection_surface_content(struct scran_output *output);
 bool ui_contents_equal(struct scran_output *output, const BLBoxI *selection, int64_t now_ns);
@@ -38,5 +40,6 @@ selection_surface_set_border_color(struct scran_output *output, uint32_t color) 
     output->selection_surface.border_color = color;
     set_force_redraw_selection_surface_buffers(output);
 }
+
 
 #endif
