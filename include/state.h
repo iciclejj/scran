@@ -18,7 +18,6 @@
 #include "wlr-layer-shell-unstable-v1.h"
 #include "ext-image-capture-source-v1.h"
 #include "ext-image-copy-capture-v1.h"
-#include "cursor-shape-v1.h"
 #include "xdg-output-unstable-v1.h"
 #include "ext-data-control-v1.h"
 #include "presentation-time.h"
@@ -70,7 +69,6 @@ struct scran_globals {
     struct wl_shm *shm;
     struct zxdg_output_manager_v1 *xdg_output_manager;
     struct zwlr_layer_shell_v1 *layer_shell;
-    struct wp_cursor_shape_manager_v1 *cursor_shape_manager;
     struct ext_output_image_capture_source_manager_v1 *output_image_capture_source_manager;
     struct ext_image_copy_capture_manager_v1 *image_copy_capture_manager;
     struct ext_data_control_manager_v1 *data_control_manager;
@@ -360,8 +358,6 @@ struct scran_seat_pointerContext {
     // layer-surfaces. This is a compositor bug, so probably just remove all
     // code referencing this some time after it's fixed upstream.
     bool pointer_focus_trusted;
-
-    struct wp_cursor_shape_device_v1 *cursor_shape_device;
 };
 
 struct scran_seat_keyboard {

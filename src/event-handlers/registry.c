@@ -58,9 +58,6 @@ registry_handle_global(
         // v3 => ::destroy
         // v4 => keyboard interactivity ondemand
         globals->layer_shell = wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 4);
-    } else if (INTERFACE_IS(wp_cursor_shape_manager_v1_interface)) {
-        // sway only has version 1 at the time of writing.
-        globals->cursor_shape_manager = wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, 1);
     } else if (INTERFACE_IS(wl_output_interface)) {
         // TODO: Handle adding/removing outputs during program runtime?
         if (state->n_outputs >= MAX_OUTPUTS) {
@@ -158,7 +155,6 @@ registry_listener__destroy(struct scran *state)
     wl_seat_destroy(globals->seat);
     wl_shm_destroy(globals->shm);
     zwlr_layer_shell_v1_destroy(globals->layer_shell);
-    wp_cursor_shape_manager_v1_destroy(globals->cursor_shape_manager);
     ext_output_image_capture_source_manager_v1_destroy(globals->output_image_capture_source_manager);
     ext_image_copy_capture_manager_v1_destroy(globals->image_copy_capture_manager);
     ext_data_control_manager_v1_destroy(globals->data_control_manager);
