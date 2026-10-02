@@ -242,6 +242,7 @@ struct scran_output_selectionSurface_buffer {
     struct ui_description ui;
 
     bool force_redraw;
+    bool drew_fullscreen_ui;
 };
 
 enum scran_selection_surface_disable_reason {
@@ -267,8 +268,12 @@ struct scran_output_selectionSurface {
     enum scran_selection_surface_disable_reason disable_reason_mask;
     uint32_t border_color;
 
+    bool ui_is_clipping;
     bool ui_inside_selection;
-    bool single_pixel_buffer_committed; // TODO: Replace this with more robust viewport-updating logic
+    // TODO: Replace single_pixel_buffer_committed with more
+    // robust viewport-updating logic and/or tie it in with
+    // the scran_fullscreen_ui_state todo.
+    bool single_pixel_buffer_committed;
     bool awaiting_frame_callback;
 };
 
@@ -470,6 +475,8 @@ struct ffmpeg_context {
 };
 
 enum scran_fullscreen_ui_state {
+    SCRAN_FULLSCREEN_UI_NONE = 0,      // Default UI
+    SCRAN_FULLSCREEN_UI_SHOW_PENDING,  // Capture UI drawn and awaiting ::presented
     SCRAN_FULLSCREEN_UI_SHOWN,
     SCRAN_FULLSCREEN_UI_HIDE_PENDING,  // Hide acquired and awaiting ::presented
     SCRAN_FULLSCREEN_UI_HIDDEN,
@@ -484,7 +491,7 @@ enum scran_video_stage {
 
 struct scran_fullscreen_consumers {
     enum scran_capture_frame_consumer_mask active;
-    enum scran_capture_frame_consumer_mask awaiting_ui_hide;
+    enum scran_capture_frame_consumer_mask awaiting_ui;
 };
 
 struct scran_output_capture {
@@ -517,6 +524,8 @@ struct scran_output_capture {
     struct scran_stdout_reservation stdout_reservation;
 
     struct scran_fullscreen_consumers fullscreen_consumers;
+    // TODO: Refactor this to simply be a selection-surface-owned description of
+    // the currently presented UI state?
     enum scran_fullscreen_ui_state fullscreen_ui_state;
 
     uint32_t pre_capture_border_color;

@@ -73,22 +73,22 @@ capture_request_frame(
 static inline void capture_video_cancel_pending_fullscreen_capture(struct scran_output *output);
 
 enum scran_capture_frame_consumer_mask
-capture_fullscreen_dispatch_pending_consumers(
+capture_fullscreen_dispatch_awaiting_consumers(
     struct scran_output *output,
-    enum scran_capture_frame_consumer_mask pending
+    enum scran_capture_frame_consumer_mask awaiting
 ) {
     struct scran_output_capture *capture = &output->capture;
     enum scran_capture_frame_consumer_mask started = 0;
 
-    capture->fullscreen_consumers.active |= pending;
+    capture->fullscreen_consumers.active |= awaiting;
 
-    if (pending & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
+    if (awaiting & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
         if (capture_image_start(output, capture->exit_after_capture)) {
             started |= SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE;
         }
     }
 
-    if (pending & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO) {
+    if (awaiting & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO) {
         capture->audio_disable_modifier_active = capture->fullscreen_video_pending_audio_disabled;
         capture->fullscreen_video_pending_audio_disabled = false;
 
@@ -99,40 +99,18 @@ capture_fullscreen_dispatch_pending_consumers(
         }
     }
 
-    if (pending & SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME) {
+    if (awaiting & SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME) {
         // TODO: Make freezeframe able to not set started?
         started |= SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME;
         freezeframe_capture_start_retain_callback(output);
     }
 
-    enum scran_capture_frame_consumer_mask failed = pending & ~started;
+    enum scran_capture_frame_consumer_mask failed = awaiting & ~started;
     if (failed) {
         capture_fullscreen_end(output, failed);
     }
 
     return started;
-}
-
-static inline bool
-fullscreen_consumers_need_ui_hide(
-    struct scran_output *output,
-    enum scran_capture_frame_consumer_mask consumers
-) {
-    if (!consumers) {
-        return false;
-    }
-
-    static const enum scran_capture_frame_consumer_mask consumers_disallowing_fullscreen_ui =
-        SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME
-        | SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE;
-
-    bool ui_wanted =
-        output->selection_surface.ui_inside_selection;
-    bool ui_disallowed =
-        consumers & consumers_disallowing_fullscreen_ui
-        || g_state.options.hide_ui_level >= SCRAN_OPT_HIDE_UI_ITEMS;
-
-    return !ui_wanted || ui_disallowed;
 }
 
 static void
@@ -157,10 +135,9 @@ static void
 capture_fullscreen_release_ui_hide(struct scran_output *output)
 {
     enum scran_fullscreen_ui_state *state = &output->capture.fullscreen_ui_state;
+    struct scran_fullscreen_consumers *consumers = &output->capture.fullscreen_consumers;
 
-    if (*state == SCRAN_FULLSCREEN_UI_SHOWN) {
-        return;
-    }
+    assert(*state == SCRAN_FULLSCREEN_UI_HIDDEN);
 
     // We don't want to flash a frame of selection/background dim if we're
     // exiting anyways, so make sure the selection surface stays disabled.
@@ -168,68 +145,90 @@ capture_fullscreen_release_ui_hide(struct scran_output *output)
         output->selection_surface.disable_reason_mask |= SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED;
     }
 
+    // Set desired state first, since the release hide will redraw the selection
+    // surface, which selects fullscreen capture UI according to this.
+    *state = consumers->active | consumers->awaiting_ui ? SCRAN_FULLSCREEN_UI_SHOW_PENDING : SCRAN_FULLSCREEN_UI_NONE;
     selection_surface_release_hide(output, SCRAN_SELECTION_SURFACE_DISABLE_REASON_FULLSCREEN_HIDE);
-    // XXX: Technically this should be set once the unhidden surface is
-    // presented, but it's not as critical here as for the hiding path.
-    output->capture.fullscreen_ui_state = SCRAN_FULLSCREEN_UI_SHOWN;
     DEBUG("Released fullscreen hide\n");
 }
 
 void
-capture_fullscreen_sync_ui_hide(struct scran_output *output)
+capture_fullscreen_sync_ui_and_dispatch(struct scran_output *output)
 {
-    enum scran_fullscreen_ui_state *state = &output->capture.fullscreen_ui_state;
-    enum scran_capture_frame_consumer_mask consumers                  = output->capture.fullscreen_consumers.active;
-    enum scran_capture_frame_consumer_mask consumers_awaiting_ui_hide = output->capture.fullscreen_consumers.awaiting_ui_hide;
+    struct scran_fullscreen_consumers *consumers = &output->capture.fullscreen_consumers;
+    enum scran_capture_frame_consumer_mask all_consumers = consumers->active | consumers->awaiting_ui;
+    bool ui_should_be_hidden =
+        all_consumers
+        && (!output->selection_surface.ui_inside_selection
+            || !capture_fullscreen_consumers_allow_ui(all_consumers));
 
-    // Don't interfere with in-progress hiding.
-    // The ::presented handler should call this function when it's done.
-    if (*state == SCRAN_FULLSCREEN_UI_HIDE_PENDING) {
+    switch (output->capture.fullscreen_ui_state) {
+    case SCRAN_FULLSCREEN_UI_SHOW_PENDING:
+    case SCRAN_FULLSCREEN_UI_HIDE_PENDING:
+        // Don't interfere with in-progress transitions.
+        // The ::presented handlers should call this function when they're done.
         return;
+    case SCRAN_FULLSCREEN_UI_NONE:
+        if (all_consumers) {
+            if (ui_should_be_hidden) {
+                capture_fullscreen_acquire_ui_hide(output);
+            } else {
+                // Set state first, since the drawing function checks it.
+                output->capture.fullscreen_ui_state = SCRAN_FULLSCREEN_UI_SHOW_PENDING;
+                draw_selection_and_commit(output);
+            }
+        }
+        return;
+    case SCRAN_FULLSCREEN_UI_SHOWN:
+        if (!all_consumers) {
+            output->capture.fullscreen_ui_state = SCRAN_FULLSCREEN_UI_NONE;
+            draw_selection_and_commit(output);
+            return;
+        }
+        if (ui_should_be_hidden) {
+            capture_fullscreen_acquire_ui_hide(output);
+            return;
+        }
+        break;
+    case SCRAN_FULLSCREEN_UI_HIDDEN:
+        if (!ui_should_be_hidden) {
+            capture_fullscreen_release_ui_hide(output);
+            return;
+        }
+        break;
     }
 
-    bool ui_should_be_hidden = fullscreen_consumers_need_ui_hide(output, consumers | consumers_awaiting_ui_hide);
-
-    if (*state == SCRAN_FULLSCREEN_UI_SHOWN && ui_should_be_hidden) {
-        capture_fullscreen_acquire_ui_hide(output);
-    } else if (*state == SCRAN_FULLSCREEN_UI_HIDDEN && !ui_should_be_hidden) {
-        capture_fullscreen_release_ui_hide(output);
+    enum scran_capture_frame_consumer_mask were_awaiting_ui = consumers->awaiting_ui;
+    consumers->awaiting_ui = 0;
+    if (were_awaiting_ui) {
+        capture_fullscreen_dispatch_awaiting_consumers(output, were_awaiting_ui);
     }
 }
 
-// TODO: returns added or dispatched consumers
 enum scran_capture_frame_consumer_mask
 capture_fullscreen_start(
     struct scran_output *output,
-    enum scran_capture_frame_consumer_mask consumers
+    enum scran_capture_frame_consumer_mask incoming_consumers
 ) {
-    enum scran_capture_frame_consumer_mask prev_active           = output->capture.fullscreen_consumers.active;
-    enum scran_capture_frame_consumer_mask prev_awaiting_ui_hide = output->capture.fullscreen_consumers.awaiting_ui_hide;
-    enum scran_capture_frame_consumer_mask new                   = consumers & ~(prev_awaiting_ui_hide | prev_active);
+    struct scran_fullscreen_consumers *consumers = &output->capture.fullscreen_consumers;
+    enum scran_capture_frame_consumer_mask new = incoming_consumers & ~(consumers->awaiting_ui | consumers->active);
 
     if (!new) {
         return 0;
     }
 
-    if (!prev_active && !prev_awaiting_ui_hide) {
-        // HACK: Prevent `capture-button -> exit-button` being able to exit prematurely
-        // in case of still-pending acquire_ui_hide. This adds a "fake" capture to the counter.
+    if (!consumers->awaiting_ui && !consumers->active) {
+        // HACK: Prevent `capture-button -> exit-button` being able to exit
+        // prematurely in case of still-awaiting consumers->awaiting_ui.
+        // This adds a "fake" capture to the counter.
         atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
     }
 
-    if (fullscreen_consumers_need_ui_hide(output, new)) {
-        capture_fullscreen_acquire_ui_hide(output);
+    consumers->awaiting_ui |= new;
+    capture_fullscreen_sync_ui_and_dispatch(output);
 
-        // Will be dispatched in callback
-        if (output->capture.fullscreen_ui_state == SCRAN_FULLSCREEN_UI_HIDE_PENDING) {
-            output->capture.fullscreen_consumers.awaiting_ui_hide |= new;
-            return new;
-        }
-        assert(output->capture.fullscreen_ui_state != SCRAN_FULLSCREEN_UI_SHOWN);
-    }
-
-    // UI is allowed to stay visible or is already hidden
-    return capture_fullscreen_dispatch_pending_consumers(output, new);
+    // The dispatch has removed consumers that failed to start
+    return new & (consumers->active | consumers->awaiting_ui);
 }
 
 void
@@ -241,12 +240,12 @@ capture_fullscreen_end(
 
     consumers->active &= ~finished_consumers;
 
-    if (!consumers->active && !consumers->awaiting_ui_hide) {
+    if (!consumers->active && !consumers->awaiting_ui) {
         // HACK: See comment in capture_fullscreen_start().
         atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
     }
 
-    capture_fullscreen_sync_ui_hide(output);
+    capture_fullscreen_sync_ui_and_dispatch(output);
 }
 
 

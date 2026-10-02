@@ -18,11 +18,11 @@ scran_request_exit()
     FOR_EACH_OUTPUT(i, st_output) {
         struct scran_output_capture *capture = &st_output->capture;
 
-        enum scran_capture_frame_consumer_mask pending = capture->fullscreen_consumers.awaiting_ui_hide;
-        if (pending) {
-            capture->fullscreen_consumers.awaiting_ui_hide = 0;
+        enum scran_capture_frame_consumer_mask awaiting = capture->fullscreen_consumers.awaiting_ui;
+        if (awaiting) {
+            capture->fullscreen_consumers.awaiting_ui = 0;
             capture->fullscreen_video_pending_audio_disabled = false; // (not really needed)
-            capture_fullscreen_end(st_output, pending);
+            capture_fullscreen_end(st_output, awaiting);
         }
 
         if (capture->video_stage == SCRAN_VIDEO_STAGE_CAPTURING) {

@@ -747,10 +747,25 @@ update_ui()
     int64_t now_ns = capture_clock_gettime_nsec();
 
     FOR_EACH_OUTPUT(i, output) {
-        const BLBoxI selection = selection_get_box_px(&output->selection_ctx);
-
-        if (!ui_contents_equal(output, &selection, now_ns)) {
+        if (ui_needs_redraw(output, now_ns)) {
             request_selection_surface_frame_callback(output);
+        }
+
+        {
+            const bool ui_inside_selection  = output->selection_surface.ui_inside_selection;
+            const bool ui_clipping          = output->selection_surface.ui_is_clipping;
+            const bool ui_optionally_hidden =
+                output->capture.fullscreen_consumers.active
+                && capture_fullscreen_consumers_allow_ui(output->capture.fullscreen_consumers.active);
+
+            const enum scran_cursor_tooltip tooltip =
+                ui_inside_selection || ui_clipping || ui_optionally_hidden
+                ? SCRAN_CURSOR_TOOLTIP_FLIP_UI
+                : SCRAN_CURSOR_TOOLTIP_NONE;
+
+            if (output->cursor.tooltip != tooltip) {
+                cursor_set_tooltip(output, tooltip);
+            }
         }
 
         if (capture_video_is_live(output)) {

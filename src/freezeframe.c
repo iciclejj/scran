@@ -103,10 +103,10 @@ freezeframe_hide_if_showing(struct scran_output *st_output)
     );
     wl_surface_commit(freezeframe->subsurface.wl_surface);
 
-    // HACK: If we're capturing fullscreen video (where we attach a transparent
-    // buffer to our selection-surface), some compositors (Hyprland) will not
-    // properly update the screen to remove our freezeframe, in areas where it
-    // doesn't detect any change.
+    // HACK: If a transparent buffer is attached to our selection-surface, e.g.
+    // during fullscreen video capture, some compositors (Hyprland) will not
+    // properly update the screen to remove our freezeframe, in areas where
+    // it doesn't detect any change.
     selection_do_some_damage(st_output);
     request_selection_surface_frame_callback(st_output);
 
