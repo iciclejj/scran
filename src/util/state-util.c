@@ -18,6 +18,11 @@ scran_request_exit()
     FOR_EACH_OUTPUT(i, st_output) {
         struct scran_output_capture *capture = &st_output->capture;
 
+        // We don't want to flash a frame of selection/background dim if
+        // seletion surface is hidden when we're exiting anyways, so make
+        // sure it's fused off from now.
+        st_output->selection_surface.disable_reason_mask |= SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED;
+
         enum scran_capture_frame_consumer_mask awaiting = capture->fullscreen_consumers.awaiting_ui;
         if (awaiting) {
             capture->fullscreen_consumers.awaiting_ui = 0;

@@ -16,17 +16,12 @@ selection_surface_frame_callback_handler(
 ) {
     wl_callback_destroy(callback);
 
-    struct scran_output                  *output            = data;
-    struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
+    struct scran_output *output = data;
 
-    bool skip = selection_surface->disable_reason_mask || !selection_surface->awaiting_frame_callback;
-    selection_surface->awaiting_frame_callback = false;
-
-    if (skip) {
-        return;
+    if (output->selection_surface.awaiting_frame_callback) {
+        output->selection_surface.awaiting_frame_callback = false;
+        draw_selection_and_commit(output);
     }
-
-    draw_selection_and_commit(output);
 }
 
 

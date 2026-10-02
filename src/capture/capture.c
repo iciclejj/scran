@@ -139,12 +139,6 @@ capture_fullscreen_release_ui_hide(struct scran_output *output)
 
     assert(*state == SCRAN_FULLSCREEN_UI_HIDDEN);
 
-    // We don't want to flash a frame of selection/background dim if we're
-    // exiting anyways, so make sure the selection surface stays disabled.
-    if (g_state.exit_requested) {
-        output->selection_surface.disable_reason_mask |= SCRAN_SELECTION_SURFACE_DISABLE_REASON_UI_STAGE_FINISHED;
-    }
-
     // Set desired state first, since the release hide will redraw the selection
     // surface, which selects fullscreen capture UI according to this.
     *state = consumers->active | consumers->awaiting_ui ? SCRAN_FULLSCREEN_UI_SHOW_PENDING : SCRAN_FULLSCREEN_UI_NONE;
@@ -213,7 +207,9 @@ capture_fullscreen_start(
     struct scran_fullscreen_consumers *consumers = &output->capture.fullscreen_consumers;
     enum scran_capture_frame_consumer_mask new = incoming_consumers & ~(consumers->awaiting_ui | consumers->active);
 
-    if (!new) {
+    // TODO: Put the exit_requested checks at better boundaries, e.g. one shared
+    // capture_start function.
+    if (!new || g_state.exit_requested) {
         return 0;
     }
 
