@@ -293,11 +293,9 @@ capture_video_start(struct scran_output *output)
         goto capture_video_start_fail_2;
     }
 
+    // TODO: Cache surface border color and add it to main.c::update_ui()?
     output->capture.pre_capture_border_color = output->selection_surface.border_color;
     selection_surface_set_border_color(output, UI_COLOR_VIDEO_CAPTURE);
-    cursor_set_theme(output, SCRAN_CURSOR_THEME_VIDEO_CAPTURE);
-    // TODO: We should probably cache the cursor theme and surface border color
-    // and add them to main.c::update_ui().
     request_selection_surface_frame_callback(output);
 
     output->capture.video_presentation_time_nsec_start = capture_clock_gettime_nsec();
@@ -416,7 +414,6 @@ capture_video_finish(struct scran_output *output)
     capture_video_destroy_video_writer(output);
 
     selection_surface_set_border_color(output, output->capture.pre_capture_border_color);
-    cursor_set_theme(output, SCRAN_CURSOR_THEME_DEFAULT);
     request_selection_surface_frame_callback(output);
 
     scran_stdout_release(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO);
