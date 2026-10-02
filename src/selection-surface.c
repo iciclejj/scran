@@ -23,7 +23,9 @@
 
 static inline bool
 on_greeting_screen(struct scran_output *output) {
-    return selection_is_none(&output->selection_ctx);
+    return
+        selection_is_none(&output->selection_ctx)
+        && !selection_surface_draws_fullscreen_capture(output);
 }
 
 static inline struct atlas_text_metrics
@@ -300,7 +302,7 @@ prepare_reset_ui_rect(
 
     // Skip border drawing for efficiency and to avoid potential future bugs
     // when selection is none but the "none"-selection intersects.
-    if (selection_is_none(&output->selection_ctx) || blboxi_is_empty(border_intersection)) {
+    if (on_greeting_screen(output) || blboxi_is_empty(border_intersection)) {
         bl_path_add_rect_i(&selection_surface->bl_path, &rect, BL_GEOMETRY_DIRECTION_NONE);
         return;
     }
@@ -834,24 +836,24 @@ collect_shared_content(const struct scran_output *output) {
 }
 
 bool
-ui_contents_equal(
+ui_needs_redraw(
     struct scran_output *output,
-    const BLBoxI *selection,
     int64_t now_ns
 ) {
     struct scran_output_selectionSurface *selection_surface = &output->selection_surface;
+    const BLBoxI selection = selection_surface_box_to_draw(output);
 
     struct ui_shared_content shared_content = collect_shared_content(output);
-
-    struct ui_statusline_content statusline_content = collect_statusline_content(output, &shared_content, *selection, now_ns);
+    struct ui_statusline_content statusline_content = collect_statusline_content(output, &shared_content, selection, now_ns);
     struct ui_keymap_content keymap_content = collect_keymap_content(output, &shared_content);
     struct ui_greeting_content greeting_content = collect_greeting_content(output, &shared_content);
 
-    return
+    return !(
         greeting_content_equal(&selection_surface->ui_last_committed.greeting.content, &greeting_content)
         && statusline_content_equal(&selection_surface->ui_last_committed.statusline.content, &statusline_content)
         && keymap_content_equal(&selection_surface->ui_last_committed.keymap.content, &keymap_content)
-        && shared_content_equal(&selection_surface->ui_last_committed.shared_content, &shared_content);
+        && shared_content_equal(&selection_surface->ui_last_committed.shared_content, &shared_content)
+    );
 }
 
 static void
@@ -943,7 +945,7 @@ make_ui_description(
     make_keymap_description(output, &shared_content, border, &description->keymap);
     make_statusline_description(output, &shared_content, selection, border, now_ns, &description->statusline, render_data);
 
-    if (selection_is_none(&output->selection_ctx)) {
+    if (on_greeting_screen(output)) {
         position_pre_selection_ui(&output->selection_surface, description);
     }
 }
@@ -1109,7 +1111,7 @@ draw_and_damage_ui(
             .h = ceil(backplate.h),
         };
 
-        if (!selection_is_none(&output->selection_ctx) && !new_ui.shared_content.ui_inside_selection) {
+        if (!on_greeting_screen(output) && !new_ui.shared_content.ui_inside_selection) {
             clip = clamp_clip_y_outside_border(clip, item->new_geometry->placement, &borders->desired);
         }
 
@@ -1140,7 +1142,7 @@ draw_and_damage_ui(
         // Clip to the same bounds as we clear and damage
         BLRectI clip = geometry_to_surface_text_rect_px(selection_surface, item->new_geometry);
 
-        if (!selection_is_none(&output->selection_ctx) && !new_ui.shared_content.ui_inside_selection) {
+        if (!on_greeting_screen(output) && !new_ui.shared_content.ui_inside_selection) {
             clip = clamp_clip_y_outside_border(clip, item->new_geometry->placement, &borders->desired);
         }
 
@@ -1168,13 +1170,8 @@ draw_and_damage_ui(
         }
     }
 
-    // Update cursor
+    // Update ui clipping state
     {
-        // Keep the ui_inside toggle tooltip visible while
-        //   1. the UI is inside the capture area, or
-        //   2. the UI is clipping against the edge of the surface.
-        //   XXX TODO: Rework fullscreen capture pipeline to allow showing UI
-        //   inside during fullscreen captures.
         bool ui_is_clipping = false;
         const bool ui_inside = new_ui.shared_content.ui_inside_selection;
 
@@ -1194,14 +1191,7 @@ draw_and_damage_ui(
             }
         }
 
-        const enum scran_cursor_tooltip tooltip =
-            (ui_inside || ui_is_clipping)
-            ? SCRAN_CURSOR_TOOLTIP_FLIP_UI
-            : SCRAN_CURSOR_TOOLTIP_NONE;
-
-        if (output->cursor.tooltip != tooltip) {
-            cursor_set_tooltip(output, tooltip);
-        }
+        selection_surface->ui_is_clipping = ui_is_clipping;
     }
 
     st_buffer->ui = new_ui;
@@ -1287,7 +1277,7 @@ draw_selection_and_damage_buffer(
 
     // Draw selection border
     if (buffer_selection_changed || surface_selection_changed) {
-        if (selection_is_none(&output->selection_ctx)) { // TODO: unlikely()
+        if (on_greeting_screen(output)) { // TODO: unlikely()
             st_buffer->box_currently_drawn = desired_selection;
         } else {
             BLRectI damage_regions[4];
@@ -1349,11 +1339,12 @@ draw_selection_and_commit(struct scran_output *output)
 
     // This is the capture area that the rest of this function is assuming will
     // be in use for the frame in which this selection area is presented.
-    const struct BLBoxI selection = selection_get_box_px(&output->selection_ctx);
+    const BLBoxI selection = selection_surface_box_to_draw(output);
     assert(selection.x1 <= get_transformed_output_width(output));
     assert(selection.y1 <= get_transformed_output_height(output));
 
     buffer->scran_wl_buffer.busy = true;
+    buffer->drew_fullscreen_ui = selection_surface_draws_fullscreen_capture(output);
 
     // XXX HACK: Temporary (hopefully) workaround for regression introduced by
     // trying to fix cosmic and hyprland sync by assigning on
