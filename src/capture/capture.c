@@ -445,8 +445,7 @@ capture_video_request_stop(struct scran_output *output)
     }
     capture->video_stage = SCRAN_VIDEO_STAGE_STOP_REQUESTED;
 
-    ext_image_copy_capture_frame_v1_destroy(view.frame_ctx->frame);
-    view.frame_ctx->frame = NULL;
+    capture_destroy_frame(view);
 
     // Ensure one last frame is triggered as soon as possible, even if
     // no damage has been reported by the compositor. This ensures

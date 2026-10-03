@@ -71,12 +71,11 @@ handle_image_copy_capture_frame_ready(
     void *data,
     struct ext_image_copy_capture_frame_v1 *wl_frame
 ) {
-    ext_image_copy_capture_frame_v1_destroy(wl_frame);
-
     struct capture_frame_context *frame_ctx = data;
     const struct capture_view     view      = capture_view_from_frame(frame_ctx);
     struct scran_output          *output    = view.output;
-    frame_ctx->frame = NULL;
+
+    capture_destroy_frame(view);
 
     const bool image_requested       = frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE;
     const bool video_requested       = frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
@@ -134,21 +133,20 @@ handle_image_copy_capture_frame_failed(
     struct ext_image_copy_capture_frame_v1 *frame,
     uint32_t reason
 ) {
-    ext_image_copy_capture_frame_v1_destroy(frame);
-
     struct capture_frame_context *frame_ctx = data;
-    struct scran_output          *output    = capture_view_from_frame(frame_ctx).output;
-    frame_ctx->frame = NULL;
+    struct capture_view           view      = capture_view_from_frame(frame_ctx);
+
+    capture_destroy_frame(view);
 
     if (frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME) {
-        freezeframe_capture_handle_failed(output, reason);
+        freezeframe_capture_handle_failed(view.output, reason);
     }
     if (frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
-        capture_image_finish(output);
+        capture_image_finish(view.output);
     }
     if (frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO) {
         // TODO: Retry a few times?
-        capture_video_finish(output);
+        capture_video_finish(view.output);
     }
 
     frame_ctx->consumers = 0;

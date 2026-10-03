@@ -44,6 +44,12 @@ struct capture_view {
     struct capture_session_context *session_ctx;
 };
 
+static inline void
+capture_destroy_frame(struct capture_view view) {
+    ext_image_copy_capture_frame_v1_destroy(view.frame_ctx->frame);
+    view.frame_ctx->frame = NULL;
+}
+
 // We blur the subsystem lines here to keep it all in one place, since the
 // frame's event handler will need to know how to get each consumer's view
 // in either case.
