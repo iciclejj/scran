@@ -547,7 +547,7 @@ init_meminit(
                 capture_buffer,
                 session->source_dimensions_px.x,
                 session->source_dimensions_px.y,
-                session->source_dimensions_px.x * session->pixel_stride,
+                get_capture_stride(session),
                 session->shm_format
             );
 
@@ -565,15 +565,15 @@ init_meminit(
         }
 
         struct scran_output_capture *capture = &st_output->capture;
-        const BLPointI source_dimensions_px = capture->session_ctx.source_dimensions_px;
+        const struct capture_session_context *session = &capture->session_ctx;
         init_wl_shm_buffer(
             shm_arena,
             global_pool_wl,
             &capture->frame_ctx.scran_wl_buffer,
-            source_dimensions_px.x,
-            source_dimensions_px.y,
-            get_capture_stride(st_output),
-            capture->session_ctx.shm_format
+            session->source_dimensions_px.x,
+            session->source_dimensions_px.y,
+            get_capture_stride(session),
+            session->shm_format
         );
     }
     // Not per-output:

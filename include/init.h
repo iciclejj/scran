@@ -74,10 +74,8 @@ get_capture_buf_size(const struct capture_session_context *session) {
     );
 }
 
-// TODO: Take session context or capture_view and use for freezeframe too.
 static inline size_t
-get_capture_stride(struct scran_output *st_output) {
-    const struct capture_session_context *session = &st_output->capture.session_ctx;
+get_capture_stride(const struct capture_session_context *session) {
     return session->pixel_stride * session->source_dimensions_px.x;
 }
 
