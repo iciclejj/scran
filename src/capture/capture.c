@@ -263,7 +263,6 @@ bool
 capture_video_start(struct scran_output *output)
 {
     const struct capture_view view = capture_view_from_frame(&output->capture.frame_ctx);
-    const BLPointI source_dimensions_px = view.session_ctx->source_dimensions_px;
 
     // TODO: Assert instead?
     if (capture_video_is_live(output)) {
@@ -303,11 +302,7 @@ capture_video_start(struct scran_output *output)
 
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
-    capture_request_frame_forced(
-        view, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
-        // Ensure the first frame is fully rendered
-        &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
-    );
+    capture_request_frame_forced(view, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO);
 
 
     if (output->capture.audio_active) {
@@ -435,9 +430,8 @@ capture_video_finish(struct scran_output *output)
 void
 capture_video_request_stop(struct scran_output *output)
 {
-    struct scran_output_capture *capture              = &output->capture;
-    const struct capture_view    view                 = capture_view_from_frame(&capture->frame_ctx);
-    const BLPointI               source_dimensions_px = view.session_ctx->source_dimensions_px;
+    struct scran_output_capture *capture = &output->capture;
+    const struct capture_view    view    = capture_view_from_frame(&capture->frame_ctx);
 
     // TODO: Just assert instead?
     if (capture->video_stage == SCRAN_VIDEO_STAGE_STOP_REQUESTED) {
@@ -453,15 +447,7 @@ capture_video_request_stop(struct scran_output *output)
     // timestamp. This also lets the frame listener finalize the
     // recording and clean up as soon as possible.
 
-    capture_request_frame_forced(
-        view, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
-        // XXX: This damage request is probably normally redundant with
-        // capture_request_frame_forced(), but should stay regardless, in case
-        // the initial frame was interrupted before it came back (i.e. making
-        // it a 1-frame video, once this frame is processed), since the first
-        // frame in a session should always have full damage.
-        &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
-    );
+    capture_request_frame_forced(view, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO);
 }
 
 
@@ -513,8 +499,7 @@ print_slurp_string_fullscreen(struct scran_output *output)
 bool
 capture_image_start(struct scran_output *output, bool exit_after_capture)
 {
-    const struct capture_view view                 = capture_view_from_frame(&output->capture.frame_ctx);
-    const BLPointI            source_dimensions_px = view.session_ctx->source_dimensions_px;
+    const struct capture_view view = capture_view_from_frame(&output->capture.frame_ctx);
 
     bool success = false;
 
@@ -537,10 +522,7 @@ capture_image_start(struct scran_output *output, bool exit_after_capture)
         assert(!scran_stdout_check_reservation(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE));
         exit_after_capture = false;
     } else {
-        capture_request_frame_forced(
-            view, SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE,
-            &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
-        );
+        capture_request_frame_forced(view, SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE);
         atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
         success = true;
     }

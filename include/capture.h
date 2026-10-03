@@ -170,10 +170,14 @@ capture_force_next_frame(
 static inline void
 capture_request_frame_forced(
     struct capture_view view,
-    enum scran_capture_frame_consumer_mask consumer,
-    const BLRectI *damage
+    enum scran_capture_frame_consumer_mask consumer
 ) {
-    capture_request_frame(view, consumer, damage);
+    const BLPointI source_dimensions_px = view.session_ctx->source_dimensions_px;
+
+    capture_request_frame(
+        view, consumer,
+        &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
+    );
 
     // Some compositors (like Hyprland on rapid consecutive freezeframe refreshes)
     // may wait indefinitely for the next capture frame, if no damage is detected.

@@ -26,8 +26,7 @@ freezeframe_capture_start_after_buffer_release(struct scran_wl_buffer *buffer)
 void
 freezeframe_capture_start_retain_callback(struct scran_output *st_output)
 {
-    const struct capture_view view                 = capture_view_from_frame(&st_output->freezeframe.frame_ctx);
-    const BLPointI            source_dimensions_px = view.session_ctx->source_dimensions_px;
+    const struct capture_view view = capture_view_from_frame(&st_output->freezeframe.frame_ctx);
 
     st_output->freezeframe.stage = SCRAN_FREEZEFRAME_STAGE_CAPTURING;
 
@@ -36,10 +35,7 @@ freezeframe_capture_start_retain_callback(struct scran_output *st_output)
         return;
     }
 
-    capture_request_frame_forced(
-        view, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME,
-        &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
-    );
+    capture_request_frame_forced(view, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME);
 }
 
 // Use freezeframe_capture_refresh post-init/during normal runtime
