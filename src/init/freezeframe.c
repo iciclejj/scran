@@ -24,7 +24,6 @@ init_premem__freezeframe(
         st_output->capture.source,
         false
     );
-    st_output->freezeframe.session.frame_ctx.output = st_output;
 
     {
         struct wl_surface *wl_surface = wl_compositor_create_surface(g_state.globals.compositor);

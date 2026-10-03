@@ -303,7 +303,7 @@ capture_video_start(struct scran_output *output)
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
     capture_request_frame_forced(
-        &output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
+        output, &output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
         // Ensure the first frame is fully rendered
         &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
     );
@@ -454,7 +454,7 @@ capture_video_request_stop(struct scran_output *output)
     // recording and clean up as soon as possible.
 
     capture_request_frame_forced(
-        &output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
+        output, &output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
         // XXX: This damage request is probably normally redundant with
         // capture_request_frame_forced(), but should stay regardless, in case
         // the initial frame was interrupted before it came back (i.e. making
@@ -538,7 +538,7 @@ capture_image_start(struct scran_output *output, bool exit_after_capture)
         exit_after_capture = false;
     } else {
         capture_request_frame_forced(
-            session, SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE,
+            output, session, SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE,
             &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
         );
         atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);

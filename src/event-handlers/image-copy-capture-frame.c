@@ -81,7 +81,7 @@ handle_image_copy_capture_frame_ready(
     ext_image_copy_capture_frame_v1_destroy(wl_frame);
 
     struct capture_frame_context *frame_ctx = data;
-    struct scran_output          *output    = frame_ctx->output;
+    struct scran_output          *output    = &g_state.outputs[get_containing_output_array_index(frame_ctx)];
     frame_ctx->frame = NULL;
 
     const bool image_requested       = frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE;
@@ -145,7 +145,7 @@ handle_image_copy_capture_frame_failed(
     ext_image_copy_capture_frame_v1_destroy(frame);
 
     struct capture_frame_context *frame_ctx = data;
-    struct scran_output          *output    = frame_ctx->output;
+    struct scran_output          *output    = &g_state.outputs[get_containing_output_array_index(frame_ctx)];
     frame_ctx->frame = NULL;
 
     if (frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME) {

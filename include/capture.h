@@ -128,6 +128,7 @@ capture_force_next_frame(
 
 static inline void
 capture_request_frame_forced(
+    struct scran_output *output,
     struct capture_session *session,
     enum scran_capture_frame_consumer_mask consumer,
     const BLRectI *damage
@@ -138,7 +139,7 @@ capture_request_frame_forced(
     // may wait indefinitely for the next capture frame, if no damage is detected.
     //
     // Mainly needed for freezeframe/hide_selection_surface_then() captures.
-    capture_force_next_frame(session->frame_ctx.output);
+    capture_force_next_frame(output);
 }
 
 static inline void

@@ -37,7 +37,7 @@ freezeframe_capture_start_retain_callback(struct scran_output *st_output)
     }
 
     capture_request_frame_forced(
-        session, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME,
+        st_output, session, SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME,
         &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
     );
 }

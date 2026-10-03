@@ -55,7 +55,6 @@ init_premem__capture(
         st_output->capture.source,
         !g_state.options.disable_cursor_capture
     );
-    st_output->capture.session.frame_ctx.output = st_output;
 
     // TODO: Revisit which parts of video and image init to put here vs
     // start_capture/dispatch

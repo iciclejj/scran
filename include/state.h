@@ -289,7 +289,6 @@ enum scran_capture_frame_consumer_mask {
 struct capture_frame_context {
     struct ext_image_copy_capture_frame_v1 *frame;
 
-    struct scran_output *output;
     struct scran_wl_buffer scran_wl_buffer;
 
     // set by pre-::ready event handlers
