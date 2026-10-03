@@ -162,6 +162,7 @@ clamp_to_transformed_output_height(int *val, struct scran_output *st_output)
 }
 
 
+// TODO: Optimize this
 static inline int8_t
 get_containing_output_array_index(void *ptr) {
     char *ptr_ = ptr;

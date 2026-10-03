@@ -40,11 +40,11 @@ capture_update_selection(struct scran_output *output, BLBoxI selection_ctx_box_p
 
 bool
 capture_request_frame(
-    struct capture_session *session,
+    struct capture_view view,
     enum scran_capture_frame_consumer_mask consumer,
     const BLRectI *damage
 ) {
-    struct capture_frame_context *frame_ctx = &session->frame_ctx;
+    struct capture_frame_context *frame_ctx = view.frame_ctx;
 
     if (frame_ctx->frame) {
         frame_ctx->consumers |= consumer;
@@ -52,7 +52,7 @@ capture_request_frame(
     }
 
     struct ext_image_copy_capture_frame_v1 *frame =
-        ext_image_copy_capture_session_v1_create_frame(session->session_ctx.wl_session);
+        ext_image_copy_capture_session_v1_create_frame(view.session_ctx->wl_session);
 
     ext_image_copy_capture_frame_v1_attach_buffer(frame, frame_ctx->scran_wl_buffer.wl_buffer);
     ext_image_copy_capture_frame_v1_add_listener(frame, &image_copy_capture_frame_listener, frame_ctx);
@@ -262,7 +262,8 @@ capture_fullscreen_end(
 bool
 capture_video_start(struct scran_output *output)
 {
-    const BLPointI source_dimensions_px = output->capture.session.session_ctx.source_dimensions_px;
+    const struct capture_view view = capture_view_from_frame(&output->capture.frame_ctx);
+    const BLPointI source_dimensions_px = view.session_ctx->source_dimensions_px;
 
     // TODO: Assert instead?
     if (capture_video_is_live(output)) {
@@ -303,7 +304,7 @@ capture_video_start(struct scran_output *output)
     // Get initial frame. Subsequent capture requests happen within
     // frame::ready, similar to the wl_surface callback event loop
     capture_request_frame_forced(
-        output, &output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
+        view, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
         // Ensure the first frame is fully rendered
         &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
     );
@@ -434,9 +435,9 @@ capture_video_finish(struct scran_output *output)
 void
 capture_video_request_stop(struct scran_output *output)
 {
-    struct scran_output_capture *capture = &output->capture;
-    struct capture_frame_context *frame_ctx = &capture->session.frame_ctx;
-    const BLPointI source_dimensions_px = output->capture.session.session_ctx.source_dimensions_px;
+    struct scran_output_capture *capture              = &output->capture;
+    const struct capture_view    view                 = capture_view_from_frame(&capture->frame_ctx);
+    const BLPointI               source_dimensions_px = view.session_ctx->source_dimensions_px;
 
     // TODO: Just assert instead?
     if (capture->video_stage == SCRAN_VIDEO_STAGE_STOP_REQUESTED) {
@@ -444,8 +445,8 @@ capture_video_request_stop(struct scran_output *output)
     }
     capture->video_stage = SCRAN_VIDEO_STAGE_STOP_REQUESTED;
 
-    ext_image_copy_capture_frame_v1_destroy(frame_ctx->frame);
-    frame_ctx->frame = NULL;
+    ext_image_copy_capture_frame_v1_destroy(view.frame_ctx->frame);
+    view.frame_ctx->frame = NULL;
 
     // Ensure one last frame is triggered as soon as possible, even if
     // no damage has been reported by the compositor. This ensures
@@ -454,7 +455,7 @@ capture_video_request_stop(struct scran_output *output)
     // recording and clean up as soon as possible.
 
     capture_request_frame_forced(
-        output, &output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
+        view, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
         // XXX: This damage request is probably normally redundant with
         // capture_request_frame_forced(), but should stay regardless, in case
         // the initial frame was interrupted before it came back (i.e. making
@@ -513,8 +514,8 @@ print_slurp_string_fullscreen(struct scran_output *output)
 bool
 capture_image_start(struct scran_output *output, bool exit_after_capture)
 {
-    struct capture_session *session              = &output->capture.session;
-    const BLPointI          source_dimensions_px = session->session_ctx.source_dimensions_px;
+    const struct capture_view view                 = capture_view_from_frame(&output->capture.frame_ctx);
+    const BLPointI            source_dimensions_px = view.session_ctx->source_dimensions_px;
 
     bool success = false;
 
@@ -526,7 +527,7 @@ capture_image_start(struct scran_output *output, bool exit_after_capture)
             print_slurp_string_selection(output);
             success = true;
         }
-    } else if (session->frame_ctx.consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
+    } else if (view.frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE) {
         eprintf("Image capture already in progress...\n");
     } else if (g_state.options.output_to_stdout
                && !scran_stdout_try_reserve(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE)
@@ -538,7 +539,7 @@ capture_image_start(struct scran_output *output, bool exit_after_capture)
         exit_after_capture = false;
     } else {
         capture_request_frame_forced(
-            output, session, SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE,
+            view, SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE,
             &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
         );
         atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);

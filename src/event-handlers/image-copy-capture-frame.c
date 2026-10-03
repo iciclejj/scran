@@ -12,22 +12,15 @@
 
 static inline void
 capture_create_buffer_area_context(
-    const struct scran_output *output,
-    const struct capture_session_context *session,
-    const struct capture_frame_context *frame_ctx,
+    struct capture_view view,
     bool fullscreen,
     struct capture_buffer_area_context *buffer_area_ctx
 ) {
-    const BLBoxI selection = fullscreen ? get_fullscreen_selection_box(output) : output->capture.selection_ctx_box_px;
+    const BLBoxI selection = fullscreen ? get_fullscreen_selection_box(view.output) : view.output->capture.selection_ctx_box_px;
 
-    buffer_area_ctx->area_px =
-        capture_get_selection_as_capture_buffer_area_px(session, frame_ctx, selection);
-
-    buffer_area_ctx->area_start_address =
-        capture_get_area_start_address(session, frame_ctx, &buffer_area_ctx->area_px);
-
-    buffer_area_ctx->source_row_bytes =
-        session->pixel_stride * session->source_dimensions_px.x;
+    buffer_area_ctx->area_px            = capture_get_selection_as_capture_buffer_area_px(view, selection);
+    buffer_area_ctx->area_start_address = capture_get_area_start_address(view, &buffer_area_ctx->area_px);
+    buffer_area_ctx->source_row_bytes   = view.session_ctx->pixel_stride * view.session_ctx->source_dimensions_px.x;
 }
 
 
@@ -81,7 +74,8 @@ handle_image_copy_capture_frame_ready(
     ext_image_copy_capture_frame_v1_destroy(wl_frame);
 
     struct capture_frame_context *frame_ctx = data;
-    struct scran_output          *output    = &g_state.outputs[get_containing_output_array_index(frame_ctx)];
+    const struct capture_view     view      = capture_view_from_frame(frame_ctx);
+    struct scran_output          *output    = view.output;
     frame_ctx->frame = NULL;
 
     const bool image_requested       = frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE;
@@ -91,28 +85,26 @@ handle_image_copy_capture_frame_ready(
     frame_ctx->consumers = 0;
 
     if (freezeframe_requested) { // TODO: unlikely()
-        freezeframe_capture_handle_frame_ready(output);
+        freezeframe_capture_handle_frame_ready(view);
     }
 
     if (image_requested || video_requested) {
-        const struct capture_session_context *session = &output->capture.session.session_ctx;
-
         if (image_requested) {
             bool fullscreen = output->capture.fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE;
             struct capture_buffer_area_context buffer_area_ctx;
-            capture_create_buffer_area_context(output, session, frame_ctx, fullscreen, &buffer_area_ctx);
+            capture_create_buffer_area_context(view, fullscreen, &buffer_area_ctx);
 
-            capture_image_write_image(output, session, frame_ctx, &buffer_area_ctx);
+            capture_image_write_image(view, &buffer_area_ctx);
             capture_image_finish(output);
         }
 
         if (video_requested) {
             bool fullscreen = output->capture.fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
             struct capture_buffer_area_context buffer_area_ctx;
-            capture_create_buffer_area_context(output, session, frame_ctx, fullscreen, &buffer_area_ctx);
+            capture_create_buffer_area_context(view, fullscreen, &buffer_area_ctx);
 
             if (blboxi_intersects(buffer_area_ctx.area_px, frame_ctx->capture_buffer_damage_area_px)) {
-                if (!capture_video_write_video_frame(output, frame_ctx, session, &buffer_area_ctx)) {
+                if (!capture_video_write_video_frame(view, &buffer_area_ctx)) {
                     output->capture.video_stage = SCRAN_VIDEO_STAGE_STOP_REQUESTED;
                 }
             }
@@ -127,7 +119,7 @@ handle_image_copy_capture_frame_ready(
                 capture_video_finish(output);
             } else {
                 // TODO: avio_flush ?
-                capture_request_frame(&output->capture.session, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO, NULL);
+                capture_request_frame(view, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO, NULL);
             }
         }
     }
@@ -145,7 +137,7 @@ handle_image_copy_capture_frame_failed(
     ext_image_copy_capture_frame_v1_destroy(frame);
 
     struct capture_frame_context *frame_ctx = data;
-    struct scran_output          *output    = &g_state.outputs[get_containing_output_array_index(frame_ctx)];
+    struct scran_output          *output    = capture_view_from_frame(frame_ctx).output;
     frame_ctx->frame = NULL;
 
     if (frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME) {

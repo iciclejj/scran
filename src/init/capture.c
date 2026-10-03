@@ -16,13 +16,11 @@
 
 void
 capture_session_init(
-    struct capture_session *session,
+    struct capture_session_context *session_ctx,
     struct ext_image_capture_source_v1 *source,
     bool capture_cursor
 ) {
     assert(source);
-
-    struct capture_session_context *session_ctx = &session->session_ctx;
 
     session_ctx->wl_session = ext_image_copy_capture_manager_v1_create_session(
         g_state.globals.image_copy_capture_manager,
@@ -51,7 +49,7 @@ init_premem__capture(
         st_output->wl_output
     );
     capture_session_init(
-        &st_output->capture.session,
+        &st_output->capture.session_ctx,
         st_output->capture.source,
         !g_state.options.disable_cursor_capture
     );
@@ -70,8 +68,8 @@ void
 init_premem__capture__destroy(struct scran_output *st_output)
 {
     ext_image_capture_source_v1_destroy(st_output->capture.source);
-    if (st_output->capture.session.session_ctx.wl_session) {
-        ext_image_copy_capture_session_v1_destroy(st_output->capture.session.session_ctx.wl_session);
+    if (st_output->capture.session_ctx.wl_session) {
+        ext_image_copy_capture_session_v1_destroy(st_output->capture.session_ctx.wl_session);
     }
 
     bl_image_destroy(&st_output->capture.bl_img_captured);

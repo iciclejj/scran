@@ -308,11 +308,6 @@ struct capture_session_context {
     uint8_t pixel_stride;
 };
 
-struct capture_session {
-    struct capture_frame_context frame_ctx;
-    struct capture_session_context session_ctx;
-};
-
 enum scran_freezeframe_stage {
     SCRAN_FREEZEFRAME_STAGE_IDLE, // Does not imply hidden or showing
     SCRAN_FREEZEFRAME_STAGE_REFRESHING,
@@ -322,7 +317,8 @@ enum scran_freezeframe_stage {
 struct scran_output_freezeframe {
     struct scran_output_subsurface subsurface;
 
-    struct capture_session session;
+    struct capture_frame_context frame_ctx;
+    struct capture_session_context session_ctx;
 
     enum scran_freezeframe_stage stage;
     bool showing;
@@ -494,7 +490,8 @@ struct scran_fullscreen_consumers {
 struct scran_output_capture {
     struct ext_image_capture_source_v1 *source;
 
-    struct capture_session session;
+    struct capture_frame_context frame_ctx;
+    struct capture_session_context session_ctx;
     struct ffmpeg_context ffmpeg_ctx;
 
     // Extra buffer for copying/intermediate operations
