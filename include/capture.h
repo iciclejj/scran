@@ -292,6 +292,7 @@ capture_set_cursor_capture(
     }
 
     capture->active_session_ctx = new_session;
+    capture->session_switch_time_nsec = capture_clock_gettime_nsec();
 
     if (capturing) {
         struct capture_view new_view = capture_view_from_frame(&capture->frame_ctx);

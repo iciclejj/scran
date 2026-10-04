@@ -83,6 +83,11 @@ handle_image_copy_capture_frame_ready(
     assert(image_requested || video_requested || freezeframe_requested);
     frame_ctx->consumers = 0;
 
+    // Reset before dispatching, so that the damage of frames requested during
+    // dispatch isn't erased.
+    const BLBoxI damage = frame_ctx->capture_buffer_damage_area_px;
+    frame_ctx->capture_buffer_damage_area_px = (BLBoxI){0};
+
     if (freezeframe_requested) { // TODO: unlikely()
         freezeframe_capture_handle_frame_ready(view);
     }
@@ -98,32 +103,45 @@ handle_image_copy_capture_frame_ready(
         }
 
         if (video_requested) {
-            bool fullscreen = output->capture.fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
-            struct capture_buffer_area_context buffer_area_ctx;
-            capture_create_buffer_area_context(view, fullscreen, &buffer_area_ctx);
-
-            if (blboxi_intersects(buffer_area_ctx.area_px, frame_ctx->capture_buffer_damage_area_px)) {
-                if (!capture_video_write_video_frame(view, &buffer_area_ctx)) {
-                    output->capture.video_stage = SCRAN_VIDEO_STAGE_STOP_REQUESTED;
-                }
-            }
-
-            // NOTE: We do this check *after* writing the incoming frame. This ensures
-            // that the video will not be cut short at the end if we're only capturing
-            // frames on demand (with variable framerate) and nothing has changed for
-            // the last x amount of time.
-            // Forcing some compositor/surface damage when signaling to end the capture
-            // should trigger the necessary final frame.
-            if (output->capture.video_stage == SCRAN_VIDEO_STAGE_STOP_REQUESTED || g_state.exit_requested) {
-                capture_video_finish(output);
+            // A new session's first requested frame can hit the same presented
+            // frame that the previous session already handled. If we don't skip
+            // it, we could get a duplicated pts or write an old display state
+            // with the new capture_cursors flag too early. Potentially a frame
+            // rendered with a new cursor image, if a compositor behaves weird
+            // like that.
+            if (frame_ctx->presentation_time_nsec < output->capture.session_switch_time_nsec) {
+                const BLRectI unconsumed_damage = blboxi_to_blrecti(damage);
+                capture_request_frame(
+                    view, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO,
+                    // TODO: Maybe clean up the request/damage functions so we don't need this ternary
+                    blboxi_is_empty(damage) ? NULL : &unconsumed_damage
+                );
             } else {
-                // TODO: avio_flush ?
-                capture_request_frame(view, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO, NULL);
+                bool fullscreen = output->capture.fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
+                struct capture_buffer_area_context buffer_area_ctx;
+                capture_create_buffer_area_context(view, fullscreen, &buffer_area_ctx);
+
+                if (blboxi_intersects(buffer_area_ctx.area_px, damage)) {
+                    if (!capture_video_write_video_frame(view, &buffer_area_ctx)) {
+                        output->capture.video_stage = SCRAN_VIDEO_STAGE_STOP_REQUESTED;
+                    }
+                }
+
+                // NOTE: We do this check *after* writing the incoming frame. This ensures
+                // that the video will not be cut short at the end if we're only capturing
+                // frames on demand (with variable framerate) and nothing has changed for
+                // the last x amount of time.
+                // Forcing some compositor/surface damage when signaling to end the capture
+                // should trigger the necessary final frame.
+                if (output->capture.video_stage == SCRAN_VIDEO_STAGE_STOP_REQUESTED || g_state.exit_requested) {
+                    capture_video_finish(output);
+                } else {
+                    // TODO: avio_flush ?
+                    capture_request_frame(view, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO, NULL);
+                }
             }
         }
     }
-
-    frame_ctx->capture_buffer_damage_area_px = (BLBoxI){0};
 }
 
 

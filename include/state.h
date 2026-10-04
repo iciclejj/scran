@@ -498,6 +498,7 @@ struct scran_output_capture {
     struct capture_session_context session_ctx_with_cursor;
     // Always initialized, since we always hide scran's own cursor.
     struct capture_session_context session_ctx_default_no_cursor;
+    int64_t session_switch_time_nsec;
 
     struct ffmpeg_context ffmpeg_ctx;
 
