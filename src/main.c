@@ -751,34 +751,51 @@ update_ui()
     int64_t now_ns = capture_clock_gettime_nsec();
 
     FOR_EACH_OUTPUT(i, output) {
-        struct scran_output_capture *capture = &output->capture;
-
         if (ui_needs_redraw(output, now_ns)) {
             request_selection_surface_frame_callback(output);
         }
 
-        const bool should_capture_system_cursor =
-            !g_state.options.disable_cursor_capture && capture->session_ctx_with_cursor.wl_session;
-        if (should_capture_system_cursor) {
-            bool capturing_cursor       = capture->active_session_ctx == &capture->session_ctx_with_cursor;
-            bool will_show_scran_cursor = seat_output_has_pointer_focus(output);
-
-            if (capturing_cursor && will_show_scran_cursor) {
-                capture_stop_capturing_cursor(capture);
-            } else if (!capturing_cursor && !will_show_scran_cursor) {
-                capture_start_capturing_cursor(capture);
-            }
-        }
-        cursor_update(output, false);
-
         if (capture_video_is_live(output)) {
-            int64_t timer_ms = (now_ns - capture->video_presentation_time_nsec_start) / NSEC_PER_MS;
+            int64_t timer_ms = (now_ns - output->capture.video_presentation_time_nsec_start) / NSEC_PER_MS;
             int ms_until_next_sec = MS_PER_SEC - (timer_ms % MS_PER_SEC);
             timeout_ms = get_smallest_timeout(timeout_ms, ms_until_next_sec);
         }
     }
 
     return timeout_ms;
+}
+
+static void
+sync_cursor_capture_session(struct scran_output *output)
+{
+    struct scran_output_capture *capture = &output->capture;
+
+    const bool should_capture_system_cursor =
+        !g_state.options.disable_cursor_capture && capture->session_ctx_with_cursor.wl_session;
+
+    if (should_capture_system_cursor) {
+        bool capturing_cursor       = capture->active_session_ctx == &capture->session_ctx_with_cursor;
+        bool will_show_scran_cursor = seat_output_has_pointer_focus(output);
+
+        if (capturing_cursor && will_show_scran_cursor) {
+            capture_stop_capturing_cursor(capture);
+        } else if (!capturing_cursor && !will_show_scran_cursor) {
+            capture_start_capturing_cursor(capture);
+        }
+    }
+}
+
+static void
+sync_outputs()
+{
+    // All capture sessions must be synced before any cursor_update(), since
+    // cursor sprites can span multiple displays FIXME: actually handle this.
+    FOR_EACH_OUTPUT(i, output) {
+        sync_cursor_capture_session(output);
+    }
+    FOR_EACH_OUTPUT(i, output) {
+        cursor_update(output, false);
+    }
 }
 
 
@@ -886,6 +903,7 @@ run_main_loop(struct scran_signal_masks *signal_masks)
             g_state.sig_focus_requested = false;
         }
 
+        sync_outputs();
         scran_ui_timeout_ms = update_ui();
     };
 
