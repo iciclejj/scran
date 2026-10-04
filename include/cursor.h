@@ -49,5 +49,6 @@ bool init_postmem__cursor(struct scran_output *st_output);
 
 bool cursor_reinit(struct scran_output *st_output);
 void cursor_update(struct scran_output *output);
+void cursor_hide(void);
 
 #endif

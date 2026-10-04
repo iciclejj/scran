@@ -246,6 +246,23 @@ update_buffer(struct scran_output *output)
 
     cursor->committed_enter_serial = last_enter_serial;
     cursor->buffer_dirty = false;
+    g_state.seat.pointer_ctx.shown_cursor = cursor;
+}
+
+void
+cursor_hide(void)
+{
+    struct scran_cursor *cursor = g_state.seat.pointer_ctx.shown_cursor;
+
+    if (cursor == NULL) {
+        return;
+    }
+
+    // ::set_cursor(NULL) has no effect without pointer focus (per spec)
+    wl_surface_attach(cursor->wl_surface, NULL, 0, 0);
+    wl_surface_commit(cursor->wl_surface);
+
+    g_state.seat.pointer_ctx.shown_cursor = NULL;
 }
 
 void

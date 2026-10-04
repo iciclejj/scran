@@ -351,6 +351,10 @@ struct scran_seat_pointerContext {
     uint32_t last_enter_serial;
     struct scran_output_selectionSurface *focused_selection_surface;
 
+    // The cursor surface last set with wl_pointer::set_cursor, or NULL if the
+    // surface was unmapped.
+    struct scran_cursor *shown_cursor;
+
     // Safeguard to work around Hyprland #15899 stealing cursor focus
     // (not just keyboard focus) when mapping KEYBOARD_INTERACTION_EXCLUSIVE
     // layer-surfaces. This is a compositor bug, so probably just remove all

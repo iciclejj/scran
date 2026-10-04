@@ -776,6 +776,13 @@ sync_outputs()
     // `image_copy_capture_cursor_session` and manual compositing of each
     // cursor.)
     const bool will_show_scran_cursor = g_state.seat.pointer_ctx.focused_selection_surface != NULL;
+    if (!will_show_scran_cursor) {
+        // The wl_pointer spec doesn't specify what's shown between a ::leave and the
+        // next client's set_cursor, so we make sure it's hidden right away.
+        //   TODO: Attach a ::presented callback to make sure it's actually gone before
+        //   we start capturing cursors?
+        cursor_hide();
+    }
     FOR_EACH_OUTPUT(i, output) {
         const bool capture_cursors = !will_show_scran_cursor;
         capture_set_cursor_capture(&output->capture, capture_cursors);
