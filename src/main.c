@@ -28,7 +28,6 @@
 #include "selection.h"
 #include "state.h"
 #include "state-util.h"
-#include "seat.h"
 #include "cursor.h"
 #include "capture.h"
 #include "selection-surface.h"
@@ -766,35 +765,23 @@ update_ui()
 }
 
 static void
-sync_cursor_capture_session(struct scran_output *output)
-{
-    struct scran_output_capture *capture = &output->capture;
-
-    const bool should_capture_system_cursor =
-        !g_state.options.disable_cursor_capture && capture->session_ctx_with_cursor.wl_session;
-
-    if (should_capture_system_cursor) {
-        bool capturing_cursor       = capture->active_session_ctx == &capture->session_ctx_with_cursor;
-        bool will_show_scran_cursor = seat_output_has_pointer_focus(output);
-
-        if (capturing_cursor && will_show_scran_cursor) {
-            capture_stop_capturing_cursor(capture);
-        } else if (!capturing_cursor && !will_show_scran_cursor) {
-            capture_start_capturing_cursor(capture);
-        }
-    }
-}
-
-static void
 sync_outputs()
 {
     // All capture sessions must be synced before any cursor_update(), since
-    // cursor sprites can span multiple displays FIXME: actually handle this.
+    // cursor sprites can span multiple displays
+    //
+    // TODO: Once we support multiple seats, this should probably be updated
+    // with per-pointer and per-output hit detection so that non-scran cursors
+    // don't get hidden. (Doing this 100% properly would probably require
+    // `image_copy_capture_cursor_session` and manual compositing of each
+    // cursor.)
+    const bool will_show_scran_cursor = g_state.seat.pointer_ctx.focused_selection_surface != NULL;
     FOR_EACH_OUTPUT(i, output) {
-        sync_cursor_capture_session(output);
+        const bool capture_cursors = !will_show_scran_cursor;
+        capture_set_cursor_capture(&output->capture, capture_cursors);
     }
     FOR_EACH_OUTPUT(i, output) {
-        cursor_update(output, false);
+        cursor_update(output);
     }
 }
 

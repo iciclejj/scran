@@ -120,6 +120,7 @@ struct scran_cursor {
 
     enum scran_cursor_theme theme;
     enum scran_cursor_tooltip tooltip;
+    bool buffer_dirty;
 
     // Cursor needs its own atlas, since it's currently using integer scaling,
     // while the selection-surface's atlas uses the surface's fractional

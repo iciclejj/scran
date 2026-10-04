@@ -245,10 +245,11 @@ update_buffer(struct scran_output *output)
     wl_surface_commit(cursor->wl_surface);
 
     cursor->committed_enter_serial = last_enter_serial;
+    cursor->buffer_dirty = false;
 }
 
 void
-cursor_update(struct scran_output *output, bool force)
+cursor_update(struct scran_output *output)
 {
     struct scran_cursor *cursor = &output->cursor;
 
@@ -286,7 +287,7 @@ cursor_update(struct scran_output *output, bool force)
     const bool new_enter = cursor->committed_enter_serial != g_state.seat.pointer_ctx.last_enter_serial;
     bool output_has_pointer_focus = seat_output_has_pointer_focus(output);
 
-    if (output_has_pointer_focus && (force || changed || new_enter)) {
+    if (output_has_pointer_focus && (cursor->buffer_dirty || changed || new_enter)) {
         update_buffer(output);
     }
 }
@@ -399,7 +400,7 @@ cursor_reinit(struct scran_output *output)
         SCRAN_CURSOR_BUFFER_HEIGHT_PX
     );
 
-    cursor_update(output, true);
+    cursor->buffer_dirty = true;
 
     return true;
 }
