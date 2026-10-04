@@ -11,6 +11,11 @@
 void seat_apply_mod_key_state(struct scran_output_selectionSurface *selection_surface, bool state);
 void seat_update_active_selection_surface(struct scran_seat *seat);
 
+static inline bool
+seat_output_has_pointer_focus(struct scran_output *output) {
+    return g_state.seat.pointer_ctx.focused_selection_surface == &output->selection_surface;
+}
+
 static inline void
 seat_set_mod_key_state(struct scran_seat *seat, bool state) {
     seat_apply_mod_key_state(seat->active_selection_surface, state);

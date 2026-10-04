@@ -6,6 +6,7 @@
 
 #include "atlas.h"
 #include "scran-ui-text.h"
+#include "seat.h"
 #include "viewporter.h"
 
 #include "state.h"
@@ -206,12 +207,6 @@ update_buffer(struct scran_output *output)
     struct wl_buffer *wl_buffer = cursor->buffers[theme][tooltip].scran_wl_buffer.wl_buffer;
     assert(wl_buffer != NULL);
 
-    // cursor image is reset on every pointer::leave/enter
-    bool have_pointer_focus = g_state.seat.pointer_ctx.focused_selection_surface == &output->selection_surface;
-    if (!have_pointer_focus) {
-        return;
-    }
-
     const BLRectI viewport_source_px = cursor->viewport_source_px[theme][tooltip];
     const BLRectI viewport_source_scaled = cursor->viewport_source_scaled[theme][tooltip];
 
@@ -288,8 +283,9 @@ cursor_update(struct scran_output *output, bool force)
 
     // "When a seat's focus enters a surface, the pointer image is undefined..."
     const bool new_enter = cursor->committed_enter_serial != g_state.seat.pointer_ctx.last_enter_serial;
+    bool output_has_pointer_focus = seat_output_has_pointer_focus(output);
 
-    if (force || changed || new_enter) {
+    if (output_has_pointer_focus && (force || changed || new_enter)) {
         update_buffer(output);
     }
 }
