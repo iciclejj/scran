@@ -491,7 +491,13 @@ struct scran_output_capture {
     struct ext_image_capture_source_v1 *source;
 
     struct capture_frame_context frame_ctx;
-    struct capture_session_context session_ctx;
+
+    struct capture_session_context *active_session_ctx;
+    // Uninitialized if the user doesn't want a cursor!
+    struct capture_session_context session_ctx_with_cursor;
+    // Always initialized, since we always hide scran's own cursor.
+    struct capture_session_context session_ctx_default_no_cursor;
+
     struct ffmpeg_context ffmpeg_ctx;
 
     // Extra buffer for copying/intermediate operations

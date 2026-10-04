@@ -73,7 +73,7 @@ capture_view_from_frame(struct capture_frame_context *frame_ctx) {
     return (struct capture_view){
         .output      = output,
         .frame_ctx   = frame_ctx,
-        .session_ctx = &capture->session_ctx,
+        .session_ctx = capture->active_session_ctx,
     };
 }
 
@@ -260,6 +260,44 @@ capture_clock_gettime_nsec() {
     clock_gettime(CLOCK_MONOTONIC, &ts);
     // XXX: Will overflow at tv_sec > ~584.9 years...
     return ts.tv_sec * NSEC_PER_SEC + ts.tv_nsec;
+}
+
+// NOTE: This can sometimes cause a dropped frame, since the in-flight frame
+// must be destroyed before switching sessions.
+static inline void
+capture_set_active_session(
+    struct scran_output_capture *capture,
+    struct capture_session_context *new_session
+) {
+    if (capture->active_session_ctx == new_session) {
+        return;
+    }
+
+    const bool capturing = capture->frame_ctx.consumers;
+
+    if (capturing) {
+        struct capture_view old_view = capture_view_from_frame(&capture->frame_ctx);
+        capture_destroy_frame(old_view);
+    }
+
+    capture->active_session_ctx = new_session;
+
+    if (capturing) {
+        struct capture_view new_view = capture_view_from_frame(&capture->frame_ctx);
+        capture_request_frame_forced(new_view, new_view.frame_ctx->consumers);
+    }
+}
+
+// TODO: Better names for these
+static inline void
+capture_stop_capturing_cursor(struct scran_output_capture *capture) {
+    DEBUG("capture_stop_capturing_cursor()\n");
+    capture_set_active_session(capture, &capture->session_ctx_default_no_cursor);
+}
+static inline void
+capture_start_capturing_cursor(struct scran_output_capture *capture) {
+    DEBUG("capture_start_capturing_cursor()\n");
+    capture_set_active_session(capture, &capture->session_ctx_with_cursor);
 }
 
 

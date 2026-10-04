@@ -28,6 +28,7 @@
 #include "selection.h"
 #include "state.h"
 #include "state-util.h"
+#include "seat.h"
 #include "cursor.h"
 #include "capture.h"
 #include "selection-surface.h"
@@ -394,7 +395,8 @@ init_meminit(
     //
     FOR_EACH_OUTPUT(i, st_output) {
         // XXX: Handle this gracefully (and maybe in a nicer location?)
-        if (st_output->capture.session_ctx.shm_format == SCRAN_SHM_FORMAT_UNSET) {
+        assert(st_output->capture.active_session_ctx);
+        if (st_output->capture.active_session_ctx->shm_format == SCRAN_SHM_FORMAT_UNSET) {
             DEBUG("Failed to select shm_format for capture buffer.\n");
             return false;
         }
@@ -445,7 +447,8 @@ init_meminit(
             freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.data
         );
 
-        const size_t capture_buf_size = get_capture_buf_size(&st_output->capture.session_ctx);
+        assert(st_output->capture.active_session_ctx);
+        const size_t capture_buf_size = get_capture_buf_size(st_output->capture.active_session_ctx);
         scran_arena_add_block(
             shm_arena,
             capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.scran_wl_buffer.data
@@ -565,7 +568,8 @@ init_meminit(
         }
 
         struct scran_output_capture *capture = &st_output->capture;
-        const struct capture_session_context *session = &capture->session_ctx;
+        const struct capture_session_context *session = capture->active_session_ctx;
+        assert(session);
         init_wl_shm_buffer(
             shm_arena,
             global_pool_wl,
@@ -747,14 +751,28 @@ update_ui()
     int64_t now_ns = capture_clock_gettime_nsec();
 
     FOR_EACH_OUTPUT(i, output) {
+        struct scran_output_capture *capture = &output->capture;
+
         if (ui_needs_redraw(output, now_ns)) {
             request_selection_surface_frame_callback(output);
         }
 
+        const bool should_capture_system_cursor =
+            !g_state.options.disable_cursor_capture && capture->session_ctx_with_cursor.wl_session;
+        if (should_capture_system_cursor) {
+            bool capturing_cursor       = capture->active_session_ctx == &capture->session_ctx_with_cursor;
+            bool will_show_scran_cursor = seat_output_has_pointer_focus(output);
+
+            if (capturing_cursor && will_show_scran_cursor) {
+                capture_stop_capturing_cursor(capture);
+            } else if (!capturing_cursor && !will_show_scran_cursor) {
+                capture_start_capturing_cursor(capture);
+            }
+        }
         cursor_update(output, false);
 
         if (capture_video_is_live(output)) {
-            int64_t timer_ms = (now_ns - output->capture.video_presentation_time_nsec_start) / NSEC_PER_MS;
+            int64_t timer_ms = (now_ns - capture->video_presentation_time_nsec_start) / NSEC_PER_MS;
             int ms_until_next_sec = MS_PER_SEC - (timer_ms % MS_PER_SEC);
             timeout_ms = get_smallest_timeout(timeout_ms, ms_until_next_sec);
         }
