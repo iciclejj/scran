@@ -264,7 +264,8 @@ cursor_update(struct scran_output *output, bool force)
         ? SCRAN_CURSOR_THEME_VIDEO_CAPTURE
         : SCRAN_CURSOR_THEME_DEFAULT;
     const enum scran_cursor_tooltip tooltip =
-        ui_inside_selection || ui_clipping || ui_optionally_hidden
+        g_state.options.hide_ui_level < SCRAN_OPT_HIDE_UI_ITEMS
+            && (ui_inside_selection || ui_clipping || ui_optionally_hidden)
         ? SCRAN_CURSOR_TOOLTIP_FLIP_UI
         : SCRAN_CURSOR_TOOLTIP_NONE;
 
