@@ -48,6 +48,14 @@ capture_request_frame(
 
     if (frame_ctx->frame) {
         frame_ctx->consumers |= consumer;
+        if (damage != NULL) {
+            // Forward the damage to the in-flight frame, since frame::damage_buffer can only be
+            // requested prior to frame::capture().
+            //   WARNING: This is only safe because we never actually put the framebuffer
+            //   into an incoherent state in-between frame requests. Otherwise, we would need
+            //   to start destroying and re-requesting new frames to properly handle that damage.
+            capture_grow_tracked_damage(frame_ctx, damage->x, damage->y, damage->w, damage->h);
+        }
         return true;
     }
 
