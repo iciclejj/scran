@@ -17,6 +17,7 @@
 #include "capture.h"
 #include "event-handlers.h"
 #include "util/blend2d.h"
+#include "ui.h"
 
 
 // `selection_ctx_box_px` has `scran_output_selectionContext.box_px` coordinate space!

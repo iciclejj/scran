@@ -13,7 +13,7 @@
 #include "cursor.h"
 #include "capture.h"
 #include "init.h"
-#include "selection-surface.h"
+#include "ui.h"
 #include "util/util.h"
 #include "util/blend2d.h"
 #include "print.h"

@@ -10,6 +10,7 @@
 #include "selection-surface.h"
 #include "event-handlers.h"
 #include "selection.h"
+#include "ui.h"
 
 
 static void
