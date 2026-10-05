@@ -65,26 +65,90 @@ blpath_add_box_difference(
 }
 
 static inline int
-ui_item_backplate_padding_px(const struct scran_output_selectionSurface *selection_surface) {
-    return lround(0.2 * atlas_font_height_px(&selection_surface->atlas));
+ui_item_backplate_padding_px(const struct atlas *atlas) {
+    return lround(0.2 * atlas_font_height_px(atlas));
 }
 
 static inline int
 ui_item_width_px(
-    const struct scran_output_selectionSurface *selection_surface,
-    const struct atlas_text_metrics *textline_metrics
+    const struct atlas *atlas,
+    const struct atlas_text_metrics *metrics
 ) {
-    return
-        atlas_metrics_advance_x_px(textline_metrics)
-        + 2 * ui_item_backplate_padding_px(selection_surface);
+    return atlas_metrics_advance_x_px(metrics) + 2 * ui_item_backplate_padding_px(atlas);
 }
 
 static inline int
-ui_item_height_px(const struct scran_output_selectionSurface *selection_surface) {
-    assert(atlas_font_height_px(&selection_surface->atlas));
-    return
-        atlas_font_height_px(&selection_surface->atlas)
-        + 2 * ui_item_backplate_padding_px(selection_surface);
+ui_item_height_px(const struct atlas *atlas) {
+    assert(atlas_font_height_px(atlas));
+    return atlas_font_height_px(atlas) + 2 * ui_item_backplate_padding_px(atlas);
+}
+
+static inline BLPointI
+ui_item_backplate_origin(
+    const struct atlas *atlas,
+    const BLPointI pen_origin
+) {
+    const int padding = ui_item_backplate_padding_px(atlas);
+    return (BLPointI){
+        .x = pen_origin.x - padding,
+        .y = pen_origin.y - padding,
+    };
+}
+
+static inline BLPointI
+ui_item_pen_origin(
+    const struct atlas *atlas,
+    const BLPointI backplate_origin
+) {
+    const int padding = ui_item_backplate_padding_px(atlas);
+    return (BLPointI){
+        .x = backplate_origin.x + padding,
+        .y = backplate_origin.y + padding,
+    };
+}
+
+static inline BLRectI
+ui_item_text_rect(
+    const struct atlas *atlas,
+    const struct atlas_positioned_metrics *text
+) {
+    return atlas_positioned_metrics_bbox(atlas, text);
+}
+
+static inline BLRectI
+ui_item_backplate_rect(
+    const struct atlas *atlas,
+    const struct atlas_positioned_metrics *text
+) {
+    if (!atlas_metrics_bbox_has_ink(&text->metrics)) {
+        return (BLRectI){0};
+    }
+
+    const BLPointI origin = ui_item_backplate_origin(atlas, text->pen_origin);
+
+    return (BLRectI){
+        .x = origin.x,
+        .y = origin.y,
+        .w = ui_item_width_px(atlas, &text->metrics),
+        .h = ui_item_height_px(atlas),
+    };
+}
+
+static inline BLRoundRect
+ui_item_backplate_round_rect(
+    const struct atlas *atlas,
+    const struct atlas_positioned_metrics *text
+) {
+    const BLRectI rect = ui_item_backplate_rect(atlas, text);
+    const double r = 0.22 * rect.h;
+    return (BLRoundRect){
+        .x = rect.x,
+        .y = rect.y,
+        .w = rect.w,
+        .h = rect.h,
+        .rx = r,
+        .ry = r,
+    };
 }
 
 // We trunc/ceil like this to make sure that fractionally scaled displays
@@ -230,58 +294,6 @@ draw_and_damage_background(
     bl_path_clear(&selection_surface->bl_path);
 }
 
-static inline BLRectI
-geometry_to_surface_text_rect_px(
-    const struct scran_output_selectionSurface *selection_surface,
-    const struct ui_item_geometry *geometry
-) {
-    return (BLRectI){
-        .x = geometry->pen_origin.x + geometry->text_metrics.bbox.x0,
-        .y = geometry->pen_origin.y, // TODO: Track vertical glyph bounds.
-        .w = atlas_metrics_bbox_width(&geometry->text_metrics),
-        .h = atlas_font_height_px(&selection_surface->atlas),
-    };
-}
-
-static inline BLRectI
-geometry_to_surface_backplate_rect_px(
-    const struct scran_output_selectionSurface *selection_surface,
-    const struct ui_item_geometry *geometry,
-    const struct BLRectI *text_rect
-) {
-    if (blrecti_is_inverted_or_empty(*text_rect)) {
-        return (BLRectI){0};
-    }
-
-    return blrecti_get_inflated(
-        (BLRectI){
-            .x = geometry->pen_origin.x,
-            .y = geometry->pen_origin.y,
-            .w = atlas_metrics_advance_x_px(&geometry->text_metrics),
-            .h = atlas_font_height_px(&selection_surface->atlas),
-        },
-        ui_item_backplate_padding_px(selection_surface)
-    );
-}
-
-static inline BLRoundRect
-geometry_to_surface_backplate_round_rect_px(
-    const struct scran_output_selectionSurface *selection_surface,
-    const struct ui_item_geometry *geometry,
-    const struct BLRectI *text_rect
-) {
-    const BLRectI backplate_rect = geometry_to_surface_backplate_rect_px(selection_surface, geometry, text_rect);
-    const double r = 0.22 * ui_item_height_px(selection_surface);
-    return (BLRoundRect){
-        .x = backplate_rect.x,
-        .y = backplate_rect.y,
-        .w = backplate_rect.w,
-        .h = backplate_rect.h,
-        .rx = r,
-        .ry = r,
-    };
-}
-
 // Clears out the rect and prepares the selection_surface.bl_path to re-fill
 // it with the selection and background, leaving a blank slate to (re)draw new
 // UI elements (keymap etc.)
@@ -329,8 +341,8 @@ damage_ui_item(
     struct scran_output_selectionSurface *selection_surface,
     const struct ui_item_geometry *geometry
 ) {
-    const BLRectI text      = geometry_to_surface_text_rect_px(selection_surface, geometry);
-    const BLRectI backplate = geometry_to_surface_backplate_rect_px(selection_surface, geometry, &text);
+    const BLRectI text      = ui_item_text_rect(&selection_surface->atlas, &geometry->text);
+    const BLRectI backplate = ui_item_backplate_rect(&selection_surface->atlas, &geometry->text);
 
     if (backplate.w > 0 && backplate.h > 0) {
         wl_surface_damage_buffer(selection_surface->surface.wl_surface, backplate.x, backplate.y, backplate.w, backplate.h);
@@ -365,9 +377,8 @@ get_ui_item_geometry(
     enum ui_alignment alignment,
     enum ui_placement placement
 ) {
-    const int padding              = ui_item_backplate_padding_px(selection_surface);
-    const int height               = ui_item_height_px(selection_surface);
-    const int width                = ui_item_width_px(selection_surface, textline_metrics);
+    const int height               = ui_item_height_px(&selection_surface->atlas);
+    const int width                = ui_item_width_px(&selection_surface->atlas, textline_metrics);
     const int surface_width        = selection_surface->surface.width_px_buffer;
     const bool ui_inside_selection = shared_content->ui_inside_selection;
 
@@ -411,11 +422,10 @@ get_ui_item_geometry(
     };
 
     return (struct ui_item_geometry) {
-        .pen_origin = (BLPointI){
-            .x = backplate_origin.x + padding,
-            .y = backplate_origin.y + padding,
+        .text = {
+            .pen_origin = ui_item_pen_origin(&selection_surface->atlas, backplate_origin),
+            .metrics = *textline_metrics,
         },
-        .text_metrics = *textline_metrics,
         .placement = placement,
     };
 }
@@ -426,8 +436,7 @@ ui_item_geometry_equal(
     const struct ui_item_geometry *b
 ) {
     return
-        blpointi_are_equal(a->pen_origin, b->pen_origin)
-        && atlas_metrics_equal(&a->text_metrics, &b->text_metrics)
+        atlas_positioned_metrics_equal(&a->text, &b->text)
         && a->placement == b->placement;
 }
 
@@ -904,8 +913,7 @@ position_pre_selection_ui(
     struct ui_description *description
 ) {
     const int font_height_px = atlas_font_height_px(&selection_surface->atlas);
-    const int item_padding_px = ui_item_backplate_padding_px(selection_surface);
-    const int item_height_px = ui_item_height_px(selection_surface);
+    const int item_height_px = ui_item_height_px(&selection_surface->atlas);
     const int surface_margin_px = round(font_height_px * 0.5);
     const int row_gap_px = 2 * SCRAN_SELECTION_BORDER_THICKNESS_PX;
     const int surface_width_px = selection_surface->surface.width_px_buffer;
@@ -916,15 +924,16 @@ position_pre_selection_ui(
         &description->keymap.geometry,
     };
 
-    int row_y = surface_margin_px + item_padding_px;
+    int row_y = surface_margin_px;
 
     for (size_t i = 0; i < ARRAY_LENGTH(rows); ++i) {
-        const int item_width_px = ui_item_width_px(selection_surface, &rows[i]->text_metrics);
+        const int item_width_px = ui_item_width_px(&selection_surface->atlas, &rows[i]->text.metrics);
 
-        rows[i]->pen_origin = (BLPointI){
-            .x = item_padding_px + rect_x_best_fit(surface_margin_px, item_width_px, surface_width_px),
+        const BLPointI backplate_origin = {
+            .x = rect_x_best_fit(surface_margin_px, item_width_px, surface_width_px),
             .y = row_y,
         };
+        rows[i]->text.pen_origin = ui_item_pen_origin(&selection_surface->atlas, backplate_origin);
         row_y += item_height_px + row_gap_px;
     }
 }
@@ -1070,8 +1079,8 @@ draw_and_damage_ui(
                 continue;
             }
 
-            const BLRectI text = geometry_to_surface_text_rect_px(selection_surface, item->buffer_geometry);
-            const BLRectI backplate = geometry_to_surface_backplate_rect_px(selection_surface, item->buffer_geometry, &text);
+            const BLRectI text      = ui_item_text_rect(&selection_surface->atlas, &item->buffer_geometry->text);
+            const BLRectI backplate = ui_item_backplate_rect(&selection_surface->atlas, &item->buffer_geometry->text);
 
             prepare_reset_ui_rect(output, st_buffer, &borders->desired, backplate);
             prepare_reset_ui_rect(output, st_buffer, &borders->desired, text);
@@ -1096,9 +1105,7 @@ draw_and_damage_ui(
 
         // TODO: Separate backplate for each item within a line "item"
         //         (Must manually construct the bl_path for the rounded edge-items)
-        const BLRectI text = geometry_to_surface_text_rect_px(selection_surface, item->new_geometry);
-        const BLRoundRect backplate =
-                geometry_to_surface_backplate_round_rect_px(selection_surface, item->new_geometry, &text);
+        const BLRoundRect backplate = ui_item_backplate_round_rect(&selection_surface->atlas, &item->new_geometry->text);
 
         // Note: All clipping in the redraw loop is currently mainly a defensive
         // measure against bugs.
@@ -1140,7 +1147,7 @@ draw_and_damage_ui(
         // measure against bugs.
         //
         // Clip to the same bounds as we clear and damage
-        BLRectI clip = geometry_to_surface_text_rect_px(selection_surface, item->new_geometry);
+        BLRectI clip = ui_item_text_rect(&selection_surface->atlas, &item->new_geometry->text);
 
         if (!on_greeting_screen(output) && !new_ui.shared_content.ui_inside_selection) {
             clip = clamp_clip_y_outside_border(clip, item->new_geometry->placement, &borders->desired);
@@ -1151,11 +1158,11 @@ draw_and_damage_ui(
         const struct atlas_text_metrics _metrics = blit_ui_line(
             &selection_surface->atlas,
             &st_buffer->bl_ctx,
-            &item->new_geometry->pen_origin,
+            &item->new_geometry->text.pen_origin,
             item->blit_data,
             item->n_blit_items
         );
-        assert(atlas_metrics_equal(&_metrics, &item->new_geometry->text_metrics));
+        assert(atlas_metrics_equal(&_metrics, &item->new_geometry->text.metrics));
         (void)_metrics;
 
         bl_context_restore_clipping(&st_buffer->bl_ctx);
@@ -1180,9 +1187,8 @@ draw_and_damage_ui(
 
             for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
                 const struct ui_item_render_plan *item = &render_plan[i];
-                const BLBoxI item_text_bounds = blrecti_to_blboxi(
-                    geometry_to_surface_text_rect_px(selection_surface, item->new_geometry)
-                );
+                const BLBoxI item_text_bounds =
+                    blrecti_to_blboxi(ui_item_text_rect(&selection_surface->atlas, &item->new_geometry->text));
 
                 if (!blboxi_contains(surface_bounds, item_text_bounds)) {
                     ui_is_clipping = true;

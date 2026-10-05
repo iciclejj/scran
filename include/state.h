@@ -194,8 +194,8 @@ enum ui_statusline_item_index {
 };
 
 struct ui_item_geometry {
-    BLPointI pen_origin;
-    struct atlas_text_metrics text_metrics;
+    struct atlas_positioned_metrics text;
+    // XXX: This doesn't actually need to be stored in state.
     enum ui_placement placement;
 };
 

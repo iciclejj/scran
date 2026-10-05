@@ -9,6 +9,7 @@
 #include <blend2d/blend2d.h>
 
 #include "scran-ui-text.h"
+#include "util/blend2d.h"
 
 
 struct ui_string {
@@ -101,6 +102,34 @@ static inline int
 atlas_metrics_bbox_width(const struct atlas_text_metrics *metrics) {
     assert(metrics->bbox.x0 <= metrics->bbox.x1);
     return metrics->bbox.x1 - metrics->bbox.x0;
+}
+
+struct atlas_positioned_metrics {
+    struct BLPointI pen_origin;
+    struct atlas_text_metrics metrics;
+};
+
+static inline bool
+atlas_positioned_metrics_equal(
+    const struct atlas_positioned_metrics *a,
+    const struct atlas_positioned_metrics *b
+) {
+    return
+        blpointi_are_equal(a->pen_origin, b->pen_origin)
+        && atlas_metrics_equal(&a->metrics, &b->metrics);
+}
+
+static inline BLRectI
+atlas_positioned_metrics_bbox(
+    const struct atlas *atlas,
+    const struct atlas_positioned_metrics *text
+) {
+    return (BLRectI){
+        .x = text->pen_origin.x + text->metrics.bbox.x0,
+        .y = text->pen_origin.y, // TODO: Track vertical glyph bounds.
+        .w = atlas_metrics_bbox_width(&text->metrics),
+        .h = atlas_font_height_px(atlas),
+    };
 }
 
 
