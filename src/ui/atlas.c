@@ -287,5 +287,12 @@ atlas_blit_string(
         ++glyph_blit_data.string.str;
     }
 
+#ifndef NDEBUG
+    {
+        struct atlas_text_metrics metrics_ = atlas_get_text_metrics_px(atlas, &blit_data->string);
+        assert(atlas_metrics_equal(&text_metrics, &metrics_));
+    }
+#endif
+
     return text_metrics;
 }
