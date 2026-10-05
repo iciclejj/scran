@@ -6,13 +6,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <blend2d/core/api.h>
 #include <blend2d/blend2d.h>
-
-
-// TODO: Move this into util/util.h
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#include <util/util.h>
 
 
 static inline void

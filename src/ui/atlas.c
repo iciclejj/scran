@@ -3,9 +3,9 @@
 #include <blend2d/blend2d.h>
 
 #include "scran-ui-text.h"
-#include "util/blend2d.h"
 
 #include "atlas.h"
+#include "util/util.h"
 
 
 const struct ui_string g_scran_ui_atlas_string = UI_STRING(g_ui_strings.unique_glyphs_sorted);
