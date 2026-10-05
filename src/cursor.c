@@ -175,9 +175,7 @@ draw_tooltip(
     }
 
     // TODO: Clip to tooltip rect, for future fonts that might extend behind the pen origin?
-    atlas_blit_string(atlas, bl_ctx, &origin, &tooltip_blit_data);
-
-    struct atlas_text_metrics metrics = atlas_get_text_metrics_px(atlas, &tooltip_blit_data.string);
+    struct atlas_text_metrics metrics = atlas_blit_string(atlas, bl_ctx, &origin, &tooltip_blit_data);
     return (BLPointI){
         .x = MAX(ceil(metrics.advance.x), metrics.bbox.x1),
         .y = atlas_font_height_px(atlas), // TODO: use Y-coordinates once implemented
