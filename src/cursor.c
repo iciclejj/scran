@@ -363,18 +363,21 @@ cursor_reinit(struct scran_output *output)
             bl_context_init_as(&bl_ctx, &buffer->bl_img, NULL);
 
             const BLPointI origin = { 0, 0 };
-            BLPointI current_origin = origin;
-            static const int item_spacing_px = 2;
+            BLPointI pen = origin;
+            int sprite_h = cursor_size_px;
 
-            draw_cursor(buffer, &bl_ctx, current_origin, cursor_size_px, m_cursor_colors[theme]);
-            current_origin.x += cursor_size_px + item_spacing_px;
+            draw_cursor(buffer, &bl_ctx, pen, cursor_size_px, m_cursor_colors[theme]);
+            pen.x += cursor_size_px;
 
-            BLPointI tooltip_dimensions = draw_tooltip(output, buffer, &bl_ctx, current_origin, cursor_size_px, tooltip);
-            current_origin.x += tooltip_dimensions.x + item_spacing_px;
+            {
+                const int gap = SCRAN_CURSOR_TOOLTIP_GAP * scale;
+                const BLPointI tooltip_origin = { pen.x + gap, pen.y };
 
-            // TODO: make the item-spacing calculations cleaner.
-            if (tooltip_dimensions.x > 0) {
-                current_origin.x -= item_spacing_px;
+                BLPointI tooltip_dimensions = draw_tooltip(output, buffer, &bl_ctx, tooltip_origin, cursor_size_px, tooltip);
+                if (tooltip_dimensions.x > 0) {
+                    pen.x += gap + tooltip_dimensions.x;
+                    sprite_h = MAX(sprite_h, tooltip_dimensions.y);
+                }
             }
 
             bl_context_end(&bl_ctx);
@@ -383,8 +386,8 @@ cursor_reinit(struct scran_output *output)
             BLRectI sprite_bbox = {
                 .x = origin.x,
                 .y = origin.y,
-                .w = current_origin.x - origin.x,
-                .h = MAX(cursor_size_px, tooltip_dimensions.y),
+                .w = pen.x - origin.x,
+                .h = sprite_h,
             };
             assert(
                 blboxi_contains(
