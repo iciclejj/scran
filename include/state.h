@@ -111,10 +111,8 @@ struct scran_cursor {
     struct wp_viewport *viewport;
     struct scran_cursor_buffer buffers[SCRAN_CURSOR_N_THEMES][SCRAN_CURSOR_N_TOOLTIPS];
 
-    BLRectI viewport_source_px[SCRAN_CURSOR_N_THEMES][SCRAN_CURSOR_N_TOOLTIPS];
-    BLRectI viewport_source_scaled[SCRAN_CURSOR_N_THEMES][SCRAN_CURSOR_N_TOOLTIPS];
-
-    int cursor_size_px; // == width_px == height_px
+    BLRectI combined_buffer_bbox;
+    BLPointI hotspot_scaled;
 
     uint32_t committed_enter_serial;
 

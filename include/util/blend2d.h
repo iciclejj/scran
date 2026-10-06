@@ -348,6 +348,19 @@ blboxi_bounding_box(BLBoxI a, BLBoxI b) {
     };
 }
 
+// Returns a if b is empty
+static inline BLRectI
+blrecti_bounding_rect(BLRectI a, BLRectI b) {
+    return
+        // TODO: Can this be done meaningfully more efficiently?
+        blboxi_to_blrecti(
+            blboxi_bounding_box(
+                blrecti_to_blboxi(a),
+                blrecti_to_blboxi(b)
+            )
+        );
+}
+
 static inline BLBoxI
 blboxi_intersection_raw(
     BLBoxI a,
@@ -508,6 +521,16 @@ blboxi_get_dimensions(BLBoxI box) {
     return (BLPointI) {
         blboxi_width(box),
         blboxi_height(box),
+    };
+}
+
+static inline BLRectI
+blrecti_from_origin_size(BLPointI origin, BLPointI dimensions) {
+    return (BLRectI){
+        .x = origin.x,
+        .y = origin.y,
+        .w = dimensions.x,
+        .h = dimensions.y,
     };
 }
 

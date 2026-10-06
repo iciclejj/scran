@@ -13,14 +13,18 @@ struct scran_output;
 // scale factor. It will also let the cursor tooltip's font rendering be more
 // easily properly accounted for.
 #define SCRAN_CURSOR_SIZE 20
-// FIXME: This tooltip size is effectively a pure guess if we ever change to a
+// FIXME: These tooltip sizes are effectively guesses if we ever change to a
 // different font. See also the fixme above.
-#define SCRAN_CURSOR_TOOLTIP_SIZE (SCRAN_CURSOR_SIZE * 2)
+#define SCRAN_CURSOR_TOOLTIP_WIDTH (SCRAN_CURSOR_SIZE * 2)
+// Includes backplate padding and room for hotspot/viewport rounding.
+#define SCRAN_CURSOR_TOOLTIP_HEIGHT (SCRAN_CURSOR_SIZE * 3 / 2)
 #define SCRAN_CURSOR_TOOLTIP_GAP 2
 // Leave some room for scaling up without needing to reallocate the shared memory buffers.
 #define SCRAN_CURSOR_MAX_SCALE 4
-#define SCRAN_CURSOR_BUFFER_WIDTH_PX  ((SCRAN_CURSOR_SIZE + SCRAN_CURSOR_TOOLTIP_GAP + SCRAN_CURSOR_TOOLTIP_SIZE) * SCRAN_CURSOR_MAX_SCALE)
-#define SCRAN_CURSOR_BUFFER_HEIGHT_PX (SCRAN_CURSOR_SIZE * SCRAN_CURSOR_MAX_SCALE)
+#define SCRAN_CURSOR_BUFFER_WIDTH_PX \
+    ((SCRAN_CURSOR_SIZE + SCRAN_CURSOR_TOOLTIP_GAP + SCRAN_CURSOR_TOOLTIP_WIDTH) * SCRAN_CURSOR_MAX_SCALE)
+#define SCRAN_CURSOR_BUFFER_HEIGHT_PX \
+    ((SCRAN_CURSOR_SIZE > SCRAN_CURSOR_TOOLTIP_HEIGHT ? SCRAN_CURSOR_SIZE : SCRAN_CURSOR_TOOLTIP_HEIGHT) * SCRAN_CURSOR_MAX_SCALE)
 
 // This is only treated as a hard requirement because not all compositors have
 // cursor-hiding implemented for software-cursors yet.

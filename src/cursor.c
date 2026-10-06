@@ -146,25 +146,19 @@ draw_cursor(
     );
 }
 
-// Returns tooltip dimensions
-static inline BLPointI
-draw_tooltip(
-    struct scran_output *output,
-    struct scran_cursor_buffer *buffer,
-    BLContextCore *bl_ctx,
-    BLPointI origin,
-    int cursor_size_px,
-    enum scran_cursor_tooltip tooltip
-) {
-    // Draw tooltip
-    struct atlas_blit_data tooltip_blit_data;
-    struct atlas *atlas = &output->cursor.atlas;
+static inline struct atlas_blit_data
+get_tooltip_blit_data(enum scran_cursor_tooltip tooltip)
+{
+    struct atlas_blit_data blit_data;
 
     switch (tooltip) {
         case SCRAN_CURSOR_TOOLTIP_NONE:
-            return (BLPointI){ 0, 0 };
+            blit_data = (struct atlas_blit_data){
+                .string = UI_STRING(u""),
+            };
+            break;
         case SCRAN_CURSOR_TOOLTIP_FLIP_UI:
-            tooltip_blit_data = (struct atlas_blit_data){
+            blit_data = (struct atlas_blit_data){
                 UI_STRING(g_ui_strings.cursor_tooltip_flipped_ui),
                 m_cursor_colors[SCRAN_CURSOR_THEME_DEFAULT].value,
             };
@@ -174,12 +168,42 @@ draw_tooltip(
             exit(EXIT_FAILURE);
     }
 
+    return blit_data;
+}
+
+static inline struct atlas_text_metrics
+get_tooltip_text_metrics(
+    const struct atlas *atlas,
+    enum scran_cursor_tooltip tooltip
+) {
+    const struct atlas_blit_data blit_data = get_tooltip_blit_data(tooltip);
+    return atlas_get_text_metrics_px(atlas, &blit_data.string);
+}
+
+static inline void
+draw_tooltip(
+    struct scran_output *output,
+    BLContextCore *bl_ctx,
+    BLPointI origin,
+    enum scran_cursor_tooltip tooltip
+) {
+    const struct atlas_blit_data blit_data = get_tooltip_blit_data(tooltip);
+    struct atlas *atlas = &output->cursor.atlas;
+
+    const BLPointI pen_origin = ui_item_pen_origin(atlas, origin);
+    const struct atlas_text_metrics text_metrics = get_tooltip_text_metrics(atlas, tooltip);
+
+    const BLRoundRect backplate = ui_item_backplate_round_rect(
+        atlas,
+        &(struct atlas_positioned_metrics){
+            .pen_origin = pen_origin,
+            .metrics = text_metrics,
+        }
+    );
+    bl_context_fill_geometry_rgba32(bl_ctx, BL_GEOMETRY_TYPE_ROUND_RECT, &backplate, UI_COLOR_BACKPLATE);
+
     // TODO: Clip to tooltip rect, for future fonts that might extend behind the pen origin?
-    struct atlas_text_metrics metrics = atlas_blit_string(atlas, bl_ctx, &origin, &tooltip_blit_data);
-    return (BLPointI){
-        .x = MAX(ceil(metrics.advance.x), metrics.bbox.x1),
-        .y = atlas_font_height_px(atlas), // TODO: use Y-coordinates once implemented
-    };
+    atlas_blit_string(atlas, bl_ctx, &pen_origin, &blit_data);
 }
 
 static inline float
@@ -205,40 +229,22 @@ update_buffer(struct scran_output *output)
     struct wl_buffer *wl_buffer = cursor->buffers[theme][tooltip].scran_wl_buffer.wl_buffer;
     assert(wl_buffer != NULL);
 
-    const BLRectI viewport_source_px = cursor->viewport_source_px[theme][tooltip];
-    const BLRectI viewport_source_scaled = cursor->viewport_source_scaled[theme][tooltip];
-
-    // XXX(Hyprland #15870):
-    //   Don't use cursor viewport *destination* until fixed, since it
-    //   alters the required hotspot coordinates.
-    //
-    //   Viewport source rect is interpreted *after* set_buffer_scale,
-    //   so until we switch back to wp_viewport_set_destination, we should
-    //   just use the unscaled size.
-    wp_viewport_set_source(
-        cursor->viewport,
-        wl_fixed_from_int(viewport_source_scaled.x),
-        wl_fixed_from_int(viewport_source_scaled.y),
-        wl_fixed_from_int(viewport_source_scaled.w),
-        wl_fixed_from_int(viewport_source_scaled.h)
-    );
-
     uint32_t last_enter_serial = g_state.seat.pointer_ctx.last_enter_serial;
 
     wl_pointer_set_cursor(
         g_state.seat.wl_pointer,
         last_enter_serial,
         cursor->wl_surface,
-        SCRAN_CURSOR_SIZE / 2,
-        SCRAN_CURSOR_SIZE / 2
+        cursor->hotspot_scaled.x,
+        cursor->hotspot_scaled.y
     );
     wl_surface_attach(cursor->wl_surface, wl_buffer, 0, 0);
     wl_surface_damage_buffer(
         cursor->wl_surface,
-        viewport_source_px.x,
-        viewport_source_px.y,
-        viewport_source_px.w,
-        viewport_source_px.h
+        cursor->combined_buffer_bbox.x,
+        cursor->combined_buffer_bbox.y,
+        cursor->combined_buffer_bbox.w,
+        cursor->combined_buffer_bbox.h
     );
     wl_surface_commit(cursor->wl_surface);
 
@@ -311,6 +317,15 @@ bool
 cursor_reinit(struct scran_output *output)
 {
     struct scran_cursor *cursor = &output->cursor;
+
+    // Scale events can arrive before shared memory allocation is complete.
+    bool buffers_initialized = (bool)cursor->buffers[0][0].scran_wl_buffer.data;
+    if (!buffers_initialized) {
+        return true;
+    }
+
+    struct atlas *atlas = &cursor->atlas;
+
     // XXX(Hyprland #15870):
     //   Can't set cursor viewport, so just use an integer scale and
     //   set_buffer_scale instead.
@@ -322,18 +337,63 @@ cursor_reinit(struct scran_output *output)
     wl_surface_set_buffer_scale(cursor->wl_surface, scale);
     atlas_reinit(&cursor->atlas, scale);
 
+    const int item_gap_px = SCRAN_CURSOR_TOOLTIP_GAP * scale;
     // Clamp since we use compile-time buffer sizes
-    int cursor_size_px = MAX(
+    const int cursor_size_px = MAX(
         1,
         MIN(round(SCRAN_CURSOR_SIZE * scale), SCRAN_CURSOR_BUFFER_HEIGHT_PX)
     );
-    cursor->cursor_size_px = cursor_size_px;
 
-    // Scale events can arrive before shared memory allocation is complete.
-    bool buffers_initialized = (bool)cursor->buffers[0][0].scran_wl_buffer.data;
-    if (!buffers_initialized) {
-        return true;
+    int tooltips_max_width = 0;
+    for (int tooltip = 0; tooltip < SCRAN_CURSOR_N_TOOLTIPS; ++tooltip) {
+        const struct atlas_text_metrics text_metrics = get_tooltip_text_metrics(atlas, tooltip);
+        tooltips_max_width = MAX(tooltips_max_width, ui_item_width_px(atlas, &text_metrics));
     }
+
+    const BLPointI cursor_size    = {cursor_size_px, cursor_size_px};
+    BLPointI       cursor_origin  = {0, 0};
+    const BLPointI tooltips_size  = {tooltips_max_width, ui_item_height_px(atlas)};
+    BLPointI       tooltip_origin = {cursor_size_px + item_gap_px, 0};
+
+    // Vertically center-align
+    if (cursor_size.y < tooltips_size.y) {
+        cursor_origin.y = (tooltips_size.y - cursor_size.y) / 2;
+    } else if (cursor_size.y > tooltips_size.y) {
+        tooltip_origin.y = (cursor_size.y - tooltips_size.y) / 2;
+    }
+
+    // Round up, then set physical origin based on logical.
+    // This lets our logical-coordinate hotspot stay optimally centered,
+    // while still fitting the entire tooltip in the buffer
+    {
+        const BLPointI cursor_origin_logical = {
+            .x = (cursor_origin.x + scale - 1) / scale,
+            .y = (cursor_origin.y + scale - 1) / scale,
+        };
+
+        const int cursor_origin_y_prev = cursor_origin.y;
+        cursor_origin = (BLPointI) {
+            cursor_origin_logical.x * scale,
+            cursor_origin_logical.y * scale,
+        };
+        const int y_diff = cursor_origin.y - cursor_origin_y_prev;
+        tooltip_origin.y += y_diff;
+
+        cursor->hotspot_scaled = (BLPointI){
+            .x = cursor_origin_logical.x + SCRAN_CURSOR_SIZE / 2,
+            .y = cursor_origin_logical.y + SCRAN_CURSOR_SIZE / 2,
+        };
+    }
+
+    const BLRectI cursor_rect   = blrecti_from_origin_size(cursor_origin, cursor_size);
+    const BLRectI tooltips_rect = blrecti_from_origin_size(tooltip_origin, tooltips_size);
+    const BLRectI full_rect     = blrecti_bounding_rect(cursor_rect, tooltips_rect);
+    assert(
+        blboxi_contains(
+            (BLBoxI){0, 0, SCRAN_CURSOR_BUFFER_WIDTH_PX, SCRAN_CURSOR_BUFFER_HEIGHT_PX},
+            blrecti_to_blboxi(full_rect)
+        )
+    );
 
     for (int theme = 0; theme < SCRAN_CURSOR_N_THEMES; ++theme) {
         for (int tooltip = 0; tooltip < SCRAN_CURSOR_N_TOOLTIPS; ++tooltip) {
@@ -362,54 +422,38 @@ cursor_reinit(struct scran_output *output)
             BLContextCore bl_ctx;
             bl_context_init_as(&bl_ctx, &buffer->bl_img, NULL);
 
-            const BLPointI origin = { 0, 0 };
-            BLPointI pen = origin;
-            int sprite_h = cursor_size_px;
-
-            draw_cursor(buffer, &bl_ctx, pen, cursor_size_px, m_cursor_colors[theme]);
-            pen.x += cursor_size_px;
-
-            {
-                const int gap = SCRAN_CURSOR_TOOLTIP_GAP * scale;
-                const BLPointI tooltip_origin = { pen.x + gap, pen.y };
-
-                BLPointI tooltip_dimensions = draw_tooltip(output, buffer, &bl_ctx, tooltip_origin, cursor_size_px, tooltip);
-                if (tooltip_dimensions.x > 0) {
-                    pen.x += gap + tooltip_dimensions.x;
-                    sprite_h = MAX(sprite_h, tooltip_dimensions.y);
-                }
-            }
+            draw_cursor(buffer, &bl_ctx, cursor_origin, cursor_size_px, m_cursor_colors[theme]);
+            draw_tooltip(output, &bl_ctx, tooltip_origin, tooltip);
 
             bl_context_end(&bl_ctx);
             bl_context_destroy(&bl_ctx);
-
-            BLRectI sprite_bbox = {
-                .x = origin.x,
-                .y = origin.y,
-                .w = pen.x - origin.x,
-                .h = sprite_h,
-            };
-            assert(
-                blboxi_contains(
-                    (BLBoxI){
-                        .x0 = 0,
-                        .y0 = 0,
-                        .x1 = SCRAN_CURSOR_BUFFER_WIDTH_PX,
-                        .y1 = SCRAN_CURSOR_BUFFER_HEIGHT_PX,
-                    },
-                    blrecti_to_blboxi(sprite_bbox)
-                )
-            );
-
-            cursor->viewport_source_px[theme][tooltip] = sprite_bbox;
-            cursor->viewport_source_scaled[theme][tooltip] = (BLRectI){
-                .x = sprite_bbox.x / scale,
-                .y = sprite_bbox.y / scale,
-                .w = ceil(sprite_bbox.w / (double)scale),
-                .h = ceil(sprite_bbox.h / (double)scale),
-            };
         }
     }
+
+    // XXX(Hyprland #15870):
+    //   Don't use cursor viewport *destination* until fixed, since it
+    //   alters the required hotspot coordinates.
+    //
+    //   Viewport source rect is interpreted *after* set_buffer_scale,
+    //   so until we switch back to wp_viewport_set_destination, we should
+    //   just use the unscaled size.
+    //
+    //   We also use the same viewport for every buffer, since without
+    //   set_destination we could otherwise be changing the required
+    //   physical->logical pixel mapping on every viewport update, which
+    //   would lead to visible resampling of the static crosshair.
+    //
+    //   Our hotspot must also stay relative to the buffer origin (0,0)
+    cursor->combined_buffer_bbox = full_rect;
+    const BLBoxI full_box = blrecti_to_blboxi(full_rect);
+    wp_viewport_set_source(
+        cursor->viewport,
+        wl_fixed_from_int(0),
+        wl_fixed_from_int(0),
+        wl_fixed_from_int((full_box.x1 + scale - 1) / scale),
+        wl_fixed_from_int((full_box.y1 + scale - 1) / scale)
+    );
+
     // XXX(Hyprland #15870): Damage everything, since we cleared everything.
     wl_surface_damage_buffer(
         cursor->wl_surface,
