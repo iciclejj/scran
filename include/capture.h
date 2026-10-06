@@ -198,11 +198,7 @@ capture_grow_tracked_damage(
     BLBoxI incoming_damage = blrecti_to_blboxi( (BLRectI){ x, y, w, h } );
     BLBoxI tracked_damage  = frame_ctx->capture_buffer_damage_area_px;
 
-    if (blboxi_is_empty(tracked_damage)) {
-        frame_ctx->capture_buffer_damage_area_px = incoming_damage;
-    } else {
-        frame_ctx->capture_buffer_damage_area_px = blboxi_bounding_box(incoming_damage, tracked_damage);
-    }
+    frame_ctx->capture_buffer_damage_area_px = blboxi_bounding_box(incoming_damage, tracked_damage);
 }
 
 static inline void

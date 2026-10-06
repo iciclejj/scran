@@ -329,8 +329,14 @@ blboxi_get_shifted(BLBoxI box, int x_shift, int y_shift) {
     return box;
 }
 
+// Returns a if b is empty
 static inline BLBoxI
 blboxi_bounding_box(BLBoxI a, BLBoxI b) {
+    if (blboxi_is_empty(b)) {
+        // TODO: Consider returning {0}, like blboxi_intersection.
+        return a;
+    }
+
     blboxi_deinvert(&a);
     blboxi_deinvert(&b);
 
