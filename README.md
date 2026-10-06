@@ -317,6 +317,9 @@ See `scran -h` for more details
   -A   disable audio capture (during video capture)
          Note: audio capture requires PipeWire.
   -C   disable cursor capture
+  -c   capture all cursors, including scran's cursor and tooltip
+         By default, capture cursors only while scran has no pointer focus.
+         If both -c and -C are given, the last one takes effect.
   -B   do not keep background process alive
   -z   automatically freeze the display at startup
   -s   slurp: send selection as geometry string to standard output

@@ -784,8 +784,7 @@ sync_outputs()
         cursor_hide();
     }
     FOR_EACH_OUTPUT(i, output) {
-        const bool capture_cursors = !will_show_scran_cursor;
-        capture_set_cursor_capture(&output->capture, capture_cursors);
+        capture_sync_cursor_capture(&output->capture, will_show_scran_cursor);
     }
     FOR_EACH_OUTPUT(i, output) {
         cursor_update(output);

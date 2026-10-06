@@ -261,14 +261,14 @@ capture_clock_gettime_nsec() {
 // NOTE: This can sometimes cause a dropped frame, since the in-flight frame
 // must be destroyed before switching sessions.
 static inline void
-capture_set_cursor_capture(
+capture_sync_cursor_capture(
     struct scran_output_capture *capture,
-    bool capture_cursors
+    bool will_show_scran_cursor
 ) {
     struct capture_session_context *new_session =
-        capture_cursors
-        ? &capture->session_ctx_with_cursor
-        : &capture->session_ctx_default_no_cursor;
+        will_show_scran_cursor
+        ? &capture->session_ctx_default
+        : &capture->session_ctx_with_cursor;
 
     if (new_session->wl_session == NULL) {
         assert(capture->active_session_ctx->wl_session != NULL);
@@ -278,7 +278,7 @@ capture_set_cursor_capture(
         return;
     }
 
-    DEBUG("Setting cursor capture: %d\n", capture_cursors);
+    DEBUG("Switching capture session: will_show_scran_cursor=%d\n", will_show_scran_cursor);
 
     const bool capturing = capture->frame_ctx.consumers;
 
