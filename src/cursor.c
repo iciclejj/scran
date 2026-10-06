@@ -10,11 +10,14 @@
 #include "cursor.h"
 #include "init.h"
 #include "selection-surface.h"
+#include "util/util.h"
+#include "util/blend2d.h"
+#include "print.h"
 
 
 static const BLRgba32 m_cursor_colors[] = {
-    [SCRAN_CURSOR_THEME_DEFAULT]       = SCRAN_SELECTION_BORDER_COLOR_DEFAULT,
-    [SCRAN_CURSOR_THEME_VIDEO_CAPTURE] = SCRAN_SELECTION_BORDER_COLOR_VIDEO_CAPTURE,
+    [SCRAN_CURSOR_THEME_DEFAULT].value       = UI_COLOR_SELECTION_DEFAULT,
+    [SCRAN_CURSOR_THEME_VIDEO_CAPTURE].value = UI_COLOR_VIDEO_CAPTURE,
 };
 static_assert(ARRAY_LENGTH(m_cursor_colors) == SCRAN_CURSOR_N_THEMES,
               "m_cursor_colors[] length must exactly cover all cursor themes.");

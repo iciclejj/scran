@@ -41,7 +41,6 @@ shared_library(
     '-fno-stack-protector',
   ] + scranrot_c_args,
   install: false,
-  build_by_default: true,
 )
 
 test(

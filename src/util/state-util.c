@@ -3,12 +3,11 @@
 #include "state.h"
 #include "state-util.h"
 #include "capture.h"
-#include "ui.h"
+#include "atlas.h"
 #include "cursor.h"
 #include "freezeframe.h"
 #include "print.h"
 #include "selection-surface.h"
-#include "selection.h"
 
 
 void
@@ -201,14 +200,10 @@ do_scale_updates(struct scran_output *st_output)
 {
     update_surface_scale_bufsize_viewport(st_output);
     cursor_reinit(st_output);
-    reinit_scran_ui(&st_output->selection_surface.ui_ctx, st_output->selection_surface.surface.final_scale_factor_normalized);
-    // Do not update if size_is_frozen, since there might be an active capture.
-    if (st_output->selection_ctx.selection_state == SELECTION_NONE && !st_output->selection_ctx.size_is_frozen) {
-        selection_set_box_px(
-            &st_output->selection_ctx,
-            get_selection_surface_pre_selection_box(st_output)
-        );
-    }
+    atlas_reinit(
+        &st_output->selection_surface.atlas,
+        st_output->selection_surface.surface.final_scale_factor_normalized
+    );
     set_force_redraw_selection_surface_buffers(st_output);
     request_selection_surface_frame_callback(st_output);
 }

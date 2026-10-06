@@ -18,8 +18,6 @@
 #define SCRAN_INITIAL_SELECTION_NONE ((BLBoxI){ -1, -1, -1, -1 })
 
 
-void selection_surface_set_theme(struct scran_output *st_output, enum surface_theme action);
-
 void selection_set_initialized(struct scran_output *st_output);
 
 void selection_surface_acquire_hide_then(struct scran_output *st_output, struct wp_presentation_feedback_listener *listener, enum scran_selection_surface_disable_reason reason);
@@ -68,7 +66,7 @@ get_fullscreen_selection_box(const struct scran_output *st_output) {
 }
 
 static inline bool
-selection_is_none(struct scran_output_selectionContext *selection_ctx) {
+selection_is_none(const struct scran_output_selectionContext *selection_ctx) {
     return selection_ctx->selection_state == SELECTION_NONE;
 }
 

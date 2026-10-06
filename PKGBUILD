@@ -8,7 +8,7 @@ pkgdesc='Image and video capture for Wayland'
 arch=('x86_64')
 url='https://github.com/iciclejj/scran'
 license=('MIT AND OFL-1.1')
-makedepends=('wayland-protocols' 'meson')
+makedepends=('wayland-protocols' 'meson' 'python-fonttools')
 depends=(
     'wayland>=1.14.91'
     'libxkbcommon'
@@ -34,6 +34,4 @@ package() {
     meson install -C build --destdir "$pkgdir"
 
     install -D -m 644 "$srcdir/$pkgname-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-    install -D -m 644 "$srcdir/$pkgname-$pkgver/assets/Iosevka.license" "$pkgdir/usr/share/licenses/$pkgname/Iosevka.license"
-    install -D -m 644 "$srcdir/$pkgname-$pkgver/assets/NerdFontsSymbolsOnly.license" "$pkgdir/usr/share/licenses/$pkgname/NerdFontsSymbolsOnly.license"
 }

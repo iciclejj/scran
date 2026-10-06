@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <assert.h>
 
+#include "atlas.h"
 #include "viewporter.h"
 #include "fractional-scale-v1.h"
 
@@ -11,7 +12,6 @@
 #include "selection.h"
 #include "selection-surface.h"
 #include "freezeframe.h"
-#include "ui.h"
 
 
 bool
@@ -73,7 +73,7 @@ init_premem__selection(
     );
     wp_fractional_scale_v1_add_listener(st_surface->fractional_scale, &fractional_scale_listener__selection, st_output);
 
-    init_scran_ui_pre_selection(&selection_surface->ui_ctx, selection_surface->surface.final_scale_factor_normalized);
+    atlas_init(&selection_surface->atlas, selection_surface->surface.final_scale_factor_normalized);
 
     return true;
 }
@@ -192,5 +192,5 @@ init_postmem__selection__destroy(struct scran_output *st_output)
 
     bl_path_destroy(&selection_surface->bl_path);
 
-    destroy_scran_ui(&selection_surface->ui_ctx);
+    atlas_destroy(&selection_surface->atlas);
 }
