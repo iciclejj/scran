@@ -496,10 +496,10 @@ struct scran_output_capture {
     struct capture_frame_context frame_ctx;
 
     struct capture_session_context *active_session_ctx;
-    // Uninitialized if the user doesn't want a cursor!
+    // Only initialized for focus-based switching (default, i.e. neither -c nor -C).
     struct capture_session_context session_ctx_with_cursor;
-    // Always initialized, since we always hide scran's own cursor.
-    struct capture_session_context session_ctx_default_no_cursor;
+    // Always initialized. Captures cursors only if -c.
+    struct capture_session_context session_ctx_default;
     int64_t session_switch_time_nsec;
 
     struct ffmpeg_context ffmpeg_ctx;
@@ -595,6 +595,12 @@ enum scran_opt_hide_ui_level {
     SCRAN_OPT_HIDE_UI_EVERYTHING,
 } SCRAN_PACKED;
 
+enum scran_opt_cursor_capture {
+    SCRAN_OPT_CAPTURE_NO_SCRAN_CURSORS = 0, // Default
+    SCRAN_OPT_CAPTURE_NO_CURSORS,
+    SCRAN_OPT_CAPTURE_ALL_CURSORS,
+} SCRAN_PACKED;
+
 // TODO: Isolate this from scran state?
 struct scran_options {
     char *output_path_filename_pointer; // TODO: Use offset instead
@@ -602,10 +608,10 @@ struct scran_options {
     char filename_format[SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX];
 
     enum scran_opt_hide_ui_level hide_ui_level;
+    enum scran_opt_cursor_capture cursor_capture;
     bool output_to_stdout;
     bool no_keepalive;
     bool disable_audio_capture;
-    bool disable_cursor_capture;
     bool freezeframe_at_startup;
     bool capture_and_exit_after_selection_init;
     bool produce_slurp;                 // output slurp-style geometry string

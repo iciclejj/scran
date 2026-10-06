@@ -64,7 +64,7 @@ init_premem__capture(
     //
     //   See also https://gitlab.freedesktop.org/wlroots/wlroots/-/merge_requests/5443#note_3654776
     //
-    if (!g_state.options.disable_cursor_capture) {
+    if (g_state.options.cursor_capture == SCRAN_OPT_CAPTURE_NO_SCRAN_CURSORS) {
         capture_session_init(
             &st_output->capture.session_ctx_with_cursor,
             st_output->capture.source,
@@ -73,11 +73,11 @@ init_premem__capture(
     }
 
     capture_session_init(
-        &st_output->capture.session_ctx_default_no_cursor,
+        &st_output->capture.session_ctx_default,
         st_output->capture.source,
-        false
+        g_state.options.cursor_capture == SCRAN_OPT_CAPTURE_ALL_CURSORS
     );
-    st_output->capture.active_session_ctx = &st_output->capture.session_ctx_default_no_cursor;
+    st_output->capture.active_session_ctx = &st_output->capture.session_ctx_default;
 
 
     // TODO: Revisit which parts of video and image init to put here vs
@@ -97,8 +97,8 @@ init_premem__capture__destroy(struct scran_output *st_output)
     if (st_output->capture.session_ctx_with_cursor.wl_session) {
         ext_image_copy_capture_session_v1_destroy(st_output->capture.session_ctx_with_cursor.wl_session);
     }
-    if (st_output->capture.session_ctx_default_no_cursor.wl_session) {
-        ext_image_copy_capture_session_v1_destroy(st_output->capture.session_ctx_default_no_cursor.wl_session);
+    if (st_output->capture.session_ctx_default.wl_session) {
+        ext_image_copy_capture_session_v1_destroy(st_output->capture.session_ctx_default.wl_session);
     }
 
     bl_image_destroy(&st_output->capture.bl_img_captured);

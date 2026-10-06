@@ -106,9 +106,9 @@ handle_image_copy_capture_frame_ready(
             // A new session's first requested frame can hit the same presented
             // frame that the previous session already handled. If we don't skip
             // it, we could get a duplicated pts or write an old display state
-            // with the new capture_cursors flag too early. Potentially a frame
-            // rendered with a new cursor image, if a compositor behaves weird
-            // like that.
+            // with the new session's paint_cursors setting too early.
+            // Potentially also a frame rendered with a new cursor image, if a
+            // compositor behaves weird like that.
             if (frame_ctx->presentation_time_nsec < output->capture.session_switch_time_nsec) {
                 const BLRectI unconsumed_damage = blboxi_to_blrecti(damage);
                 capture_request_frame(

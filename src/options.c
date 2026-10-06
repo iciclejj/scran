@@ -431,6 +431,9 @@ static const char help_string[] =
     "  -A   disable audio capture (during video capture)\n"
     "         Note: audio capture requires PipeWire.\n"
     "  -C   disable cursor capture\n"
+    "  -c   capture all cursors, including scran's cursor and tooltip\n"
+    "         By default, capture cursors only while scran has no pointer focus.\n"
+    "         If both -c and -C are given, the last one takes effect.\n"
     "  -B   do not keep background process alive\n"
     "         Example: 'scran -B - | satty -f -'\n"
     "          By default, scran stays alive after exit to manage the clipboard\n"
@@ -471,18 +474,19 @@ scran_handle_args(int argc, char *const *argv)
     char *opt_output_directory = NULL;
 
     int opt;
-    while ((opt = getopt(argc, argv, "f:d:peACBzsg:NvhU")) != -1) {
+    while ((opt = getopt(argc, argv, "f:d:peACcBzsg:NvhU")) != -1) {
         switch (opt) {
         case 'f': opt_filename                                          = optarg; break;
         case 'd': opt_output_directory                                  = optarg; break;
         case 'p': g_state.seat.pointer_ctx.use_presses_only             = true;   break;
         case 'e': g_state.options.capture_and_exit_after_selection_init = true;   break;
         case 'A': g_state.options.disable_audio_capture                 = true;   break;
-        case 'C': g_state.options.disable_cursor_capture                = true;   break;
         case 'B': g_state.options.no_keepalive                          = true;   break;
-        case 'z': g_state.options.freezeframe_at_startup                           = true;   break;
+        case 'z': g_state.options.freezeframe_at_startup                = true;   break;
         case 's': g_state.options.produce_slurp                         = true;   break;
         case 'U': g_state.options.hide_ui_level                         += 1;     break;
+        case 'C': g_state.options.cursor_capture                        = SCRAN_OPT_CAPTURE_NO_CURSORS;  break;
+        case 'c': g_state.options.cursor_capture                        = SCRAN_OPT_CAPTURE_ALL_CURSORS; break;
         case 'g':
             {
                 char consumable_slurp[SLURP_STRING_SIZE];
