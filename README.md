@@ -202,6 +202,10 @@ cmake --install build && ldconfig
   Left mouse button    Initialize and move selection
   Right mouse button   Resize selection
 
+  S                    Move UI inside selection
+                         Useful when recording fullscreen or the UI is otherwise
+                         clipping
+
   Enter                Capture image and exit
                          Stays alive in the background to handle clipboard,
                          unless the -B option is provided.

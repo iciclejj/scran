@@ -377,6 +377,9 @@ static const char help_string[] =
     "Keymap\n"
     "  Left mouse button    Initialize and move selection\n"
     "  Right mouse button   Resize selection\n"
+    "  S                    Move UI inside selection\n"
+    "                         Useful when recording fullscreen or the UI is otherwise clipping\n"
+
     "  Enter                Capture image and exit\n"
     "                         Stays alive in the background to handle clipboard,\n"
     "                         unless the -B option is provided.\n"

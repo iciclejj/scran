@@ -13,11 +13,11 @@
 
 void
 capture_image_write_image(
-    struct scran_output *output,
-    const struct capture_session_context *session,
-    const struct capture_frame_context *frame_ctx,
+    struct capture_view view,
     const struct capture_buffer_area_context *buffer_area_ctx
 ) {
+    struct scran_output *output = view.output;
+
     const int capture_buffer_area_px_w = blboxi_width_abs_unsafe(buffer_area_ctx->area_px);
     const int capture_buffer_area_px_h = blboxi_height_abs_unsafe(buffer_area_ctx->area_px);
 
@@ -33,7 +33,7 @@ capture_image_write_image(
 
     uintptr_t buf_cropped_converted_row_bytes = 0;
     uint32_t rgba32_shuffle =
-        wl_shm_format_to_blend2d_scranrot_rgba32_shuffle(session->shm_format);
+        wl_shm_format_to_blend2d_scranrot_rgba32_shuffle(view.session_ctx->shm_format);
     if (rgba32_shuffle == RGBA32_SHUFFLE_ERROR) {
         eprintf("WARNING: Output's pixel format is not supported. Attempting anyways...\n");
         rgba32_shuffle = RGBA32_SHUFFLE_NO_CHANGE;
@@ -41,8 +41,7 @@ capture_image_write_image(
 
     // XXX: Scranrot does not support flipped transforms yet, so we just
     // record it flipped for now, rather than blocking capture entirely.
-    enum wl_output_transform transform =
-        wl_output_transform_without_flip(frame_ctx->source_transform);
+    enum wl_output_transform transform = wl_output_transform_without_flip(view.frame_ctx->source_transform);
 
     // XXX: We convert etc. unconditionally for now.
     //    TODO: Only convert if required

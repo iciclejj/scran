@@ -269,9 +269,29 @@ init_premem__destroy()
 
 // TODO: Separate arena module?
 
-// Just bump this if/when we need more
-// TODO: Make this cleaner...
-#define SCRAN_ARENA_BLOCKS_MAX (MAX_OUTPUTS * 8)
+// XXX TODO: Make this more maintainable.
+//
+//   Probably just run do the alignment calculations during the
+//   pointer-distribution as well, instead of caching them in the arena,
+//   with one shared, authoritative function for both offset-calculation
+//   and recipient-distribution.
+//
+//        init_arena(&measuring_arena) // collect
+//        mmap()
+//        copy_measurements(&mesauring_arena, &assignment_arena)
+//        init_arena(&assignment_arena) // distribute
+enum {
+    SCRAN_SHM_ARENA_BLOCKS_PER_OUTPUT =
+        SELECTION_SURFACE_BUF_COUNT
+        + SCRAN_CURSOR_N_THEMES * SCRAN_CURSOR_N_TOOLTIPS
+        + 2 // Freezeframe's capture and surface buffers
+        + 1, // Capture buffer
+    SCRAN_SHM_ARENA_GLOBAL_BLOCKS =
+        1, // Transparent single-pixel buffer
+    SCRAN_ARENA_BLOCKS_MAX =
+        MAX_OUTPUTS * SCRAN_SHM_ARENA_BLOCKS_PER_OUTPUT
+        + SCRAN_SHM_ARENA_GLOBAL_BLOCKS,
+};
 
 struct scran_arena_context {
     void *addr;
@@ -374,7 +394,8 @@ init_meminit(
     //
     FOR_EACH_OUTPUT(i, st_output) {
         // XXX: Handle this gracefully (and maybe in a nicer location?)
-        if (st_output->capture.session.session_ctx.shm_format == SCRAN_SHM_FORMAT_UNSET) {
+        assert(st_output->capture.active_session_ctx);
+        if (st_output->capture.active_session_ctx->shm_format == SCRAN_SHM_FORMAT_UNSET) {
             DEBUG("Failed to select shm_format for capture buffer.\n");
             return false;
         }
@@ -390,19 +411,21 @@ init_meminit(
         };
 
         const size_t cursor_buf_size = get_framebuffer_size(
-            SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
-            SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
+            SCRAN_CURSOR_BUFFER_WIDTH_PX,
+            SCRAN_CURSOR_BUFFER_HEIGHT_PX,
             SURFACE_PIXEL_STRIDE
         );
-        for (int i_buffer = 0; i_buffer < SCRAN_CURSOR_N_THEMES; ++i_buffer) {
-            struct scran_cursor_buffer *buffer = &st_output->cursor.buffers[i_buffer];
-            scran_arena_add_block(
-                shm_arena,
-                cursor_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &buffer->scran_wl_buffer.data
-            );
+        for (int i_buf = 0; i_buf < SCRAN_CURSOR_N_THEMES; ++i_buf) {
+            for (int j_buf = 0; j_buf < SCRAN_CURSOR_N_TOOLTIPS; ++j_buf) {
+                struct scran_cursor_buffer *buffer = &st_output->cursor.buffers[i_buf][j_buf];
+                scran_arena_add_block(
+                    shm_arena,
+                    cursor_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &buffer->scran_wl_buffer.data
+                );
+            }
         }
 
-        if (st_output->freezeframe.session.session_ctx.shm_format == SCRAN_SHM_FORMAT_UNSET) {
+        if (st_output->freezeframe.session_ctx.shm_format == SCRAN_SHM_FORMAT_UNSET) {
             DEBUG("Failed to select shm_format for freezeframe capture buffer.\n");
             return false;
         }
@@ -410,23 +433,24 @@ init_meminit(
         // wl_surface::set_buffer_transform not working as expected in
         // Hyprland (#14441).
         const size_t freezeframe_buf_size = get_framebuffer_size(
-            st_output->freezeframe.session.session_ctx.source_dimensions_px.x,
-            st_output->freezeframe.session.session_ctx.source_dimensions_px.y,
-            st_output->freezeframe.session.session_ctx.pixel_stride
+            st_output->freezeframe.session_ctx.source_dimensions_px.x,
+            st_output->freezeframe.session_ctx.source_dimensions_px.y,
+            st_output->freezeframe.session_ctx.pixel_stride
         );
         scran_arena_add_block(
             shm_arena, freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES,
-            &st_output->freezeframe.session.frame_ctx.scran_wl_buffer.data
+            &st_output->freezeframe.frame_ctx.scran_wl_buffer.data
         );
         scran_arena_add_block(
             shm_arena,
             freezeframe_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->freezeframe.surface_buffer.data
         );
 
-        const size_t capture_buf_size = get_capture_buf_size(&st_output->capture.session.session_ctx);
+        assert(st_output->capture.active_session_ctx);
+        const size_t capture_buf_size = get_capture_buf_size(st_output->capture.active_session_ctx);
         scran_arena_add_block(
             shm_arena,
-            capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.session.frame_ctx.scran_wl_buffer.data
+            capture_buf_size, FRAMEBUFFER_ALIGNMENT_BYTES, &st_output->capture.frame_ctx.scran_wl_buffer.data
         );
         scran_arena_add_block(
             private_arena,
@@ -499,31 +523,33 @@ init_meminit(
             );
         }
 
-        for (int i_buffer = 0; i_buffer < SCRAN_CURSOR_N_THEMES; ++i_buffer) {
-            struct scran_cursor_buffer *buffer = &st_output->cursor.buffers[i_buffer];
-            init_wl_shm_buffer(
-                shm_arena,
-                global_pool_wl,
-                &buffer->scran_wl_buffer,
-                SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
-                SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX,
-                SCRAN_CURSOR_BUFFER_WIDTH_HEIGHT_PX * SURFACE_PIXEL_STRIDE,
-                SURFACE_SHM_FORMAT
-            );
+        for (int i_buf = 0; i_buf < SCRAN_CURSOR_N_THEMES; ++i_buf) {
+            for (int j_buf = 0; j_buf < SCRAN_CURSOR_N_TOOLTIPS; ++j_buf) {
+                struct scran_cursor_buffer *buffer = &st_output->cursor.buffers[i_buf][j_buf];
+                init_wl_shm_buffer(
+                    shm_arena,
+                    global_pool_wl,
+                    &buffer->scran_wl_buffer,
+                    SCRAN_CURSOR_BUFFER_WIDTH_PX,
+                    SCRAN_CURSOR_BUFFER_HEIGHT_PX,
+                    SCRAN_CURSOR_BUFFER_WIDTH_PX * SURFACE_PIXEL_STRIDE,
+                    SURFACE_SHM_FORMAT
+                );
+            }
         }
 
         {
             struct scran_output_freezeframe *freezeframe = &st_output->freezeframe;
-            const struct capture_session_context *session = &freezeframe->session.session_ctx;
+            const struct capture_session_context *session = &freezeframe->session_ctx;
 
-            struct scran_wl_buffer *capture_buffer = &freezeframe->session.frame_ctx.scran_wl_buffer;
+            struct scran_wl_buffer *capture_buffer = &freezeframe->frame_ctx.scran_wl_buffer;
             init_wl_shm_buffer(
                 shm_arena,
                 global_pool_wl,
                 capture_buffer,
                 session->source_dimensions_px.x,
                 session->source_dimensions_px.y,
-                session->source_dimensions_px.x * session->pixel_stride,
+                get_capture_stride(session),
                 session->shm_format
             );
 
@@ -541,15 +567,16 @@ init_meminit(
         }
 
         struct scran_output_capture *capture = &st_output->capture;
-        const BLPointI source_dimensions_px = capture->session.session_ctx.source_dimensions_px;
+        const struct capture_session_context *session = capture->active_session_ctx;
+        assert(session);
         init_wl_shm_buffer(
             shm_arena,
             global_pool_wl,
-            &capture->session.frame_ctx.scran_wl_buffer,
-            source_dimensions_px.x,
-            source_dimensions_px.y,
-            get_capture_stride(st_output),
-            capture->session.session_ctx.shm_format
+            &capture->frame_ctx.scran_wl_buffer,
+            session->source_dimensions_px.x,
+            session->source_dimensions_px.y,
+            get_capture_stride(session),
+            session->shm_format
         );
     }
     // Not per-output:
@@ -581,12 +608,15 @@ init_meminit__destroy(
             struct scran_output_selectionSurface_buffer *selection_surface_buffer = &st_output->selection_surface.double_buffer[i_buf];
             wl_buffer_destroy(selection_surface_buffer->scran_wl_buffer.wl_buffer);
         }
+
         for (int i_buf = 0; i_buf < SCRAN_CURSOR_N_THEMES; ++i_buf) {
-            wl_buffer_destroy(st_output->cursor.buffers[i_buf].scran_wl_buffer.wl_buffer);
+            for (int j_buf = 0; j_buf < SCRAN_CURSOR_N_TOOLTIPS; ++j_buf) {
+                wl_buffer_destroy(st_output->cursor.buffers[i_buf][j_buf].scran_wl_buffer.wl_buffer);
+            }
         }
 
-        wl_buffer_destroy(st_output->capture.session.frame_ctx.scran_wl_buffer.wl_buffer);
-        wl_buffer_destroy(st_output->freezeframe.session.frame_ctx.scran_wl_buffer.wl_buffer);
+        wl_buffer_destroy(st_output->capture.frame_ctx.scran_wl_buffer.wl_buffer);
+        wl_buffer_destroy(st_output->freezeframe.frame_ctx.scran_wl_buffer.wl_buffer);
         wl_buffer_destroy(st_output->freezeframe.surface_buffer.wl_buffer);
     }
     wl_buffer_destroy(g_state.transparent_single_pixel_buffer.wl_buffer);
@@ -720,9 +750,7 @@ update_ui()
     int64_t now_ns = capture_clock_gettime_nsec();
 
     FOR_EACH_OUTPUT(i, output) {
-        const BLBoxI selection = selection_get_box_px(&output->selection_ctx);
-
-        if (!ui_contents_equal(output, &selection, now_ns)) {
+        if (ui_needs_redraw(output, now_ns)) {
             request_selection_surface_frame_callback(output);
         }
 
@@ -734,6 +762,34 @@ update_ui()
     }
 
     return timeout_ms;
+}
+
+static void
+sync_outputs()
+{
+    // All capture sessions must be synced before any cursor_update(), since
+    // cursor sprites can span multiple displays
+    //
+    // TODO: Once we support multiple seats, this should probably be updated
+    // with per-pointer and per-output hit detection so that non-scran cursors
+    // don't get hidden. (Doing this 100% properly would probably require
+    // `image_copy_capture_cursor_session` and manual compositing of each
+    // cursor.)
+    const bool will_show_scran_cursor = g_state.seat.pointer_ctx.focused_selection_surface != NULL;
+    if (!will_show_scran_cursor) {
+        // The wl_pointer spec doesn't specify what's shown between a ::leave and the
+        // next client's set_cursor, so we make sure it's hidden right away.
+        //   TODO: Attach a ::presented callback to make sure it's actually gone before
+        //   we start capturing cursors?
+        cursor_hide();
+    }
+    FOR_EACH_OUTPUT(i, output) {
+        const bool capture_cursors = !will_show_scran_cursor;
+        capture_set_cursor_capture(&output->capture, capture_cursors);
+    }
+    FOR_EACH_OUTPUT(i, output) {
+        cursor_update(output);
+    }
 }
 
 
@@ -841,6 +897,7 @@ run_main_loop(struct scran_signal_masks *signal_masks)
             g_state.sig_focus_requested = false;
         }
 
+        sync_outputs();
         scran_ui_timeout_ms = update_ui();
     };
 

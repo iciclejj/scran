@@ -10,6 +10,7 @@
 #include "selection-surface.h"
 #include "event-handlers.h"
 #include "selection.h"
+#include "ui.h"
 
 
 static void
@@ -26,17 +27,7 @@ handle_pointer_enter(
 
     pointer_ctx->last_enter_serial = serial;
 
-    struct scran_output_selectionSurface *pointer_surface =
-        seat_update_pointer_focus(&state->seat, surface_entered, x_surface, y_surface);
-
-    if (!pointer_surface) {
-        return;
-    }
-
-    struct scran_output *st_output = wl_container_of(pointer_ctx->focused_selection_surface, st_output, selection_surface);
-
-    // "When a seat's focus enters a surface, the pointer image is undefined..."
-    cursor_set_theme(st_output, st_output->cursor.theme);
+    seat_update_pointer_focus(&state->seat, surface_entered, x_surface, y_surface);
 }
 
 

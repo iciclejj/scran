@@ -3,32 +3,9 @@
 #include <wayland-client.h>
 #include <blend2d/blend2d.h>
 
-#include "presentation-time.h"
-
-#include "state-util.h"
 #include "state.h"
 #include "event-handlers.h"
 #include "selection-surface.h"
-#include "selection.h"
-#include "capture.h"
-#include "print.h"
-
-
-static inline struct scran_output_selectionSurface_buffer *
-get_free_double_buffer(struct scran_output_selectionSurface *selection_surface)
-{
-    struct scran_output_selectionSurface_buffer *buffer =
-        selection_surface->double_buffer[0].scran_wl_buffer.busy
-        ? &selection_surface->double_buffer[1]
-        : &selection_surface->double_buffer[0]
-    ;
-
-    if (buffer->scran_wl_buffer.busy) {
-        return NULL;
-    }
-
-    return buffer;
-}
 
 
 static void
@@ -39,55 +16,12 @@ selection_surface_frame_callback_handler(
 ) {
     wl_callback_destroy(callback);
 
-    struct scran_output                  *st_output         = data;
-    struct scran_output_selectionSurface *selection_surface = &st_output->selection_surface;
+    struct scran_output *output = data;
 
-    bool skip = selection_surface->disable_reason_mask || !selection_surface->awaiting_frame_callback;
-    selection_surface->awaiting_frame_callback = false;
-
-    if (skip) {
-        return;
+    if (output->selection_surface.awaiting_frame_callback) {
+        output->selection_surface.awaiting_frame_callback = false;
+        draw_selection_and_commit(output);
     }
-
-    struct scran_output_selectionSurface_buffer *st_buffer = get_free_double_buffer(&st_output->selection_surface);
-
-    if (st_buffer == NULL) {
-        DEBUG("Both buffers busy...\n");
-        request_selection_surface_frame_callback(st_output);
-        return;
-    }
-
-    // This is the capture area that the rest of this function is assuming will
-    // be in use for the frame in which this selection area is presented.
-    const struct BLBoxI selection = selection_get_box_px(&st_output->selection_ctx);
-    assert(selection.x1 <= get_transformed_output_width(st_output));
-    assert(selection.y1 <= get_transformed_output_height(st_output));
-
-    st_buffer->scran_wl_buffer.busy = true;
-
-    // XXX HACK: Temporary (hopefully) workaround for regression introduced by
-    // trying to fix cosmic and hyprland sync by assigning on
-    // presentation_feedback::presented. Should be removed once the syncing
-    // logic is more robust.
-    if (   g_state.globals.cosmic_output_manager == NULL
-        && g_state.globals.hypr_surface_manager == NULL
-    ) {
-        // XXX TODO: Check whether we're actually sway more robustly, and assign
-        // it as part of our state. (So we don't need to assume the user is
-        // running either cosmic or sway.)
-        capture_update_selection(st_output, selection);
-    }
-
-    draw_selection_and_damage_buffer(st_output, st_buffer, selection);
-
-    wl_surface_attach(st_output->selection_surface.surface.wl_surface, st_buffer->scran_wl_buffer.wl_buffer, 0, 0);
-    wp_presentation_feedback_add_listener(
-        wp_presentation_feedback(g_state.globals.presentation, st_output->selection_surface.surface.wl_surface),
-        &presentation_feedback_listener__selection,
-        st_buffer
-    );
-    wl_surface_commit(st_output->selection_surface.surface.wl_surface);
-    st_output->selection_surface.committed_selection = selection;
 }
 
 

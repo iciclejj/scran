@@ -6,13 +6,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <blend2d/core/api.h>
 #include <blend2d/blend2d.h>
-
-
-// TODO: Move this into util/util.h
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#include <util/util.h>
 
 
 static inline void
@@ -334,8 +329,14 @@ blboxi_get_shifted(BLBoxI box, int x_shift, int y_shift) {
     return box;
 }
 
+// Returns a if b is empty
 static inline BLBoxI
 blboxi_bounding_box(BLBoxI a, BLBoxI b) {
+    if (blboxi_is_empty(b)) {
+        // TODO: Consider returning {0}, like blboxi_intersection.
+        return a;
+    }
+
     blboxi_deinvert(&a);
     blboxi_deinvert(&b);
 
@@ -345,6 +346,19 @@ blboxi_bounding_box(BLBoxI a, BLBoxI b) {
         .x1 = MAX(a.x1, b.x1),
         .y1 = MAX(a.y1, b.y1),
     };
+}
+
+// Returns a if b is empty
+static inline BLRectI
+blrecti_bounding_rect(BLRectI a, BLRectI b) {
+    return
+        // TODO: Can this be done meaningfully more efficiently?
+        blboxi_to_blrecti(
+            blboxi_bounding_box(
+                blrecti_to_blboxi(a),
+                blrecti_to_blboxi(b)
+            )
+        );
 }
 
 static inline BLBoxI
@@ -507,6 +521,16 @@ blboxi_get_dimensions(BLBoxI box) {
     return (BLPointI) {
         blboxi_width(box),
         blboxi_height(box),
+    };
+}
+
+static inline BLRectI
+blrecti_from_origin_size(BLPointI origin, BLPointI dimensions) {
+    return (BLRectI){
+        .x = origin.x,
+        .y = origin.y,
+        .w = dimensions.x,
+        .h = dimensions.y,
     };
 }
 

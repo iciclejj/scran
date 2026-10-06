@@ -3,9 +3,9 @@
 #include <blend2d/blend2d.h>
 
 #include "scran-ui-text.h"
-#include "util/blend2d.h"
 
 #include "atlas.h"
+#include "util/util.h"
 
 
 const struct ui_string g_scran_ui_atlas_string = UI_STRING(g_ui_strings.unique_glyphs_sorted);
@@ -286,6 +286,13 @@ atlas_blit_string(
         glyph_origin.x = origin->x + atlas_metrics_advance_x_px(&text_metrics);
         ++glyph_blit_data.string.str;
     }
+
+#ifndef NDEBUG
+    {
+        struct atlas_text_metrics metrics_ = atlas_get_text_metrics_px(atlas, &blit_data->string);
+        assert(atlas_metrics_equal(&text_metrics, &metrics_));
+    }
+#endif
 
     return text_metrics;
 }

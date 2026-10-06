@@ -13,6 +13,9 @@
 
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(*arr))
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 
 bool scran_full_write(int fd, const char *src, size_t n_bytes);
 

@@ -393,11 +393,11 @@ capture_video_write_audio_packet(
 
 bool
 capture_video_write_video_frame(
-    struct scran_output *output,
-    struct capture_frame_context *frame_ctx,
-    const struct capture_session_context *session,
+    struct capture_view view,
     const struct capture_buffer_area_context *buffer_area_ctx
 ) {
+    struct scran_output *output = view.output;
+
     struct ffmpeg_context *ffmpeg = &output->capture.ffmpeg_ctx;
 
     // Crop and convert
@@ -407,18 +407,18 @@ capture_video_write_video_frame(
         const int area_w_px = blboxi_width_abs_unsafe(buffer_area_ctx->area_px) & ~0b1;
         const int area_h_px = blboxi_height_abs_unsafe(buffer_area_ctx->area_px) & ~0b1;
 
-        uint32_t rgba32_shuffle = wl_shm_format_to_scranrot_yuv_rgba32_shuffle(session->shm_format);
+        uint32_t rgba32_shuffle = wl_shm_format_to_scranrot_yuv_rgba32_shuffle(view.session_ctx->shm_format);
         if (rgba32_shuffle == RGBA32_SHUFFLE_ERROR) {
             eprintf(
                 "WARNING: Output's pixel format (%x) not recognized. Please report this as a bug. Attempting anyways...\n",
-                session->shm_format
+                view.session_ctx->shm_format
             );
             rgba32_shuffle = RGBA32_SHUFFLE_NO_CHANGE;
         }
 
         // XXX: Scranrot does not support flipped transforms yet, so we just
         // record it flipped for now, rather than blocking capture entirely.
-        enum wl_output_transform transform = wl_output_transform_without_flip(frame_ctx->source_transform);
+        enum wl_output_transform transform = wl_output_transform_without_flip(view.frame_ctx->source_transform);
 
         AVFrame *frame = ffmpeg->av_frame_to_encode;
         void *const frame_buffer = output->capture.img_data_2;
@@ -442,7 +442,7 @@ capture_video_write_video_frame(
             eprintf("Error: scranrot failed to convert framebuffer to yuv\n");
             return false;
         }
-        frame->pts = frame_ctx->presentation_time_nsec - output->capture.video_presentation_time_nsec_start;
+        frame->pts = view.frame_ctx->presentation_time_nsec - output->capture.video_presentation_time_nsec_start;
     }
 
     // Encode

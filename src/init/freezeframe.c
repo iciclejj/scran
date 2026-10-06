@@ -17,13 +17,13 @@ bool
 init_premem__freezeframe(
     struct scran_output *st_output
 ) {
-    struct scran_output_subsurface       *st_subsurface     = &st_output->freezeframe.subsurface;
+    struct scran_output_subsurface *st_subsurface = &st_output->freezeframe.subsurface;
 
     capture_session_init(
-        &st_output->freezeframe.session,
-        st_output->capture.source
+        &st_output->freezeframe.session_ctx,
+        st_output->capture.source,
+        false
     );
-    st_output->freezeframe.session.frame_ctx.output = st_output;
 
     {
         struct wl_surface *wl_surface = wl_compositor_create_surface(g_state.globals.compositor);
@@ -58,7 +58,7 @@ init_premem__freezeframe__destroy(
     wp_viewport_destroy(freezeframe->subsurface.viewport);
     wl_subsurface_destroy(freezeframe->subsurface.wl_subsurface);
     wl_surface_destroy(freezeframe->subsurface.wl_surface);
-    if (freezeframe->session.session_ctx.wl_session) {
-        ext_image_copy_capture_session_v1_destroy(freezeframe->session.session_ctx.wl_session);
+    if (freezeframe->session_ctx.wl_session) {
+        ext_image_copy_capture_session_v1_destroy(freezeframe->session_ctx.wl_session);
     }
 }

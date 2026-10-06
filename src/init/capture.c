@@ -16,17 +16,16 @@
 
 void
 capture_session_init(
-    struct capture_session *session,
-    struct ext_image_capture_source_v1 *source
+    struct capture_session_context *session_ctx,
+    struct ext_image_capture_source_v1 *source,
+    bool capture_cursor
 ) {
     assert(source);
-
-    struct capture_session_context *session_ctx = &session->session_ctx;
 
     session_ctx->wl_session = ext_image_copy_capture_manager_v1_create_session(
         g_state.globals.image_copy_capture_manager,
         source,
-        g_state.options.disable_cursor_capture ? 0 : EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS
+        capture_cursor ? EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS : 0
     );
     // XXX: Maybe there's a nicer way to do this or to properly assert this
     //      initialization in the listener somewhere?
@@ -49,11 +48,37 @@ init_premem__capture(
         globals->output_image_capture_source_manager,
         st_output->wl_output
     );
+
+    // HACK:
+    //
+    //   This session MUST be initialized first, due to wlroots currently only
+    //   respecting the first capture session's `paint_cursors` flag.
+    //
+    //   Once that bug is fixed upstream, the order should no longer matter, but
+    //   probably still keep it like this, in case future compositors will have
+    //   similar limitations.
+    //
+    //   In other words, we prefer all cursors always being captured
+    //   (including scran's), if the alternative is no cursors ever being
+    //   captured
+    //
+    //   See also https://gitlab.freedesktop.org/wlroots/wlroots/-/merge_requests/5443#note_3654776
+    //
+    if (!g_state.options.disable_cursor_capture) {
+        capture_session_init(
+            &st_output->capture.session_ctx_with_cursor,
+            st_output->capture.source,
+            true
+        );
+    }
+
     capture_session_init(
-        &st_output->capture.session,
-        st_output->capture.source
+        &st_output->capture.session_ctx_default_no_cursor,
+        st_output->capture.source,
+        false
     );
-    st_output->capture.session.frame_ctx.output = st_output;
+    st_output->capture.active_session_ctx = &st_output->capture.session_ctx_default_no_cursor;
+
 
     // TODO: Revisit which parts of video and image init to put here vs
     // start_capture/dispatch
@@ -69,8 +94,11 @@ void
 init_premem__capture__destroy(struct scran_output *st_output)
 {
     ext_image_capture_source_v1_destroy(st_output->capture.source);
-    if (st_output->capture.session.session_ctx.wl_session) {
-        ext_image_copy_capture_session_v1_destroy(st_output->capture.session.session_ctx.wl_session);
+    if (st_output->capture.session_ctx_with_cursor.wl_session) {
+        ext_image_copy_capture_session_v1_destroy(st_output->capture.session_ctx_with_cursor.wl_session);
+    }
+    if (st_output->capture.session_ctx_default_no_cursor.wl_session) {
+        ext_image_copy_capture_session_v1_destroy(st_output->capture.session_ctx_default_no_cursor.wl_session);
     }
 
     bl_image_destroy(&st_output->capture.bl_img_captured);

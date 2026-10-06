@@ -18,20 +18,20 @@
 #define SCRAN_INITIAL_SELECTION_NONE ((BLBoxI){ -1, -1, -1, -1 })
 
 
-void selection_set_initialized(struct scran_output *st_output);
+void selection_set_initialized(struct scran_output *output);
 
-void selection_surface_acquire_hide_then(struct scran_output *st_output, struct wp_presentation_feedback_listener *listener, enum scran_selection_surface_disable_reason reason);
-void selection_surface_release_hide(struct scran_output *st_output, enum scran_selection_surface_disable_reason reason);
+void selection_surface_acquire_hide_then(struct scran_output *output, struct wp_presentation_feedback_listener *listener, enum scran_selection_surface_disable_reason reason);
+void selection_surface_release_hide(struct scran_output *output, enum scran_selection_surface_disable_reason reason);
 
 void scran_focus_grab(void);
-void scran_focus_grab_for_output(struct scran_output *st_output);
+void scran_focus_grab_for_output(struct scran_output *output);
 void scran_focus_release(void);
 
 
 static inline void
 selection_freeze_size(struct scran_output *output) {
     if (output->selection_ctx.selection_state == SELECTION_NONE) {
-        assert(output->capture.pending_fullscreen_consumers || output->capture.fullscreen_consumers);
+        assert(output->capture.fullscreen_consumers.awaiting_ui || output->capture.fullscreen_consumers.active);
     }
 
     output->selection_ctx.size_is_frozen = true;
@@ -48,20 +48,18 @@ selection_unfreeze_size(struct scran_output *output) {
 }
 
 static inline void
-selection_do_some_damage(
-    struct scran_output *st_output
-) {
-    wl_surface_damage_buffer(st_output->selection_surface.surface.wl_surface, 0, 0, 1, 1);
-    wl_surface_commit(st_output->selection_surface.surface.wl_surface);
+selection_do_some_damage(struct scran_output *output) {
+    wl_surface_damage_buffer(output->selection_surface.surface.wl_surface, 0, 0, 1, 1);
+    wl_surface_commit(output->selection_surface.surface.wl_surface);
 }
 
 static inline BLBoxI
-get_fullscreen_selection_box(const struct scran_output *st_output) {
+get_fullscreen_selection_box(const struct scran_output *output) {
     return (BLBoxI){
         .x0 = 0,
         .y0 = 0,
-        .x1 = get_transformed_output_width(st_output),
-        .y1 = get_transformed_output_height(st_output),
+        .x1 = get_transformed_output_width(output),
+        .y1 = get_transformed_output_height(output),
     };
 }
 

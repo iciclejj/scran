@@ -36,15 +36,57 @@ struct capture_buffer_area_context {
     uint32_t source_row_bytes;
 };
 
-void capture_session_init(struct capture_session *session, struct ext_image_capture_source_v1 *source);
+// View of the state that capture functions operate on, since different
+// consumers on the same output can use different frame/session contexts.
+struct capture_view {
+    struct scran_output *output;
+    struct capture_frame_context *frame_ctx;
+    struct capture_session_context *session_ctx;
+};
+
+static inline void
+capture_destroy_frame(struct capture_view view) {
+    ext_image_copy_capture_frame_v1_destroy(view.frame_ctx->frame);
+    view.frame_ctx->frame = NULL;
+}
+
+// We blur the subsystem lines here to keep it all in one place, since the
+// frame's event handler will need to know how to get each consumer's view
+// in either case.
+//
+// TODO: Maybe optimize this for cases where caller already has an output pointer
+static inline struct capture_view
+capture_view_from_frame(struct capture_frame_context *frame_ctx) {
+    struct scran_output             *output      = &g_state.outputs[get_containing_output_array_index(frame_ctx)];
+    struct scran_output_freezeframe *freezeframe = &output->freezeframe;
+    struct scran_output_capture     *capture     = &output->capture;
+
+    if (frame_ctx == &freezeframe->frame_ctx) {
+        return (struct capture_view){
+            .output      = output,
+            .frame_ctx   = frame_ctx,
+            .session_ctx = &freezeframe->session_ctx,
+        };
+    }
+
+    assert(frame_ctx == &capture->frame_ctx);
+    return (struct capture_view){
+        .output      = output,
+        .frame_ctx   = frame_ctx,
+        .session_ctx = capture->active_session_ctx,
+    };
+}
+
+void capture_session_init(struct capture_session_context *session_ctx, struct ext_image_capture_source_v1 *source, bool capture_cursor);
 
 void capture_update_selection(struct scran_output *st_output, BLBoxI selection_ctx_box_px);
 
-enum scran_capture_frame_consumers capture_fullscreen_dispatch_pending_consumers(struct scran_output *st_output, enum scran_capture_frame_consumers consumers);
-enum scran_capture_frame_consumers capture_fullscreen_start(struct scran_output *st_output, enum scran_capture_frame_consumers consumers);
-void capture_fullscreen_end(struct scran_output *st_output, enum scran_capture_frame_consumers consumers);
+enum scran_capture_frame_consumer_mask capture_fullscreen_dispatch_awaiting_consumers(struct scran_output *st_output, enum scran_capture_frame_consumer_mask consumers);
+enum scran_capture_frame_consumer_mask capture_fullscreen_start(struct scran_output *st_output, enum scran_capture_frame_consumer_mask consumers);
+void capture_fullscreen_sync_ui_and_dispatch(struct scran_output *output);
+void capture_fullscreen_end(struct scran_output *st_output, enum scran_capture_frame_consumer_mask consumers);
 
-bool capture_request_frame(struct capture_session *session, enum scran_capture_frame_consumers consumer, const BLRectI *buffer_damage);
+bool capture_request_frame(struct capture_view view, enum scran_capture_frame_consumer_mask consumer, const BLRectI *buffer_damage);
 
 typedef void capture_video_write_packet_fn(
     struct scran_output *,
@@ -56,8 +98,8 @@ bool capture_video_init_writers(struct scran_output *st_output, const BLPointI d
 bool capture_video_drain_writer(struct scran_output *st_output, AVCodecContext *codec_ctx, AVPacket *packet, capture_video_write_packet_fn write_packet_fn, const char *stream_name);
 void capture_video_write_video_packet(struct scran_output *output, AVPacket *pkt);
 void capture_video_write_audio_packet(struct scran_output *st_output, AVPacket *av_packet);
-bool capture_video_write_video_frame(struct scran_output *output, struct capture_frame_context *frame_ctx, const struct capture_session_context *session, const struct capture_buffer_area_context *buffer_area_ctx);
-void capture_image_write_image(struct scran_output *output, const struct capture_session_context *session, const struct capture_frame_context *frame_ctx, const struct capture_buffer_area_context *buffer_area_ctx);
+bool capture_video_write_video_frame(struct capture_view view, const struct capture_buffer_area_context *buffer_area_ctx);
+void capture_image_write_image(struct capture_view view, const struct capture_buffer_area_context *buffer_area_ctx);
 
 bool capture_video_start(struct scran_output *st_output);
 bool capture_video_start_fullscreen(struct scran_output *st_output);
@@ -70,6 +112,17 @@ bool capture_image_start(struct scran_output *st_output, bool exit_after_capture
  void capture_image_finish(struct scran_output *output);
 bool capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_capture);
 
+static inline bool
+capture_fullscreen_consumers_allow_ui(enum scran_capture_frame_consumer_mask consumers)
+{
+    static const enum scran_capture_frame_consumer_mask disallowing =
+        SCRAN_CAPTURE_FRAME_CONSUMER_FREEZEFRAME
+        | SCRAN_CAPTURE_FRAME_CONSUMER_IMAGE;
+
+    return
+        !(consumers & disallowing)
+        && g_state.options.hide_ui_level < SCRAN_OPT_HIDE_UI_ITEMS;
+}
 
 static inline bool
 capture_video_is_live(
@@ -116,17 +169,21 @@ capture_force_next_frame(
 
 static inline void
 capture_request_frame_forced(
-    struct capture_session *session,
-    enum scran_capture_frame_consumers consumer,
-    const BLRectI *damage
+    struct capture_view view,
+    enum scran_capture_frame_consumer_mask consumer
 ) {
-    capture_request_frame(session, consumer, damage);
+    const BLPointI source_dimensions_px = view.session_ctx->source_dimensions_px;
+
+    capture_request_frame(
+        view, consumer,
+        &(BLRectI){ 0, 0, source_dimensions_px.x, source_dimensions_px.y }
+    );
 
     // Some compositors (like Hyprland on rapid consecutive freezeframe refreshes)
     // may wait indefinitely for the next capture frame, if no damage is detected.
     //
     // Mainly needed for freezeframe/hide_selection_surface_then() captures.
-    capture_force_next_frame(session->frame_ctx.output);
+    capture_force_next_frame(view.output);
 }
 
 static inline void
@@ -141,11 +198,7 @@ capture_grow_tracked_damage(
     BLBoxI incoming_damage = blrecti_to_blboxi( (BLRectI){ x, y, w, h } );
     BLBoxI tracked_damage  = frame_ctx->capture_buffer_damage_area_px;
 
-    if (blboxi_is_empty(tracked_damage)) {
-        frame_ctx->capture_buffer_damage_area_px = incoming_damage;
-    } else {
-        frame_ctx->capture_buffer_damage_area_px = blboxi_bounding_box(incoming_damage, tracked_damage);
-    }
+    frame_ctx->capture_buffer_damage_area_px = blboxi_bounding_box(incoming_damage, tracked_damage);
 }
 
 static inline void
@@ -160,22 +213,22 @@ capture_damage_buffer(
 
 static inline uint8_t *
 capture_get_area_start_address(
-    const struct capture_session_context *session,
-    const struct capture_frame_context *frame_ctx,
+    struct capture_view view,
     const BLBoxI *capture_buffer_area_px
 ) {
-    return frame_ctx->scran_wl_buffer.data
+    const struct capture_session_context *session = view.session_ctx;
+
+    return view.frame_ctx->scran_wl_buffer.data
          + session->pixel_stride * capture_buffer_area_px->y0 * session->source_dimensions_px.x
          + session->pixel_stride * capture_buffer_area_px->x0;
 }
 
 static inline BLBoxI
 capture_get_selection_as_capture_buffer_area_px(
-    const struct capture_session_context *session,
-    const struct capture_frame_context *frame_ctx,
+    struct capture_view view,
     const BLBoxI selection
 ) {
-    const BLPointI source_dimensions_px = session->source_dimensions_px;
+    const BLPointI source_dimensions_px = view.session_ctx->source_dimensions_px;
 
     assert(source_dimensions_px.x > 0);
     assert(source_dimensions_px.y > 0);
@@ -184,7 +237,7 @@ capture_get_selection_as_capture_buffer_area_px(
         selection,
         source_dimensions_px.x,
         source_dimensions_px.y,
-        frame_ctx->source_transform
+        view.frame_ctx->source_transform
     );
 
     assert(capture_buffer_area_px.x0 >= 0);
@@ -203,6 +256,44 @@ capture_clock_gettime_nsec() {
     clock_gettime(CLOCK_MONOTONIC, &ts);
     // XXX: Will overflow at tv_sec > ~584.9 years...
     return ts.tv_sec * NSEC_PER_SEC + ts.tv_nsec;
+}
+
+// NOTE: This can sometimes cause a dropped frame, since the in-flight frame
+// must be destroyed before switching sessions.
+static inline void
+capture_set_cursor_capture(
+    struct scran_output_capture *capture,
+    bool capture_cursors
+) {
+    struct capture_session_context *new_session =
+        capture_cursors
+        ? &capture->session_ctx_with_cursor
+        : &capture->session_ctx_default_no_cursor;
+
+    if (new_session->wl_session == NULL) {
+        assert(capture->active_session_ctx->wl_session != NULL);
+        return;
+    }
+    if (new_session == capture->active_session_ctx) {
+        return;
+    }
+
+    DEBUG("Setting cursor capture: %d\n", capture_cursors);
+
+    const bool capturing = capture->frame_ctx.consumers;
+
+    if (capturing) {
+        struct capture_view old_view = capture_view_from_frame(&capture->frame_ctx);
+        capture_destroy_frame(old_view);
+    }
+
+    capture->active_session_ctx = new_session;
+    capture->session_switch_time_nsec = capture_clock_gettime_nsec();
+
+    if (capturing) {
+        struct capture_view new_view = capture_view_from_frame(&capture->frame_ctx);
+        capture_request_frame_forced(new_view, new_view.frame_ctx->consumers);
+    }
 }
 
 
