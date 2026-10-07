@@ -93,6 +93,10 @@ scran_sources = files(
   'src/util/util.c',
 )
 
+third_party_sources = files(
+  'third-party/xdg-user-dir-lookup.c'
+)
+
 subdir('scranrot')
 subdir('wayland-protocol-extensions')
 subdir('font')
@@ -102,9 +106,11 @@ executable(
   scran_sources,
   ui_text_and_font_source,
   ui_text_and_font_header,
+  third_party_sources,
   include_directories: [
     include_directories('include'),
     include_directories('font'),
+    include_directories('third-party/include'),
   ],
   dependencies: [
     cc.find_library('m', required: true),

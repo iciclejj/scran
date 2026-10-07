@@ -7,7 +7,10 @@
 #include <errno.h>
 #include <libgen.h>
 #include <sys/stat.h>
+
 #include <blend2d/blend2d.h>
+
+#include "xdg-user-dir-lookup.h"
 
 #include "options.h"
 #include "capture.h"
@@ -388,10 +391,9 @@ static const char help_string[] =
     "  Escape               Exit scran, or stop video capture if in progress\n"
     "\n"
     "Arguments\n"
-    // TODO: Once we implement desktop notifications, we should probably remove
-    // the recursive directory structure creation by default, and just give an
-    // error message notification that directory doesn't exist. (Maybe still keep
-    // the functionality behind an --mkdir flag.)
+    // TODO: Maybe remove the recursive directory structure creation by default,
+    // and just give an error message notification that directory doesn't exist.
+    // (Maybe still keep the functionality behind an --mkdir flag.)
     "  output_directory   path to output directory, or - (a hyphen) to write to stdout\n"
     "                        Directory will be created if it does not exist.\n"
     "                        See also -B if writing to stdout.\n"
@@ -414,8 +416,11 @@ static const char help_string[] =
     "         Default: "SCRAN_OUTPUT_FILENAME_FORMATSTRING_DEFAULT"\n"
     "  -d   set an existing directory as output directory\n"
     "         You may also use $SCRAN_OUTPUT_DIR (ignored if a directory argument is supplied).\n"
-    "         Default directory is '"SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH"'. Scran will create it\n"
-    "         automatically when needed.\n"
+    "         Default directories, in order of priority:\n"
+    "           1. XDG Pictures directory\n"
+    "           2. $HOME\n"
+    "           3. /tmp\n"
+    "         Scran creates the default directory if it does not exist.\n"
     "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
     "  -e   automatically capture and exit immediately after initial selection\n"
     "         Note: does not make -B redundant.\n"
@@ -557,15 +562,29 @@ scran_handle_args(int argc, char *const *argv)
     }
 
     if (!options->output_to_stdout) {
-        const char *output_dir = supplied_output_dir;
+        {
+            const char *output_dir = supplied_output_dir;
+            char *xdg_pictures_dir = NULL;
 
-        if (!output_dir) {
-            output_dir = SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH;
-            should_create_output_dir = true;
-        }
+            if (!output_dir) {
+                xdg_pictures_dir = xdg_user_dir_lookup("PICTURES");
 
-        if (!set_output_directory(options, output_dir)) {
-            return false;
+                if (!xdg_pictures_dir) {
+                    eprintf("Error: Failed to look up the XDG pictures directory.\n");
+                    return false;
+                }
+                output_dir = xdg_pictures_dir;
+                should_create_output_dir = true;
+
+                eprintf("No output directory supplied. Using '%s'.\n", xdg_pictures_dir);
+            }
+
+            bool ok = set_output_directory(options, output_dir);
+            free(xdg_pictures_dir);
+
+            if (!ok) {
+                return false;
+            }
         }
 
         if (!init_output_dir(options, should_create_output_dir)) {

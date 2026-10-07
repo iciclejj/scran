@@ -225,11 +225,10 @@ cmake --install build && ldconfig
   Escape               Exit scran, or stop video capture if in progress
 ```
 
-Images and videos are saved to the file or directory specified by `output_directory`,
-or to `/tmp/scran-capture/scran-<timestamp>.<file-extension>` by default.
-Saved images and videos are also sent to the clipboard.
-
-See also `scran -h`.
+Images and videos are saved to the directory specified by `output_directory`,
+`-d`, or the `$SCRAN_OUTPUT_DIR` environment variable.
+If unset, Scran defaults to the XDG Pictures directory, falling back to `$HOME`,
+then finally to `/tmp`. See also `scran -h`.
 
 <details> <summary>
 
