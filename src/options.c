@@ -343,7 +343,7 @@ handle_cli_arg_filename(
 }
 
 static inline bool
-handle_cli_arg_output_directory(
+set_output_directory(
     struct scran_options *restrict st_options,
     const char *restrict arg
 ) {
@@ -560,31 +560,28 @@ scran_handle_args(int argc, char *const *argv)
         }
     }
 
-    if (!supplied_output_dir) {
-        // Compile-time initialized
-        assert(!strcmp(g_state.options.output_path, SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH));
-        assert(g_state.options.output_path_filename_pointer == g_state.options.output_path + sizeof(SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH) - 1);
-        should_create_output_dir = true;
-    } else {
-        // Just for some safety, since these are not zero-initialized
-        g_state.options.output_path[0] = '\0';
-        g_state.options.output_path_filename_pointer = NULL;
+    if (!g_state.options.output_to_stdout) {
+        const char *output_dir = supplied_output_dir;
 
-        if (!handle_cli_arg_output_directory(&g_state.options, supplied_output_dir)) {
+        if (!output_dir) {
+            output_dir = SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH;
+            should_create_output_dir = true;
+        }
+
+        if (!set_output_directory(&g_state.options, output_dir)) {
             return false;
         }
-    }
 
-    if (!g_state.options.output_to_stdout) {
         if (!init_output_dir(&g_state.options, should_create_output_dir)) {
             return false;
         }
-    }
 
-    assert(!strcmp(g_state.options.filename_format, SCRAN_OUTPUT_FILENAME_FORMATSTRING_DEFAULT));
-    if (opt_filename != NULL && !g_state.options.output_to_stdout) {
-        if (!handle_cli_arg_filename(&g_state.options, opt_filename)) {
-            return false;
+        assert(!strcmp(g_state.options.filename_format, SCRAN_OUTPUT_FILENAME_FORMATSTRING_DEFAULT));
+
+        if (opt_filename) {
+            if (!handle_cli_arg_filename(&g_state.options, opt_filename)) {
+                return false;
+            }
         }
     }
 
