@@ -547,7 +547,7 @@ scran_handle_args(int argc, char *const *argv)
     } else if (opt_output_directory) {
         output_directory = opt_output_directory;
     } else if (arg_output_directory) {
-        if (arg_output_directory[0] == '-' && arg_output_directory[1] == '\0') {
+        if (!strcmp(arg_output_directory, "-")) {
             g_state.options.output_to_stdout = true;
         } else {
             output_directory = arg_output_directory;
@@ -561,7 +561,7 @@ scran_handle_args(int argc, char *const *argv)
     }
 
     // Compile-time initialized
-    assert(0 == strcmp(g_state.options.output_path, SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH));
+    assert(!strcmp(g_state.options.output_path, SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH));
     assert(g_state.options.output_path_filename_pointer == g_state.options.output_path + sizeof(SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH) - 1);
     if (output_directory != NULL) {
         // Just for some safety, since these are not zero-initialized
@@ -579,7 +579,7 @@ scran_handle_args(int argc, char *const *argv)
         }
     }
 
-    assert(0 == strcmp(g_state.options.filename_format, SCRAN_OUTPUT_FILENAME_FORMATSTRING_DEFAULT));
+    assert(!strcmp(g_state.options.filename_format, SCRAN_OUTPUT_FILENAME_FORMATSTRING_DEFAULT));
     if (opt_filename != NULL && !g_state.options.output_to_stdout) {
         if (!handle_cli_arg_filename(&g_state.options, opt_filename)) {
             return false;

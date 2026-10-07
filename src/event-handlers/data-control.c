@@ -43,7 +43,7 @@ handle_data_control_source_send(
 
     if (
         st_datacontrol->should_offer_data
-        && 0 == strcmp(requested_mime, data_mime)
+        && !strcmp(requested_mime, data_mime)
     ) {
         const BLArrayCore *const bl_array = &st_datacontrol->data_to_send;
 
@@ -54,7 +54,7 @@ handle_data_control_source_send(
         }
     } else if (
         st_datacontrol->should_offer_filepath
-        && 0 == strcmp(requested_mime, SCRAN_MIME_TYPE_FILEPATH_URI_LIST)
+        && !strcmp(requested_mime, SCRAN_MIME_TYPE_FILEPATH_URI_LIST)
     ) {
         static const char prefix[] = "file://";
         static const size_t prefix_strlen = sizeof(prefix) - 1;
@@ -75,7 +75,7 @@ handle_data_control_source_send(
         }
     } else if (
         st_datacontrol->should_offer_filepath
-        && 0 == strcmp(requested_mime, SCRAN_MIME_TYPE_FILEPATH_PLAIN)
+        && !strcmp(requested_mime, SCRAN_MIME_TYPE_FILEPATH_PLAIN)
     ) {
         if (!scran_full_write(fd, filepath, filepath_strlen)) {
             goto failed;
