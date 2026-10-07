@@ -170,21 +170,16 @@ scran_update_output_filepath(
     // optimal, but provides us some easy safety guarantees from the compiler.
     const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX]
 ) {
-    // TODO: NDEDBUG_ASSERT
-    const size_t available_chars_for_filename = options->output_path
-                                              + sizeof(options->output_path)
-                                              - options->output_path_filename_pointer;
-    if (available_chars_for_filename < SCRAN_OUTPUT_FILENAME_SIZE_MAX) {
-        eprintf("Error: scran_update_output_filepath: filename pointer too deep. THIS IS A BUG, please open an issue.\n");
+    const ssize_t offset = options->filename_offset;
+
+    if (offset <= 0 || (ssize_t)sizeof(options->output_path) - offset < SCRAN_OUTPUT_FILENAME_SIZE_MAX) {
+        eprintf("Error: scran_update_output_filepath: invalid offset: %zd. THIS IS A BUG, please open an issue.\n", offset);
         exit(EXIT_FAILURE);
     }
 
-    bool success = create_filename_current_time(
-        options->filename_format, file_extension, options->output_path_filename_pointer
-    );
+    bool success = create_filename_current_time(options->filename_format, file_extension, options->output_path + offset);
     (void)success;
-    // We verified the format string during init
-    assert(success);
+    assert(success); // We verified the format string during init
 
     return options->output_path;
 }
@@ -309,8 +304,7 @@ init_output_dir(
             return false;
         }
 
-        const size_t output_directory_strlen = options->output_path_filename_pointer
-                                             - options->output_path;
+        const size_t output_directory_strlen = options->filename_offset;
         assert(options->output_path[output_directory_strlen] == '\0');
 
         if (!mkdir_recursive(options->output_path, output_directory_strlen)) {
@@ -363,7 +357,7 @@ set_output_directory(
         *filename_pointer++ = '/';
     }
     *filename_pointer = '\0';
-    options->output_path_filename_pointer = filename_pointer;
+    options->filename_offset = filename_pointer - options->output_path;
 
     return true;
 }

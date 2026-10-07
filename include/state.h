@@ -603,7 +603,7 @@ enum scran_opt_cursor_capture {
 
 // TODO: Isolate this from scran state?
 struct scran_options {
-    char *output_path_filename_pointer; // TODO: Use offset instead
+    ssize_t filename_offset;
     char output_path[SCRAN_OUTPUT_FILEPATH_SIZE_MAX]; // NOTE: Also used as output_directory during cli arg init
     char filename_format[SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX];
 
