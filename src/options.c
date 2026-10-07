@@ -538,37 +538,39 @@ scran_handle_args(int argc, char *const *argv)
         return false;
     }
 
-    const char *output_directory = NULL;
+    const char *supplied_output_dir = NULL;
     bool should_create_output_dir = false;
 
     if (opt_output_directory && arg_output_directory) {
         eprintf("Error: Received both `-d` and `output_path`\n");
         return false;
     } else if (opt_output_directory) {
-        output_directory = opt_output_directory;
+        supplied_output_dir = opt_output_directory;
     } else if (arg_output_directory) {
         if (!strcmp(arg_output_directory, "-")) {
             g_state.options.output_to_stdout = true;
         } else {
-            output_directory = arg_output_directory;
+            supplied_output_dir = arg_output_directory;
             should_create_output_dir = true;
         }
     } else {
         const char *env_output_directory = getenv("SCRAN_OUTPUT_DIR");
         if (env_output_directory) {
-            output_directory = env_output_directory;
+            supplied_output_dir = env_output_directory;
         }
     }
 
-    // Compile-time initialized
-    assert(!strcmp(g_state.options.output_path, SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH));
-    assert(g_state.options.output_path_filename_pointer == g_state.options.output_path + sizeof(SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH) - 1);
-    if (output_directory != NULL) {
+    if (!supplied_output_dir) {
+        // Compile-time initialized
+        assert(!strcmp(g_state.options.output_path, SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH));
+        assert(g_state.options.output_path_filename_pointer == g_state.options.output_path + sizeof(SCRAN_OUTPUT_DIRPATH_DEFAULT_WITH_SLASH) - 1);
+        should_create_output_dir = true;
+    } else {
         // Just for some safety, since these are not zero-initialized
         g_state.options.output_path[0] = '\0';
         g_state.options.output_path_filename_pointer = NULL;
 
-        if (!handle_cli_arg_output_directory(&g_state.options, output_directory)) {
+        if (!handle_cli_arg_output_directory(&g_state.options, supplied_output_dir)) {
             return false;
         }
     }
