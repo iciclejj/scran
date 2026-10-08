@@ -62,8 +62,6 @@ handle_data_control_source_send(
             goto failed;
         }
 
-        // TODO: Make sure this is an absolute path. Either here or
-        // normalize passed path to absolute during option init.
         if (!scran_full_write(fd, filepath, filepath_strlen)) {
             goto failed;
         }

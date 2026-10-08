@@ -185,7 +185,7 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         output_filepath = "pipe:1";
     } else {
         static const char mp4_file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] = ".mp4";
-        output_filepath = scran_update_output_filepath(&g_state.options, mp4_file_extension);
+        output_filepath = scran_update_video_output_path(&g_state.options, mp4_file_extension);
     }
     avformat_alloc_output_context2(&ffmpeg_ctx->av_format_ctx, NULL, FFMPEG_FORMAT_MP4_NAME, output_filepath);
 

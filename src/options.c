@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include <blend2d/blend2d.h>
 
@@ -166,25 +167,55 @@ create_filename_current_time(
 }
 
 
-const char *
+static const char *
 scran_update_output_filepath(
     struct scran_options *options,
-    // XXX: Requiring callers to have pass >= this size array here is not
-    // optimal, but provides us some easy safety guarantees from the compiler.
+    struct scran_write_path *path,
     const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX]
 ) {
-    const ssize_t offset = options->filename_offset;
-
-    if (offset <= 0 || (ssize_t)sizeof(options->output_path) - offset < SCRAN_OUTPUT_FILENAME_SIZE_MAX) {
-        eprintf("Error: scran_update_output_filepath: invalid offset: %zd. THIS IS A BUG, please open an issue.\n", offset);
+    if (path->filename_offset <= 0
+        || SCRAN_OUTPUT_FILEPATH_SIZE_MAX - path->filename_offset < SCRAN_OUTPUT_FILENAME_SIZE_MAX
+    ) {
+        eprintf(
+            "Error: scran_update_output_filepath: invalid offset: %zd. THIS IS A BUG, please open an issue.\n",
+            path->filename_offset
+        );
         exit(EXIT_FAILURE);
     }
 
-    bool success = create_filename_current_time(options->filename_format, file_extension, options->output_path + offset);
+    bool success = create_filename_current_time(
+        options->filename_format,
+        file_extension,
+        path->str + path->filename_offset
+    );
     (void)success;
     assert(success); // We verified the format string during init
 
-    return options->output_path;
+    return path->str;
+}
+
+const char *
+scran_update_image_output_path(
+    struct scran_options *options,
+    const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX]
+) {
+    return scran_update_output_filepath(
+        options,
+        &options->image_path,
+        file_extension
+    );
+}
+
+const char *
+scran_update_video_output_path(
+    struct scran_options *options,
+    const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX]
+) {
+    return scran_update_output_filepath(
+        options,
+        &options->video_path,
+        file_extension
+    );
 }
 
 bool
@@ -210,37 +241,35 @@ scran_parse_slurp_string(
 }
 
 static inline bool
-mkdir_recursive(
-    const char dirpath[SCRAN_OUTPUT_DIRPATH_SIZE_MAX],
-    size_t dirpath_strlen
-) {
+mkdir_recursive(struct scran_write_path *path)
+{
     DEBUG("_mkdir_recursive()\n");
 
-    if (dirpath_strlen == 0) {
+    if (path->filename_offset == 0) {
         return true;
     }
 
     // TODO: Make an NDEBUG_ASSERT macro? This shouldn't really ever happen, but
     // worth being safe here.
-    if (dirpath_strlen > SCRAN_OUTPUT_DIRPATH_STRLEN_MAX || dirpath[dirpath_strlen] != '\0') {
+    if (path->filename_offset > SCRAN_OUTPUT_DIRPATH_STRLEN_MAX || path->str[path->filename_offset] != '\0') {
         eprintf("Error: _mkdir_recursive input length long. THIS IS A BUG, please open an issue.\n");
         return false;
     }
 
     char path_copy[SCRAN_OUTPUT_DIRPATH_SIZE_MAX];
-    memcpy(path_copy, dirpath, dirpath_strlen + 1);
+    memcpy(path_copy, path->str, path->filename_offset + 1);
 
-    assert(path_copy[dirpath_strlen] == '\0');
+    assert(path_copy[path->filename_offset] == '\0');
 
-    size_t i = 0;
-    while (i < dirpath_strlen) {
+    ssize_t i = 0;
+    while (i < path->filename_offset) {
         assert(i == 0 || path_copy[i - 1] == '/');
 
-        while (i < dirpath_strlen && path_copy[i] != '/') {
+        while (i < path->filename_offset && path_copy[i] != '/') {
             ++i;
         }
         while (path_copy[i] == '/') {
-            assert(i < dirpath_strlen);
+            assert(i < path->filename_offset);
             ++i;
         }
 
@@ -284,34 +313,33 @@ mkdir_recursive(
 }
 
 static inline bool
-init_output_dir(
-    const struct scran_options *options,
+ensure_directory_exists(
+    struct scran_write_path *path,
     bool should_create
 ) {
     bool output_directory_exists;
     {
         struct stat _statbuf;
-        const int _stat_ret = stat(options->output_path, &_statbuf);
+        const int _stat_ret = stat(path->str, &_statbuf);
         if (_stat_ret == 0) {
             output_directory_exists = S_ISDIR(_statbuf.st_mode);
         } else if (errno == ENOENT) {
             output_directory_exists = false;
         } else {
-            eprintf("output_directory stat error for '%s': %s\n", options->output_path, strerror(errno));
+            eprintf("output_directory stat error for '%s': %s\n", path->str, strerror(errno));
             return false;
         }
     }
     if (!output_directory_exists) {
         if (!should_create) {
-            eprintf("Error: output directory does not exist: '%s'\n", options->output_path);
+            eprintf("Error: output directory does not exist: '%s'\n", path->str);
             return false;
         }
 
-        const size_t output_directory_strlen = options->filename_offset;
-        assert(options->output_path[output_directory_strlen] == '\0');
+        assert(path->str[path->filename_offset] == '\0');
 
-        if (!mkdir_recursive(options->output_path, output_directory_strlen)) {
-            eprintf("Failed to create directory '%s'\n", options->output_path);
+        if (!mkdir_recursive(path)) {
+            eprintf("Failed to create directory '%s'\n", path->str);
             return false;
         }
     }
@@ -341,29 +369,141 @@ handle_cli_arg_filename(
 
 static inline bool
 set_output_directory(
-    struct scran_options *restrict options,
-    const char *restrict output_dir
+    struct scran_write_path *path,
+    const char *dir,
+    const char *subdir,
+    ssize_t     subdir_strlen
 ) {
-    assert(sizeof(options->output_path) >= SCRAN_OUTPUT_DIRPATH_SIZE_MAX);
-    size_t output_directory_strlen = strlcpy(options->output_path, output_dir, SCRAN_OUTPUT_DIRPATH_SIZE_MAX);
+    assert(dir);
+    char *out = path->str;
+    size_t out_strlen = 0;
 
-    if (output_directory_strlen < 1) {
-        eprintf("Error: output_directory cannot be empty.\n");
+    // TODO: Maybe strip "./" etc
+
+    if (dir[0] != '/') {
+        if (!getcwd(out, SCRAN_OUTPUT_DIRPATH_SIZE_MAX)) {
+            eprintf("Error: Can't resolve relative output directory '%s': %s.\n", dir, strerror(errno));
+            return false;
+        }
+        out_strlen += strlen(out);
+        if (out[out_strlen - 1] != '/') {
+            out[out_strlen++] = '/';
+        }
+    }
+
+    const size_t dir_strlen = strlcpy(out + out_strlen, dir, SCRAN_OUTPUT_DIRPATH_SIZE_MAX - out_strlen);
+    if (dir_strlen < 1) {
+        eprintf("Error: output directory cannot be empty.\n");
         return false;
-    } else if (output_directory_strlen > SCRAN_OUTPUT_DIRPATH_STRLEN_MAX) {
-        eprintf("Error: output_directory is too long. Max length: %d\n", SCRAN_OUTPUT_DIRPATH_STRLEN_MAX);
+    }
+    out_strlen += dir_strlen;
+
+    bool dir_needs_slash = dir[dir_strlen - 1] != '/';
+    bool subdir_needs_slash = subdir && subdir[subdir_strlen - 1] != '/';
+    const size_t out_strlen_final = out_strlen + dir_needs_slash + subdir_strlen + subdir_needs_slash;
+
+    if (out_strlen_final > SCRAN_OUTPUT_DIRPATH_STRLEN_MAX) {
+        eprintf(
+            "Error: output_directory is too long. Max length: %zu/%zu\n",
+            out_strlen_final, (size_t)SCRAN_OUTPUT_DIRPATH_STRLEN_MAX
+        );
         return false;
     }
 
-    char *filename_pointer = options->output_path + output_directory_strlen;
-    if (*(filename_pointer - 1) != '/') {
-        *filename_pointer++ = '/';
+    if (dir_needs_slash) {
+        out[out_strlen++] = '/';
+        out[out_strlen] = '\0';
     }
-    *filename_pointer = '\0';
-    options->filename_offset = filename_pointer - options->output_path;
 
+    if (subdir) {
+        memcpy(out + out_strlen, subdir, subdir_strlen + 1);
+        out_strlen += subdir_strlen;
+
+        if (subdir_needs_slash) {
+            out[out_strlen++] = '/';
+            out[out_strlen] = '\0';
+        }
+    }
+
+    assert(out_strlen == out_strlen_final);
+    path->filename_offset = out_strlen_final;
     return true;
 }
+
+static inline bool
+set_default_image_output_directory(struct scran_write_path *path)
+{
+    const char *dir           = NULL;
+    char       *xdg_dir       = NULL;
+    const char *subdir        = NULL;
+    ssize_t     subdir_strlen = 0;
+
+    if ((dir = getenv("XDG_SCREENSHOTS_DIR")) && dir[0] == '/') {
+        // Non-standard environment override; require an absolute path.
+    } else if ((xdg_dir = xdg_user_dir_lookup_with_fallback("PICTURES", NULL))) {
+        static const char _subdir[] = "Screenshots";
+        dir = xdg_dir;
+        subdir = _subdir;
+        subdir_strlen = sizeof(_subdir) - 1;
+    } else if ((dir = getenv("HOME")) && dir[0]) {
+        static const char _subdir[] = "Pictures/Screenshots";
+        subdir = _subdir;
+        subdir_strlen = sizeof(_subdir) - 1;
+    } else {
+        dir = NULL;
+    }
+
+    bool ok = false;
+    if (dir) {
+        ok = set_output_directory(path, dir, subdir, subdir_strlen);
+    } else {
+        eprintf("Error: No image output directory candidates found. See scran -h.\n");
+    }
+
+    // TODO: Consider editing the xdg lookup functions to not need dynamic
+    // allocation, or at least to not have to re-read the file and re-allocate
+    // for every additional looked-up directory.
+    free(xdg_dir);
+
+    return ok;
+}
+
+static inline bool
+set_default_video_output_directory(struct scran_write_path *path)
+{
+    const char *dir            = NULL;
+    char       *xdg_dir        = NULL;
+    const char *subdir         = NULL;
+    ssize_t     subdir_strlen  = 0;
+
+    if ((xdg_dir = xdg_user_dir_lookup_with_fallback("VIDEOS", NULL))) {
+        static const char _subdir[] = "Screencasts";
+        dir = xdg_dir;
+        subdir = _subdir;
+        subdir_strlen = sizeof(_subdir) - 1;
+    } else if ((dir = getenv("HOME")) && dir[0]) {
+        static const char _subdir[] = "Videos/Screencasts";
+        subdir = _subdir;
+        subdir_strlen = sizeof(_subdir) - 1;
+    } else {
+        dir = NULL;
+    }
+
+    bool ok = false;
+    if (dir) {
+        ok = set_output_directory(path, dir, subdir, subdir_strlen);
+    } else {
+        eprintf("Error: No video output directory candidates found. See scran -h.\n");
+    }
+
+    // TODO: Consider editing the xdg lookup functions to not need dynamic
+    // allocation, or at least to not have to re-read the file and re-allocate
+    // for every additional looked-up directory.
+    free(xdg_dir);
+
+    return ok;
+}
+
 
 #define SCRAN_USAGE    "Usage: scran [options...] [output_directory]"
 
@@ -415,12 +555,8 @@ static const char help_string[] =
     "           %%  A literal '%' character\n"
     "         Default: "SCRAN_OUTPUT_FILENAME_FORMATSTRING_DEFAULT"\n"
     "  -d   set an existing directory as output directory\n"
-    "         You may also use $SCRAN_OUTPUT_DIR (ignored if a directory argument is supplied).\n"
-    "         Default directories, in order of priority:\n"
-    "           1. XDG Pictures directory\n"
-    "           2. $HOME\n"
-    "           3. /tmp\n"
-    "         Scran creates the default directory if it does not exist.\n"
+    "         If a directory does not exist, scran will exit with an error.\n"
+    "         See the 'Output directories' section below for defaults.\n"
     "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
     "  -e   automatically capture and exit immediately after initial selection\n"
     "         Note: does not make -B redundant.\n"
@@ -457,6 +593,16 @@ static const char help_string[] =
     "  -UU  hide UI (full)\n"
     "  -v   show version and exit\n"
     "  -h   show this help message and exit\n"
+    "\n"
+    "Output directories, in order of priority:\n"
+    "  1. Images and videos: -d <directory> or output_directory\n"
+    "  2. Images and videos: $SCRAN_OUTPUT_DIR\n"
+    "  3. Images only: $XDG_SCREENSHOTS_DIR (absolute)\n"
+    "  4. Images: <XDG Pictures>/Screenshots/\n"
+    "     Videos: <XDG Videos>/Screencasts/\n"
+    "  5. Images: $HOME/Pictures/Screenshots/\n"
+    "     Videos: $HOME/Videos/Screencasts/\n"
+    "  Created if needed, except -d must exist. XDG paths come from user-dirs.dirs.\n"
     "\n"
     "Signals\n"
     "  Send SIGUSR1 to the running scran to start grabbing inputs again after releasing with <Tab>.\n"
@@ -556,43 +702,38 @@ scran_handle_args(int argc, char *const *argv)
         }
     } else {
         const char *env_output_directory = getenv("SCRAN_OUTPUT_DIR");
-        if (env_output_directory) {
+        if (env_output_directory && env_output_directory[0]) {
             supplied_output_dir = env_output_directory;
+            should_create_output_dir = true;
         }
     }
 
     if (!options->output_to_stdout) {
-        {
-            const char *output_dir = supplied_output_dir;
-            char *xdg_pictures_dir = NULL;
-
-            if (!output_dir) {
-                xdg_pictures_dir = xdg_user_dir_lookup("PICTURES");
-
-                if (!xdg_pictures_dir) {
-                    eprintf("Error: Failed to look up the XDG pictures directory.\n");
-                    return false;
-                }
-                output_dir = xdg_pictures_dir;
-                should_create_output_dir = true;
-
-                eprintf("No output directory supplied. Using '%s'.\n", xdg_pictures_dir);
+        if (supplied_output_dir) {
+            if (!set_output_directory(&options->image_path, supplied_output_dir, NULL, 0)) {
+                return false;
             }
-
-            bool ok = set_output_directory(options, output_dir);
-            free(xdg_pictures_dir);
-
-            if (!ok) {
+            if (!ensure_directory_exists(&options->image_path, should_create_output_dir)) {
+                return false;
+            }
+            options->video_path = options->image_path;
+        } else {
+            should_create_output_dir = true;
+            if (!set_default_image_output_directory(&options->image_path)) {
+                return false;
+            }
+            if (!set_default_video_output_directory(&options->video_path)) {
+                return false;
+            }
+            if (!ensure_directory_exists(&options->image_path, should_create_output_dir)) {
+                return false;
+            }
+            if (!ensure_directory_exists(&options->video_path, should_create_output_dir)) {
                 return false;
             }
         }
 
-        if (!init_output_dir(options, should_create_output_dir)) {
-            return false;
-        }
-
         assert(!strcmp(options->filename_format, SCRAN_OUTPUT_FILENAME_FORMATSTRING_DEFAULT));
-
         if (opt_filename) {
             if (!handle_cli_arg_filename(options, opt_filename)) {
                 return false;

@@ -404,8 +404,8 @@ capture_video_finish(struct scran_output *output)
     );
 
     {
-        // NOTE: Do not use g_state.options.output_path, since it is shared by
-        // image-capture.
+        // NOTE: Avoid using g_state.options.video_path, since it is shared
+        // across all outputs' captures!
         const char *output_path = g_state.options.output_to_stdout ? NULL : ffmpeg_ctx->av_format_ctx->url;
 
         av_write_trailer(ffmpeg_ctx->av_format_ctx);

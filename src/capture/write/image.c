@@ -133,7 +133,7 @@ capture_image_write_image(
     } else {
         static const char default_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] =
             IMAGE_CAPTURE_OUTPUT_FILE_EXTENSION_DEFAULT;
-        output_filepath = scran_update_output_filepath(options, default_extension);
+        output_filepath = scran_update_image_output_path(options, default_extension);
 
         size_t bytes_written = 0;
         res = bl_file_system_write_file(
