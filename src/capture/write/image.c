@@ -145,7 +145,7 @@ capture_image_write_image(
             );
             if (res == BL_SUCCESS && bytes_written == bytes_to_write) {
                 eprintf("Image saved: %s (%zuKiB)\n", output_filepath, bytes_written >> 10);
-                scran_portal_notify_file_saved(output_filepath);
+                scran_portal_notify_file_saved(output_filepath, false);
             } else {
                 eprintf("Error: Failed to save image (attempted: %s).\n", output_filepath);
             }

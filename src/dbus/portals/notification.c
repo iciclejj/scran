@@ -32,7 +32,7 @@ reply_AddNotification(
 }
 
 void
-scran_portal_notify_file_saved(const char *saved_file_path)
+scran_portal_notify_file_saved(const char *saved_file_path, bool incomplete)
 {
     if (g_dbus.bus == NULL) {
         DEBUG("Notification not sent (D-Bus not initialized).\n");
@@ -70,7 +70,7 @@ scran_portal_notify_file_saved(const char *saved_file_path)
     }
 
     ret = sd_bus_message_append(message, "{sv}{sv}{sv}",
-        "title",        "s",     "Scran: saved file.",
+        "title",        "s",      incomplete ? "Scran: saved file (may be incomplete)." : "Scran: saved file.",
         "body",         "s",      saved_file_path,
         "display-hint", "as", 1, "show-as-new"
     );

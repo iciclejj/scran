@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 
-void scran_portal_notify_file_saved(const char *path);
+void scran_portal_notify_file_saved(const char *path, bool incomplete);
 
 void scran_dbus_update(int epoll_fd, int *timeout_ms);
 

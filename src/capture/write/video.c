@@ -12,6 +12,43 @@
 #define FFMPEG_FORMAT_MP4_NAME "mp4"
 
 
+// Safely handles NULL pointers, and ensures they're all NULL when done.
+static bool
+destroy_ffmpeg_audio(struct scran_output *st_output)
+{
+    struct ffmpeg_context *ffmpeg_ctx = &st_output->capture.ffmpeg_ctx;
+
+    avcodec_free_context(&ffmpeg_ctx->av_codec_ctx_audio);
+    av_frame_free(&ffmpeg_ctx->av_frame_captured_audio);
+    av_audio_fifo_free(ffmpeg_ctx->av_audio_fifo);
+    ffmpeg_ctx->av_audio_fifo = NULL;
+    av_packet_free(&ffmpeg_ctx->av_packet_audio);
+
+    return true;
+}
+
+// Safely handles NULL pointers, and ensures they're all NULL when done.
+static void
+destroy_ffmpeg_video(struct scran_output *st_output)
+{
+    struct ffmpeg_context *ffmpeg_ctx = &st_output->capture.ffmpeg_ctx;
+
+    if (ffmpeg_ctx->av_format_ctx) {
+        int ret = avio_closep(&ffmpeg_ctx->av_format_ctx->pb);
+        if (ret < 0) {
+            eprintf("Error: Failed to close video output: %s\n", av_err2str(ret));
+        }
+    }
+    av_packet_free(&ffmpeg_ctx->av_packet);
+    avcodec_free_context(&ffmpeg_ctx->av_codec_ctx);
+    // Freeing the format context frees the linked stream for us.
+    avformat_free_context(ffmpeg_ctx->av_format_ctx);
+    ffmpeg_ctx->av_format_ctx = NULL;
+    av_frame_free(&ffmpeg_ctx->av_frame_to_encode);
+}
+
+// Does not create the audio AVStream; see init_ffmpeg().
+// Cleans up after itself on failure.
 static bool
 init_ffmpeg_audio(struct scran_output *st_output)
 {
@@ -32,17 +69,31 @@ init_ffmpeg_audio(struct scran_output *st_output)
         return false;
     }
 
+    int ret;
+
     // AVFrame (captured)
     ffmpeg_ctx->av_frame_captured_audio              = av_frame_alloc();
+    if (!ffmpeg_ctx->av_frame_captured_audio) {
+        eprintf("Error: Failed to allocate audio frame.\n");
+        goto fail;
+    }
     ffmpeg_ctx->av_frame_captured_audio->format      = sample_fmt;
     ffmpeg_ctx->av_frame_captured_audio->sample_rate = sample_rate;
     ffmpeg_ctx->av_frame_captured_audio->ch_layout   = channel_layout;
 
     // AVCodec
     const AVCodec *codec = avcodec_find_encoder(codec_id);
+    if (!codec) {
+        eprintf("Error: No %s encoder found.\n", avcodec_get_name(codec_id));
+        goto fail;
+    }
 
     // AVCodecContext
     ffmpeg_ctx->av_codec_ctx_audio              = avcodec_alloc_context3(codec);
+    if (!ffmpeg_ctx->av_codec_ctx_audio) {
+        eprintf("Error: Failed to allocate audio encoder context.\n");
+        goto fail;
+    }
     if (ffmpeg_ctx->av_format_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
         ffmpeg_ctx->av_codec_ctx_audio->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
     }
@@ -50,58 +101,45 @@ init_ffmpeg_audio(struct scran_output *st_output)
     ffmpeg_ctx->av_codec_ctx_audio->sample_fmt  = sample_fmt;
     ffmpeg_ctx->av_codec_ctx_audio->time_base   = time_base;
     ffmpeg_ctx->av_codec_ctx_audio->ch_layout   = channel_layout;
-    avcodec_open2(ffmpeg_ctx->av_codec_ctx_audio, codec, NULL);
+    ret = avcodec_open2(ffmpeg_ctx->av_codec_ctx_audio, codec, NULL);
+    if (ret < 0) {
+        eprintf("Error: Failed to open audio encoder: %s\n", av_err2str(ret));
+        goto fail;
+    }
 
     // AVFrame (captured, cont.)
     ffmpeg_ctx->av_frame_captured_audio->nb_samples  = ffmpeg_ctx->av_codec_ctx_audio->frame_size;
-    av_frame_get_buffer(ffmpeg_ctx->av_frame_captured_audio, 0);
+    ret = av_frame_get_buffer(ffmpeg_ctx->av_frame_captured_audio, 0);
+    if (ret < 0) {
+        eprintf("Error: Failed to allocate audio frame buffer: %s\n", av_err2str(ret));
+        goto fail;
+    }
 
     // AVAudioFifo
     ffmpeg_ctx->av_audio_fifo = av_audio_fifo_alloc(
         sample_fmt, channel_layout.nb_channels, ffmpeg_ctx->av_codec_ctx_audio->frame_size
     );
+    if (!ffmpeg_ctx->av_audio_fifo) {
+        eprintf("Error: Failed to allocate audio FIFO.\n");
+        goto fail;
+    }
 
     // AVPacket (encoded)
     ffmpeg_ctx->av_packet_audio = av_packet_alloc();
-
-    // AVStream
-    AVStream *audio_stream = avformat_new_stream(ffmpeg_ctx->av_format_ctx, codec);
-    assert(audio_stream == ffmpeg_ctx->av_format_ctx->streams[SCRAN_AV_FORMAT_STREAM_IDX_AUDIO]);
-    avcodec_parameters_from_context(audio_stream->codecpar, ffmpeg_ctx->av_codec_ctx_audio);
-
-    return true;
-}
-
-static bool
-destroy_ffmpeg_audio(struct scran_output *st_output)
-{
-    struct ffmpeg_context *ffmpeg_ctx = &st_output->capture.ffmpeg_ctx;
-
-    avcodec_free_context(&ffmpeg_ctx->av_codec_ctx_audio);
-    av_frame_free(&ffmpeg_ctx->av_frame_captured_audio);
-    av_audio_fifo_free(ffmpeg_ctx->av_audio_fifo);
-    av_packet_free(&ffmpeg_ctx->av_packet_audio);
+    if (!ffmpeg_ctx->av_packet_audio) {
+        eprintf("Error: Failed to allocate audio packet.\n");
+        goto fail;
+    }
 
     return true;
-}
 
-static void
-destroy_ffmpeg_video(struct scran_output *st_output)
-{
-    struct ffmpeg_context *ffmpeg_ctx = &st_output->capture.ffmpeg_ctx;
-
-    // Note: Most (all?) of these are fine to call with null pointers, despite
-    // the asserts
-    avio_close(ffmpeg_ctx->av_format_ctx->pb);
-    av_packet_free(&ffmpeg_ctx->av_packet);
-    avcodec_free_context(&ffmpeg_ctx->av_codec_ctx);
-    // Freeing the format context frees the linked stream for us.
-    avformat_free_context(ffmpeg_ctx->av_format_ctx);
-    av_frame_free(&ffmpeg_ctx->av_frame_to_encode);
+fail:
+    scran_pipewire_reset();
+    destroy_ffmpeg_audio(st_output);
+    return false;
 }
 
 // TODO:
-//  - Error checking
 //  - Encoding parameters:
 //      - Let user override the encoding parameters
 //      - Decide on good defaults
@@ -130,8 +168,18 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     const enum AVPixelFormat av_pixel_format_to_encode = AV_PIX_FMT_YUV420P;
 
 
+    assert(!capture->audio_active); // Determines whether to clean up audio
+    const char *output_filepath = NULL;
+    int ret;
+
+    ffmpeg_ctx->write_failed = false;
+
     // AVFrame (converted, ready to be fed to encoder)
     ffmpeg_ctx->av_frame_to_encode                  = av_frame_alloc();
+    if (!ffmpeg_ctx->av_frame_to_encode) {
+        eprintf("Error: Failed to allocate video frame.\n");
+        goto fail;
+    }
     ffmpeg_ctx->av_frame_to_encode->width           = width_px_to_encode;
     ffmpeg_ctx->av_frame_to_encode->height          = height_px_to_encode;
     ffmpeg_ctx->av_frame_to_encode->format          = av_pixel_format_to_encode;
@@ -157,29 +205,26 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     const char *codec_name = NULL;
     for (size_t i = 0; i < len_codec_fallbacks; ++i) {
         codec = avcodec_find_encoder_by_name(codec_fallbacks[i]);
-
-        if (codec != NULL) {
+        if (codec) {
             codec_name = codec_fallbacks[i];
             break;
         }
     }
-    if (codec == NULL) {
+    if (!codec) {
         eprintf("Error: No supported encoder found. Please ensure the linked"
                 " version of libavcodec was built with one of the supported"
                 " codecs:\n");
         for (size_t i = 0; i < len_codec_fallbacks; ++i) {
             eprintf("%s\n", codec_fallbacks[i]);
         }
-        return false;
+        goto fail;
     } else {
-        assert(codec_name != NULL);
+        assert(codec_name);
         eprintf("Using codec: %s\n", codec_name);
     }
 
 
     // AVFormat
-    const char *output_filepath = NULL;
-
     if (g_state.options.output_to_stdout) {
         assert(scran_stdout_check_reservation(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO));
         output_filepath = "pipe:1";
@@ -187,14 +232,22 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         static const char mp4_file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] = ".mp4";
         output_filepath = scran_prepare_video_output_path(&g_state.options, mp4_file_extension);
         if (!output_filepath) {
-            return false;
+            goto fail;
         }
     }
-    avformat_alloc_output_context2(&ffmpeg_ctx->av_format_ctx, NULL, FFMPEG_FORMAT_MP4_NAME, output_filepath);
+    ret = avformat_alloc_output_context2(&ffmpeg_ctx->av_format_ctx, NULL, FFMPEG_FORMAT_MP4_NAME, output_filepath);
+    if (ret < 0) {
+        eprintf("Error: Failed to allocate output format context: %s\n", av_err2str(ret));
+        goto fail;
+    }
 
 
     // AVCodecContext (encoder)
     ffmpeg_ctx->av_codec_ctx = avcodec_alloc_context3(codec);
+    if (!ffmpeg_ctx->av_codec_ctx) {
+        eprintf("Error: Failed to allocate video encoder context.\n");
+        goto fail;
+    }
     if (ffmpeg_ctx->av_format_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
         ffmpeg_ctx->av_codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
     }
@@ -215,8 +268,12 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     AVDictionary *codec_opts = NULL;
     av_dict_set(&codec_opts, "crf"   , "20"       , 0);
     av_dict_set(&codec_opts, "preset", "superfast", 0);
-    avcodec_open2(ffmpeg_ctx->av_codec_ctx, codec, &codec_opts);
+    ret = avcodec_open2(ffmpeg_ctx->av_codec_ctx, codec, &codec_opts);
     av_dict_free(&codec_opts);
+    if (ret < 0) {
+        eprintf("Error: Failed to open video encoder '%s': %s\n", codec_name, av_err2str(ret));
+        goto fail;
+    }
 
     assert(ffmpeg_ctx->av_frame_to_encode->width  != 0);
     assert(ffmpeg_ctx->av_frame_to_encode->height != 0);
@@ -224,10 +281,18 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
 
     // AVPacket (encoded)
     ffmpeg_ctx->av_packet = av_packet_alloc();
+    if (!ffmpeg_ctx->av_packet) {
+        eprintf("Error: Failed to allocate video packet.\n");
+        goto fail;
+    }
 
 
-    // AVStream
+    // AVStream (video)
     AVStream *_av_stream = avformat_new_stream(ffmpeg_ctx->av_format_ctx, codec);
+    if (!_av_stream) {
+        eprintf("Error: Failed to create video stream.\n");
+        goto fail;
+    }
     assert(_av_stream == ffmpeg_ctx->av_format_ctx->streams[SCRAN_AV_FORMAT_STREAM_IDX_VIDEO]);
     // NOTE: Requested time_base. Final time_base will have been selected by
     // libav after write_header. av_packet_rescale_ts() exists to convert from
@@ -235,7 +300,11 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     assert(ffmpeg_ctx->av_codec_ctx->framerate.num != 0);
     assert(ffmpeg_ctx->av_codec_ctx->framerate.den != 0);
     _av_stream->time_base = av_inv_q(ffmpeg_ctx->av_codec_ctx->framerate);
-    avcodec_parameters_from_context(_av_stream->codecpar, ffmpeg_ctx->av_codec_ctx);
+    ret = avcodec_parameters_from_context(_av_stream->codecpar, ffmpeg_ctx->av_codec_ctx);
+    if (ret < 0) {
+        eprintf("Error: Failed to set video stream parameters: %s\n", av_err2str(ret));
+        goto fail;
+    }
 
 
     if (!g_state.options.disable_audio_capture && !capture->audio_disable_modifier_active) {
@@ -243,15 +312,35 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
             capture->audio_active = true;
         } else {
             eprintf("WARNING: Failed to init audio capture.\n");
-            scran_pipewire_reset();
-            destroy_ffmpeg_audio(st_output);
+        }
+    }
+
+    // AVStream (audio)
+    //   Not created in init_ffmpeg_audio(), since freeing a stream requires
+    //   freeing the entire format context.
+    //   TODO: Recreate the format context if this block fails?
+    if (capture->audio_active) {
+        AVStream *audio_stream = avformat_new_stream(ffmpeg_ctx->av_format_ctx, NULL);
+        if (!audio_stream) {
+            eprintf("Error: Failed to create audio stream.\n");
+            goto fail;
+        }
+        assert(audio_stream == ffmpeg_ctx->av_format_ctx->streams[SCRAN_AV_FORMAT_STREAM_IDX_AUDIO]);
+        ret = avcodec_parameters_from_context(audio_stream->codecpar, ffmpeg_ctx->av_codec_ctx_audio);
+        if (ret < 0) {
+            eprintf("Error: Failed to set audio stream parameters: %s\n", av_err2str(ret));
+            goto fail;
         }
     }
 
 
     // AVFormat (cont.)
-    avio_open(&(ffmpeg_ctx->av_format_ctx)->pb, output_filepath, AVIO_FLAG_WRITE);
     assert(!((ffmpeg_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
+    ret = avio_open(&(ffmpeg_ctx->av_format_ctx)->pb, output_filepath, AVIO_FLAG_WRITE);
+    if (ret < 0) {
+        eprintf("Failed to create video file '%s': %s\n", output_filepath, av_err2str(ret));
+        goto fail;
+    }
     AVDictionary *format_opts = NULL;
 #if !defined LIBAVFORMAT_VERSION_INT || (LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(61,4,100))
     // Best we can do for seeking/playback-duration compatibility without remuxing or custom
@@ -272,16 +361,41 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
 #endif
 
 #endif /* LIBAVFORMAT_VERSION_INT */
-    int format_ret = avformat_write_header(ffmpeg_ctx->av_format_ctx, &format_opts);
+    ret = avformat_write_header(ffmpeg_ctx->av_format_ctx, &format_opts);
     av_dict_free(&format_opts);
-    if (format_ret < 0) {
-        eprintf("Failed to write file header (filepath: %s)\n", output_filepath);
-
-        // FIXME: Also clear audio-enabled flag and destroy ffmpeg_audio
-        destroy_ffmpeg_video(st_output); // TODO: goto fail?
-        return false;
+    if (ret < 0) {
+        eprintf("Failed to write file header (filepath: %s): %s\n", output_filepath, av_err2str(ret));
+        goto fail;
     }
 
+    return true;
+
+fail:
+    if (ffmpeg_ctx->av_format_ctx && ffmpeg_ctx->av_format_ctx->pb) {
+        // Clean up avio_open()
+        avio_closep(&ffmpeg_ctx->av_format_ctx->pb);
+        if (!g_state.options.output_to_stdout) {
+            unlink(output_filepath);
+        }
+    }
+    if (capture->audio_active) {
+        scran_pipewire_reset();
+        destroy_ffmpeg_audio(st_output);
+        capture->audio_active = false;
+    }
+    destroy_ffmpeg_video(st_output);
+    return false;
+}
+
+static bool
+write_packet(struct ffmpeg_context *ffmpeg_ctx, AVPacket *pkt, const char *stream_name)
+{
+    const int ret = av_interleaved_write_frame(ffmpeg_ctx->av_format_ctx, pkt);
+    if (ret < 0) {
+        eprintf("Error: Failed to write %s packet: %s\n", stream_name, av_err2str(ret));
+        ffmpeg_ctx->write_failed = true;
+        return false;
+    }
     return true;
 }
 
@@ -315,7 +429,9 @@ capture_video_drain_writer(
             return false;
         }
 
-        write_packet_fn(st_output, packet);
+        if (!write_packet_fn(st_output, packet)) {
+            return false;
+        }
     }
 }
 
@@ -338,7 +454,7 @@ capture_video_destroy_audio_writer(struct scran_output *st_output)
     destroy_ffmpeg_audio(st_output);
 }
 
-void
+bool
 capture_video_write_video_packet(
     struct scran_output *output,
     AVPacket *pkt // Encoded frame
@@ -365,10 +481,10 @@ capture_video_write_video_packet(
     //     avformat_write_header(). Not sure if worth fixing.
     assert(pkt->duration <= 0);
 
-    av_interleaved_write_frame(ffmpeg_ctx->av_format_ctx, pkt);
+    return write_packet(ffmpeg_ctx, pkt, "video");
 }
 
-void
+bool
 capture_video_write_audio_packet(
     struct scran_output *st_output,
     AVPacket *pkt // Encoded frame
@@ -391,7 +507,7 @@ capture_video_write_audio_packet(
     assert(pkt->duration != AV_NOPTS_VALUE);
     pkt->duration = av_rescale_q(pkt->duration, ffmpeg_ctx->av_codec_ctx_audio->time_base, av_stream->time_base);
 
-    av_interleaved_write_frame(ffmpeg_ctx->av_format_ctx, pkt);
+    return write_packet(ffmpeg_ctx, pkt, "audio");
 }
 
 bool
@@ -462,7 +578,9 @@ capture_video_write_video_frame(
             return false;
         }
 
-        capture_video_write_video_packet(output, ffmpeg->av_packet);
+        if (!capture_video_write_video_packet(output, ffmpeg->av_packet)) {
+            return false;
+        }
 
         // INFO: packet gets unreferenced at start of loop by avcodec_receive_packet
     }

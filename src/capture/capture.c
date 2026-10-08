@@ -408,12 +408,25 @@ capture_video_finish(struct scran_output *output)
         // across all outputs' captures!
         const char *output_path = g_state.options.output_to_stdout ? NULL : ffmpeg_ctx->av_format_ctx->url;
 
-        av_write_trailer(ffmpeg_ctx->av_format_ctx);
+        bool incomplete = ffmpeg_ctx->write_failed;
+
+        // Also write the trailer after a failed packet write, so that what
+        // reached the file is finalized where possible.
+        int ret = av_write_trailer(ffmpeg_ctx->av_format_ctx);
+        if (ret < 0) {
+            eprintf("Error: Failed to write video trailer: %s\n", av_err2str(ret));
+            incomplete = true;
+        }
+
         clipboard_update(&g_state.seat.datacontrol, NULL, NULL, output_path);
 
         if (output_path) {
             eprintf("Video saved: %s\n", output_path);
-            scran_portal_notify_file_saved(output_path);
+            scran_portal_notify_file_saved(output_path, incomplete);
+        }
+
+        if (incomplete) {
+            eprintf("WARNING: Video may be incomplete.\n");
         }
     }
     capture_video_destroy_video_writer(output);

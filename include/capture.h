@@ -88,7 +88,7 @@ void capture_fullscreen_end(struct scran_output *st_output, enum scran_capture_f
 
 bool capture_request_frame(struct capture_view view, enum scran_capture_frame_consumer_mask consumer, const BLRectI *buffer_damage);
 
-typedef void capture_video_write_packet_fn(
+typedef bool capture_video_write_packet_fn(
     struct scran_output *,
     AVPacket *pkt
 );
@@ -96,8 +96,8 @@ bool capture_video_init_writers(struct scran_output *st_output, const BLPointI d
  void capture_video_destroy_video_writer(struct scran_output *st_output);
  void capture_video_destroy_audio_writer(struct scran_output *st_output);
 bool capture_video_drain_writer(struct scran_output *st_output, AVCodecContext *codec_ctx, AVPacket *packet, capture_video_write_packet_fn write_packet_fn, const char *stream_name);
-void capture_video_write_video_packet(struct scran_output *output, AVPacket *pkt);
-void capture_video_write_audio_packet(struct scran_output *st_output, AVPacket *av_packet);
+bool capture_video_write_video_packet(struct scran_output *output, AVPacket *pkt);
+bool capture_video_write_audio_packet(struct scran_output *st_output, AVPacket *av_packet);
 bool capture_video_write_video_frame(struct capture_view view, const struct capture_buffer_area_context *buffer_area_ctx);
 void capture_image_write_image(struct capture_view view, const struct capture_buffer_area_context *buffer_area_ctx);
 

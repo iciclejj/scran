@@ -112,7 +112,10 @@ on_process(void *data)
                 goto cont; // TODO: goto err?
             }
 
-            capture_video_write_audio_packet(st_output, ffmpeg_ctx->av_packet_audio);
+            if (!capture_video_write_audio_packet(st_output, ffmpeg_ctx->av_packet_audio)) {
+                capture_video_request_stop(st_output);
+                goto cont;
+            }
         }
 
         pts_curr += av_rescale(frame_size, NSEC_PER_SEC, SCRAN_PIPEWIRE_SAMPLE_RATE);
@@ -184,9 +187,10 @@ scran_pipewire_pre_init(int epoll_fd)
     m_state.epoll_fd = epoll_fd;
 }
 
-// NOTE: scran_pipewire_pre_init() must be called first to set epoll fd
+// scran_pipewire_pre_init() must be called first to set epoll fd.
+// scran_pipewire_reset() cleans up.
 //
-// TODO: Error-checking and destroy on failed init
+// On failure, returns false and cleans up after itself.
 bool
 scran_pipewire_init(
     struct scran_output *st_output,
@@ -199,11 +203,12 @@ scran_pipewire_init(
         m_state.pw_inited = true;
     }
 
-    m_state.loop    = pw_loop_new(NULL);
+    m_state.loop = pw_loop_new(NULL);
     if (m_state.loop == NULL) {
         eprintf("WARNING: Failed to create PipeWire loop\n");
         return false;
     }
+    pw_loop_enter(m_state.loop);
     m_state.loop_fd = pw_loop_get_fd(m_state.loop);
 
     assert(m_state.epoll_fd != -1);
@@ -211,18 +216,21 @@ scran_pipewire_init(
         .events = EPOLLIN,
         .data.fd = m_state.loop_fd
     };
-    epoll_ctl(m_state.epoll_fd, EPOLL_CTL_ADD, m_state.loop_fd, &epoll_event);
+    if (epoll_ctl(m_state.epoll_fd, EPOLL_CTL_ADD, m_state.loop_fd, &epoll_event) < 0) {
+        eprintf("WARNING: Failed to add PipeWire loop fd to epoll: %s\n", strerror(errno));
+        goto fail;
+    }
 
-    m_state.ctx  = pw_context_new(    m_state.loop, NULL, 0);
+    m_state.ctx  = pw_context_new(m_state.loop, NULL, 0);
     if (m_state.ctx == NULL) {
         eprintf("WARNING: Failed to create PipeWire context\n");
-        return false;
+        goto fail;
     }
 
     m_state.core = pw_context_connect(m_state.ctx , NULL, 0);
     if (m_state.core == NULL) {
         eprintf("WARNING: Failed to connect to PipeWire daemon\n");
-        return false;
+        goto fail;
     }
 
     // NOTE: pw_stream takes ownership of this. Don't free.
@@ -234,19 +242,26 @@ scran_pipewire_init(
         NULL
     );
     m_state.stream = pw_stream_new(m_state.core, "scran-audio-capture", props);
+    if (m_state.stream == NULL) {
+        eprintf("WARNING: Failed to create PipeWire stream\n");
+        goto fail;
+    }
 
     m_state.userdata = st_output;
     m_state.format = format;
 
+    pw_stream_add_listener(m_state.stream, &m_state.stream_listener, &stream_events, m_state.userdata);
+
     return true;
+
+fail:
+    scran_pipewire_reset();
+    return false;
 }
 
 bool
 scran_pipewire_connect()
 {
-    pw_loop_enter(m_state.loop);
-    pw_stream_add_listener(m_state.stream, &m_state.stream_listener, &stream_events, m_state.userdata);
-
     uint8_t buffer[1024];
     struct spa_pod_builder builder = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
     const struct spa_pod *params[] =  {
