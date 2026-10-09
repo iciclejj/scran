@@ -123,6 +123,7 @@ capture_image_write_image(
 
     struct scran_options *const options = &g_state.options;
     const char *output_filepath = NULL;
+    const char *saved_filepath = NULL;
 
     if (options->output_to_stdout) {
         assert(scran_stdout_check_reservation(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE));
@@ -135,7 +136,9 @@ capture_image_write_image(
             IMAGE_CAPTURE_OUTPUT_FILE_EXTENSION_DEFAULT;
         output_filepath = scran_prepare_image_output_path(options, default_extension);
 
-        if (output_filepath) {
+        if (!output_filepath) {
+            scran_portal_notify_error("failed to save image");
+        } else {
             size_t bytes_written = 0;
             res = bl_file_system_write_file(
                 output_filepath,
@@ -146,7 +149,10 @@ capture_image_write_image(
             if (res == BL_SUCCESS && bytes_written == bytes_to_write) {
                 eprintf("Image saved: %s (%zuKiB)\n", output_filepath, bytes_written >> 10);
                 scran_portal_notify_file_saved(output_filepath, false);
+                saved_filepath = output_filepath;
             } else {
+                // TODO: Check path and unlink?
+                scran_portal_notify_error("failed to save image");
                 eprintf("Error: Failed to save image (attempted: %s).\n", output_filepath);
             }
         }
@@ -159,13 +165,7 @@ capture_image_write_image(
         (BLImageCodecImpl *)(output->capture.bl_imgcodec._d.impl);
     const char *mime_type = bl_string_get_data(&bl_img_codec_impl->mime_type);
 
-    if (!clipboard_update(
-            &g_state.seat.datacontrol,
-            &bl_array_img_encoded,
-            mime_type,
-            output_filepath
-        )
-    ) {
+    if (!clipboard_update(&g_state.seat.datacontrol, &bl_array_img_encoded, mime_type, saved_filepath)) {
         eprintf("Error updating clipboard.\n");
     }
 

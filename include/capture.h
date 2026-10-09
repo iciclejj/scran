@@ -25,7 +25,7 @@
 #define IMAGE_CAPTURE_OUTPUT_BLIMAGECODEC_NAME_DEFAULT "PNG"
 #define IMAGE_CAPTURE_OUTPUT_FILE_EXTENSION_DEFAULT ".png"
 
-enum {
+enum capture_av_format_stream_index {
     SCRAN_AV_FORMAT_STREAM_IDX_VIDEO,
     SCRAN_AV_FORMAT_STREAM_IDX_AUDIO,
 };
@@ -95,11 +95,12 @@ typedef bool capture_video_write_packet_fn(
 bool capture_video_init_writers(struct scran_output *st_output, const BLPointI dimensions);
  void capture_video_destroy_video_writer(struct scran_output *st_output);
  void capture_video_destroy_audio_writer(struct scran_output *st_output);
-bool capture_video_drain_writer(struct scran_output *st_output, AVCodecContext *codec_ctx, AVPacket *packet, capture_video_write_packet_fn write_packet_fn, const char *stream_name);
+
+bool capture_video_drain_codec(struct scran_output *st_output, AVCodecContext *codec_ctx, AVPacket *packet, capture_video_write_packet_fn write_packet_fn, const char *stream_name);
+bool capture_video_drain_write_queue(struct ffmpeg_context *ffmpeg_ctx);
 bool capture_video_write_video_packet(struct scran_output *output, AVPacket *pkt);
 bool capture_video_write_audio_packet(struct scran_output *st_output, AVPacket *av_packet);
 bool capture_video_write_video_frame(struct capture_view view, const struct capture_buffer_area_context *buffer_area_ctx);
-void capture_image_write_image(struct capture_view view, const struct capture_buffer_area_context *buffer_area_ctx);
 
 bool capture_video_start(struct scran_output *st_output);
 bool capture_video_start_fullscreen(struct scran_output *st_output);
@@ -111,6 +112,7 @@ void capture_video_finish(struct scran_output *st_output);
 bool capture_image_start(struct scran_output *st_output, bool exit_after_capture);
  void capture_image_finish(struct scran_output *output);
 bool capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_capture);
+void capture_image_write_image(struct capture_view view, const struct capture_buffer_area_context *buffer_area_ctx);
 
 static inline bool
 capture_fullscreen_consumers_allow_ui(enum scran_capture_frame_consumer_mask consumers)

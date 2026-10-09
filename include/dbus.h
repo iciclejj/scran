@@ -5,7 +5,12 @@
 #include <stdbool.h>
 
 
+#define SCRAN_NOTIFICATION_PREFIX "Scran: "
+
 void scran_portal_notify_file_saved(const char *path, bool incomplete);
+void scran_portal_notify_error_(const char *title);
+#define scran_portal_notify_error(msg) \
+    scran_portal_notify_error_(SCRAN_NOTIFICATION_PREFIX "error: " msg)
 
 void scran_dbus_update(int epoll_fd, int *timeout_ms);
 
