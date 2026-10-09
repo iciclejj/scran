@@ -225,11 +225,22 @@ cmake --install build && ldconfig
   Escape               Exit scran, or stop video capture if in progress
 ```
 
-Images and videos are saved to the file or directory specified by `output_directory`,
-or to `/tmp/scran-capture/scran-<timestamp>.<file-extension>` by default.
-Saved images and videos are also sent to the clipboard.
+### Output directories
 
-See also `scran -h`.
+In order of priority:
+
+1. Images and videos: `-d <directory>` or `output_directory`
+2. Images and videos: `$SCRAN_OUTPUT_DIR`
+3. Images only: `$XDG_SCREENSHOTS_DIR` (absolute)
+4. Images: `<XDG Pictures>/Screenshots/`<br>
+   Videos: `<XDG Videos>/Screencasts/`
+5. Images: `$HOME/Pictures/Screenshots/`<br>
+   Videos: `$HOME/Videos/Screencasts/`
+
+Directories are created if needed, except `-d` must already exist.
+XDG Pictures/Videos are read from [`user-dirs.dirs`](https://wiki.freedesktop.org/www/Software/xdg-user-dirs/).
+
+Images and videos are also sent to the clipboard.
 
 <details> <summary>
 
@@ -240,10 +251,6 @@ See also `scran -h`.
 Launch scran:
 ```bash # works well enough...
 bindsym Print          exec  'scran'
-```
-... or with custom directory (-d directory must exist)
-```bash
-bindsym Print          exec  'scran -d "$HOME/Pictures/"'
 ```
 Grab focus (after releasing with Tab):
 ```bash
@@ -261,10 +268,6 @@ bindsym Shift+Alt+Tab  exec 'pkill -SIGUSR1 scran'
 Launch scran:
 ```bash # works well enough... kinda. github doesn't seem to support hypr/hyprlang.
 bind =          , print, exec, scran
-```
-... or with custom directory (-d directory must exist)
-```bash
-bind =          , print, exec, scran -d "$HOME/Pictures/"
 ```
 Grab focus (after releasing with Tab):
 ```bash
@@ -311,7 +314,6 @@ See `scran -h` for more details
            %E  File extension (e.g. .png or .mp4)
            %%  A literal '%' character
   -d   set an existing directory as output directory
-         You may also use $SCRAN_OUTPUT_DIR.
   -p   press-only mouse buttons (presses toggle pressed/released state)
   -e   automatically capture and exit immediately after initial selection
   -A   disable audio capture (during video capture)

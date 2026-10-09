@@ -33,7 +33,7 @@ registry_handle_global(
     struct scran *state = data;
     struct scran_globals *globals = &state->globals;
 
-    #define INTERFACE_IS(desired) (strcmp(interface, desired.name) == 0)
+    #define INTERFACE_IS(desired) (!strcmp(interface, desired.name))
 
     if (INTERFACE_IS(wl_compositor_interface)) {
         // v4 => wl_surface v4 => wl_surface::damage_buffer

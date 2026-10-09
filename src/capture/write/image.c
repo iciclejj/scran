@@ -133,21 +133,22 @@ capture_image_write_image(
     } else {
         static const char default_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] =
             IMAGE_CAPTURE_OUTPUT_FILE_EXTENSION_DEFAULT;
-        output_filepath = scran_update_output_filepath(options, default_extension);
+        output_filepath = scran_prepare_image_output_path(options, default_extension);
 
-        size_t bytes_written = 0;
-        res = bl_file_system_write_file(
-            output_filepath,
-            bl_array_img_encoded_data,
-            bytes_to_write,
-            &bytes_written
-        );
-
-        if (res == BL_SUCCESS && bytes_written == bytes_to_write) {
-            eprintf("Image saved: %s (%zuKiB)\n", output_filepath, bytes_written >> 10);
-            scran_portal_notify_file_saved(output_filepath);
-        } else {
-            eprintf("Error: Failed to save image (attempted: %s).\n", output_filepath);
+        if (output_filepath) {
+            size_t bytes_written = 0;
+            res = bl_file_system_write_file(
+                output_filepath,
+                bl_array_img_encoded_data,
+                bytes_to_write,
+                &bytes_written
+            );
+            if (res == BL_SUCCESS && bytes_written == bytes_to_write) {
+                eprintf("Image saved: %s (%zuKiB)\n", output_filepath, bytes_written >> 10);
+                scran_portal_notify_file_saved(output_filepath);
+            } else {
+                eprintf("Error: Failed to save image (attempted: %s).\n", output_filepath);
+            }
         }
     }
 

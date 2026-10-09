@@ -8,6 +8,7 @@
 #include "event-handlers.h"
 #include "print.h"
 #include "clipboard.h"
+#include "state.h"
 #include "util/util.h"
 
 // void
@@ -26,6 +27,26 @@
 //     .selection = handle_data_control_device_selection,
 // };
 
+// RFC 3986
+static inline bool
+uri_is_unreserved(unsigned char c) {
+    return
+        (c >= 'A' && c <= 'Z')
+        || (c >= 'a' && c <= 'z')
+        || (c >= '0' && c <= '9')
+        || c == '-'
+        || c == '.'
+        || c == '_'
+        || c == '~'
+    ;
+}
+
+// RFC 3986, RFC 8089
+static inline bool
+uri_path_use_literal_character(unsigned char c) {
+    return uri_is_unreserved(c) || c == '/';
+}
+
 static void
 handle_data_control_source_send(
     void *data_,
@@ -43,7 +64,7 @@ handle_data_control_source_send(
 
     if (
         st_datacontrol->should_offer_data
-        && 0 == strcmp(requested_mime, data_mime)
+        && !strcmp(requested_mime, data_mime)
     ) {
         const BLArrayCore *const bl_array = &st_datacontrol->data_to_send;
 
@@ -54,28 +75,41 @@ handle_data_control_source_send(
         }
     } else if (
         st_datacontrol->should_offer_filepath
-        && 0 == strcmp(requested_mime, SCRAN_MIME_TYPE_FILEPATH_URI_LIST)
+        && !strcmp(requested_mime, SCRAN_MIME_TYPE_FILEPATH_URI_LIST)
     ) {
         static const char prefix[] = "file://";
-        static const size_t prefix_strlen = sizeof(prefix) - 1;
-        if (!scran_full_write(fd, prefix, prefix_strlen)) {
-            goto failed;
-        }
-
-        // TODO: Make sure this is an absolute path. Either here or
-        // normalize passed path to absolute during option init.
-        if (!scran_full_write(fd, filepath, filepath_strlen)) {
-            goto failed;
-        }
-
         static const char suffix[] = "\r\n";
-        static const size_t suffix_strlen = sizeof(suffix) - 1;
-        if (!scran_full_write(fd, suffix, suffix_strlen)) {
+
+        char uri[
+            // 3*max for worst-case URI percent-encoding scenario
+            sizeof(prefix)-1 + 3*SCRAN_OUTPUT_FILEPATH_SIZE_MAX + sizeof(suffix)-1
+        ];
+        size_t uri_strlen = 0;
+
+        memcpy(uri + uri_strlen, prefix, sizeof(prefix)-1);
+        uri_strlen += sizeof(prefix)-1;
+
+        for (size_t i = 0; i < filepath_strlen; ++i) {
+            unsigned char c = filepath[i];
+            if (uri_path_use_literal_character(c)) {
+                uri[uri_strlen++] = c;
+            } else {
+                static const unsigned char hex[] = "0123456789ABCDEF";
+                uri[uri_strlen++] = '%';
+                uri[uri_strlen++] = hex[c / 16];
+                uri[uri_strlen++] = hex[c % 16];
+            }
+        }
+
+        memcpy(uri + uri_strlen, suffix, sizeof(suffix)-1);
+        uri_strlen += sizeof(suffix)-1;
+
+        if (!scran_full_write(fd, uri, uri_strlen)) {
             goto failed;
         }
     } else if (
         st_datacontrol->should_offer_filepath
-        && 0 == strcmp(requested_mime, SCRAN_MIME_TYPE_FILEPATH_PLAIN)
+        && !strcmp(requested_mime, SCRAN_MIME_TYPE_FILEPATH_PLAIN)
     ) {
         if (!scran_full_write(fd, filepath, filepath_strlen)) {
             goto failed;

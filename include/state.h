@@ -601,10 +601,18 @@ enum scran_opt_cursor_capture {
     SCRAN_OPT_CAPTURE_ALL_CURSORS,
 } SCRAN_PACKED;
 
+struct scran_write_path {
+    bool should_mkdir;
+    // str[0..filename_offset) == directory
+    //   (not necessarily null-terminated)
+    ssize_t filename_offset;
+    char str[SCRAN_OUTPUT_FILEPATH_SIZE_MAX];
+};
+
 // TODO: Isolate this from scran state?
 struct scran_options {
-    char *output_path_filename_pointer; // TODO: Use offset instead
-    char output_path[SCRAN_OUTPUT_FILEPATH_SIZE_MAX]; // NOTE: Also used as output_directory during cli arg init
+    struct scran_write_path image_path;
+    struct scran_write_path video_path;
     char filename_format[SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX];
 
     enum scran_opt_hide_ui_level hide_ui_level;
