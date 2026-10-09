@@ -17,12 +17,12 @@
 
 
 static struct {
-    struct pw_loop               *loop;
-    struct pw_stream             *stream;
-    struct pw_context            *ctx;
-    struct pw_core               *core;
-    struct spa_hook               stream_listener;
-    struct scran_output          *userdata;
+    struct pw_loop       *loop;
+    struct pw_stream     *stream;
+    struct pw_context    *ctx;
+    struct pw_core       *core;
+    struct spa_hook       stream_listener;
+    struct scran_output  *userdata;
     enum spa_audio_format format;
     int loop_fd;
     int epoll_fd;
@@ -36,11 +36,11 @@ static struct {
 static void
 on_process(void *data)
 {
-    struct scran_output        *st_output  = data;
-    struct scran_output_capture *capture   = &st_output->capture;
-    struct ffmpeg_context      *ffmpeg_ctx = &capture->ffmpeg_ctx;
+    struct scran_output         *output     = data;
+    struct scran_output_capture *capture    = &output->capture;
+    struct ffmpeg_context       *ffmpeg_ctx = &capture->ffmpeg_ctx;
 
-    if (!capture_video_is_live(st_output)) {
+    if (!capture_video_is_live(output)) {
         // We need exit here, differently to our video frame handler, since
         // on_process gets continuously requested automatically, and we can't
         // safely stop it from within this handler.
@@ -48,7 +48,7 @@ on_process(void *data)
     }
 
     struct pw_buffer *pw_buf = pw_stream_dequeue_buffer(m_state.stream);
-    if (pw_buf == NULL) {
+    if (!pw_buf) {
         eprintf("Pipewire out of buffers\n");
         return;
     }
@@ -69,7 +69,7 @@ on_process(void *data)
 
     for (int i = 0; i < SCRAN_PIPEWIRE_N_CHANNELS; ++i) {
         float *samples = spa_buf->datas[i].data;
-        if (samples == NULL) {
+        if (!samples) {
             goto cont;
         }
         spa_buf_planes[i] = samples;
@@ -112,8 +112,8 @@ on_process(void *data)
                 goto cont; // TODO: goto err?
             }
 
-            if (!capture_video_write_audio_packet(st_output, ffmpeg_ctx->av_packet_audio)) {
-                capture_video_request_stop(st_output);
+            if (!capture_video_write_audio_packet(output, ffmpeg_ctx->av_packet_audio)) {
+                capture_video_request_stop(output);
                 goto cont;
             }
         }
@@ -140,19 +140,19 @@ static const struct pw_stream_events stream_events = {
 void
 scran_pipewire_reset()
 {
-    if (m_state.stream != NULL) {
+    if (m_state.stream) {
         pw_stream_disconnect(m_state.stream);
         spa_hook_remove(&m_state.stream_listener);
         pw_stream_destroy(m_state.stream);
-        m_state.stream  = NULL;
+        m_state.stream = NULL;
     }
 
-    if (m_state.core != NULL) {
+    if (m_state.core) {
         pw_core_disconnect(m_state.core);
         m_state.core = NULL;
     }
 
-    if (m_state.ctx != NULL) {
+    if (m_state.ctx) {
         pw_context_destroy(m_state.ctx);
         m_state.ctx = NULL;
     }
@@ -162,7 +162,7 @@ scran_pipewire_reset()
         m_state.loop_fd  = -1;
     }
 
-    if (m_state.loop != NULL) {
+    if (m_state.loop) {
         pw_loop_leave(m_state.loop);
         pw_loop_destroy(m_state.loop);
         m_state.loop  = NULL;
@@ -193,18 +193,18 @@ scran_pipewire_pre_init(int epoll_fd)
 // On failure, returns false and cleans up after itself.
 bool
 scran_pipewire_init(
-    struct scran_output *st_output,
+    struct scran_output *output,
     enum spa_audio_format format
 ) {
     DEBUG("scran_pipewire_init()\n");
 
-    if (m_state.pw_inited == false) {
+    if (!m_state.pw_inited) {
         pw_init(NULL, NULL);
         m_state.pw_inited = true;
     }
 
     m_state.loop = pw_loop_new(NULL);
-    if (m_state.loop == NULL) {
+    if (!m_state.loop) {
         eprintf("WARNING: Failed to create PipeWire loop\n");
         return false;
     }
@@ -221,14 +221,14 @@ scran_pipewire_init(
         goto fail;
     }
 
-    m_state.ctx  = pw_context_new(m_state.loop, NULL, 0);
-    if (m_state.ctx == NULL) {
+    m_state.ctx = pw_context_new(m_state.loop, NULL, 0);
+    if (!m_state.ctx) {
         eprintf("WARNING: Failed to create PipeWire context\n");
         goto fail;
     }
 
     m_state.core = pw_context_connect(m_state.ctx , NULL, 0);
-    if (m_state.core == NULL) {
+    if (!m_state.core) {
         eprintf("WARNING: Failed to connect to PipeWire daemon\n");
         goto fail;
     }
@@ -242,12 +242,12 @@ scran_pipewire_init(
         NULL
     );
     m_state.stream = pw_stream_new(m_state.core, "scran-audio-capture", props);
-    if (m_state.stream == NULL) {
+    if (!m_state.stream) {
         eprintf("WARNING: Failed to create PipeWire stream\n");
         goto fail;
     }
 
-    m_state.userdata = st_output;
+    m_state.userdata = output;
     m_state.format = format;
 
     pw_stream_add_listener(m_state.stream, &m_state.stream_listener, &stream_events, m_state.userdata);
@@ -302,9 +302,9 @@ scran_pipewire_update(int fd_ready)
         return true;
     }
 
-    assert(m_state.loop != NULL);
+    assert(m_state.loop);
 
-    if (0 > pw_loop_iterate(m_state.loop, 0)) {
+    if (pw_loop_iterate(m_state.loop, 0) < 0) {
         eprintf("Error: Failed to iterate pipewire loop\n");
         return false;
     }
