@@ -15,9 +15,10 @@
 
 
 void scran_pipewire_pre_init(int epoll_fd);
-bool scran_pipewire_init(struct scran_output *st_output, enum spa_audio_format format);
- void scran_pipewire_reset(void);
- void scran_pipewire_destroy(void);
+bool scran_pipewire_init(struct scran_output *output, enum spa_audio_format format);
+void scran_pipewire_reset(void);
+void scran_pipewire_destroy(void);
+
 bool scran_pipewire_update(int fd_ready);
 bool scran_pipewire_connect(void);
 
