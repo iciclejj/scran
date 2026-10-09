@@ -399,9 +399,15 @@ write_packet(struct ffmpeg_context *ffmpeg_ctx, AVPacket *pkt, const char *strea
     return true;
 }
 
+bool
+capture_video_drain_write_queue(struct ffmpeg_context *ffmpeg_ctx)
+{
+    return write_packet(ffmpeg_ctx, NULL, "flush");
+}
+
 // Can be used for both audio and video encoders
 bool
-capture_video_drain_writer(
+capture_video_drain_codec(
     struct scran_output *st_output,
     AVCodecContext *codec_ctx,
     AVPacket *packet,
