@@ -194,30 +194,6 @@ scran_update_output_filepath(
     return path->str;
 }
 
-const char *
-scran_update_image_output_path(
-    struct scran_options *options,
-    const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX]
-) {
-    return scran_update_output_filepath(
-        options,
-        &options->image_path,
-        file_extension
-    );
-}
-
-const char *
-scran_update_video_output_path(
-    struct scran_options *options,
-    const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX]
-) {
-    return scran_update_output_filepath(
-        options,
-        &options->video_path,
-        file_extension
-    );
-}
-
 bool
 scran_parse_slurp_string(
     char slurp_string[static SLURP_STRING_SIZE],
@@ -313,40 +289,72 @@ mkdir_recursive(struct scran_write_path *path)
 }
 
 static inline bool
-ensure_directory_exists(
-    struct scran_write_path *path,
-    bool should_create
-) {
-    bool output_directory_exists;
+ensure_directory_exists(struct scran_write_path *path)
+{
+    // Save/restore this just so the caller doesn't have to care
+    const char filename_offset_char = path->str[path->filename_offset];
+    path->str[path->filename_offset] = '\0';
+
+    bool ok = false;
+    bool output_directory_exists = false;
+
     {
-        struct stat _statbuf;
-        const int _stat_ret = stat(path->str, &_statbuf);
-        if (_stat_ret == 0) {
-            output_directory_exists = S_ISDIR(_statbuf.st_mode);
+        struct stat statbuf;
+        if (!stat(path->str, &statbuf)) {
+            output_directory_exists = S_ISDIR(statbuf.st_mode);
         } else if (errno == ENOENT) {
             output_directory_exists = false;
         } else {
             eprintf("output_directory stat error for '%s': %s\n", path->str, strerror(errno));
-            return false;
+            goto done;
         }
     }
     if (!output_directory_exists) {
-        if (!should_create) {
+        if (!path->should_mkdir) {
             eprintf("Error: output directory does not exist: '%s'\n", path->str);
-            return false;
+            goto done;
         }
-
-        assert(path->str[path->filename_offset] == '\0');
 
         if (!mkdir_recursive(path)) {
             eprintf("Failed to create directory '%s'\n", path->str);
-            return false;
+            goto done;
         }
     }
-
-    return true;
+    ok = true;
+done:
+    path->str[path->filename_offset] = filename_offset_char;
+    return ok;
 }
 
+const char *
+scran_prepare_image_output_path(
+    struct scran_options *options,
+    const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX]
+) {
+    if (!ensure_directory_exists(&options->image_path)) {
+        return NULL;
+    }
+    return scran_update_output_filepath(
+        options,
+        &options->image_path,
+        file_extension
+    );
+}
+
+const char *
+scran_prepare_video_output_path(
+    struct scran_options *options,
+    const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX]
+) {
+    if (!ensure_directory_exists(&options->video_path)) {
+        return NULL;
+    }
+    return scran_update_output_filepath(
+        options,
+        &options->video_path,
+        file_extension
+    );
+}
 
 static inline bool
 handle_cli_arg_filename(
@@ -686,7 +694,7 @@ scran_handle_args(int argc, char *const *argv)
     }
 
     const char *supplied_output_dir = NULL;
-    bool should_create_output_dir = false;
+    bool supplied_output_dir_should_mkdir = false;
 
     if (opt_output_directory && arg_output_directory) {
         eprintf("Error: Received both `-d` and `output_path`\n");
@@ -698,37 +706,36 @@ scran_handle_args(int argc, char *const *argv)
             options->output_to_stdout = true;
         } else {
             supplied_output_dir = arg_output_directory;
-            should_create_output_dir = true;
+            supplied_output_dir_should_mkdir = true;
         }
     } else {
         const char *env_output_directory = getenv("SCRAN_OUTPUT_DIR");
         if (env_output_directory && env_output_directory[0]) {
             supplied_output_dir = env_output_directory;
-            should_create_output_dir = true;
+            supplied_output_dir_should_mkdir = true;
         }
     }
 
     if (!options->output_to_stdout) {
         if (supplied_output_dir) {
-            if (!set_output_directory(&options->image_path, supplied_output_dir, NULL, 0)) {
+            struct scran_write_path *image_path = &options->image_path;
+
+            image_path->should_mkdir = supplied_output_dir_should_mkdir;
+            if (!set_output_directory(image_path, supplied_output_dir, NULL, 0)) {
                 return false;
             }
-            if (!ensure_directory_exists(&options->image_path, should_create_output_dir)) {
+            if (!image_path->should_mkdir && !ensure_directory_exists(image_path)) {
                 return false;
             }
-            options->video_path = options->image_path;
+
+            options->video_path = *image_path;
         } else {
-            should_create_output_dir = true;
+            options->image_path.should_mkdir = true;
+            options->video_path.should_mkdir = true;
             if (!set_default_image_output_directory(&options->image_path)) {
                 return false;
             }
             if (!set_default_video_output_directory(&options->video_path)) {
-                return false;
-            }
-            if (!ensure_directory_exists(&options->image_path, should_create_output_dir)) {
-                return false;
-            }
-            if (!ensure_directory_exists(&options->video_path, should_create_output_dir)) {
                 return false;
             }
         }

@@ -602,10 +602,11 @@ enum scran_opt_cursor_capture {
 } SCRAN_PACKED;
 
 struct scran_write_path {
+    bool should_mkdir;
     // str[0..filename_offset) == directory
     //   (not necessarily null-terminated)
-    char str[SCRAN_OUTPUT_FILEPATH_SIZE_MAX];
     ssize_t filename_offset;
+    char str[SCRAN_OUTPUT_FILEPATH_SIZE_MAX];
 };
 
 // TODO: Isolate this from scran state?

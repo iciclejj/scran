@@ -10,8 +10,8 @@
 
 bool scran_handle_args(int argc, char *const *argv);
 bool scran_parse_slurp_string( char slurp_string[static SLURP_STRING_SIZE], struct BLRectI *result);
-const char *scran_update_video_output_path(struct scran_options *options, const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX]);
-const char *scran_update_image_output_path(struct scran_options *options, const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX]);
+const char *scran_prepare_video_output_path(struct scran_options *options, const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX]);
+const char *scran_prepare_image_output_path(struct scran_options *options, const char file_extension[static restrict SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX]);
 
 
 #endif
