@@ -812,7 +812,7 @@ run_main_loop(struct scran_signal_masks *signal_masks)
         assert(scran_portal_timeout_ms == -1);
     }
 
-    scran_pipewire_pre_init(m_epoll_fd);
+    scran_pipewire_prepare(m_epoll_fd);
 
     // Block/defer our signal handlers until explicit unblock during epoll
     if (sigprocmask(SIG_BLOCK, &signal_masks->with_scran_handlers_masked, NULL) == -1) {

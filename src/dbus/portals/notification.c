@@ -31,8 +31,16 @@ reply_AddNotification(
     return 0;
 }
 
-void
-scran_portal_notify_file_saved(const char *saved_file_path)
+struct scran_notification_data {
+    const char *id;
+    const char *title;
+    const char *body;
+    const char *default_action;
+    const char *default_action_target;
+};
+
+static void
+scran_portal_send_notification(const struct scran_notification_data *data)
 {
     if (g_dbus.bus == NULL) {
         DEBUG("Notification not sent (D-Bus not initialized).\n");
@@ -43,8 +51,6 @@ scran_portal_notify_file_saved(const char *saved_file_path)
         DEBUG("Notification not sent (options.no_notifications).\n");
         return;
     }
-
-    // TODO: Assert saved_file_path length?
 
     int ret;
     sd_bus_message *message = NULL;
@@ -58,8 +64,7 @@ scran_portal_notify_file_saved(const char *saved_file_path)
         goto finish;
     }
 
-    const char *notification_id = saved_file_path;
-    ret = sd_bus_message_append(message, "s", notification_id);
+    ret = sd_bus_message_append(message, "s", data->id);
     if (ret < 0) {
         goto finish;
     }
@@ -70,18 +75,18 @@ scran_portal_notify_file_saved(const char *saved_file_path)
     }
 
     ret = sd_bus_message_append(message, "{sv}{sv}{sv}",
-        "title",        "s",     "Scran: saved file.",
-        "body",         "s",      saved_file_path,
+        "title",        "s",      data->title,
+        "body",         "s",      data->body,
         "display-hint", "as", 1, "show-as-new"
     );
     if (ret < 0) {
         goto finish;
     }
 
-    if (m_notification.notification_actions_enabled) {
+    if (data->default_action && m_notification.notification_actions_enabled) {
         ret = sd_bus_message_append(message, "{sv}{sv}",
-            "default-action",        "s", "OpenFile",
-            "default-action-target", "s", saved_file_path
+            "default-action",        "s", data->default_action,
+            "default-action-target", "s", data->default_action_target
         );
         if (ret < 0) {
             goto finish;
@@ -111,6 +116,37 @@ finish:
     }
 }
 
+void
+scran_portal_notify_file_saved(
+    const char *saved_file_path,
+    bool incomplete
+) {
+    // TODO: Assert saved_file_path length?
+    scran_portal_send_notification(
+        &(struct scran_notification_data){
+            .id = saved_file_path,
+            .title =
+                incomplete
+                ? SCRAN_NOTIFICATION_PREFIX "saved file (may be incomplete)"
+                : SCRAN_NOTIFICATION_PREFIX "saved file",
+            .body = saved_file_path,
+            .default_action = "OpenFile",
+            .default_action_target = saved_file_path,
+        }
+    );
+}
+
+void
+scran_portal_notify_error_(const char *title)
+{
+    scran_portal_send_notification(
+        &(struct scran_notification_data){
+            .id = "scran-error",
+            .title = title,
+            .body = "See terminal/stderr logs for details."
+        }
+    );
+}
 
 static int
 reply_OpenURI_OpenFile(
@@ -191,19 +227,21 @@ signal_handler_ActionInvoked(
         goto finish;
     }
 
-    const char *parameter;
-    ret = sd_bus_message_enter_container(message, 'a', "v");
-    if (ret < 0) {
-        goto finish;
-    }
-    ret = sd_bus_message_read(message, "v", "s", &parameter);
-    if (ret < 0) {
-        goto finish;
-    }
-    // Don't care about the rest of this container...
+    if (!strcmp(action, "OpenFile")) {
+        const char *parameter;
+        ret = sd_bus_message_enter_container(message, 'a', "v");
+        if (ret < 0) {
+            goto finish;
+        }
+        ret = sd_bus_message_read(message, "v", "s", &parameter);
+        if (ret < 0) {
+            goto finish;
+        }
+        // Don't care about the rest of this container...
 
-    const char *filepath = parameter;
-    scran_portal_open_file(filepath);
+        const char *filepath = parameter;
+        scran_portal_open_file(filepath);
+    }
 
     DEBUG("ActionInvoked reply without error.\n");
 

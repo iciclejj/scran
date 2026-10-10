@@ -292,14 +292,13 @@ capture_video_start(struct scran_output *output)
     if (g_state.options.output_to_stdout) {
         if (!scran_stdout_try_reserve(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO)) {
             scran_stdout_print_busy_message();
-            goto capture_video_start_fail_1;
+            goto fail;
         }
     }
 
     if (!capture_video_init_writers(output, dimensions)) {
         eprintf("Error: Failed to initialize ffmpeg libraries.\n");
-        // TODO: goto fail if this becomes more complicated
-        goto capture_video_start_fail_2;
+        goto fail;
     }
 
     // TODO: Cache surface border color and add it to main.c::update_ui()?
@@ -313,19 +312,14 @@ capture_video_start(struct scran_output *output)
     // frame::ready, similar to the wl_surface callback event loop
     capture_request_frame_forced(view, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO);
 
-
-    if (output->capture.audio_active) {
-        scran_pipewire_connect();
-    }
-
     output->capture.video_stage = SCRAN_VIDEO_STAGE_CAPTURING;
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
     return true;
 
-capture_video_start_fail_2:
+fail:
+    scran_portal_notify_error("failed to start video capture");
     scran_stdout_release(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO);
-capture_video_start_fail_1:
     selection_unfreeze_size(output);
     return false;
 }
@@ -374,6 +368,17 @@ capture_video_cancel_pending_fullscreen_capture(struct scran_output *output) {
     selection_unfreeze_size(output);
 }
 
+static inline bool
+stream_has_frames(
+    const struct ffmpeg_context *ffmpeg_ctx,
+    enum capture_av_format_stream_index stream_index
+) {
+    const AVFormatContext *fmt = ffmpeg_ctx->av_format_ctx;
+    return
+        stream_index < fmt->nb_streams
+        && fmt->streams[stream_index]->nb_frames > 0;
+}
+
 // Should only be called once the video capture event loop is finished.
 //    Call video_capture_request_stop() instead to initiate graceful completion.
 void
@@ -382,41 +387,69 @@ capture_video_finish(struct scran_output *output)
     struct scran_output_capture *capture    = &output->capture;
     struct ffmpeg_context       *ffmpeg_ctx = &capture->ffmpeg_ctx;
 
-    if (capture->audio_active) {
-        scran_pipewire_reset();
-        capture_video_drain_writer(
-            output,
-            ffmpeg_ctx->av_codec_ctx_audio,
-            ffmpeg_ctx->av_packet_audio,
-            capture_video_write_audio_packet,
-            "audio"
-        );
-        capture_video_destroy_audio_writer(output);
-        capture->audio_active = false;
-    }
-
-    capture_video_drain_writer(
-        output,
-        ffmpeg_ctx->av_codec_ctx,
-        ffmpeg_ctx->av_packet,
-        capture_video_write_video_packet,
-        "video"
-    );
-
+    // TODO: Refactor most of this into capture_video_finish_writers or similar.
     {
+        bool incomplete = ffmpeg_ctx->write_failed;
+
+        if (capture->audio_active) {
+            scran_pipewire_detach(output);
+            incomplete |= !capture_video_drain_codec(
+                output,
+                ffmpeg_ctx->av_codec_ctx_audio,
+                ffmpeg_ctx->av_packet_audio,
+                capture_video_write_audio_packet,
+                "audio"
+            );
+        }
+        incomplete |= !capture_video_drain_codec(
+            output,
+            ffmpeg_ctx->av_codec_ctx,
+            ffmpeg_ctx->av_packet,
+            capture_video_write_video_packet,
+            "video"
+        );
+
+        // Drain write queue
+        // - See FFmpeg commit 9f35e220ffbba21c88356eb2bbfa3679ede93793.
+        //   Before that fix, av_write_trailer() would crash if no frames were
+        //   available after draining the codec.
+        // - stream->nb_frames only counts frames that have left the write queue.
+        incomplete |= !capture_video_drain_write_queue(ffmpeg_ctx);
+        const bool have_frames =
+            stream_has_frames(ffmpeg_ctx, SCRAN_AV_FORMAT_STREAM_IDX_VIDEO)
+            || stream_has_frames(ffmpeg_ctx, SCRAN_AV_FORMAT_STREAM_IDX_AUDIO);
+
         // NOTE: Avoid using g_state.options.video_path, since it is shared
         // across all outputs' captures!
-        const char *output_path = g_state.options.output_to_stdout ? NULL : ffmpeg_ctx->av_format_ctx->url;
+        const char *saved_filepath = g_state.options.output_to_stdout ? NULL : ffmpeg_ctx->av_format_ctx->url;
 
-        av_write_trailer(ffmpeg_ctx->av_format_ctx);
-        clipboard_update(&g_state.seat.datacontrol, NULL, NULL, output_path);
-
-        if (output_path) {
-            eprintf("Video saved: %s\n", output_path);
-            scran_portal_notify_file_saved(output_path);
+        if (!have_frames) {
+            eprintf("Error: No video or audio frames were written.\n");
+            if (saved_filepath) {
+                unlink(saved_filepath);
+                saved_filepath = NULL;
+            }
+            scran_portal_notify_error("no video or audio was written");
+        } else {
+            int ret = av_write_trailer(ffmpeg_ctx->av_format_ctx);
+            if (ret < 0) {
+                eprintf("Error: Failed to write video trailer: %s\n", av_err2str(ret));
+                incomplete = true;
+            }
+            if (saved_filepath) {
+                eprintf("Video saved: %s\n", saved_filepath);
+                clipboard_update(&g_state.seat.datacontrol, NULL, NULL, saved_filepath);
+                scran_portal_notify_file_saved(saved_filepath, incomplete);
+            }
+            if (incomplete) {
+                eprintf("WARNING: Video may be incomplete.\n");
+            }
         }
+
+        capture_video_destroy_audio_writer(output);
+        capture->audio_active = false;
+        capture_video_destroy_video_writer(output);
     }
-    capture_video_destroy_video_writer(output);
 
     selection_surface_set_border_color(output, output->capture.pre_capture_border_color);
     request_selection_surface_frame_callback(output);
@@ -526,6 +559,7 @@ capture_image_start(struct scran_output *output, bool exit_after_capture)
                && !scran_stdout_try_reserve(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE)
     ) {
         scran_stdout_print_busy_message();
+        scran_portal_notify_error("failed to start image capture");
         // Only allow upgrading pending *images* to exit_after_capture.
         // Our consumers check above should have ensured the assert holds.
         assert(!scran_stdout_check_reservation(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE));

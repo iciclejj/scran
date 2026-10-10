@@ -468,6 +468,8 @@ struct ffmpeg_context {
     AVFrame         *av_frame_captured_audio;
     AVPacket        *av_packet_audio;
     AVAudioFifo     *av_audio_fifo;
+
+    bool write_failed;
 };
 
 enum scran_fullscreen_ui_state {
