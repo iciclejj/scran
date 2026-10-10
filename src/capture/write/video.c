@@ -57,7 +57,7 @@ init_ffmpeg_audio(struct scran_output *st_output)
     // Float planar should be guaranteed supported for pipewire(?)
     // TODO: Retrieve the sample_fmt using avcodec_get_supported_config() if we
     // implement user-provided settings. FLTP/F32P is supported for AAC.
-    static const enum AVSampleFormat sample_fmt     = AV_SAMPLE_FMT_FLTP;
+    static const enum AVSampleFormat sample_fmt     = SCRAN_AUDIO_SAMPLE_FORMAT_FFMPEG;
     static const enum AVCodecID      codec_id       = AV_CODEC_ID_AAC;
     static const AVChannelLayout     channel_layout = AV_CHANNEL_LAYOUT_STEREO;
     static const int                 sample_rate    = SCRAN_PIPEWIRE_SAMPLE_RATE;
@@ -65,7 +65,7 @@ init_ffmpeg_audio(struct scran_output *st_output)
 
     assert(channel_layout.nb_channels == SCRAN_PIPEWIRE_N_CHANNELS);
 
-    if (!scran_pipewire_init(st_output, ffmpeg_sample_format_to_pipewire(sample_fmt))) {
+    if (!scran_pipewire_attach(st_output, ffmpeg_sample_format_to_pipewire(sample_fmt))) {
         return false;
     }
 
@@ -134,7 +134,7 @@ init_ffmpeg_audio(struct scran_output *st_output)
     return true;
 
 fail:
-    scran_pipewire_reset();
+    scran_pipewire_detach(st_output);
     destroy_ffmpeg_audio(st_output);
     return false;
 }
@@ -379,7 +379,7 @@ fail:
         }
     }
     if (capture->audio_active) {
-        scran_pipewire_reset();
+        scran_pipewire_detach(st_output);
         destroy_ffmpeg_audio(st_output);
         capture->audio_active = false;
     }
