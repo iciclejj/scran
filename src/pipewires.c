@@ -332,16 +332,17 @@ scran_pipewire_start(enum spa_audio_format format)
                 }
             )
         };
-        if (0 > pw_stream_connect(
-                    m_state.stream,
-                    SPA_DIRECTION_INPUT,
-                    PW_ID_ANY,
-                    PW_STREAM_FLAG_AUTOCONNECT
-                    | PW_STREAM_FLAG_MAP_BUFFERS,
-                    params,
-                    sizeof(params) / sizeof(params[0]))
-        ) {
-            eprintf("Error: Failed to connect pipewire stream (%d: %s).\n", errno, strerror(errno));
+        int err = pw_stream_connect(
+            m_state.stream,
+            SPA_DIRECTION_INPUT,
+            PW_ID_ANY,
+            PW_STREAM_FLAG_AUTOCONNECT
+            | PW_STREAM_FLAG_MAP_BUFFERS,
+            params,
+            sizeof(params) / sizeof(params[0])
+        );
+        if (err < 0) {
+            eprintf("Error: Failed to connect pipewire stream (%d: %s).\n", err, strerror(-err));
             goto fail;
         }
         DEBUG("Pipewire stream connected.\n");
