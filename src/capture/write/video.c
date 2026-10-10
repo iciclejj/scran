@@ -565,7 +565,7 @@ capture_video_write_video_frame(
             )
         ) {
             eprintf("Error: scranrot failed to convert framebuffer to yuv\n");
-            return false;
+            goto err;
         }
         frame->pts = view.frame_ctx->presentation_time_nsec - output->capture.video_presentation_time_nsec_start;
     }
@@ -581,11 +581,11 @@ capture_video_write_video_frame(
             break;
         } else if (_ret_enc < 0) {
             eprintf("Error while encoding frame\n");
-            return false;
+            goto err;
         }
 
         if (!capture_video_write_video_packet(output, ffmpeg->av_packet)) {
-            return false;
+            goto err;
         }
 
         // INFO: packet gets unreferenced at start of loop by avcodec_receive_packet
@@ -593,4 +593,8 @@ capture_video_write_video_frame(
 
     av_packet_unref(ffmpeg->av_packet);
     return true;
+
+err:
+    ffmpeg->write_failed = true;
+    return false;
 }
