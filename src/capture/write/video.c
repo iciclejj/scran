@@ -172,7 +172,7 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     const char *output_filepath = NULL;
     int ret;
 
-    ffmpeg_ctx->write_failed = false;
+    ffmpeg_ctx->failure_mask = SCRAN_VIDEO_FAILURE_NONE;
 
     // AVFrame (converted, ready to be fed to encoder)
     ffmpeg_ctx->av_frame_to_encode                  = av_frame_alloc();
@@ -393,7 +393,7 @@ write_packet(struct ffmpeg_context *ffmpeg_ctx, AVPacket *pkt, const char *strea
     const int ret = av_interleaved_write_frame(ffmpeg_ctx->av_format_ctx, pkt);
     if (ret < 0) {
         eprintf("Error: Failed to write %s packet: %s\n", stream_name, av_err2str(ret));
-        ffmpeg_ctx->write_failed = true;
+        ffmpeg_ctx->failure_mask |= SCRAN_VIDEO_FAILURE_MUX;
         return false;
     }
     return true;
@@ -565,7 +565,7 @@ capture_video_write_video_frame(
             )
         ) {
             eprintf("Error: scranrot failed to convert framebuffer to yuv\n");
-            goto err;
+            goto err_video_stream;
         }
         frame->pts = view.frame_ctx->presentation_time_nsec - output->capture.video_presentation_time_nsec_start;
     }
@@ -581,7 +581,7 @@ capture_video_write_video_frame(
             break;
         } else if (_ret_enc < 0) {
             eprintf("Error while encoding frame\n");
-            goto err;
+            goto err_video_stream;
         }
 
         if (!capture_video_write_video_packet(output, ffmpeg->av_packet)) {
@@ -594,7 +594,9 @@ capture_video_write_video_frame(
     av_packet_unref(ffmpeg->av_packet);
     return true;
 
+err_video_stream:
+    ffmpeg->failure_mask |= SCRAN_VIDEO_FAILURE_VIDEO_STREAM;
 err:
-    ffmpeg->write_failed = true;
+    // write_packet() records MUX failure on its own.
     return false;
 }

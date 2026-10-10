@@ -456,6 +456,13 @@ struct scran_output_selectionContext {
     int pointer_before_changes_y_px;
 };
 
+enum scran_video_failure {
+    SCRAN_VIDEO_FAILURE_NONE         = 0,
+    SCRAN_VIDEO_FAILURE_VIDEO_STREAM = 1 << 0,
+    SCRAN_VIDEO_FAILURE_AUDIO_STREAM = 1 << 1,
+    SCRAN_VIDEO_FAILURE_MUX          = 1 << 2, // file writes, e.g. av_interleaved_write_frame()
+} SCRAN_PACKED;
+
 struct ffmpeg_context {
     // Video
     AVFormatContext *av_format_ctx;
@@ -469,7 +476,7 @@ struct ffmpeg_context {
     AVPacket        *av_packet_audio;
     AVAudioFifo     *av_audio_fifo;
 
-    bool write_failed;
+    enum scran_video_failure failure_mask;
 };
 
 enum scran_fullscreen_ui_state {

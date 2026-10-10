@@ -389,7 +389,7 @@ capture_video_finish(struct scran_output *output)
 
     // TODO: Refactor most of this into capture_video_finish_writers or similar.
     {
-        bool incomplete = ffmpeg_ctx->write_failed;
+        bool incomplete = ffmpeg_ctx->failure_mask != SCRAN_VIDEO_FAILURE_NONE;
 
         if (capture->audio_active) {
             scran_pipewire_detach(output);

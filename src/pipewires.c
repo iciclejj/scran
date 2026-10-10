@@ -92,6 +92,10 @@ on_process(void *data)
         struct scran_output_capture *capture    = &output->capture;
         struct ffmpeg_context       *ffmpeg_ctx = &capture->ffmpeg_ctx;
 
+        if (ffmpeg_ctx->failure_mask & (SCRAN_VIDEO_FAILURE_AUDIO_STREAM | SCRAN_VIDEO_FAILURE_MUX)) {
+            continue;
+        }
+
         int64_t        pts_video_start = capture->video_presentation_time_nsec_start;
         int64_t        pts             = pts_incoming;
         int64_t        n_samples       = spa_buf_n_samples;
@@ -145,7 +149,7 @@ on_process(void *data)
             int ret_enc = avcodec_send_frame(ffmpeg_ctx->av_codec_ctx_audio, ffmpeg_ctx->av_frame_captured_audio);
             if (ret_enc < 0) {
                 eprintf("Error while sending audio frame\n");
-                goto output_err;
+                goto output_err_audio_stream;
             }
 
             while (ret_enc >= 0) {
@@ -154,7 +158,7 @@ on_process(void *data)
                     break;
                 } else if (ret_enc < 0) {
                     eprintf("Error while encoding audio frame\n");
-                    goto output_err;
+                    goto output_err_audio_stream;
                 }
                 if (!capture_video_write_audio_packet(output, ffmpeg_ctx->av_packet_audio)) {
                     goto output_err;
@@ -166,11 +170,12 @@ on_process(void *data)
 
         goto output_done;
 
-output_err:
+output_err_audio_stream:
         // TODO: Only stop recording audio.
-        ffmpeg_ctx->write_failed = true;
+        ffmpeg_ctx->failure_mask |= SCRAN_VIDEO_FAILURE_AUDIO_STREAM;
+output_err:
+        // write_packet() records MUX failure on its own.
         capture_video_request_stop(output);
-
 output_done:
         // functions called above make their own reference if necessary
         av_packet_unref(ffmpeg_ctx->av_packet_audio);
