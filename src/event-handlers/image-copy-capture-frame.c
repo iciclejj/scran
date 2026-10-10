@@ -164,6 +164,7 @@ handle_image_copy_capture_frame_failed(
     }
     if (frame_ctx->consumers & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO) {
         // TODO: Retry a few times?
+        view.output->capture.ffmpeg_ctx.write_failed = true;
         capture_video_finish(view.output);
     }
 
