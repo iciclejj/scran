@@ -142,27 +142,31 @@ on_process(void *data)
             int ret_enc = avcodec_send_frame(ffmpeg_ctx->av_codec_ctx_audio, ffmpeg_ctx->av_frame_captured_audio);
             if (ret_enc < 0) {
                 eprintf("Error while sending audio frame\n");
-                goto output_done; // TODO: goto output_err?
+                goto output_err;
             }
 
             while (ret_enc >= 0) {
                 ret_enc = avcodec_receive_packet(ffmpeg_ctx->av_codec_ctx_audio, ffmpeg_ctx->av_packet_audio);
-
                 if (ret_enc == AVERROR_EOF || ret_enc == AVERROR(EAGAIN)) {
                     break;
                 } else if (ret_enc < 0) {
                     eprintf("Error while encoding audio frame\n");
-                    break; // TODO: should we handle this differently?
+                    goto output_err;
                 }
-
                 if (!capture_video_write_audio_packet(output, ffmpeg_ctx->av_packet_audio)) {
-                    capture_video_request_stop(output);
-                    goto output_done;
+                    goto output_err;
                 }
             }
 
             pts_curr += av_rescale(frame_size, NSEC_PER_SEC, SCRAN_PIPEWIRE_SAMPLE_RATE);
         }
+
+        goto output_done;
+
+output_err:
+        // TODO: Only stop recording audio.
+        ffmpeg_ctx->write_failed = true;
+        capture_video_request_stop(output);
 
 output_done:
         // functions called above make their own reference if necessary
