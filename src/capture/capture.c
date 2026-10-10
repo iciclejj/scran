@@ -292,14 +292,13 @@ capture_video_start(struct scran_output *output)
     if (g_state.options.output_to_stdout) {
         if (!scran_stdout_try_reserve(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO)) {
             scran_stdout_print_busy_message();
-            goto capture_video_start_fail_1;
+            goto fail;
         }
     }
 
     if (!capture_video_init_writers(output, dimensions)) {
         eprintf("Error: Failed to initialize ffmpeg libraries.\n");
-        // TODO: goto fail if this becomes more complicated
-        goto capture_video_start_fail_2;
+        goto fail;
     }
 
     // TODO: Cache surface border color and add it to main.c::update_ui()?
@@ -318,9 +317,9 @@ capture_video_start(struct scran_output *output)
 
     return true;
 
-capture_video_start_fail_2:
+fail:
+    scran_portal_notify_error("failed to start video capture");
     scran_stdout_release(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO);
-capture_video_start_fail_1:
     selection_unfreeze_size(output);
     return false;
 }
@@ -560,6 +559,7 @@ capture_image_start(struct scran_output *output, bool exit_after_capture)
                && !scran_stdout_try_reserve(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE)
     ) {
         scran_stdout_print_busy_message();
+        scran_portal_notify_error("failed to start image capture");
         // Only allow upgrading pending *images* to exit_after_capture.
         // Our consumers check above should have ensured the assert holds.
         assert(!scran_stdout_check_reservation(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE));
