@@ -313,11 +313,6 @@ capture_video_start(struct scran_output *output)
     // frame::ready, similar to the wl_surface callback event loop
     capture_request_frame_forced(view, SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO);
 
-
-    if (output->capture.audio_active) {
-        scran_pipewire_connect();
-    }
-
     output->capture.video_stage = SCRAN_VIDEO_STAGE_CAPTURING;
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
 
@@ -398,7 +393,7 @@ capture_video_finish(struct scran_output *output)
         bool incomplete = ffmpeg_ctx->write_failed;
 
         if (capture->audio_active) {
-            scran_pipewire_reset();
+            scran_pipewire_detach(output);
             incomplete |= !capture_video_drain_codec(
                 output,
                 ffmpeg_ctx->av_codec_ctx_audio,
