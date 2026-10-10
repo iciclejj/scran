@@ -128,7 +128,11 @@ on_process(void *data)
 
         // NOTE: n_samples_leftover must be adjusted if moved to after av_audio_fifo_write()
         int n_samples_leftover = av_audio_fifo_size(ffmpeg_ctx->av_audio_fifo);
-        av_audio_fifo_write(ffmpeg_ctx->av_audio_fifo, (void **)planes_copy.samples, n_samples);
+        int ret = av_audio_fifo_write(ffmpeg_ctx->av_audio_fifo, (void **)planes_copy.samples, n_samples);
+        if (ret < 0) {
+            eprintf("Error: av_audio_fifo_write: %s\n", av_err2str(ret));
+            goto output_err_audio_stream;
+        }
 
         int64_t pts_fifo_start =
             pts - pts_video_start - av_rescale(n_samples_leftover, NSEC_PER_SEC, SCRAN_PIPEWIRE_SAMPLE_RATE);
@@ -138,17 +142,22 @@ on_process(void *data)
 
         int64_t pts_curr = pts_fifo_start;
         while (av_audio_fifo_size(ffmpeg_ctx->av_audio_fifo) >= frame_size) {
-            av_audio_fifo_read(
+            ret = av_audio_fifo_read(
                 ffmpeg_ctx->av_audio_fifo,
                 (void **)ffmpeg_ctx->av_frame_captured_audio->data,
                 frame_size
             );
+            if (ret < 0) {
+                eprintf("Error: av_audio_fifo_read: %s\n", av_err2str(ret));
+                goto output_err_audio_stream;
+            }
+            assert(ret == frame_size);
 
             ffmpeg_ctx->av_frame_captured_audio->pts = pts_curr;
 
             int ret_enc = avcodec_send_frame(ffmpeg_ctx->av_codec_ctx_audio, ffmpeg_ctx->av_frame_captured_audio);
             if (ret_enc < 0) {
-                eprintf("Error while sending audio frame\n");
+                eprintf("Error: avcodec_send_frame: %s\n", av_err2str(ret_enc));
                 goto output_err_audio_stream;
             }
 
@@ -157,7 +166,7 @@ on_process(void *data)
                 if (ret_enc == AVERROR_EOF || ret_enc == AVERROR(EAGAIN)) {
                     break;
                 } else if (ret_enc < 0) {
-                    eprintf("Error while encoding audio frame\n");
+                    eprintf("Error: avcodec_receive_packet: %s\n", av_err2str(ret_enc));
                     goto output_err_audio_stream;
                 }
                 if (!capture_video_write_audio_packet(output, ffmpeg_ctx->av_packet_audio)) {
@@ -301,13 +310,13 @@ scran_pipewire_start(enum spa_audio_format format)
 
     m_state.ctx = pw_context_new(m_state.loop, NULL, 0);
     if (!m_state.ctx) {
-        eprintf("WARNING: Failed to create PipeWire context\n");
+        eprintf("WARNING: Failed to create PipeWire context: %s\n", strerror(errno));
         goto fail;
     }
 
     m_state.core = pw_context_connect(m_state.ctx , NULL, 0);
     if (!m_state.core) {
-        eprintf("WARNING: Failed to connect to PipeWire daemon\n");
+        eprintf("WARNING: Failed to connect to PipeWire daemon: %s\n", strerror(errno));
         goto fail;
     }
 
@@ -319,6 +328,10 @@ scran_pipewire_start(enum spa_audio_format format)
         PW_KEY_STREAM_CAPTURE_SINK, "true"   ,
         NULL
     );
+    if (!props) {
+        eprintf("WARNING: Failed to allocate PipeWire stream properties\n");
+        goto fail;
+    }
     m_state.stream = pw_stream_new(m_state.core, "scran-audio-capture", props);
     if (!m_state.stream) {
         eprintf("WARNING: Failed to create PipeWire stream\n");
@@ -399,8 +412,17 @@ scran_pipewire_update(int fd_ready)
 
     assert(m_state.loop);
 
-    if (pw_loop_iterate(m_state.loop, 0) < 0) {
-        eprintf("Error: Failed to iterate pipewire loop\n");
+    int err = pw_loop_iterate(m_state.loop, 0);
+    if (err < 0) {
+        eprintf("Error: Failed to iterate pipewire loop: %s\n", strerror(-err));
+        FOR_EACH_OUTPUT(i, output) {
+            if ((get_output_mask(output) & m_state.active_outputs_mask)
+                && capture_video_is_live(output)
+            ) {
+                output->capture.ffmpeg_ctx.failure_mask |= SCRAN_VIDEO_FAILURE_AUDIO_STREAM;
+                capture_video_request_stop(output);
+            }
+        }
         return false;
     }
 

@@ -170,6 +170,8 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
 
     assert(!capture->audio_active); // Determines whether to clean up audio
     const char *output_filepath = NULL;
+    AVDictionary *codec_opts = NULL;
+    AVDictionary *format_opts = NULL;
     int ret;
 
     ffmpeg_ctx->failure_mask = SCRAN_VIDEO_FAILURE_NONE;
@@ -265,9 +267,16 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
     ffmpeg_ctx->av_codec_ctx->max_b_frames    = 2;
     ffmpeg_ctx->av_codec_ctx->gop_size        = 120;
-    AVDictionary *codec_opts = NULL;
-    av_dict_set(&codec_opts, "crf"   , "20"       , 0);
-    av_dict_set(&codec_opts, "preset", "superfast", 0);
+    ret = av_dict_set(&codec_opts, "crf", "20", 0);
+    if (ret < 0) {
+        eprintf("Error: Failed to set video encoder crf: %s\n", av_err2str(ret));
+        goto fail;
+    }
+    ret = av_dict_set(&codec_opts, "preset", "superfast", 0);
+    if (ret < 0) {
+        eprintf("Error: Failed to set video encoder preset: %s\n", av_err2str(ret));
+        goto fail;
+    }
     ret = avcodec_open2(ffmpeg_ctx->av_codec_ctx, codec, &codec_opts);
     av_dict_free(&codec_opts);
     if (ret < 0) {
@@ -341,14 +350,17 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         eprintf("Failed to create video file '%s': %s\n", output_filepath, av_err2str(ret));
         goto fail;
     }
-    AVDictionary *format_opts = NULL;
 #if !defined LIBAVFORMAT_VERSION_INT || (LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(61,4,100))
     // Best we can do for seeking/playback-duration compatibility without remuxing or custom
     // "hybrid mp4" implementation, if hybrid_fragmented is unavailable.
-    av_dict_set(&format_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
+    ret = av_dict_set(&format_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
 #else
-    av_dict_set(&format_opts, "movflags", "hybrid_fragmented", 0);
-
+    ret = av_dict_set(&format_opts, "movflags", "hybrid_fragmented", 0);
+#endif /* LIBAVFORMAT_VERSION_INT */
+    if (ret < 0) {
+        eprintf("Error: Failed to set video muxer movflags: %s\n", av_err2str(ret));
+        goto fail;
+    }
     // Earlier versions were not implemented correctly for hybrid_fragmented
     // (ffmpeg commit 920071355dd82a74ab9bfd879d42401702b83a5e)
 #if LIBAVFORMAT_VERSION_MAJOR >= 62
@@ -357,10 +369,13 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     // "editlist" in the moov, which specifies the timestamp at which the actual
     // playback is supposed to start. For example Adobe Premiere refuses to open
     // the file otherwise.
-    av_dict_set(&format_opts, "use_editlist", "1", 0);
+    ret = av_dict_set(&format_opts, "use_editlist", "1", 0);
+    if (ret < 0) {
+        eprintf("Error: Failed to set video muxer use_editlist: %s\n", av_err2str(ret));
+        goto fail;
+    }
 #endif
 
-#endif /* LIBAVFORMAT_VERSION_INT */
     ret = avformat_write_header(ffmpeg_ctx->av_format_ctx, &format_opts);
     av_dict_free(&format_opts);
     if (ret < 0) {
@@ -371,9 +386,14 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     return true;
 
 fail:
+    av_dict_free(&codec_opts);
+    av_dict_free(&format_opts);
     if (ffmpeg_ctx->av_format_ctx && ffmpeg_ctx->av_format_ctx->pb) {
         // Clean up avio_open()
-        avio_closep(&ffmpeg_ctx->av_format_ctx->pb);
+        ret = avio_closep(&ffmpeg_ctx->av_format_ctx->pb);
+        if (ret < 0) {
+            eprintf("Error: Failed to close video output: %s\n", av_err2str(ret));
+        }
         if (!g_state.options.output_to_stdout) {
             unlink(output_filepath);
         }
@@ -421,7 +441,7 @@ capture_video_drain_codec(
         return true;
     }
     if (ret < 0) {
-        eprintf("Error: Failed to start draining %s encoder (%d).\n", stream_name, ret);
+        eprintf("Error: Failed to start draining %s encoder: %s\n", stream_name, av_err2str(ret));
         return false;
     }
 
@@ -431,7 +451,7 @@ capture_video_drain_codec(
             return true;
         }
         if (ret < 0) {
-            eprintf("Error: Failed while draining %s encoder (%d).\n", stream_name, ret);
+            eprintf("Error: Failed while draining %s encoder: %s\n", stream_name, av_err2str(ret));
             return false;
         }
 
@@ -571,16 +591,17 @@ capture_video_write_video_frame(
     }
 
     // Encode
-    int _ret_enc = avcodec_send_frame(ffmpeg->av_codec_ctx, ffmpeg->av_frame_to_encode);
-    assert(_ret_enc != AVERROR(EINVAL));
-    while (_ret_enc >= 0) {
-        _ret_enc = avcodec_receive_packet(ffmpeg->av_codec_ctx, ffmpeg->av_packet);
-        assert(_ret_enc != AVERROR(EINVAL));
-
-        if (_ret_enc == AVERROR_EOF || _ret_enc == AVERROR(EAGAIN)) {
+    int err = avcodec_send_frame(ffmpeg->av_codec_ctx, ffmpeg->av_frame_to_encode);
+    if (err < 0) {
+        eprintf("Error: avcodec_send_frame: %s\n", av_err2str(err));
+        goto err_video_stream;
+    }
+    while (err >= 0) {
+        err = avcodec_receive_packet(ffmpeg->av_codec_ctx, ffmpeg->av_packet);
+        if (err == AVERROR_EOF || err == AVERROR(EAGAIN)) {
             break;
-        } else if (_ret_enc < 0) {
-            eprintf("Error while encoding frame\n");
+        } else if (err < 0) {
+            eprintf("Error: avcodec_receive_packet: %s\n", av_err2str(err));
             goto err_video_stream;
         }
 

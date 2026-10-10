@@ -74,6 +74,14 @@ capture_image_write_image(
 
     // Encode
     BLResult res;
+    // TODO: This should be initialized in init_premem, so we don't re-allocate
+    // the array backing every time. Must in that case either be a double-
+    // buffer, OR assert that there will never be a race condition with
+    // offer::send.
+    //     Probably simply doing everything within one run of this function
+    //     should to be enough, assuming no multi-threading?
+    BLArrayCore bl_array_img_encoded;
+    bl_array_init(&bl_array_img_encoded, BL_OBJECT_TYPE_ARRAY_UINT8);
 
     // NOTE: The data passed is not freed unless freed by passed destroy_func,
     // if it is not NULL (aka it is not freed here, at time of writing).
@@ -90,7 +98,10 @@ capture_image_write_image(
         NULL,
         NULL
     );
-    DEBUG("image.c: bl_image_create_from_data: %d\n", res);
+    if (res != BL_SUCCESS) {
+        eprintf("Error: bl_image_create_from_data: %u.\n", res);
+        goto fail;
+    }
 
     // TODO: This should only be called once, outside of the capture event
     // pipeline, unless between-capture format changing is implemented.
@@ -100,19 +111,20 @@ capture_image_write_image(
         SIZE_MAX,
         NULL
     );
-    // TODO: This should be initialized in init_premem, so we don't re-allocate
-    // the array backing every time. Must in that case either be a double-
-    // buffer, OR assert that there will never be a race condition with
-    // offer::send.
-    //     Probably simply doing everything within one run of this function
-    //     should to be enough, assuming no multi-threading?
-    BLArrayCore bl_array_img_encoded;
-    bl_array_init(&bl_array_img_encoded, BL_OBJECT_TYPE_ARRAY_UINT8);
+    if (res != BL_SUCCESS) {
+        eprintf("Error: bl_image_codec_find_by_name (%s): %u).\n",
+                IMAGE_CAPTURE_OUTPUT_BLIMAGECODEC_NAME_DEFAULT, res);
+        goto fail;
+    }
     res = bl_image_write_to_data(
         &output->capture.bl_img_captured,
         &bl_array_img_encoded,
         &output->capture.bl_imgcodec
     );
+    if (res != BL_SUCCESS) {
+        eprintf("Error: bl_image_write_to_data: %u.\n", res);
+        goto fail;
+    }
 
     // TODO: Are the internal functions reasonably stable and/or easy to use
     //       directly?
@@ -153,7 +165,8 @@ capture_image_write_image(
             } else {
                 // TODO: Check path and unlink?
                 scran_portal_notify_error("failed to save image");
-                eprintf("Error: Failed to save image (attempted: %s).\n", output_filepath);
+                eprintf("Error: bl_file_system_write_file (%s): %u. Wrote %zu of %zu bytes.\n",
+                        output_filepath, res, bytes_written, bytes_to_write);
             }
         }
     }
@@ -169,5 +182,10 @@ capture_image_write_image(
         eprintf("Error updating clipboard.\n");
     }
 
+    bl_array_destroy(&bl_array_img_encoded);
+    return;
+
+fail:
+    scran_portal_notify_error("failed to save image");
     bl_array_destroy(&bl_array_img_encoded);
 }
