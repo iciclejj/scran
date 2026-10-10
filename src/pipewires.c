@@ -190,8 +190,8 @@ scran_pipewire_reset()
     m_state.started = false;
 
     if (m_state.stream) {
-        pw_stream_disconnect(m_state.stream);
         spa_hook_remove(&m_state.stream_listener);
+        pw_stream_disconnect(m_state.stream);
         pw_stream_destroy(m_state.stream);
         m_state.stream = NULL;
     }
