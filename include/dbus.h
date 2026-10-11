@@ -18,6 +18,7 @@ bool scran_dbus_init(int epoll_fd, int *timeout_ms);
   void scran_dbus_destroy(int epoll_fd);
 
 bool scran_tray_is_registered(void);
+void scran_tray_set_recording(bool recording);
 void scran_tray_destroy(void);
 
 

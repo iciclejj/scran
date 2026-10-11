@@ -60,6 +60,7 @@ scran_sources = files(
   'src/dbus/dbus.c',
   'src/dbus/tray.c',
   'src/dbus/portals/notification.c',
+  'src/scran-pixmap.c',
   'src/seat.c',
   'src/selection.c',
   'src/selection-surface.c',
