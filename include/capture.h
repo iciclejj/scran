@@ -21,11 +21,15 @@
 #define MILLIHZ_PER_HZ 1000
 #define BITS_PER_MEGABIT 1000000
 
+// TODO: Rename these
 #define IMAGE_CAPTURE_OUTPUT_BLFORMAT_DEFAULT BL_FORMAT_PRGB32
 #define IMAGE_CAPTURE_OUTPUT_BLIMAGECODEC_NAME_DEFAULT "PNG"
 #define IMAGE_CAPTURE_OUTPUT_FILE_EXTENSION_DEFAULT ".png"
 
-enum {
+#define SCRAN_AUDIO_SAMPLE_FORMAT_FFMPEG AV_SAMPLE_FMT_FLTP
+
+
+enum capture_av_format_stream_index {
     SCRAN_AV_FORMAT_STREAM_IDX_VIDEO,
     SCRAN_AV_FORMAT_STREAM_IDX_AUDIO,
 };
@@ -88,18 +92,19 @@ void capture_fullscreen_end(struct scran_output *st_output, enum scran_capture_f
 
 bool capture_request_frame(struct capture_view view, enum scran_capture_frame_consumer_mask consumer, const BLRectI *buffer_damage);
 
-typedef void capture_video_write_packet_fn(
+typedef bool capture_video_write_packet_fn(
     struct scran_output *,
     AVPacket *pkt
 );
 bool capture_video_init_writers(struct scran_output *st_output, const BLPointI dimensions);
  void capture_video_destroy_video_writer(struct scran_output *st_output);
  void capture_video_destroy_audio_writer(struct scran_output *st_output);
-bool capture_video_drain_writer(struct scran_output *st_output, AVCodecContext *codec_ctx, AVPacket *packet, capture_video_write_packet_fn write_packet_fn, const char *stream_name);
-void capture_video_write_video_packet(struct scran_output *output, AVPacket *pkt);
-void capture_video_write_audio_packet(struct scran_output *st_output, AVPacket *av_packet);
+
+bool capture_video_drain_codec(struct scran_output *st_output, AVCodecContext *codec_ctx, AVPacket *packet, capture_video_write_packet_fn write_packet_fn, const char *stream_name);
+bool capture_video_drain_write_queue(struct ffmpeg_context *ffmpeg_ctx);
+bool capture_video_write_video_packet(struct scran_output *output, AVPacket *pkt);
+bool capture_video_write_audio_packet(struct scran_output *st_output, AVPacket *av_packet);
 bool capture_video_write_video_frame(struct capture_view view, const struct capture_buffer_area_context *buffer_area_ctx);
-void capture_image_write_image(struct capture_view view, const struct capture_buffer_area_context *buffer_area_ctx);
 
 bool capture_video_start(struct scran_output *st_output);
 bool capture_video_start_fullscreen(struct scran_output *st_output);
@@ -111,6 +116,7 @@ void capture_video_finish(struct scran_output *st_output);
 bool capture_image_start(struct scran_output *st_output, bool exit_after_capture);
  void capture_image_finish(struct scran_output *output);
 bool capture_image_start_fullscreen(struct scran_output *st_output, bool exit_after_capture);
+void capture_image_write_image(struct capture_view view, const struct capture_buffer_area_context *buffer_area_ctx);
 
 static inline bool
 capture_fullscreen_consumers_allow_ui(enum scran_capture_frame_consumer_mask consumers)
