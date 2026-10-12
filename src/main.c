@@ -48,11 +48,6 @@
 //      - Probably worthwhile during init
 //
 
-// TODO: Dynamically find this name
-#define SOCKNAME "wayland-1"
-#define SOCKPATH "/run/user/1000/" SOCKNAME
-
-
 struct scran g_state = {
     .options = {
         .filename_format = SCRAN_OUTPUT_FILENAME_FORMATSTRING_DEFAULT,
@@ -71,7 +66,7 @@ static int m_epoll_fd = -1;
 static bool
 init_premem()
 {
-    g_state.globals.display = wl_display_connect(SOCKNAME);
+    g_state.globals.display = wl_display_connect(NULL);
 
     if (g_state.globals.display == NULL) {
         eprintf("Failed to connect to wayland socket.\n");
@@ -973,7 +968,7 @@ int main(int argc, char *argv[])
     close(m_epoll_fd);
 
     wl_display_disconnect(g_state.globals.display);
-    eprintf("Disconnected from wayland server (%s)\n", SOCKNAME);
+    eprintf("Disconnected from wayland server.\n");
 
     eprintf("Scran exited successfully.\n");
 
