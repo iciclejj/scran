@@ -652,6 +652,10 @@ struct scran {
 
     struct scran_options options;
 
+    // getpid() as a zero-padded decimal char array (not null-terminated).
+    // Filled at the start of main().
+    char pid_chars[7];
+
     struct scran_globals globals;
     struct scran_seat seat;
 
