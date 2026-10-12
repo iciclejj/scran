@@ -442,7 +442,7 @@ sni_reply_Dbus_RequestName(
         goto fail;
     }
 
-    DEBUG("RegisterStatusNotifierItem reply without error.\n");
+    DEBUG("RequestName reply without error.\n");
     return 0;
 fail:
     scran_tray_destroy();
