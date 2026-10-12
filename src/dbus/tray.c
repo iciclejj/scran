@@ -29,7 +29,8 @@ static struct scran_status_notifier_item    m_sni = {0};
 static struct scran_status_notifier_watcher m_snw = {0};
 
 
-#define STATUS_NOTIFIER_ITEM_NAME_BASE "org.kde.StatusNotifierItem-"
+#define STATUS_NOTIFIER_ITEM_NAME_BASE      "org.kde.StatusNotifierItem-"
+#define STATUS_NOTIFIER_ITEM_TOOL_TIP_TITLE "Scran"
 static char m_StatusNotifierItem_name[64] = STATUS_NOTIFIER_ITEM_NAME_BASE;
 
 
@@ -59,7 +60,7 @@ static struct sni_data {
 
     // For getters
     const struct sni_icon_pixmaps *IconPixmap;
-    const struct {
+    struct {
         const char *icon_name;
         const struct StatusNotifierItem_icon_pixmap *icon_pixmaps;
         size_t _icon_pixmaps_len;
@@ -85,7 +86,7 @@ static struct sni_data {
         .icon_name         = "",
         .icon_pixmaps      = NULL,
         ._icon_pixmaps_len = 0,
-        .title             = "Scran",
+        .title             = STATUS_NOTIFIER_ITEM_TOOL_TIP_TITLE,
         .description       = "Grab focus",
     },
 };
@@ -251,8 +252,7 @@ static const sd_bus_vtable m_StatusNotifierItem_vtable[] = {
     // TODO: SD_BUS_PROPERTY("Menu",                "o",            NULL, 0, SD_BUS_VTABLE_PROPERTY_CONST),
     SD_BUS_PROPERTY("IconName",   "s", NULL, offsetof(struct sni_data, IconName),   SD_BUS_VTABLE_PROPERTY_CONST),
     SD_BUS_PROPERTY("IconPixmap", STATUS_NOTIFIER_ITEM_ICON_PIXMAP_TYPE, sni_property_IconPixmap, offsetof(struct sni_data, IconPixmap),          SD_BUS_VTABLE_PROPERTY_EMITS_INVALIDATION),
-    // TODO: Make this update with "(recording)" when recording
-    SD_BUS_PROPERTY("ToolTip",    STATUS_NOTIFIER_ITEM_TOOL_TIP_TYPE,    sni_property_ToolTip,      0,                                              SD_BUS_VTABLE_PROPERTY_CONST),
+    SD_BUS_PROPERTY("ToolTip",    STATUS_NOTIFIER_ITEM_TOOL_TIP_TYPE,    sni_property_ToolTip,      0,                                              SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
 
     SD_BUS_METHOD("ContextMenu",       "ii", "", sni_method_ContextMenu,       SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("Activate",          "ii", "", sni_method_Activate,          SD_BUS_VTABLE_UNPRIVILEGED),
@@ -283,7 +283,11 @@ scran_tray_set_recording(bool recording)
     if (m_StatusNotifierItem_data.IconPixmap == icon_pixmaps) {
         return;
     }
-    m_StatusNotifierItem_data.IconPixmap = icon_pixmaps;
+    m_StatusNotifierItem_data.IconPixmap    = icon_pixmaps;
+    m_StatusNotifierItem_data.ToolTip.title =
+        recording
+        ? STATUS_NOTIFIER_ITEM_TOOL_TIP_TITLE " (recording)"
+        : STATUS_NOTIFIER_ITEM_TOOL_TIP_TITLE;
 
     if (m_sni.slot_vtable == NULL) {
         return;
@@ -292,10 +296,10 @@ scran_tray_set_recording(bool recording)
     int ret;
 
     ret = sd_bus_emit_properties_changed(
-        g_dbus.bus, "/StatusNotifierItem", "org.kde.StatusNotifierItem", "IconPixmap", NULL
+        g_dbus.bus, "/StatusNotifierItem", "org.kde.StatusNotifierItem", "IconPixmap", "ToolTip", NULL
     );
     if (ret < 0) {
-        log_sd_bus_ret_error(ret, "Failed to emit PropertiesChanged for StatusNotifierItem.IconPixmap");
+        log_sd_bus_ret_error(ret, "Failed to emit PropertiesChanged for StatusNotifierItem.{IconPixmap,ToolTip}");
     }
 
     ret = sd_bus_emit_signal(
@@ -303,6 +307,13 @@ scran_tray_set_recording(bool recording)
     );
     if (ret < 0) {
         log_sd_bus_ret_error(ret, "Failed to emit StatusNotifierItem.NewIcon");
+    }
+
+    ret = sd_bus_emit_signal(
+        g_dbus.bus, "/StatusNotifierItem", "org.kde.StatusNotifierItem", "NewToolTip", ""
+    );
+    if (ret < 0) {
+        log_sd_bus_ret_error(ret, "Failed to emit StatusNotifierItem.NewToolTip");
     }
 }
 
