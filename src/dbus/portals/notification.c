@@ -4,14 +4,31 @@
 
 #include "dbus.h"
 #include "state.h"
+#include "state-util.h"
 
 #include "../dbus_.h"
 #include "./notification_.h"
+#include "util/util.h"
 
+
+#define SCRAN_NOTIFICATION_ID_PREFIX "scran-"
 
 static struct {
     bool notification_actions_enabled;
+    unsigned int notification_count;
 } m_notification = {0};
+
+// Writes "scran-<pid>-"
+static inline void
+advance_id_prefix(
+    char *restrict id,
+    ssize_t *restrict i_id
+) {
+    memcpy(id + *i_id, SCRAN_NOTIFICATION_ID_PREFIX, sizeof(SCRAN_NOTIFICATION_ID_PREFIX) - 1);
+    *i_id += sizeof(SCRAN_NOTIFICATION_ID_PREFIX) - 1;
+    scran_advance_pid_chars(id, i_id);
+    id[(*i_id)++] = '-';
+}
 
 
 static int
@@ -32,7 +49,6 @@ reply_AddNotification(
 }
 
 struct scran_notification_data {
-    const char *id;
     const char *title;
     const char *body;
     const char *default_action;
@@ -52,6 +68,14 @@ scran_portal_send_notification(const struct scran_notification_data *data)
         return;
     }
 
+    char id[64];
+    {
+        ssize_t i = 0;
+        advance_id_prefix(id, &i);
+        advance_itoa_7(m_notification.notification_count++ % 10000000, id, &i);
+        id[i] = '\0';
+    }
+
     int ret;
     sd_bus_message *message = NULL;
 
@@ -64,7 +88,7 @@ scran_portal_send_notification(const struct scran_notification_data *data)
         goto finish;
     }
 
-    ret = sd_bus_message_append(message, "s", data->id);
+    ret = sd_bus_message_append(message, "s", id);
     if (ret < 0) {
         goto finish;
     }
@@ -121,10 +145,8 @@ scran_portal_notify_file_saved(
     const char *saved_file_path,
     bool incomplete
 ) {
-    // TODO: Assert saved_file_path length?
     scran_portal_send_notification(
         &(struct scran_notification_data){
-            .id = saved_file_path,
             .title =
                 incomplete
                 ? SCRAN_NOTIFICATION_PREFIX "saved file (may be incomplete)"
@@ -141,7 +163,6 @@ scran_portal_notify_error_(const char *title)
 {
     scran_portal_send_notification(
         &(struct scran_notification_data){
-            .id = "scran-error",
             .title = title,
             .body = "See terminal/stderr logs for details."
         }
@@ -225,6 +246,16 @@ signal_handler_ActionInvoked(
     ret = sd_bus_message_read(message, "ss", &id, &action);
     if (ret < 0) {
         goto finish;
+    }
+
+    {
+        char prefix[64];
+        ssize_t prefix_strlen = 0;
+        advance_id_prefix(prefix, &prefix_strlen);
+        if (strncmp(id, prefix, prefix_strlen)) {
+            DEBUG("Ignoring ActionInvoked for foreign notification ID.\n");
+            return 0;
+        }
     }
 
     if (!strcmp(action, "OpenFile")) {

@@ -5,6 +5,8 @@
 #include <wayland-util.h>
 #include <math.h>
 #include <stddef.h>
+#include <string.h>
+#include <sys/types.h>
 
 #include "print.h"
 #include "state.h"
@@ -21,6 +23,16 @@ double get_surface_scale_factor_normalized(struct scran_output_surface *st_surfa
 void do_scale_updates(struct scran_output *st_output);
 void scran_request_exit(void);
 
+
+static inline void
+scran_advance_pid_chars(
+    char *restrict ascii,
+    ssize_t *restrict i_ascii
+) {
+    assert(g_state.pid_chars[0] != '\0');
+    memcpy(ascii + *i_ascii, g_state.pid_chars, sizeof(g_state.pid_chars));
+    *i_ascii += sizeof(g_state.pid_chars);
+}
 
 static inline void
 scran_stdout_print_busy_message(void) {

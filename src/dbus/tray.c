@@ -1,10 +1,10 @@
 #include <assert.h>
 #include <stddef.h>
-#include <unistd.h>
 
 #include "dbus.h"
 #include "scran-pixmap.h"
 #include "selection.h"
+#include "state-util.h"
 #include "util/util.h"
 
 #include "./dbus_.h"
@@ -485,13 +485,10 @@ scran_tray_init()
     }
 
     {
-        int pid = getpid();
         ssize_t i = sizeof(STATUS_NOTIFIER_ITEM_NAME_BASE) - 1;
         assert(m_StatusNotifierItem_name[i-1] == '-');
-        advance_itoa_7(pid, m_StatusNotifierItem_name, &i);
-        m_StatusNotifierItem_name[i++] = '-';
-        m_StatusNotifierItem_name[i++] = '1';
-        m_StatusNotifierItem_name[i++] = '\0';
+        scran_advance_pid_chars(m_StatusNotifierItem_name, &i);
+        memcpy(m_StatusNotifierItem_name + i, "-1", sizeof("-1"));
     }
     m_sni.slot_RequestName_callback = sd_bus_slot_unref(m_sni.slot_RequestName_callback);
     ret = sd_bus_request_name_async(

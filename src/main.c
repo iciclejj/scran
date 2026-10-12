@@ -36,6 +36,7 @@
 #include "print.h"
 #include "options.h"
 #include "signal-handlers.h"
+#include "util/util.h"
 #include "util/blend2d.h"
 #include "dbus.h"
 #include "pipewires.h"
@@ -330,15 +331,18 @@ scran_arena_hand_out_pointers_to_recipients(struct scran_arena_context *arena) {
     }
 }
 
+#define SHM_TMP_FILENAME_PREFIX "/scran-"
+
 // Open shm file, get fd, unlink file, return fd.
 // The underlying file survives unlinking.
 static inline int
 shm_open_anonymous(void)
 {
-    static const char *shm_tmp_filename = "/icicle-wayland-client-jfkdsalfj";
-    // TODO: Generate random filenames in case file already exists?
-    int fd = shm_open(shm_tmp_filename, O_CREAT | O_RDWR | O_EXCL, 0600);
+    char shm_tmp_filename[sizeof(SHM_TMP_FILENAME_PREFIX) + sizeof(g_state.pid_chars)] = SHM_TMP_FILENAME_PREFIX;
+    ssize_t i = sizeof(SHM_TMP_FILENAME_PREFIX) - 1;
+    scran_advance_pid_chars(shm_tmp_filename, &i);
 
+    int fd = shm_open(shm_tmp_filename, O_CREAT | O_RDWR | O_EXCL, 0600);
     if (fd >= 0) {
         shm_unlink(shm_tmp_filename);
     }
@@ -904,6 +908,12 @@ run_main_loop(struct scran_signal_masks *signal_masks)
 // TODO: goto cleanup, rather than EXIT_FAILURE?
 int main(int argc, char *argv[])
 {
+    {
+        ssize_t i = 0;
+        advance_itoa_7(getpid(), g_state.pid_chars, &i);
+        assert(i == sizeof(g_state.pid_chars));
+    }
+
     if (!scran_handle_args(argc, argv)) {
         return EXIT_FAILURE;
     }
