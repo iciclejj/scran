@@ -314,6 +314,7 @@ capture_video_start(struct scran_output *output)
 
     output->capture.video_stage = SCRAN_VIDEO_STAGE_CAPTURING;
     atomic_fetch_add_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
+    scran_tray_set_recording(true);
 
     return true;
 
@@ -466,8 +467,14 @@ capture_video_finish(struct scran_output *output)
     }
 
     atomic_fetch_sub_explicit(&g_state.n_captures_in_progress, 1, memory_order_relaxed);
-
     output->capture.video_stage = SCRAN_VIDEO_STAGE_NONE;
+    {
+        bool any_video_live = false;
+        FOR_EACH_OUTPUT(i, other_output) {
+            any_video_live |= capture_video_is_live(other_output);
+        }
+        scran_tray_set_recording(any_video_live);
+    }
 
     DEBUG("FINISHED RECORDING.\n");
 }
