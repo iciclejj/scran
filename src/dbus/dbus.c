@@ -11,7 +11,7 @@
 
 #include "./dbus_.h"
 #include "./tray_.h"
-#include "./portals/notification_.h"
+#include "./notification_.h"
 
 struct scran_dbus g_dbus = { .fd = -1 };
 
@@ -87,7 +87,7 @@ scran_dbus_init(int epoll_fd, int *timeout_ms)
     assert(g_dbus.bus != NULL);
 
     if (!g_state.options.no_notifications) {
-        if (!scran_portal_notification_init()) {
+        if (!scran_notification_init()) {
             eprintf("Warning: Failed to install notification action handler\n");
         }
     }

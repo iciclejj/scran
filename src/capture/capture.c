@@ -319,7 +319,7 @@ capture_video_start(struct scran_output *output)
     return true;
 
 fail:
-    scran_portal_notify_error("failed to start video capture");
+    scran_notify_error("failed to start video capture");
     scran_stdout_release(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO);
     selection_unfreeze_size(output);
     return false;
@@ -430,7 +430,7 @@ capture_video_finish(struct scran_output *output)
                 unlink(saved_filepath);
                 saved_filepath = NULL;
             }
-            scran_portal_notify_error("no video or audio was written");
+            scran_notify_error("no video or audio was written");
         } else {
             int ret = av_write_trailer(ffmpeg_ctx->av_format_ctx);
             if (ret < 0) {
@@ -440,12 +440,12 @@ capture_video_finish(struct scran_output *output)
             if (saved_filepath) {
                 eprintf("Video saved: %s\n", saved_filepath);
                 clipboard_update(&g_state.seat.datacontrol, NULL, NULL, saved_filepath);
-                scran_portal_notify_file_saved(saved_filepath, incomplete);
+                scran_notify_file_saved(saved_filepath, incomplete);
             }
             if (incomplete) {
                 eprintf("WARNING: Video may be incomplete.\n");
                 if (!saved_filepath) {
-                    scran_portal_notify_error("video may be incomplete");
+                    scran_notify_error("video may be incomplete");
                 }
             }
         }
@@ -569,7 +569,7 @@ capture_image_start(struct scran_output *output, bool exit_after_capture)
                && !scran_stdout_try_reserve(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE)
     ) {
         scran_stdout_print_busy_message();
-        scran_portal_notify_error("failed to start image capture");
+        scran_notify_error("failed to start image capture");
         // Only allow upgrading pending *images* to exit_after_capture.
         // Our consumers check above should have ensured the assert holds.
         assert(!scran_stdout_check_reservation(&output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_IMAGE));
