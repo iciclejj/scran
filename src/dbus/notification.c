@@ -111,6 +111,8 @@ reply_Notify(
     return 0;
 }
 
+static void scran_close_notification(const char *server_name, uint32_t id);
+
 static int
 openfile_reply_Notify(
     sd_bus_message *message, // Should not be freed.
@@ -131,7 +133,9 @@ openfile_reply_Notify(
         return 0;
     }
 
-    if (!openfile_contexts_update_server_name(sd_bus_message_get_sender(message))) {
+    const char *server_name = sd_bus_message_get_sender(message);
+
+    if (!openfile_contexts_update_server_name(server_name)) {
         DEBUG("Notify reply with invalid sender.\n");
         return 0;
     }
@@ -140,6 +144,7 @@ openfile_reply_Notify(
     struct openfile_context *openfile_ctx = openfile_context_stored(sequence);
     if (!openfile_ctx) {
         DEBUG("Notify reply for an overwritten openfile notification.\n");
+        scran_close_notification(server_name, id);
         return 0;
     }
     openfile_ctx->notification_id = id;
@@ -153,6 +158,25 @@ struct scran_notification_data {
     const char *body;
     const char *openfile_path;
 };
+
+static void
+scran_close_notification(const char *server_name, uint32_t id)
+{
+    if (id == 0) {
+        return;
+    }
+
+    int ret = sd_bus_call_method_async(
+        g_dbus.bus, NULL,
+        server_name, "/org/freedesktop/Notifications",
+        "org.freedesktop.Notifications", "CloseNotification",
+        NULL, NULL,
+        "u", id
+    );
+    if (ret < 0) {
+        log_sd_bus_ret_error(ret, "Failed to call Notifications::CloseNotification");
+    }
+}
 
 static void
 scran_send_notification(const struct scran_notification_data *data)
@@ -212,6 +236,13 @@ scran_send_notification(const struct scran_notification_data *data)
         openfile_notification_count_t sequence     = m_notification.openfile_notification_count++;
         struct openfile_context      *openfile_ctx = openfile_context_for_sequence(sequence);
         size_t                        path_size    = strlen(data->openfile_path) + 1;
+
+        // We'll assume that ordering this before the Notify call is enough to
+        // ensure our old notification is removed before presenting the new one.
+        // If this turns out too fragile, we'll need to either Notify on a
+        // CloseNotification callback or at least keep a buffer slightly beyond
+        // our intended max active notifications.
+        scran_close_notification(m_notification.openfile_notification_server_name, openfile_ctx->notification_id);
 
         openfile_ctx->notification_id = 0;
         assert(path_size <= sizeof(openfile_ctx->file_path));
