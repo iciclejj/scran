@@ -77,7 +77,6 @@ struct scran_globals {
     struct zwlr_output_manager_v1 *wlr_output_manager;
     struct zcosmic_output_manager_v1 *cosmic_output_manager;
     struct wp_viewporter *viewporter;
-    struct hyprland_surface_manager_v1 *hypr_surface_manager;
 };
 
 enum scran_stdout_reservation_purpose {

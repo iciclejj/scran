@@ -1270,19 +1270,6 @@ draw_selection_and_commit(struct scran_output *output)
     buffer->scran_wl_buffer.busy = true;
     buffer->drew_fullscreen_ui = selection_surface_draws_fullscreen_capture(output);
 
-    // XXX HACK: Temporary (hopefully) workaround for regression introduced by
-    // trying to fix cosmic and hyprland sync by assigning on
-    // presentation_feedback::presented. Should be removed once the syncing
-    // logic is more robust.
-    if (   g_state.globals.cosmic_output_manager == NULL
-        && g_state.globals.hypr_surface_manager == NULL
-    ) {
-        // XXX TODO: Check whether we're actually sway more robustly, and assign
-        // it as part of our state. (So we don't need to assume the user is
-        // running either cosmic or sway.)
-        capture_update_selection(output, selection);
-    }
-
     draw_selection_and_damage_buffer(output, buffer, selection);
 
     wl_surface_attach(output->selection_surface.surface.wl_surface, buffer->scran_wl_buffer.wl_buffer, 0, 0);
@@ -1304,6 +1291,16 @@ draw_selection_and_commit(struct scran_output *output)
         buffer
     );
     wl_surface_commit(output->selection_surface.surface.wl_surface);
+
+    // Must be requested after wl_surface_commit().
+    if (scran_commit_sync() == SCRAN_COMMIT_SYNC_AT_SURFACE_COMMIT_DISPLAY_SYNC) {
+        wl_callback_add_listener(
+            wl_display_sync(g_state.globals.display),
+            &selection_surface_commit_sync_listener,
+            buffer
+        );
+    }
+
     output->selection_surface.committed_selection = selection;
 }
 

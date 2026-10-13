@@ -18,6 +18,39 @@
 #define SCRAN_INITIAL_SELECTION_NONE ((BLBoxI){ -1, -1, -1, -1 })
 
 
+// Represents scran's assumption of the event we must wait for to know that
+// every later frame::ready will contain our previously committed surface.
+//
+// Used mainly to ensure our capture border is in sync with the capture area
+// across compositors. ext-image-copy-capture-v1 does not have any way to
+// guarantee this, so this must currently be updated based on each individual
+// compositor's internals.
+//
+// TODO: Also use this for the fullscreen-UI show/hide confirmations
+enum scran_commit_sync {
+    // Synced at:
+    //   the wl_callback::done of a wl_display::sync sent after the
+    //   wl_surface::commit of the surface in question.
+    // Used by:
+    //   Sway, Hyprland*, niri
+    //   *Hyprland's render:async_commit and render:new_render_scheduling will
+    //    not necessarily work consistently.
+    SCRAN_COMMIT_SYNC_AT_SURFACE_COMMIT_DISPLAY_SYNC,
+    // Synced at:
+    //   wp_presentation_feedback::presented
+    // Used by:
+    //   COSMIC
+    SCRAN_COMMIT_SYNC_AT_SURFACE_PRESENTED,
+};
+
+static inline enum scran_commit_sync
+scran_commit_sync(void) {
+    return g_state.globals.cosmic_output_manager != NULL
+        ? SCRAN_COMMIT_SYNC_AT_SURFACE_PRESENTED
+        : SCRAN_COMMIT_SYNC_AT_SURFACE_COMMIT_DISPLAY_SYNC;
+}
+
+
 void selection_set_initialized(struct scran_output *output);
 
 void selection_surface_acquire_hide_then(struct scran_output *output, struct wp_presentation_feedback_listener *listener, enum scran_selection_surface_disable_reason reason);

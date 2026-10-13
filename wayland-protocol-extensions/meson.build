@@ -23,7 +23,6 @@ wl_protocol_xmls = [
   'wlr-protocols/unstable/wlr-layer-shell-unstable-v1.xml',
   'wlr-protocols/unstable/wlr-output-management-unstable-v1.xml',
   'cosmic-protocols/unstable/cosmic-output-management-unstable-v1.xml',
-  'hyprland-protocols/hyprland-surface-v1.xml',
 ]
 
 wl_protocols_sources = []

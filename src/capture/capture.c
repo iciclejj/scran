@@ -29,8 +29,8 @@ capture_update_selection(struct scran_output *output, BLBoxI selection_ctx_box_p
            blboxi_width_abs_unsafe(capture->selection_ctx_box_px)  != blboxi_width_abs_unsafe(selection_ctx_box_px)
         || blboxi_height_abs_unsafe(capture->selection_ctx_box_px) != blboxi_height_abs_unsafe(selection_ctx_box_px);
 
-    // Presentation feedback for an older selection-surface buffer can arrive
-    // after video capture has frozen the selection size.
+    // The callback of an older selection-surface commit can arrive after video
+    // capture has frozen the selection size. See scran_commit_sync().
     if (output->selection_ctx.size_is_frozen && size_changed) {
         return;
     }
@@ -279,9 +279,30 @@ capture_video_start(struct scran_output *output)
         return false;
     }
 
+    const bool fullscreen = output->capture.fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
+
+    // capture_update_selection() calls from within callbacks may not have
+    // seen the latest selection commit yet (see scran_commit_sync()).
+    //
+    // capture_update_selection() rejects updates with mismatched sizes once we
+    // freeze our selection size, so we must force an update now.
+    //   This happens when a not-yet-sent/handled commit changed the selection
+    //   size.
+    //
+    // At worst, this forced update can cause one frame of the capture area
+    // being ahead of our drawn selection, at the start of the video.
+    //
+    if (!fullscreen) {
+        const BLBoxI selection = selection_get_box_px(&output->selection_ctx);
+        const BLBoxI capture_area = output->capture.selection_ctx_box_px;
+
+        if (!blpointi_are_equal(blboxi_get_dimensions(selection), blboxi_get_dimensions(capture_area))) {
+            capture_update_selection(output, selection);
+        }
+    }
+
     selection_freeze_size(output);
 
-    const bool fullscreen = output->capture.fullscreen_consumers.active & SCRAN_CAPTURE_FRAME_CONSUMER_VIDEO;
     const BLPointI dimensions = fullscreen
         ? blboxi_get_dimensions(get_fullscreen_selection_box(output))
         : blboxi_get_dimensions(output->capture.selection_ctx_box_px);

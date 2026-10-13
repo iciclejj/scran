@@ -12,7 +12,6 @@
 #include "fractional-scale-v1.h"
 #include "wlr-output-management-unstable-v1.h"
 #include "cosmic-output-management-unstable-v1.h"
-#include "hyprland-surface-v1.h"
 #include "viewporter.h"
 
 #include "state.h"
@@ -97,8 +96,6 @@ registry_handle_global(
         globals->cosmic_output_manager = wl_registry_bind(registry, name, &zcosmic_output_manager_v1_interface, 1);
     } else if (INTERFACE_IS(wp_viewporter_interface)) {
         globals->viewporter = wl_registry_bind(registry, name, &wp_viewporter_interface, 1);
-    } else if (INTERFACE_IS(hyprland_surface_manager_v1_interface)) {
-        globals->hypr_surface_manager = wl_registry_bind(registry, name, &hyprland_surface_manager_v1_interface, 1);
     }
 
     #undef INTERFACE_IS
@@ -167,9 +164,6 @@ registry_listener__destroy(struct scran *state)
     }
     if (globals->cosmic_output_manager != NULL) {
         zcosmic_output_manager_v1_destroy(globals->cosmic_output_manager);
-    }
-    if (globals->hypr_surface_manager != NULL) {
-        hyprland_surface_manager_v1_destroy(globals->hypr_surface_manager);
     }
 
     FOR_EACH_OUTPUT(i, st_output) {
