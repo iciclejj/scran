@@ -149,7 +149,7 @@ capture_image_write_image(
         output_filepath = scran_prepare_image_output_path(options, default_extension);
 
         if (!output_filepath) {
-            scran_portal_notify_error("failed to save image");
+            scran_notify_error("failed to save image");
         } else {
             size_t bytes_written = 0;
             res = bl_file_system_write_file(
@@ -160,11 +160,11 @@ capture_image_write_image(
             );
             if (res == BL_SUCCESS && bytes_written == bytes_to_write) {
                 eprintf("Image saved: %s (%zuKiB)\n", output_filepath, bytes_written >> 10);
-                scran_portal_notify_file_saved(output_filepath, false);
+                scran_notify_file_saved(output_filepath, false);
                 saved_filepath = output_filepath;
             } else {
                 // TODO: Check path and unlink?
-                scran_portal_notify_error("failed to save image");
+                scran_notify_error("failed to save image");
                 eprintf("Error: bl_file_system_write_file (%s): %u. Wrote %zu of %zu bytes.\n",
                         output_filepath, res, bytes_written, bytes_to_write);
             }
@@ -186,6 +186,6 @@ capture_image_write_image(
     return;
 
 fail:
-    scran_portal_notify_error("failed to save image");
+    scran_notify_error("failed to save image");
     bl_array_destroy(&bl_array_img_encoded);
 }
