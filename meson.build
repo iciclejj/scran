@@ -15,7 +15,14 @@ cc = meson.get_compiler('c')
 add_project_arguments(
   [
     '-Wno-unused-parameter',
+
     '-Wmissing-prototypes',
+    '-Wnull-dereference',
+    '-Wformat=2',
+    '-Wundef',
+    '-Wvla',
+    '-Wwrite-strings',
+
     '-DSCRAN_VERSION_STRING="v@0@"'.format(meson.project_version()),
   ],
   language: 'c'
