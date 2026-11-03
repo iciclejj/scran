@@ -153,10 +153,8 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     struct scran_output_capture *capture    = &st_output->capture;
     struct ffmpeg_context       *ffmpeg_ctx = &capture->ffmpeg_ctx;
 
-    // TODO: Is output::mode framerate_mhz same as the capture framerate?
-    const AVRational av_framerate_captured = { st_output->mode.refresh_rate_mHz, MILLIHZ_PER_HZ };
-    // INFO: Using 1/NSEC_PER_SEC due to (wayland's) frame::presentation_time()
-    // giving time with nanosecond precision.
+    const AVRational av_framerate_nominal = { st_output->mode.refresh_rate_mHz, MILLIHZ_PER_HZ };
+    // Wayland's frame::presentation_time() has nanosecond precision.
     const AVRational av_time_base_captured = { 1, NSEC_PER_SEC };
 
     // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be
@@ -164,7 +162,7 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     const int width_px_to_encode  = dimensions.x & ~0b1;
     const int height_px_to_encode = dimensions.y & ~0b1;
     // NOTE: Some pixel formats (and some file formats), e.g. YUV420P, require
-    //       even-numbered (or some other multiplier) height and/or width.
+    // even-numbered (or some other multiplier) height and/or width.
     const enum AVPixelFormat av_pixel_format_to_encode = AV_PIX_FMT_YUV420P;
 
 
@@ -202,13 +200,9 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         "libopenh264",
         "mpeg4"
     };
-    static const size_t len_codec_fallbacks = sizeof(codec_fallbacks) / sizeof(codec_fallbacks[0]);
     const struct AVCodec *codec = NULL;
-    const char *codec_name = NULL;
-    for (size_t i = 0; i < len_codec_fallbacks; ++i) {
-        codec = avcodec_find_encoder_by_name(codec_fallbacks[i]);
-        if (codec) {
-            codec_name = codec_fallbacks[i];
+    for (size_t i = 0; i < ARRAY_LEN(codec_fallbacks); ++i) {
+        if ((codec = avcodec_find_encoder_by_name(codec_fallbacks[i]))) {
             break;
         }
     }
@@ -216,14 +210,12 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         eprintf("Error: No supported encoder found. Please ensure the linked"
                 " version of libavcodec was built with one of the supported"
                 " codecs:\n");
-        for (size_t i = 0; i < len_codec_fallbacks; ++i) {
+        for (size_t i = 0; i < ARRAY_LEN(codec_fallbacks); ++i) {
             eprintf("%s\n", codec_fallbacks[i]);
         }
         goto fail;
-    } else {
-        assert(codec_name);
-        eprintf("Using codec: %s\n", codec_name);
     }
+    eprintf("Using codec: %s\n", codec->name);
 
 
     // AVFormat
@@ -261,7 +253,8 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     ffmpeg_ctx->av_codec_ctx->colorspace      = ffmpeg_ctx->av_frame_to_encode->colorspace;
     ffmpeg_ctx->av_codec_ctx->color_primaries = ffmpeg_ctx->av_frame_to_encode->color_primaries;
     ffmpeg_ctx->av_codec_ctx->color_trc       = ffmpeg_ctx->av_frame_to_encode->color_trc;
-    ffmpeg_ctx->av_codec_ctx->framerate       = av_framerate_captured;
+    // Nominal maximum framerate. Effect is encoder-specific.
+    ffmpeg_ctx->av_codec_ctx->framerate       = av_framerate_nominal;
     ffmpeg_ctx->av_codec_ctx->time_base       = av_time_base_captured;
     // -- Values to be tweaked (may depend on encoder/format) --
     // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
@@ -280,7 +273,7 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     ret = avcodec_open2(ffmpeg_ctx->av_codec_ctx, codec, &codec_opts);
     av_dict_free(&codec_opts);
     if (ret < 0) {
-        eprintf("Error: Failed to open video encoder '%s': %s\n", codec_name, av_err2str(ret));
+        eprintf("Error: Failed to open video encoder '%s': %s\n", codec->name, av_err2str(ret));
         goto fail;
     }
 
