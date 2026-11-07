@@ -183,33 +183,6 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     ffmpeg_ctx->av_frame_to_encode->color_trc       = AVCOL_TRC_BT709;
 
 
-    // AVCodec
-    static const char *codec_fallbacks[] = {
-        "libx264",  // requires GPL ffmpeg build
-        // TODO(libopenh264):
-        // - Why does it have such bad performance (high cpu usage,
-        //   stutters) compared to libx264?
-        "libopenh264",
-        "mpeg4"
-    };
-    const struct AVCodec *codec = NULL;
-    for (size_t i = 0; i < ARRAY_LEN(codec_fallbacks); ++i) {
-        if ((codec = avcodec_find_encoder_by_name(codec_fallbacks[i]))) {
-            break;
-        }
-    }
-    if (!codec) {
-        eprintf("Error: No supported encoder found. Please ensure the linked"
-                " version of libavcodec was built with one of the supported"
-                " codecs:\n");
-        for (size_t i = 0; i < ARRAY_LEN(codec_fallbacks); ++i) {
-            eprintf("%s\n", codec_fallbacks[i]);
-        }
-        goto fail;
-    }
-    eprintf("Using codec: %s\n", codec->name);
-
-
     // AVFormat
     if (g_state.options.output_to_stdout) {
         assert(scran_stdout_check_reservation(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO));
@@ -254,50 +227,79 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
 
 
     // AVCodecContext (encoder)
-    ffmpeg_ctx->av_codec_ctx = avcodec_alloc_context3(codec);
-    if (!ffmpeg_ctx->av_codec_ctx) {
-        eprintf("Error: Failed to allocate video encoder context.\n");
-        goto fail;
-    }
-    if (ffmpeg_ctx->av_format_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
-        ffmpeg_ctx->av_codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-    }
-    // -- Values tied to encoder input/environment --
-    ffmpeg_ctx->av_codec_ctx->width           = ffmpeg_ctx->av_frame_to_encode->width;
-    ffmpeg_ctx->av_codec_ctx->height          = ffmpeg_ctx->av_frame_to_encode->height;
-    ffmpeg_ctx->av_codec_ctx->pix_fmt         = ffmpeg_ctx->av_frame_to_encode->format;
-    ffmpeg_ctx->av_codec_ctx->color_range     = ffmpeg_ctx->av_frame_to_encode->color_range;
-    ffmpeg_ctx->av_codec_ctx->colorspace      = ffmpeg_ctx->av_frame_to_encode->colorspace;
-    ffmpeg_ctx->av_codec_ctx->color_primaries = ffmpeg_ctx->av_frame_to_encode->color_primaries;
-    ffmpeg_ctx->av_codec_ctx->color_trc       = ffmpeg_ctx->av_frame_to_encode->color_trc;
-    // Nominal maximum framerate. Effect is encoder-specific.
-    ffmpeg_ctx->av_codec_ctx->framerate       = (AVRational){
-        // Wayland's wl_output::mode.refresh allows 0.
-        st_output->mode.refresh_rate_mHz > 0
-            ? st_output->mode.refresh_rate_mHz
-            : 60 * MILLIHZ_PER_HZ,
-        MILLIHZ_PER_HZ
+    static const char *codec_fallbacks[] = {
+        "libx264",  // requires GPL ffmpeg build
+        // TODO(libopenh264):
+        // - Why does it have such bad performance (high cpu usage,
+        //   stutters) compared to libx264?
+        "libopenh264",
+        "mpeg4"
     };
-    // Wayland's frame::presentation_time() has nanosecond precision.
-    ffmpeg_ctx->av_codec_ctx->time_base       = (AVRational){ 1, NSEC_PER_SEC };
-    // -- Values to be tweaked (may depend on encoder/format) --
-    // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
-    ffmpeg_ctx->av_codec_ctx->max_b_frames    = 2;
-    ffmpeg_ctx->av_codec_ctx->gop_size        = 120;
-    ret = av_dict_set(&codec_opts, "crf", "20", 0);
-    if (ret < 0) {
-        eprintf("Error: Failed to set video encoder crf: %s\n", av_err2str(ret));
-        goto fail;
+    for (size_t i = 0; i < ARRAY_LEN(codec_fallbacks); ++i) {
+        const struct AVCodec *codec = avcodec_find_encoder_by_name(codec_fallbacks[i]);
+        if (!codec) {
+            continue;
+        }
+
+        ffmpeg_ctx->av_codec_ctx = avcodec_alloc_context3(codec);
+        if (!ffmpeg_ctx->av_codec_ctx) {
+            eprintf("Error: Failed to allocate video encoder context.\n");
+            goto fail;
+        }
+        if (ffmpeg_ctx->av_format_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
+            ffmpeg_ctx->av_codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+        }
+        // -- Values tied to encoder input/environment --
+        ffmpeg_ctx->av_codec_ctx->width           = ffmpeg_ctx->av_frame_to_encode->width;
+        ffmpeg_ctx->av_codec_ctx->height          = ffmpeg_ctx->av_frame_to_encode->height;
+        ffmpeg_ctx->av_codec_ctx->pix_fmt         = ffmpeg_ctx->av_frame_to_encode->format;
+        ffmpeg_ctx->av_codec_ctx->color_range     = ffmpeg_ctx->av_frame_to_encode->color_range;
+        ffmpeg_ctx->av_codec_ctx->colorspace      = ffmpeg_ctx->av_frame_to_encode->colorspace;
+        ffmpeg_ctx->av_codec_ctx->color_primaries = ffmpeg_ctx->av_frame_to_encode->color_primaries;
+        ffmpeg_ctx->av_codec_ctx->color_trc       = ffmpeg_ctx->av_frame_to_encode->color_trc;
+        // Nominal maximum framerate. Effect is encoder-specific.
+        ffmpeg_ctx->av_codec_ctx->framerate       = (AVRational){
+            // Wayland's wl_output::mode.refresh allows 0.
+            st_output->mode.refresh_rate_mHz > 0
+                ? st_output->mode.refresh_rate_mHz
+                : 60 * MILLIHZ_PER_HZ,
+            MILLIHZ_PER_HZ
+        };
+        // Wayland's frame::presentation_time() has nanosecond precision.
+        ffmpeg_ctx->av_codec_ctx->time_base       = (AVRational){ 1, NSEC_PER_SEC };
+        // -- Values to be tweaked (may depend on encoder/format) --
+        // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
+        ffmpeg_ctx->av_codec_ctx->max_b_frames    = 2;
+        ffmpeg_ctx->av_codec_ctx->gop_size        = 120;
+        ret = av_dict_set(&codec_opts, "crf", "20", 0);
+        if (ret < 0) {
+            eprintf("Error: Failed to set video encoder crf: %s\n", av_err2str(ret));
+            goto fail;
+        }
+        ret = av_dict_set(&codec_opts, "preset", "superfast", 0);
+        if (ret < 0) {
+            eprintf("Error: Failed to set video encoder preset: %s\n", av_err2str(ret));
+            goto fail;
+        }
+        ret = avcodec_open2(ffmpeg_ctx->av_codec_ctx, codec, &codec_opts);
+        av_dict_free(&codec_opts);
+        if (ret < 0) {
+            eprintf("WARNING: Failed to open video encoder '%s': %s\n", codec->name, av_err2str(ret));
+            avcodec_free_context(&ffmpeg_ctx->av_codec_ctx);
+            continue;
+        }
+
+        eprintf("Using codec: %s\n", codec->name);
+        break;
     }
-    ret = av_dict_set(&codec_opts, "preset", "superfast", 0);
-    if (ret < 0) {
-        eprintf("Error: Failed to set video encoder preset: %s\n", av_err2str(ret));
-        goto fail;
-    }
-    ret = avcodec_open2(ffmpeg_ctx->av_codec_ctx, codec, &codec_opts);
-    av_dict_free(&codec_opts);
-    if (ret < 0) {
-        eprintf("Error: Failed to open video encoder '%s': %s\n", codec->name, av_err2str(ret));
+    if (!ffmpeg_ctx->av_codec_ctx) {
+        eprintf("Error: No usable encoder found. All encoders failed to open or"
+                " were missing from the linked version of libavcodec."
+                " Supported codecs:");
+        for (size_t i = 0; i < ARRAY_LEN(codec_fallbacks); ++i) {
+            eprintf(" %s", codec_fallbacks[i]);
+        }
+        eprintf(".\n");
         goto fail;
     }
 
