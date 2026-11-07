@@ -153,7 +153,12 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     struct scran_output_capture *capture    = &st_output->capture;
     struct ffmpeg_context       *ffmpeg_ctx = &capture->ffmpeg_ctx;
 
-    const AVRational av_framerate_nominal = { st_output->mode.refresh_rate_mHz, MILLIHZ_PER_HZ };
+    // Wayland's wl_output::mode.refresh allows 0.
+    const int refresh_rate_mHz =
+        st_output->mode.refresh_rate_mHz > 0
+        ? st_output->mode.refresh_rate_mHz
+        : 60 * MILLIHZ_PER_HZ;
+    const AVRational av_framerate_nominal = { refresh_rate_mHz, MILLIHZ_PER_HZ };
     // Wayland's frame::presentation_time() has nanosecond precision.
     const AVRational av_time_base_captured = { 1, NSEC_PER_SEC };
 
