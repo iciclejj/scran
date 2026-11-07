@@ -5,6 +5,8 @@
 #include "util/lib-interop.h"
 #include "util/util.h"
 
+#include <libavutil/opt.h>
+
 
 // XXX: Seems like the underlying FFOutputFormat structs aren't exposed in the
 // public API (e.g. ff_mp4_muxer etc.), so we must let libavformat run its
@@ -174,7 +176,6 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     assert(!capture->audio_active); // Determines whether to clean up audio
     const char *output_filepath = NULL;
     AVDictionary *codec_opts = NULL;
-    AVDictionary *format_opts = NULL;
     int ret;
 
     ffmpeg_ctx->failure_mask = SCRAN_VIDEO_FAILURE_NONE;
@@ -239,6 +240,31 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         eprintf("Error: Failed to allocate output format context: %s\n", av_err2str(ret));
         goto fail;
     }
+#if !defined LIBAVFORMAT_VERSION_INT || (LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(61,4,100))
+    // Best we can do for seeking/playback-duration compatibility without remuxing or custom
+    // "hybrid mp4" implementation, if hybrid_fragmented is unavailable.
+    ret = av_opt_set(ffmpeg_ctx->av_format_ctx->priv_data, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
+#else
+    ret = av_opt_set(ffmpeg_ctx->av_format_ctx->priv_data, "movflags", "hybrid_fragmented", 0);
+#endif /* LIBAVFORMAT_VERSION_INT */
+    if (ret < 0) {
+        eprintf("Error: Failed to set video muxer movflags: %s\n", av_err2str(ret));
+        goto fail;
+    }
+    // Earlier versions were not implemented correctly for hybrid_fragmented
+    // (ffmpeg commit 920071355dd82a74ab9bfd879d42401702b83a5e)
+#if LIBAVFORMAT_VERSION_MAJOR >= 62
+    // Our mp4 muxer may shift the PTS/DTS timelines forwards to ensure that the
+    // first DTS is non-negative. Some players/programs need an explicit
+    // "editlist" in the moov, which specifies the timestamp at which the actual
+    // playback is supposed to start. For example Adobe Premiere refuses to open
+    // the file otherwise.
+    ret = av_opt_set(ffmpeg_ctx->av_format_ctx->priv_data, "use_editlist", "1", 0);
+    if (ret < 0) {
+        eprintf("Error: Failed to set video muxer use_editlist: %s\n", av_err2str(ret));
+        goto fail;
+    }
+#endif
 
 
     // AVCodecContext (encoder)
@@ -348,34 +374,7 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         eprintf("Failed to create video file '%s': %s\n", output_filepath, av_err2str(ret));
         goto fail;
     }
-#if !defined LIBAVFORMAT_VERSION_INT || (LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(61,4,100))
-    // Best we can do for seeking/playback-duration compatibility without remuxing or custom
-    // "hybrid mp4" implementation, if hybrid_fragmented is unavailable.
-    ret = av_dict_set(&format_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
-#else
-    ret = av_dict_set(&format_opts, "movflags", "hybrid_fragmented", 0);
-#endif /* LIBAVFORMAT_VERSION_INT */
-    if (ret < 0) {
-        eprintf("Error: Failed to set video muxer movflags: %s\n", av_err2str(ret));
-        goto fail;
-    }
-    // Earlier versions were not implemented correctly for hybrid_fragmented
-    // (ffmpeg commit 920071355dd82a74ab9bfd879d42401702b83a5e)
-#if LIBAVFORMAT_VERSION_MAJOR >= 62
-    // Our mp4 muxer may shift the PTS/DTS timelines forwards to ensure that the
-    // first DTS is non-negative. Some players/programs need an explicit
-    // "editlist" in the moov, which specifies the timestamp at which the actual
-    // playback is supposed to start. For example Adobe Premiere refuses to open
-    // the file otherwise.
-    ret = av_dict_set(&format_opts, "use_editlist", "1", 0);
-    if (ret < 0) {
-        eprintf("Error: Failed to set video muxer use_editlist: %s\n", av_err2str(ret));
-        goto fail;
-    }
-#endif
-
-    ret = avformat_write_header(ffmpeg_ctx->av_format_ctx, &format_opts);
-    av_dict_free(&format_opts);
+    ret = avformat_write_header(ffmpeg_ctx->av_format_ctx, NULL);
     if (ret < 0) {
         eprintf("Failed to write file header (filepath: %s): %s\n", output_filepath, av_err2str(ret));
         goto fail;
@@ -385,7 +384,6 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
 
 fail:
     av_dict_free(&codec_opts);
-    av_dict_free(&format_opts);
     // TODO: unlink after close?
     if (ffmpeg_ctx->av_format_ctx && ffmpeg_ctx->av_format_ctx->pb && !g_state.options.output_to_stdout) {
         unlink(output_filepath);
