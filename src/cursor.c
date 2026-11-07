@@ -23,7 +23,7 @@ static const BLRgba32 m_cursor_colors[] = {
     [SCRAN_CURSOR_THEME_DEFAULT].value       = UI_COLOR_SELECTION_DEFAULT,
     [SCRAN_CURSOR_THEME_VIDEO_CAPTURE].value = UI_COLOR_VIDEO_CAPTURE,
 };
-static_assert(ARRAY_LENGTH(m_cursor_colors) == SCRAN_CURSOR_N_THEMES,
+static_assert(ARRAY_LEN(m_cursor_colors) == SCRAN_CURSOR_N_THEMES,
               "m_cursor_colors[] length must exactly cover all cursor themes.");
 
 static const BLRgba32 m_cursor_outline_color = { 0xFF000000 };

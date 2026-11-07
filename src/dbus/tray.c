@@ -41,12 +41,12 @@ struct sni_icon_pixmaps {
 
 static const struct sni_icon_pixmaps m_icon_pixmaps_idle = {
     .pixmaps   = scran_pixmaps_lime,
-    .n_pixmaps = ARRAY_LENGTH(scran_pixmaps_lime),
+    .n_pixmaps = ARRAY_LEN(scran_pixmaps_lime),
 };
 
 static const struct sni_icon_pixmaps m_icon_pixmaps_recording = {
     .pixmaps   = scran_pixmaps_grapefruit,
-    .n_pixmaps = ARRAY_LENGTH(scran_pixmaps_grapefruit),
+    .n_pixmaps = ARRAY_LEN(scran_pixmaps_grapefruit),
 };
 
 static struct sni_data {

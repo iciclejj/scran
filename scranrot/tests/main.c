@@ -13,7 +13,7 @@
 #include "./rgba32-to-yuv420/reference.h"
 
 
-#define ARRAY_LENGTH(arr)         (sizeof(arr) / sizeof(*arr))
+#define ARRAY_LEN(arr)         (sizeof(arr) / sizeof(*arr))
 
 static const uint32_t SCRANROT_TEST_SEED_RGBA32 = 0x12345678u;
 static const uint32_t SCRANROT_TEST_SEED_YUV420 = 0x87654321u;
@@ -175,10 +175,10 @@ run_rgba32_to_rgba32_suite(
         7,
     };
 
-    for (size_t d = 0; d < ARRAY_LENGTH(dimensions); ++d) {
-        for (size_t t = 0; t < ARRAY_LENGTH(transforms); ++t) {
-            for (size_t s = 0; s < ARRAY_LENGTH(shuffles); ++s) {
-                for (size_t p = 0; p < ARRAY_LENGTH(src_padding_bytes); ++p) {
+    for (size_t d = 0; d < ARRAY_LEN(dimensions); ++d) {
+        for (size_t t = 0; t < ARRAY_LEN(transforms); ++t) {
+            for (size_t s = 0; s < ARRAY_LEN(shuffles); ++s) {
+                for (size_t p = 0; p < ARRAY_LEN(src_padding_bytes); ++p) {
 
                     const struct scranrot_test_parameters params = {
                         .src_dimensions    = dimensions[d],
@@ -367,10 +367,10 @@ run_rgba32_to_yuv420_suite(
         7,
     };
 
-    for (size_t d = 0; d < ARRAY_LENGTH(dimensions); ++d) {
-        for (size_t t = 0; t < ARRAY_LENGTH(transforms); ++t) {
-            for (size_t s = 0; s < ARRAY_LENGTH(shuffles); ++s) {
-                for (size_t p = 0; p < ARRAY_LENGTH(src_padding_bytes); ++p) {
+    for (size_t d = 0; d < ARRAY_LEN(dimensions); ++d) {
+        for (size_t t = 0; t < ARRAY_LEN(transforms); ++t) {
+            for (size_t s = 0; s < ARRAY_LEN(shuffles); ++s) {
+                for (size_t p = 0; p < ARRAY_LEN(src_padding_bytes); ++p) {
 
                     const struct scranrot_test_parameters params = {
                         .src_dimensions    = dimensions[d],
@@ -460,7 +460,7 @@ run_yuv420_public_odd_size_suite(int *test_count)
         { 3, 3 },
     };
 
-    for (size_t d = 0; d < ARRAY_LENGTH(dimensions); ++d) {
+    for (size_t d = 0; d < ARRAY_LEN(dimensions); ++d) {
         if (!run_yuv420_public_odd_size_case(test_count, dimensions[d])) {
             return false;
         }

@@ -11,7 +11,13 @@
 #include <wayland-client-protocol.h>
 
 
-#define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(*arr))
+#define MUST_BE_ARRAY(arr) \
+    (sizeof(struct { \
+        _Static_assert(!__builtin_types_compatible_p(typeof(arr), typeof(&(arr)[0])), "not an array"); \
+        char c; \
+    }) * 0)
+
+#define ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]) + MUST_BE_ARRAY(arr))
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
