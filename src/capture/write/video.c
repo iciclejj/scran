@@ -386,15 +386,9 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
 fail:
     av_dict_free(&codec_opts);
     av_dict_free(&format_opts);
-    if (ffmpeg_ctx->av_format_ctx && ffmpeg_ctx->av_format_ctx->pb) {
-        // Clean up avio_open()
-        ret = avio_closep(&ffmpeg_ctx->av_format_ctx->pb);
-        if (ret < 0) {
-            eprintf("Error: Failed to close video output: %s\n", av_err2str(ret));
-        }
-        if (!g_state.options.output_to_stdout) {
-            unlink(output_filepath);
-        }
+    // TODO: unlink after close?
+    if (ffmpeg_ctx->av_format_ctx && ffmpeg_ctx->av_format_ctx->pb && !g_state.options.output_to_stdout) {
+        unlink(output_filepath);
     }
     if (capture->audio_active) {
         scran_pipewire_detach(st_output);
