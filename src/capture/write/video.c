@@ -157,7 +157,6 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
 
     assert(!capture->audio_active); // Determines whether to clean up audio
     const char *output_filepath = NULL;
-    AVDictionary *codec_opts = NULL;
     int ret;
 
     ffmpeg_ctx->failure_mask = SCRAN_VIDEO_FAILURE_NONE;
@@ -225,18 +224,23 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     }
 #endif
 
-
     // AVCodecContext (encoder)
-    static const char *codec_fallbacks[] = {
-        "libx264",  // requires GPL ffmpeg build
-        // TODO(libopenh264):
-        // - Why does it have such bad performance (high cpu usage,
-        //   stutters) compared to libx264?
-        "libopenh264",
-        "mpeg4"
+    //
+    // In preference order.
+    enum encoder_index {
+        // Requires GPL ffmpeg build
+        VIDEO_ENCODER_LIBX264,
+        // TODO: Why does it have such bad performance (high cpu usage, stutters) compared to libx264?
+        VIDEO_ENCODER_LIBOPENH264,
+        VIDEO_ENCODER_MPEG4,
     };
-    for (size_t i = 0; i < ARRAY_LEN(codec_fallbacks); ++i) {
-        const struct AVCodec *codec = avcodec_find_encoder_by_name(codec_fallbacks[i]);
+    static const char *const encoder_names[] = {
+        [VIDEO_ENCODER_LIBX264]     = "libx264",
+        [VIDEO_ENCODER_LIBOPENH264] = "libopenh264",
+        [VIDEO_ENCODER_MPEG4]       = "mpeg4",
+    };
+    for (enum encoder_index i = 0; i < ARRAY_LEN(encoder_names); ++i) {
+        const struct AVCodec *codec = avcodec_find_encoder_by_name(encoder_names[i]);
         if (!codec) {
             continue;
         }
@@ -271,18 +275,24 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
         ffmpeg_ctx->av_codec_ctx->max_b_frames    = 2;
         ffmpeg_ctx->av_codec_ctx->gop_size        = 120;
-        ret = av_dict_set(&codec_opts, "crf", "20", 0);
-        if (ret < 0) {
-            eprintf("Error: Failed to set video encoder crf: %s\n", av_err2str(ret));
-            goto fail;
+        switch (i) {
+        case VIDEO_ENCODER_LIBX264:
+            ret = av_opt_set(ffmpeg_ctx->av_codec_ctx->priv_data, "crf", "20", 0);
+            if (ret < 0) {
+                eprintf("Error: Failed to set libx264 crf: %s\n", av_err2str(ret));
+                goto fail;
+            }
+            ret = av_opt_set(ffmpeg_ctx->av_codec_ctx->priv_data, "preset", "superfast", 0);
+            if (ret < 0) {
+                eprintf("Error: Failed to set libx264 preset: %s\n", av_err2str(ret));
+                goto fail;
+            }
+            break;
+        case VIDEO_ENCODER_LIBOPENH264:
+        case VIDEO_ENCODER_MPEG4:
+            break;
         }
-        ret = av_dict_set(&codec_opts, "preset", "superfast", 0);
-        if (ret < 0) {
-            eprintf("Error: Failed to set video encoder preset: %s\n", av_err2str(ret));
-            goto fail;
-        }
-        ret = avcodec_open2(ffmpeg_ctx->av_codec_ctx, codec, &codec_opts);
-        av_dict_free(&codec_opts);
+        ret = avcodec_open2(ffmpeg_ctx->av_codec_ctx, codec, NULL);
         if (ret < 0) {
             eprintf("WARNING: Failed to open video encoder '%s': %s\n", codec->name, av_err2str(ret));
             avcodec_free_context(&ffmpeg_ctx->av_codec_ctx);
@@ -296,8 +306,8 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         eprintf("Error: No usable encoder found. All encoders failed to open or"
                 " were missing from the linked version of libavcodec."
                 " Supported codecs:");
-        for (size_t i = 0; i < ARRAY_LEN(codec_fallbacks); ++i) {
-            eprintf(" %s", codec_fallbacks[i]);
+        for (size_t i = 0; i < ARRAY_LEN(encoder_names); ++i) {
+            eprintf(" %s", encoder_names[i]);
         }
         eprintf(".\n");
         goto fail;
@@ -377,7 +387,6 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     return true;
 
 fail:
-    av_dict_free(&codec_opts);
     // TODO: unlink after close?
     if (ffmpeg_ctx->av_format_ctx && ffmpeg_ctx->av_format_ctx->pb && !g_state.options.output_to_stdout) {
         unlink(output_filepath);
