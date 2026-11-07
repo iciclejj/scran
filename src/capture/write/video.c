@@ -314,7 +314,7 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
 
 
     // AVStream (video)
-    AVStream *_av_stream = avformat_new_stream(ffmpeg_ctx->av_format_ctx, codec);
+    AVStream *_av_stream = avformat_new_stream(ffmpeg_ctx->av_format_ctx, NULL);
     if (!_av_stream) {
         eprintf("Error: Failed to create video stream.\n");
         goto fail;
