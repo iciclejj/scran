@@ -56,7 +56,7 @@ blpath_add_box_difference(
     BLRectI outsides[4];
     blboxi_get_difference_as_4_rects(box, excluded, outsides);
 
-    for (size_t i_outside = 0; i_outside < ARRAY_LENGTH(outsides); ++i_outside) {
+    for (size_t i_outside = 0; i_outside < ARRAY_LEN(outsides); ++i_outside) {
         const BLRectI *outside = &outsides[i_outside];
 
         if (outside->w > 0 && outside->h > 0) {
@@ -243,7 +243,7 @@ prepare_reset_ui_rect(
 
     BLRectI border_rects[4];
     blboxi_get_difference_as_4_rects(border_intersection, border->inner, border_rects);
-    for (size_t i = 0; i < ARRAY_LENGTH(border_rects); ++i) {
+    for (size_t i = 0; i < ARRAY_LEN(border_rects); ++i) {
         if (!blrecti_is_inverted_or_empty(border_rects[i])) {
             bl_context_fill_rect_i(&st_buffer->bl_ctx, &border_rects[i]);
         }
@@ -596,7 +596,7 @@ make_greeting_description(
 
     if (content.visible) {
         const struct atlas_text_metrics metrics = measure_ui_line(
-            &output->selection_surface.atlas, render_data->greeting, ARRAY_LENGTH(render_data->greeting)
+            &output->selection_surface.atlas, render_data->greeting, ARRAY_LEN(render_data->greeting)
         );
         description->geometry = get_ui_item_geometry(
             &output->selection_surface,
@@ -662,13 +662,13 @@ collect_keymap_content(
         },
     };
 
-    const bool item_pressed[ARRAY_LENGTH(content.blit_data)] = {
+    const bool item_pressed[ARRAY_LEN(content.blit_data)] = {
         [UI_KEYMAP_ITEM_IMAGE]       = g_state.seat.keyboard.pressed_keys.image,
         [UI_KEYMAP_ITEM_VIDEO]       = g_state.seat.keyboard.pressed_keys.video,
         [UI_KEYMAP_ITEM_FREEZEFRAME] = g_state.seat.keyboard.pressed_keys.freezeframe,
     };
 
-    for (size_t i = 0; i < ARRAY_LENGTH(content.blit_data); ++i) {
+    for (size_t i = 0; i < ARRAY_LEN(content.blit_data); ++i) {
         if (!surface_focused) {
             // HACK: We use a separate scaling for the unfocused red video button
             // just to keep the contrast somewhat reasonable (still below 4.5:1).
@@ -693,7 +693,7 @@ make_keymap_description(
 ) {
     const struct ui_keymap_content content = collect_keymap_content(output, shared_content);
 
-    const struct atlas_text_metrics metrics = measure_ui_line(&output->selection_surface.atlas, content.blit_data, ARRAY_LENGTH(content.blit_data));
+    const struct atlas_text_metrics metrics = measure_ui_line(&output->selection_surface.atlas, content.blit_data, ARRAY_LEN(content.blit_data));
     const struct ui_item_geometry geometry = get_ui_item_geometry(
         &output->selection_surface,
         shared_content,
@@ -795,16 +795,16 @@ make_statusline_description(
     get_timer_string(render_data->timer, content.timer_seconds);
 
     render_data->statusline[UI_STATUSLINE_ITEM_SELECTION_SIZE] = (struct atlas_blit_data){
-        .string = { .str = render_data->selection_size, .strlen = ARRAY_LENGTH(render_data->selection_size) },
+        .string = { .str = render_data->selection_size, .strlen = ARRAY_LEN(render_data->selection_size) },
         .color =  UI_COLOR_TEXT_DEFAULT,
     };
 
     render_data->statusline[UI_STATUSLINE_ITEM_TIMER] = (struct atlas_blit_data){
-        .string = { .str = render_data->timer, .strlen = ARRAY_LENGTH(render_data->timer) },
+        .string = { .str = render_data->timer, .strlen = ARRAY_LEN(render_data->timer) },
         .color =  UI_COLOR_TEXT_DEFAULT,
     };
 
-    const struct atlas_text_metrics metrics = measure_ui_line(&output->selection_surface.atlas, render_data->statusline, ARRAY_LENGTH(render_data->statusline));
+    const struct atlas_text_metrics metrics = measure_ui_line(&output->selection_surface.atlas, render_data->statusline, ARRAY_LEN(render_data->statusline));
 
     const struct ui_item_geometry geometry = get_ui_item_geometry(
         &output->selection_surface,
@@ -840,7 +840,7 @@ position_pre_selection_ui(
 
     int row_y = surface_margin_px;
 
-    for (size_t i = 0; i < ARRAY_LENGTH(rows); ++i) {
+    for (size_t i = 0; i < ARRAY_LEN(rows); ++i) {
         const int item_width_px = ui_item_width_px(&selection_surface->atlas, &rows[i]->text.metrics);
 
         const BLPointI backplate_origin = {
@@ -931,7 +931,7 @@ draw_and_damage_ui(
             .committed_geometry = &selection_surface->ui_last_committed.greeting.geometry,
             .new_geometry = &new_ui.greeting.geometry,
             .blit_data = render_data.greeting,
-            .n_blit_items = ARRAY_LENGTH(render_data.greeting),
+            .n_blit_items = ARRAY_LEN(render_data.greeting),
         },
         { // Status line
             .redraw_buffer = !statusline_description_equal(&st_buffer->ui.statusline, &new_ui.statusline),
@@ -943,7 +943,7 @@ draw_and_damage_ui(
             .committed_geometry = &selection_surface->ui_last_committed.statusline.geometry,
             .new_geometry = &new_ui.statusline.geometry,
             .blit_data = render_data.statusline,
-            .n_blit_items = ARRAY_LENGTH(render_data.statusline),
+            .n_blit_items = ARRAY_LEN(render_data.statusline),
         },
         { // Keymap
             .redraw_buffer = !keymap_description_equal(&st_buffer->ui.keymap, &new_ui.keymap),
@@ -955,7 +955,7 @@ draw_and_damage_ui(
             .committed_geometry = &selection_surface->ui_last_committed.keymap.geometry,
             .new_geometry = &new_ui.keymap.geometry,
             .blit_data = new_ui.keymap.content.blit_data,
-            .n_blit_items = ARRAY_LENGTH(new_ui.keymap.content.blit_data),
+            .n_blit_items = ARRAY_LEN(new_ui.keymap.content.blit_data),
         },
     };
 
@@ -966,7 +966,7 @@ draw_and_damage_ui(
     // the UI items' stages).
     const bool selection_could_have_erased_item = st_buffer->ui.shared_content.ui_inside_selection && selection_redrawn;
 
-    for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
+    for (size_t i = 0; i < ARRAY_LEN(render_plan); ++i) {
         render_plan[i].redraw_buffer |=
             st_buffer->force_redraw
             | !shared_content_equal(&st_buffer->ui.shared_content, &new_ui.shared_content)
@@ -987,7 +987,7 @@ draw_and_damage_ui(
         bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_NON_ZERO);
         bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, selection_surface->border_color);
 
-        for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
+        for (size_t i = 0; i < ARRAY_LEN(render_plan); ++i) {
             const struct ui_item_render_plan *item = &render_plan[i];
             if (!item->redraw_buffer) {
                 continue;
@@ -1011,7 +1011,7 @@ draw_and_damage_ui(
     bl_context_set_fill_rule(&st_buffer->bl_ctx, BL_FILL_RULE_NON_ZERO);
     bl_context_set_fill_style_rgba32(&st_buffer->bl_ctx, new_ui.shared_content.backplate_color);
 
-    for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
+    for (size_t i = 0; i < ARRAY_LEN(render_plan); ++i) {
         const struct ui_item_render_plan *item = &render_plan[i];
         if (!item->redraw_buffer) {
             continue;
@@ -1051,7 +1051,7 @@ draw_and_damage_ui(
     }
 
     // Redraw buffer contents
-    for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
+    for (size_t i = 0; i < ARRAY_LEN(render_plan); ++i) {
         const struct ui_item_render_plan *item = &render_plan[i];
         if (!item->redraw_buffer) {
             continue;
@@ -1083,7 +1083,7 @@ draw_and_damage_ui(
     }
 
     // Submit Wayland damage
-    for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
+    for (size_t i = 0; i < ARRAY_LEN(render_plan); ++i) {
         const struct ui_item_render_plan *item = &render_plan[i];
         if (item->damage_surface) {
             damage_ui_item(selection_surface, item->committed_geometry);
@@ -1099,7 +1099,7 @@ draw_and_damage_ui(
         if (!ui_inside) {
             const BLBoxI surface_bounds = get_surface_bounds(selection_surface);
 
-            for (size_t i = 0; i < ARRAY_LENGTH(render_plan); ++i) {
+            for (size_t i = 0; i < ARRAY_LEN(render_plan); ++i) {
                 const struct ui_item_render_plan *item = &render_plan[i];
                 const BLBoxI item_text_bounds =
                     blrecti_to_blboxi(ui_item_text_rect(&selection_surface->atlas, &item->new_geometry->text));

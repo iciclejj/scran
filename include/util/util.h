@@ -17,7 +17,7 @@
         char c; \
     }) * 0)
 
-#define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof((arr)[0]) + MUST_BE_ARRAY(arr))
+#define ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]) + MUST_BE_ARRAY(arr))
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
