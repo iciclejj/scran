@@ -155,24 +155,6 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     struct scran_output_capture *capture    = &st_output->capture;
     struct ffmpeg_context       *ffmpeg_ctx = &capture->ffmpeg_ctx;
 
-    // Wayland's wl_output::mode.refresh allows 0.
-    const int refresh_rate_mHz =
-        st_output->mode.refresh_rate_mHz > 0
-        ? st_output->mode.refresh_rate_mHz
-        : 60 * MILLIHZ_PER_HZ;
-    const AVRational av_framerate_nominal = { refresh_rate_mHz, MILLIHZ_PER_HZ };
-    // Wayland's frame::presentation_time() has nanosecond precision.
-    const AVRational av_time_base_captured = { 1, NSEC_PER_SEC };
-
-    // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be
-    // divisible by 2. TODO: Also update selection area visuals to this width.
-    const int width_px_to_encode  = dimensions.x & ~0b1;
-    const int height_px_to_encode = dimensions.y & ~0b1;
-    // NOTE: Some pixel formats (and some file formats), e.g. YUV420P, require
-    // even-numbered (or some other multiplier) height and/or width.
-    const enum AVPixelFormat av_pixel_format_to_encode = AV_PIX_FMT_YUV420P;
-
-
     assert(!capture->audio_active); // Determines whether to clean up audio
     const char *output_filepath = NULL;
     AVDictionary *codec_opts = NULL;
@@ -186,9 +168,13 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         eprintf("Error: Failed to allocate video frame.\n");
         goto fail;
     }
-    ffmpeg_ctx->av_frame_to_encode->width           = width_px_to_encode;
-    ffmpeg_ctx->av_frame_to_encode->height          = height_px_to_encode;
-    ffmpeg_ctx->av_frame_to_encode->format          = av_pixel_format_to_encode;
+    // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be
+    // divisible by 2. TODO: Also update selection area visuals to this width.
+    ffmpeg_ctx->av_frame_to_encode->width           = dimensions.x & ~0b1;
+    ffmpeg_ctx->av_frame_to_encode->height          = dimensions.y & ~0b1;
+    // NOTE: Some pixel formats (and some file formats), e.g. YUV420P, require
+    // even-numbered (or some other multiplier) height and/or width.
+    ffmpeg_ctx->av_frame_to_encode->format          = AV_PIX_FMT_YUV420P;
     // scranrot outputs full-range BT.709 Y'CbCr. The capture source is desktop
     // RGB, so we use BT.709 video metadata for broad playback compatibility.
     ffmpeg_ctx->av_frame_to_encode->color_range     = AVCOL_RANGE_JPEG;
@@ -285,8 +271,15 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     ffmpeg_ctx->av_codec_ctx->color_primaries = ffmpeg_ctx->av_frame_to_encode->color_primaries;
     ffmpeg_ctx->av_codec_ctx->color_trc       = ffmpeg_ctx->av_frame_to_encode->color_trc;
     // Nominal maximum framerate. Effect is encoder-specific.
-    ffmpeg_ctx->av_codec_ctx->framerate       = av_framerate_nominal;
-    ffmpeg_ctx->av_codec_ctx->time_base       = av_time_base_captured;
+    ffmpeg_ctx->av_codec_ctx->framerate       = (AVRational){
+        // Wayland's wl_output::mode.refresh allows 0.
+        st_output->mode.refresh_rate_mHz > 0
+            ? st_output->mode.refresh_rate_mHz
+            : 60 * MILLIHZ_PER_HZ,
+        MILLIHZ_PER_HZ
+    };
+    // Wayland's frame::presentation_time() has nanosecond precision.
+    ffmpeg_ctx->av_codec_ctx->time_base       = (AVRational){ 1, NSEC_PER_SEC };
     // -- Values to be tweaked (may depend on encoder/format) --
     // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
     ffmpeg_ctx->av_codec_ctx->max_b_frames    = 2;
@@ -330,8 +323,7 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     // NOTE: Requested time_base. Final time_base will have been selected by
     // libav after write_header. av_packet_rescale_ts() exists to convert from
     // Encoder timestamps to Format timestamps prior to handing off the packet.
-    assert(ffmpeg_ctx->av_codec_ctx->framerate.num != 0);
-    assert(ffmpeg_ctx->av_codec_ctx->framerate.den != 0);
+    assert(ffmpeg_ctx->av_codec_ctx->framerate.num != 0 && ffmpeg_ctx->av_codec_ctx->framerate.den != 0);
     _av_stream->time_base = av_inv_q(ffmpeg_ctx->av_codec_ctx->framerate);
     ret = avcodec_parameters_from_context(_av_stream->codecpar, ffmpeg_ctx->av_codec_ctx);
     if (ret < 0) {
