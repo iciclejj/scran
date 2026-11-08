@@ -232,12 +232,12 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         VIDEO_ENCODER_LIBX264,
         // TODO: Why does it have such bad performance (high cpu usage, stutters) compared to libx264?
         VIDEO_ENCODER_LIBOPENH264,
-        VIDEO_ENCODER_MPEG4,
+        VIDEO_ENCODER_LIBSVTAV1,
     };
     static const char *const encoder_names[] = {
         [VIDEO_ENCODER_LIBX264]     = "libx264",
         [VIDEO_ENCODER_LIBOPENH264] = "libopenh264",
-        [VIDEO_ENCODER_MPEG4]       = "mpeg4",
+        [VIDEO_ENCODER_LIBSVTAV1]   = "libsvtav1",
     };
     for (enum encoder_index i = 0; i < ARRAY_LEN(encoder_names); ++i) {
         const struct AVCodec *codec = avcodec_find_encoder_by_name(encoder_names[i]);
@@ -289,7 +289,18 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
             }
             break;
         case VIDEO_ENCODER_LIBOPENH264:
-        case VIDEO_ENCODER_MPEG4:
+            break;
+        case VIDEO_ENCODER_LIBSVTAV1:
+            ret = av_opt_set(ffmpeg_ctx->av_codec_ctx->priv_data, "crf", "30", 0);
+            if (ret < 0) {
+                eprintf("WARNING: Failed to set libsvtav1 crf: %s\n", av_err2str(ret));
+                goto next_encoder;
+            }
+            ret = av_opt_set(ffmpeg_ctx->av_codec_ctx->priv_data, "preset", "11", 0);
+            if (ret < 0) {
+                eprintf("WARNING: Failed to set libsvtav1 preset: %s\n", av_err2str(ret));
+                goto next_encoder;
+            }
             break;
         }
         ret = avcodec_open2(ffmpeg_ctx->av_codec_ctx, codec, NULL);
