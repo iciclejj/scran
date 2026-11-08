@@ -247,8 +247,8 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
 
         ffmpeg_ctx->av_codec_ctx = avcodec_alloc_context3(codec);
         if (!ffmpeg_ctx->av_codec_ctx) {
-            eprintf("Error: Failed to allocate video encoder context.\n");
-            goto fail;
+            eprintf("WARNING: Failed to allocate video encoder context.\n");
+            continue;
         }
         if (ffmpeg_ctx->av_format_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
             ffmpeg_ctx->av_codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
@@ -279,13 +279,13 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         case VIDEO_ENCODER_LIBX264:
             ret = av_opt_set(ffmpeg_ctx->av_codec_ctx->priv_data, "crf", "20", 0);
             if (ret < 0) {
-                eprintf("Error: Failed to set libx264 crf: %s\n", av_err2str(ret));
-                goto fail;
+                eprintf("WARNING: Failed to set libx264 crf: %s\n", av_err2str(ret));
+                goto next_encoder;
             }
             ret = av_opt_set(ffmpeg_ctx->av_codec_ctx->priv_data, "preset", "superfast", 0);
             if (ret < 0) {
-                eprintf("Error: Failed to set libx264 preset: %s\n", av_err2str(ret));
-                goto fail;
+                eprintf("WARNING: Failed to set libx264 preset: %s\n", av_err2str(ret));
+                goto next_encoder;
             }
             break;
         case VIDEO_ENCODER_LIBOPENH264:
@@ -295,15 +295,17 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         ret = avcodec_open2(ffmpeg_ctx->av_codec_ctx, codec, NULL);
         if (ret < 0) {
             eprintf("WARNING: Failed to open video encoder '%s': %s\n", codec->name, av_err2str(ret));
-            avcodec_free_context(&ffmpeg_ctx->av_codec_ctx);
-            continue;
+            goto next_encoder;
         }
 
         eprintf("Using codec: %s\n", codec->name);
         break;
+
+next_encoder:
+        avcodec_free_context(&ffmpeg_ctx->av_codec_ctx);
     }
     if (!ffmpeg_ctx->av_codec_ctx) {
-        eprintf("Error: No usable encoder found. All encoders failed to open or"
+        eprintf("Error: No usable encoder found. All encoders failed to initialize or"
                 " were missing from the linked version of libavcodec."
                 " Supported codecs:");
         for (size_t i = 0; i < ARRAY_LEN(encoder_names); ++i) {
