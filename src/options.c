@@ -26,10 +26,12 @@ advance_filename_file_extension(
     char *restrict fn,
     ssize_t *i_fn
 ) {
-    assert(*i_fn < SCRAN_OUTPUT_FILENAME_SIZE_MAX - SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX);
+    assert(*i_fn <= SCRAN_OUTPUT_FILENAME_STRLEN_MAX - SCRAN_OUTPUT_DOTTED_FILE_EXTENSION_STRLEN_MAX);
+    assert(ext[0] != '\0' && ext[0] != '.');
+    fn[(*i_fn)++] = '.';
 
     ssize_t i_ext = 0;
-    while (i_ext < SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX && ext[i_ext] != '\0') {
+    while (i_ext < SCRAN_OUTPUT_FILE_EXTENSION_STRLEN_MAX && ext[i_ext] != '\0') {
         fn[(*i_fn)++] = ext[i_ext++];
     }
 }
@@ -42,9 +44,9 @@ create_filename(
     const struct tm *tm,
     char filename_out[static restrict SCRAN_OUTPUT_FILENAME_SIZE_MAX]
 ) {
-    static const ssize_t format_max         = SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX;
-    static const ssize_t file_extension_max = SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX;
-    static const ssize_t filename_strlen_max   = SCRAN_OUTPUT_FILENAME_STRLEN_MAX;
+    static const ssize_t format_max          = SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX;
+    static const ssize_t file_extension_max  = SCRAN_OUTPUT_DOTTED_FILE_EXTENSION_STRLEN_MAX;
+    static const ssize_t filename_strlen_max = SCRAN_OUTPUT_FILENAME_STRLEN_MAX;
 
     ssize_t i_out = 0;
     ssize_t i_fmt = 0;
@@ -133,7 +135,7 @@ create_filename_mock_time(
     const char format[static restrict SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX]
 ) {
     char _tmp[SCRAN_OUTPUT_FILENAME_SIZE_MAX];
-    static const char _file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] = ".test";
+    static const char _file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] = "test";
     static const struct timespec _ts = {
         .tv_sec = 52582958239532, .tv_nsec = NSEC_PER_SEC - 1
     };
