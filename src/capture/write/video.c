@@ -185,17 +185,7 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
 
 
     // AVFormat
-    if (g_state.options.output_to_stdout) {
-        assert(scran_stdout_check_reservation(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO));
-        output_filepath = "pipe:1";
-    } else {
-        static const char mp4_file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] = "mp4";
-        output_filepath = scran_prepare_video_output_path(&g_state.options, mp4_file_extension);
-        if (!output_filepath) {
-            goto fail;
-        }
-    }
-    ret = avformat_alloc_output_context2(&ffmpeg->format_ctx, NULL, FFMPEG_FORMAT_MP4_NAME, output_filepath);
+    ret = avformat_alloc_output_context2(&ffmpeg->format_ctx, NULL, FFMPEG_FORMAT_MP4_NAME, NULL);
     if (ret < 0) {
         eprintf("Error: Failed to allocate output format context: %s\n", av_err2str(ret));
         goto fail;
@@ -367,6 +357,7 @@ next_encoder:
         }
     }
 
+
     // AVStream (audio)
     //   Not created in init_ffmpeg_audio(), since freeing a stream requires
     //   freeing the entire format context.
@@ -386,7 +377,41 @@ next_encoder:
     }
 
 
-    // AVFormat (cont.)
+    // Finalize AVFormat and initialize the output file
+
+    if (g_state.options.output_to_stdout) {
+        assert(scran_stdout_check_reservation(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO));
+        output_filepath = "pipe:1";
+    } else {
+        char file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX];
+        {
+            const char *extensions = ffmpeg->format_ctx->oformat->extensions;
+            if (!extensions || extensions[0] == '\0') {
+                eprintf("Error: File extension not found.\n");
+                goto fail;
+            }
+
+            size_t extension_len = strcspn(extensions, ",");
+            if (extension_len >= sizeof(file_extension)) {
+                eprintf("Error: File extension too long.\n");
+                goto fail;
+            }
+            memcpy(file_extension, extensions, extension_len);
+            file_extension[extension_len] = '\0';
+        }
+
+        output_filepath = scran_prepare_video_output_path(&g_state.options, file_extension);
+        if (!output_filepath) {
+            goto fail;
+        }
+    }
+
+    ffmpeg->format_ctx->url = av_strdup(output_filepath);
+    if (!ffmpeg->format_ctx->url) {
+        eprintf("Error: Failed to allocate URL.\n");
+        goto fail;
+    }
+
     assert(!((ffmpeg->format_ctx)->oformat->flags & AVFMT_NOFILE));
     ret = avio_open(&(ffmpeg->format_ctx)->pb, output_filepath, AVIO_FLAG_WRITE);
     if (ret < 0) {
