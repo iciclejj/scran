@@ -5,11 +5,7 @@
 #include "util/lib-interop.h"
 #include "util/util.h"
 
-
-// XXX: Seems like the underlying FFOutputFormat structs aren't exposed in the
-// public API (e.g. ff_mp4_muxer etc.), so we must let libavformat run its
-// "guessing"/scoring algorithm using a format-name string.
-#define FFMPEG_FORMAT_MP4_NAME "mp4"
+#include <libavutil/opt.h>
 
 
 // Safely handles NULL pointers, and ensures they're all NULL when done.
@@ -153,25 +149,8 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     struct scran_output_capture *capture    = &st_output->capture;
     struct ffmpeg_context       *ffmpeg_ctx = &capture->ffmpeg_ctx;
 
-    // TODO: Is output::mode framerate_mhz same as the capture framerate?
-    const AVRational av_framerate_captured = { st_output->mode.refresh_rate_mHz, MILLIHZ_PER_HZ };
-    // INFO: Using 1/NSEC_PER_SEC due to (wayland's) frame::presentation_time()
-    // giving time with nanosecond precision.
-    const AVRational av_time_base_captured = { 1, NSEC_PER_SEC };
-
-    // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be
-    // divisible by 2. TODO: Also update selection area visuals to this width.
-    const int width_px_to_encode  = dimensions.x & ~0b1;
-    const int height_px_to_encode = dimensions.y & ~0b1;
-    // NOTE: Some pixel formats (and some file formats), e.g. YUV420P, require
-    //       even-numbered (or some other multiplier) height and/or width.
-    const enum AVPixelFormat av_pixel_format_to_encode = AV_PIX_FMT_YUV420P;
-
-
     assert(!capture->audio_active); // Determines whether to clean up audio
     const char *output_filepath = NULL;
-    AVDictionary *codec_opts = NULL;
-    AVDictionary *format_opts = NULL;
     int ret;
 
     ffmpeg_ctx->failure_mask = SCRAN_VIDEO_FAILURE_NONE;
@@ -182,9 +161,13 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
         eprintf("Error: Failed to allocate video frame.\n");
         goto fail;
     }
-    ffmpeg_ctx->av_frame_to_encode->width           = width_px_to_encode;
-    ffmpeg_ctx->av_frame_to_encode->height          = height_px_to_encode;
-    ffmpeg_ctx->av_frame_to_encode->format          = av_pixel_format_to_encode;
+    // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be
+    // divisible by 2. TODO: Also update selection area visuals to this width.
+    ffmpeg_ctx->av_frame_to_encode->width           = dimensions.x & ~0b1;
+    ffmpeg_ctx->av_frame_to_encode->height          = dimensions.y & ~0b1;
+    // NOTE: Some pixel formats (and some file formats), e.g. YUV420P, require
+    // even-numbered (or some other multiplier) height and/or width.
+    ffmpeg_ctx->av_frame_to_encode->format          = AV_PIX_FMT_YUV420P;
     // scranrot outputs full-range BT.709 Y'CbCr. The capture source is desktop
     // RGB, so we use BT.709 video metadata for broad playback compatibility.
     ffmpeg_ctx->av_frame_to_encode->color_range     = AVCOL_RANGE_JPEG;
@@ -193,94 +176,149 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     ffmpeg_ctx->av_frame_to_encode->color_trc       = AVCOL_TRC_BT709;
 
 
-    // AVCodec
-    static const char *codec_fallbacks[] = {
-        "libx264",  // requires GPL ffmpeg build
-        // TODO(libopenh264):
-        // - Why does it have such bad performance (high cpu usage,
-        //   stutters) compared to libx264?
-        "libopenh264",
-        "mpeg4"
-    };
-    static const size_t len_codec_fallbacks = sizeof(codec_fallbacks) / sizeof(codec_fallbacks[0]);
-    const struct AVCodec *codec = NULL;
-    const char *codec_name = NULL;
-    for (size_t i = 0; i < len_codec_fallbacks; ++i) {
-        codec = avcodec_find_encoder_by_name(codec_fallbacks[i]);
-        if (codec) {
-            codec_name = codec_fallbacks[i];
-            break;
-        }
-    }
-    if (!codec) {
-        eprintf("Error: No supported encoder found. Please ensure the linked"
-                " version of libavcodec was built with one of the supported"
-                " codecs:\n");
-        for (size_t i = 0; i < len_codec_fallbacks; ++i) {
-            eprintf("%s\n", codec_fallbacks[i]);
-        }
-        goto fail;
-    } else {
-        assert(codec_name);
-        eprintf("Using codec: %s\n", codec_name);
-    }
-
-
     // AVFormat
-    if (g_state.options.output_to_stdout) {
-        assert(scran_stdout_check_reservation(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO));
-        output_filepath = "pipe:1";
-    } else {
-        static const char mp4_file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] = ".mp4";
-        output_filepath = scran_prepare_video_output_path(&g_state.options, mp4_file_extension);
-        if (!output_filepath) {
-            goto fail;
-        }
-    }
-    ret = avformat_alloc_output_context2(&ffmpeg_ctx->av_format_ctx, NULL, FFMPEG_FORMAT_MP4_NAME, output_filepath);
+    enum format_index {
+        VIDEO_FORMAT_MP4,
+    };
+    static const char *const format_names[] = {
+        [VIDEO_FORMAT_MP4] = "mp4",
+    };
+    const enum format_index i_format = VIDEO_FORMAT_MP4;
+    ret = avformat_alloc_output_context2(&ffmpeg_ctx->av_format_ctx, NULL, format_names[i_format], NULL);
     if (ret < 0) {
         eprintf("Error: Failed to allocate output format context: %s\n", av_err2str(ret));
         goto fail;
     }
+    switch (i_format) {
+    case VIDEO_FORMAT_MP4:
+#if !defined LIBAVFORMAT_VERSION_INT || (LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(61,4,100))
+        // Best we can do for seeking/playback-duration compatibility without remuxing or custom
+        // "hybrid mp4" implementation, if hybrid_fragmented is unavailable.
+        ret = av_opt_set(ffmpeg_ctx->av_format_ctx->priv_data, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
+#else
+        ret = av_opt_set(ffmpeg_ctx->av_format_ctx->priv_data, "movflags", "hybrid_fragmented", 0);
+#endif /* LIBAVFORMAT_VERSION_INT */
+        if (ret < 0) {
+            eprintf("Error: Failed to set video muxer movflags: %s\n", av_err2str(ret));
+            goto fail;
+        }
+        // Earlier versions were not implemented correctly for hybrid_fragmented
+        // (ffmpeg commit 920071355dd82a74ab9bfd879d42401702b83a5e)
+#if LIBAVFORMAT_VERSION_MAJOR >= 62
+        // Our mp4 muxer may shift the PTS/DTS timelines forwards to ensure that the
+        // first DTS is non-negative. Some players/programs need an explicit
+        // "editlist" in the moov, which specifies the timestamp at which the actual
+        // playback is supposed to start. For example Adobe Premiere refuses to open
+        // the file otherwise.
+        ret = av_opt_set(ffmpeg_ctx->av_format_ctx->priv_data, "use_editlist", "1", 0);
+        if (ret < 0) {
+            eprintf("Error: Failed to set video muxer use_editlist: %s\n", av_err2str(ret));
+            goto fail;
+        }
+#endif
+        break;
+    }
 
 
     // AVCodecContext (encoder)
-    ffmpeg_ctx->av_codec_ctx = avcodec_alloc_context3(codec);
+    //
+    // In preference order.
+    enum encoder_index {
+        // Requires GPL ffmpeg build
+        VIDEO_ENCODER_LIBX264,
+        // TODO: Why does it have such bad performance (high cpu usage, stutters) compared to libx264?
+        VIDEO_ENCODER_LIBOPENH264,
+        VIDEO_ENCODER_LIBSVTAV1,
+    };
+    static const char *const encoder_names[] = {
+        [VIDEO_ENCODER_LIBX264]     = "libx264",
+        [VIDEO_ENCODER_LIBOPENH264] = "libopenh264",
+        [VIDEO_ENCODER_LIBSVTAV1]   = "libsvtav1",
+    };
+    for (enum encoder_index i = 0; i < ARRAY_LEN(encoder_names); ++i) {
+        const struct AVCodec *codec = avcodec_find_encoder_by_name(encoder_names[i]);
+        if (!codec) {
+            continue;
+        }
+
+        ffmpeg_ctx->av_codec_ctx = avcodec_alloc_context3(codec);
+        if (!ffmpeg_ctx->av_codec_ctx) {
+            eprintf("WARNING: Failed to allocate video encoder context.\n");
+            continue;
+        }
+        if (ffmpeg_ctx->av_format_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
+            ffmpeg_ctx->av_codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+        }
+        // -- Values tied to encoder input/environment --
+        ffmpeg_ctx->av_codec_ctx->width           = ffmpeg_ctx->av_frame_to_encode->width;
+        ffmpeg_ctx->av_codec_ctx->height          = ffmpeg_ctx->av_frame_to_encode->height;
+        ffmpeg_ctx->av_codec_ctx->pix_fmt         = ffmpeg_ctx->av_frame_to_encode->format;
+        ffmpeg_ctx->av_codec_ctx->color_range     = ffmpeg_ctx->av_frame_to_encode->color_range;
+        ffmpeg_ctx->av_codec_ctx->colorspace      = ffmpeg_ctx->av_frame_to_encode->colorspace;
+        ffmpeg_ctx->av_codec_ctx->color_primaries = ffmpeg_ctx->av_frame_to_encode->color_primaries;
+        ffmpeg_ctx->av_codec_ctx->color_trc       = ffmpeg_ctx->av_frame_to_encode->color_trc;
+        // Nominal maximum framerate. Effect is encoder-specific.
+        ffmpeg_ctx->av_codec_ctx->framerate       = (AVRational){
+            // Wayland's wl_output::mode.refresh allows 0.
+            st_output->mode.refresh_rate_mHz > 0
+                ? st_output->mode.refresh_rate_mHz
+                : 60 * MILLIHZ_PER_HZ,
+            MILLIHZ_PER_HZ
+        };
+        // Wayland's frame::presentation_time() has nanosecond precision.
+        ffmpeg_ctx->av_codec_ctx->time_base       = (AVRational){ 1, NSEC_PER_SEC };
+        // -- Values to be tweaked (may depend on encoder/format) --
+        // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
+        ffmpeg_ctx->av_codec_ctx->max_b_frames    = 2;
+        ffmpeg_ctx->av_codec_ctx->gop_size        = 120;
+        switch (i) {
+        case VIDEO_ENCODER_LIBX264:
+            ret = av_opt_set(ffmpeg_ctx->av_codec_ctx->priv_data, "crf", "20", 0);
+            if (ret < 0) {
+                eprintf("WARNING: Failed to set libx264 crf: %s\n", av_err2str(ret));
+                goto next_encoder;
+            }
+            ret = av_opt_set(ffmpeg_ctx->av_codec_ctx->priv_data, "preset", "superfast", 0);
+            if (ret < 0) {
+                eprintf("WARNING: Failed to set libx264 preset: %s\n", av_err2str(ret));
+                goto next_encoder;
+            }
+            break;
+        case VIDEO_ENCODER_LIBOPENH264:
+            break;
+        case VIDEO_ENCODER_LIBSVTAV1:
+            ret = av_opt_set(ffmpeg_ctx->av_codec_ctx->priv_data, "crf", "30", 0);
+            if (ret < 0) {
+                eprintf("WARNING: Failed to set libsvtav1 crf: %s\n", av_err2str(ret));
+                goto next_encoder;
+            }
+            ret = av_opt_set(ffmpeg_ctx->av_codec_ctx->priv_data, "preset", "11", 0);
+            if (ret < 0) {
+                eprintf("WARNING: Failed to set libsvtav1 preset: %s\n", av_err2str(ret));
+                goto next_encoder;
+            }
+            break;
+        }
+        ret = avcodec_open2(ffmpeg_ctx->av_codec_ctx, codec, NULL);
+        if (ret < 0) {
+            eprintf("WARNING: Failed to open video encoder '%s': %s\n", codec->name, av_err2str(ret));
+            goto next_encoder;
+        }
+
+        eprintf("Using codec: %s\n", codec->name);
+        break;
+
+next_encoder:
+        avcodec_free_context(&ffmpeg_ctx->av_codec_ctx);
+    }
     if (!ffmpeg_ctx->av_codec_ctx) {
-        eprintf("Error: Failed to allocate video encoder context.\n");
-        goto fail;
-    }
-    if (ffmpeg_ctx->av_format_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
-        ffmpeg_ctx->av_codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-    }
-    // -- Values tied to encoder input/environment --
-    ffmpeg_ctx->av_codec_ctx->width           = ffmpeg_ctx->av_frame_to_encode->width;
-    ffmpeg_ctx->av_codec_ctx->height          = ffmpeg_ctx->av_frame_to_encode->height;
-    ffmpeg_ctx->av_codec_ctx->pix_fmt         = ffmpeg_ctx->av_frame_to_encode->format;
-    ffmpeg_ctx->av_codec_ctx->color_range     = ffmpeg_ctx->av_frame_to_encode->color_range;
-    ffmpeg_ctx->av_codec_ctx->colorspace      = ffmpeg_ctx->av_frame_to_encode->colorspace;
-    ffmpeg_ctx->av_codec_ctx->color_primaries = ffmpeg_ctx->av_frame_to_encode->color_primaries;
-    ffmpeg_ctx->av_codec_ctx->color_trc       = ffmpeg_ctx->av_frame_to_encode->color_trc;
-    ffmpeg_ctx->av_codec_ctx->framerate       = av_framerate_captured;
-    ffmpeg_ctx->av_codec_ctx->time_base       = av_time_base_captured;
-    // -- Values to be tweaked (may depend on encoder/format) --
-    // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
-    ffmpeg_ctx->av_codec_ctx->max_b_frames    = 2;
-    ffmpeg_ctx->av_codec_ctx->gop_size        = 120;
-    ret = av_dict_set(&codec_opts, "crf", "20", 0);
-    if (ret < 0) {
-        eprintf("Error: Failed to set video encoder crf: %s\n", av_err2str(ret));
-        goto fail;
-    }
-    ret = av_dict_set(&codec_opts, "preset", "superfast", 0);
-    if (ret < 0) {
-        eprintf("Error: Failed to set video encoder preset: %s\n", av_err2str(ret));
-        goto fail;
-    }
-    ret = avcodec_open2(ffmpeg_ctx->av_codec_ctx, codec, &codec_opts);
-    av_dict_free(&codec_opts);
-    if (ret < 0) {
-        eprintf("Error: Failed to open video encoder '%s': %s\n", codec_name, av_err2str(ret));
+        eprintf("Error: No usable encoder found. All encoders failed to initialize or"
+                " were missing from the linked version of libavcodec."
+                " Supported codecs:");
+        for (size_t i = 0; i < ARRAY_LEN(encoder_names); ++i) {
+            eprintf(" %s", encoder_names[i]);
+        }
+        eprintf(".\n");
         goto fail;
     }
 
@@ -297,7 +335,7 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
 
 
     // AVStream (video)
-    AVStream *_av_stream = avformat_new_stream(ffmpeg_ctx->av_format_ctx, codec);
+    AVStream *_av_stream = avformat_new_stream(ffmpeg_ctx->av_format_ctx, NULL);
     if (!_av_stream) {
         eprintf("Error: Failed to create video stream.\n");
         goto fail;
@@ -306,8 +344,7 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     // NOTE: Requested time_base. Final time_base will have been selected by
     // libav after write_header. av_packet_rescale_ts() exists to convert from
     // Encoder timestamps to Format timestamps prior to handing off the packet.
-    assert(ffmpeg_ctx->av_codec_ctx->framerate.num != 0);
-    assert(ffmpeg_ctx->av_codec_ctx->framerate.den != 0);
+    assert(ffmpeg_ctx->av_codec_ctx->framerate.num != 0 && ffmpeg_ctx->av_codec_ctx->framerate.den != 0);
     _av_stream->time_base = av_inv_q(ffmpeg_ctx->av_codec_ctx->framerate);
     ret = avcodec_parameters_from_context(_av_stream->codecpar, ffmpeg_ctx->av_codec_ctx);
     if (ret < 0) {
@@ -323,6 +360,7 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
             eprintf("WARNING: Failed to init audio capture.\n");
         }
     }
+
 
     // AVStream (audio)
     //   Not created in init_ffmpeg_audio(), since freeing a stream requires
@@ -343,41 +381,48 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     }
 
 
-    // AVFormat (cont.)
+    // Finalize AVFormat and initialize the output file
+
+    if (g_state.options.output_to_stdout) {
+        assert(scran_stdout_check_reservation(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO));
+        output_filepath = "pipe:1";
+    } else {
+        char file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX];
+        {
+            const char *extensions = ffmpeg_ctx->av_format_ctx->oformat->extensions;
+            if (!extensions || extensions[0] == '\0') {
+                eprintf("Error: File extension not found.\n");
+                goto fail;
+            }
+
+            size_t extension_len = strcspn(extensions, ",");
+            if (extension_len >= sizeof(file_extension)) {
+                eprintf("Error: File extension too long.\n");
+                goto fail;
+            }
+            memcpy(file_extension, extensions, extension_len);
+            file_extension[extension_len] = '\0';
+        }
+
+        output_filepath = scran_prepare_video_output_path(&g_state.options, file_extension);
+        if (!output_filepath) {
+            goto fail;
+        }
+    }
+
+    ffmpeg_ctx->av_format_ctx->url = av_strdup(output_filepath);
+    if (!ffmpeg_ctx->av_format_ctx->url) {
+        eprintf("Error: Failed to allocate URL.\n");
+        goto fail;
+    }
+
     assert(!((ffmpeg_ctx->av_format_ctx)->oformat->flags & AVFMT_NOFILE));
     ret = avio_open(&(ffmpeg_ctx->av_format_ctx)->pb, output_filepath, AVIO_FLAG_WRITE);
     if (ret < 0) {
         eprintf("Failed to create video file '%s': %s\n", output_filepath, av_err2str(ret));
         goto fail;
     }
-#if !defined LIBAVFORMAT_VERSION_INT || (LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(61,4,100))
-    // Best we can do for seeking/playback-duration compatibility without remuxing or custom
-    // "hybrid mp4" implementation, if hybrid_fragmented is unavailable.
-    ret = av_dict_set(&format_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
-#else
-    ret = av_dict_set(&format_opts, "movflags", "hybrid_fragmented", 0);
-#endif /* LIBAVFORMAT_VERSION_INT */
-    if (ret < 0) {
-        eprintf("Error: Failed to set video muxer movflags: %s\n", av_err2str(ret));
-        goto fail;
-    }
-    // Earlier versions were not implemented correctly for hybrid_fragmented
-    // (ffmpeg commit 920071355dd82a74ab9bfd879d42401702b83a5e)
-#if LIBAVFORMAT_VERSION_MAJOR >= 62
-    // Our mp4 muxer may shift the PTS/DTS timelines forwards to ensure that the
-    // first DTS is non-negative. Some players/programs need an explicit
-    // "editlist" in the moov, which specifies the timestamp at which the actual
-    // playback is supposed to start. For example Adobe Premiere refuses to open
-    // the file otherwise.
-    ret = av_dict_set(&format_opts, "use_editlist", "1", 0);
-    if (ret < 0) {
-        eprintf("Error: Failed to set video muxer use_editlist: %s\n", av_err2str(ret));
-        goto fail;
-    }
-#endif
-
-    ret = avformat_write_header(ffmpeg_ctx->av_format_ctx, &format_opts);
-    av_dict_free(&format_opts);
+    ret = avformat_write_header(ffmpeg_ctx->av_format_ctx, NULL);
     if (ret < 0) {
         eprintf("Failed to write file header (filepath: %s): %s\n", output_filepath, av_err2str(ret));
         goto fail;
@@ -386,17 +431,9 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     return true;
 
 fail:
-    av_dict_free(&codec_opts);
-    av_dict_free(&format_opts);
-    if (ffmpeg_ctx->av_format_ctx && ffmpeg_ctx->av_format_ctx->pb) {
-        // Clean up avio_open()
-        ret = avio_closep(&ffmpeg_ctx->av_format_ctx->pb);
-        if (ret < 0) {
-            eprintf("Error: Failed to close video output: %s\n", av_err2str(ret));
-        }
-        if (!g_state.options.output_to_stdout) {
-            unlink(output_filepath);
-        }
+    // TODO: unlink after close?
+    if (ffmpeg_ctx->av_format_ctx && ffmpeg_ctx->av_format_ctx->pb && !g_state.options.output_to_stdout) {
+        unlink(output_filepath);
     }
     if (capture->audio_active) {
         scran_pipewire_detach(st_output);
