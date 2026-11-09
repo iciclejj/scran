@@ -8,12 +8,6 @@
 #include <libavutil/opt.h>
 
 
-// XXX: Seems like the underlying FFOutputFormat structs aren't exposed in the
-// public API (e.g. ff_mp4_muxer etc.), so we must let libavformat run its
-// "guessing"/scoring algorithm using a format-name string.
-#define FFMPEG_FORMAT_MP4_NAME "mp4"
-
-
 // Safely handles NULL pointers, and ensures they're all NULL when done.
 static bool
 destroy_ffmpeg_audio(struct scran_output *st_output)
@@ -183,36 +177,48 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
 
 
     // AVFormat
-    ret = avformat_alloc_output_context2(&ffmpeg_ctx->av_format_ctx, NULL, FFMPEG_FORMAT_MP4_NAME, NULL);
+    enum format_index {
+        VIDEO_FORMAT_MP4,
+    };
+    static const char *const format_names[] = {
+        [VIDEO_FORMAT_MP4] = "mp4",
+    };
+    const enum format_index i_format = VIDEO_FORMAT_MP4;
+    ret = avformat_alloc_output_context2(&ffmpeg_ctx->av_format_ctx, NULL, format_names[i_format], NULL);
     if (ret < 0) {
         eprintf("Error: Failed to allocate output format context: %s\n", av_err2str(ret));
         goto fail;
     }
+    switch (i_format) {
+    case VIDEO_FORMAT_MP4:
 #if !defined LIBAVFORMAT_VERSION_INT || (LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(61,4,100))
-    // Best we can do for seeking/playback-duration compatibility without remuxing or custom
-    // "hybrid mp4" implementation, if hybrid_fragmented is unavailable.
-    ret = av_opt_set(ffmpeg_ctx->av_format_ctx->priv_data, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
+        // Best we can do for seeking/playback-duration compatibility without remuxing or custom
+        // "hybrid mp4" implementation, if hybrid_fragmented is unavailable.
+        ret = av_opt_set(ffmpeg_ctx->av_format_ctx->priv_data, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
 #else
-    ret = av_opt_set(ffmpeg_ctx->av_format_ctx->priv_data, "movflags", "hybrid_fragmented", 0);
+        ret = av_opt_set(ffmpeg_ctx->av_format_ctx->priv_data, "movflags", "hybrid_fragmented", 0);
 #endif /* LIBAVFORMAT_VERSION_INT */
-    if (ret < 0) {
-        eprintf("Error: Failed to set video muxer movflags: %s\n", av_err2str(ret));
-        goto fail;
-    }
-    // Earlier versions were not implemented correctly for hybrid_fragmented
-    // (ffmpeg commit 920071355dd82a74ab9bfd879d42401702b83a5e)
+        if (ret < 0) {
+            eprintf("Error: Failed to set video muxer movflags: %s\n", av_err2str(ret));
+            goto fail;
+        }
+        // Earlier versions were not implemented correctly for hybrid_fragmented
+        // (ffmpeg commit 920071355dd82a74ab9bfd879d42401702b83a5e)
 #if LIBAVFORMAT_VERSION_MAJOR >= 62
-    // Our mp4 muxer may shift the PTS/DTS timelines forwards to ensure that the
-    // first DTS is non-negative. Some players/programs need an explicit
-    // "editlist" in the moov, which specifies the timestamp at which the actual
-    // playback is supposed to start. For example Adobe Premiere refuses to open
-    // the file otherwise.
-    ret = av_opt_set(ffmpeg_ctx->av_format_ctx->priv_data, "use_editlist", "1", 0);
-    if (ret < 0) {
-        eprintf("Error: Failed to set video muxer use_editlist: %s\n", av_err2str(ret));
-        goto fail;
-    }
+        // Our mp4 muxer may shift the PTS/DTS timelines forwards to ensure that the
+        // first DTS is non-negative. Some players/programs need an explicit
+        // "editlist" in the moov, which specifies the timestamp at which the actual
+        // playback is supposed to start. For example Adobe Premiere refuses to open
+        // the file otherwise.
+        ret = av_opt_set(ffmpeg_ctx->av_format_ctx->priv_data, "use_editlist", "1", 0);
+        if (ret < 0) {
+            eprintf("Error: Failed to set video muxer use_editlist: %s\n", av_err2str(ret));
+            goto fail;
+        }
 #endif
+        break;
+    }
+
 
     // AVCodecContext (encoder)
     //
