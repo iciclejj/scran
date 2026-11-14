@@ -14,6 +14,7 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/audio_fifo.h>
+#include <libavutil/buffer.h>
 
 #include "wlr-layer-shell-unstable-v1.h"
 #include "ext-image-capture-source-v1.h"
@@ -467,6 +468,7 @@ struct ffmpeg_context {
     AVFormatContext *av_format_ctx;
     AVCodecContext  *av_codec_ctx;
     AVFrame         *av_frame_to_encode;
+    AVBufferPool    *av_buffer_pool_to_encode;
     AVPacket        *av_packet; // encoded frame
 
     // Audio

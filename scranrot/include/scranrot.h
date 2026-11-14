@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 
 #define RGBA32_PIXEL_STRIDE 4
@@ -28,6 +29,16 @@ enum scranrot_transform {
 	SCRANROT_TRANSFORM_FLIPPED_180 = 6,
 	SCRANROT_TRANSFORM_FLIPPED_270 = 7,
 };
+
+
+// Destination size for even source dimensions under any transform.
+//
+// NOTE: Keep in sync with transform_framebuffer_to_yuv420__generic_dispatcher().
+//
+static inline size_t
+scranrot_yuv420_buffer_size(int width_px, int height_px) {
+    return (size_t)width_px * height_px + 2 * ((size_t)(width_px / 2) * (height_px / 2));
+}
 
 
 // scranrot_init() must be called before using this function.

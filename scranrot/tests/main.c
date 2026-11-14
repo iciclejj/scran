@@ -315,6 +315,13 @@ run_rgba32_to_yuv420_case(
         fprintf(stderr, "  return mismatch: got %s, reference %s\n", ok ? "true" : "false", reference_ok ? "true" : "false");
         pass = false;
     } else if (ok) {
+        const size_t buffer_size = scranrot_yuv420_buffer_size(
+            params->src_dimensions.width_px, params->src_dimensions.height_px
+        );
+        if (buffer_size != dst_size) {
+            fprintf(stderr, "  buffer size mismatch: got %zu, reference %zu\n", buffer_size, dst_size);
+            pass = false;
+        }
         if (!compare_yuv420(
                 result_planes, reference_planes,
                 dst_dimensions, y_tolerance, uv_tolerance)

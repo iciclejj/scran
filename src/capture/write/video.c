@@ -47,6 +47,7 @@ destroy_ffmpeg_video(struct scran_output *st_output)
     avformat_free_context(ffmpeg_ctx->av_format_ctx);
     ffmpeg_ctx->av_format_ctx = NULL;
     av_frame_free(&ffmpeg_ctx->av_frame_to_encode);
+    av_buffer_pool_uninit(&ffmpeg_ctx->av_buffer_pool_to_encode);
 }
 
 // Does not create the audio AVStream; see init_ffmpeg().
@@ -162,15 +163,18 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     ffmpeg_ctx->failure_mask = SCRAN_VIDEO_FAILURE_NONE;
 
     // AVFrame (converted, ready to be fed to encoder)
+    //
+    // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be
+    // divisible by 2. TODO: Also update selection area visuals to this width.
+    int frame_width  = dimensions.x & ~0b1;
+    int frame_height = dimensions.y & ~0b1;
     ffmpeg_ctx->av_frame_to_encode                  = av_frame_alloc();
     if (!ffmpeg_ctx->av_frame_to_encode) {
         eprintf("Error: Failed to allocate video frame.\n");
         goto fail;
     }
-    // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be
-    // divisible by 2. TODO: Also update selection area visuals to this width.
-    ffmpeg_ctx->av_frame_to_encode->width           = dimensions.x & ~0b1;
-    ffmpeg_ctx->av_frame_to_encode->height          = dimensions.y & ~0b1;
+    ffmpeg_ctx->av_frame_to_encode->width           = frame_width;
+    ffmpeg_ctx->av_frame_to_encode->height          = frame_height;
     // NOTE: Some pixel formats (and some file formats), e.g. YUV420P, require
     // even-numbered (or some other multiplier) height and/or width.
     ffmpeg_ctx->av_frame_to_encode->format          = AV_PIX_FMT_YUV420P;
@@ -180,6 +184,19 @@ init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
     ffmpeg_ctx->av_frame_to_encode->colorspace      = AVCOL_SPC_BT709;
     ffmpeg_ctx->av_frame_to_encode->color_primaries = AVCOL_PRI_BT709;
     ffmpeg_ctx->av_frame_to_encode->color_trc       = AVCOL_TRC_BT709;
+
+
+    // AVBufferPool
+    ffmpeg_ctx->av_buffer_pool_to_encode = av_buffer_pool_init(
+        // Keep the 16 bytes padding for sanity's sake, even if currently unnecessary.
+        //   See AVFrame.data comment.
+        scranrot_yuv420_buffer_size(frame_width, frame_height) + 16,
+        NULL
+    );
+    if (!ffmpeg_ctx->av_buffer_pool_to_encode) {
+        eprintf("Error: Failed to allocate video frame buffer pool.\n");
+        goto fail;
+    }
 
 
     // AVFormat
@@ -547,9 +564,10 @@ capture_video_write_video_frame(
     struct capture_view view,
     const struct capture_buffer_area_context *buffer_area_ctx
 ) {
-    struct scran_output *output = view.output;
-
+    struct scran_output   *output = view.output;
     struct ffmpeg_context *ffmpeg = &output->capture.ffmpeg_ctx;
+
+    AVFrame *frame = ffmpeg->av_frame_to_encode;
 
     // Crop and convert
     {
@@ -571,18 +589,22 @@ capture_video_write_video_frame(
         // record it flipped for now, rather than blocking capture entirely.
         enum wl_output_transform transform = wl_output_transform_without_flip(view.frame_ctx->source_transform);
 
-        AVFrame *frame = ffmpeg->av_frame_to_encode;
-        void *const frame_buffer = output->capture.img_data_2;
-
         assert(frame->width == get_transformed_width(area_w_px, area_h_px, transform));
         assert(frame->height == get_transformed_height(area_w_px, area_h_px, transform));
+
+        assert(!frame->buf[0]);
+        frame->buf[0] = av_buffer_pool_get(ffmpeg->av_buffer_pool_to_encode);
+        if (!frame->buf[0]) {
+            eprintf("Error: Failed to allocate video frame buffer.\n");
+            goto err_video_stream;
+        }
 
         if (!scranrot_transform_framebuffer_to_yuv420(
                 buffer_area_ctx->area_start_address,
                 area_w_px,
                 area_h_px,
                 buffer_area_ctx->source_row_bytes,
-                frame_buffer,
+                frame->buf[0]->data,
                 rgba32_shuffle,
                 wl_output_transform_to_scranrot(transform),
                 &frame->data[0], &frame->linesize[0],
@@ -591,13 +613,16 @@ capture_video_write_video_frame(
             )
         ) {
             eprintf("Error: scranrot failed to convert framebuffer to yuv\n");
+            // TODO: merge the unrefs into one path
+            av_buffer_unref(&frame->buf[0]);
             goto err_video_stream;
         }
         frame->pts = view.frame_ctx->presentation_time_nsec - output->capture.video_presentation_time_nsec_start;
     }
 
     // Encode
-    int err = avcodec_send_frame(ffmpeg->av_codec_ctx, ffmpeg->av_frame_to_encode);
+    int err = avcodec_send_frame(ffmpeg->av_codec_ctx, frame);
+    av_buffer_unref(&frame->buf[0]);
     if (err < 0) {
         eprintf("Error: avcodec_send_frame: %s\n", av_err2str(err));
         goto err_video_stream;
