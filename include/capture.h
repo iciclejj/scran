@@ -100,7 +100,7 @@ bool capture_video_init_writers(struct scran_output *st_output, const BLPointI d
 void capture_video_destroy_writers(struct scran_output *st_output);
 
 bool capture_video_drain_codec(struct scran_output *st_output, AVCodecContext *codec_ctx, AVPacket *packet, capture_video_write_packet_fn write_packet_fn, const char *stream_name);
-bool capture_video_drain_write_queue(struct ffmpeg_context *ffmpeg_ctx);
+bool capture_video_drain_write_queue(struct ffmpeg_context *ffmpeg);
 bool capture_video_write_video_packet(struct scran_output *output, AVPacket *pkt);
 bool capture_video_write_audio_packet(struct scran_output *st_output, AVPacket *av_packet);
 bool capture_video_write_video_frame(struct capture_view view, const struct capture_buffer_area_context *buffer_area_ctx);
