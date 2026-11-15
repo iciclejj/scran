@@ -9,7 +9,7 @@
 
 
 // TODO: Use struct spa_audio_info_raw to set this dynamically or to
-// let e.g. init_ffmpeg() decide.
+// let e.g. capture_video_init_writers() decide.
 #define SCRAN_PIPEWIRE_N_CHANNELS 2
 #define SCRAN_PIPEWIRE_SAMPLE_RATE 48000
 

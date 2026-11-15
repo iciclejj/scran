@@ -392,10 +392,10 @@ capture_video_cancel_pending_fullscreen_capture(struct scran_output *output) {
 
 static inline bool
 stream_has_frames(
-    const struct ffmpeg_context *ffmpeg_ctx,
+    const struct ffmpeg_context *ffmpeg,
     enum capture_av_format_stream_index stream_index
 ) {
-    const AVFormatContext *fmt = ffmpeg_ctx->av_format_ctx;
+    const AVFormatContext *fmt = ffmpeg->format_ctx;
     return
         stream_index < fmt->nb_streams
         && fmt->streams[stream_index]->nb_frames > 0;
@@ -406,27 +406,27 @@ stream_has_frames(
 void
 capture_video_finish(struct scran_output *output)
 {
-    struct scran_output_capture *capture    = &output->capture;
-    struct ffmpeg_context       *ffmpeg_ctx = &capture->ffmpeg_ctx;
+    struct scran_output_capture *capture = &output->capture;
+    struct ffmpeg_context       *ffmpeg  = &capture->ffmpeg_ctx;
 
     // TODO: Refactor most of this into capture_video_finish_writers or similar.
     {
-        bool incomplete = ffmpeg_ctx->failure_mask != SCRAN_VIDEO_FAILURE_NONE;
+        bool incomplete = ffmpeg->failure_mask != SCRAN_VIDEO_FAILURE_NONE;
 
         if (capture->audio_active) {
             scran_pipewire_detach(output);
             incomplete |= !capture_video_drain_codec(
                 output,
-                ffmpeg_ctx->av_codec_ctx_audio,
-                ffmpeg_ctx->av_packet_audio,
+                ffmpeg->audio.codec_ctx,
+                ffmpeg->audio.packet,
                 capture_video_write_audio_packet,
                 "audio"
             );
         }
         incomplete |= !capture_video_drain_codec(
             output,
-            ffmpeg_ctx->av_codec_ctx,
-            ffmpeg_ctx->av_packet,
+            ffmpeg->video.codec_ctx,
+            ffmpeg->video.packet,
             capture_video_write_video_packet,
             "video"
         );
@@ -436,14 +436,14 @@ capture_video_finish(struct scran_output *output)
         //   Before that fix, av_write_trailer() would crash if no frames were
         //   available after draining the codec.
         // - stream->nb_frames only counts frames that have left the write queue.
-        incomplete |= !capture_video_drain_write_queue(ffmpeg_ctx);
+        incomplete |= !capture_video_drain_write_queue(ffmpeg);
         const bool have_frames =
-            stream_has_frames(ffmpeg_ctx, SCRAN_AV_FORMAT_STREAM_IDX_VIDEO)
-            || stream_has_frames(ffmpeg_ctx, SCRAN_AV_FORMAT_STREAM_IDX_AUDIO);
+            stream_has_frames(ffmpeg, SCRAN_AV_FORMAT_STREAM_IDX_VIDEO)
+            || stream_has_frames(ffmpeg, SCRAN_AV_FORMAT_STREAM_IDX_AUDIO);
 
         // NOTE: Avoid using g_state.options.video_path, since it is shared
         // across all outputs' captures!
-        const char *saved_filepath = g_state.options.output_to_stdout ? NULL : ffmpeg_ctx->av_format_ctx->url;
+        const char *saved_filepath = g_state.options.output_to_stdout ? NULL : ffmpeg->format_ctx->url;
 
         if (!have_frames) {
             eprintf("Error: No video or audio frames were written.\n");
@@ -453,7 +453,7 @@ capture_video_finish(struct scran_output *output)
             }
             scran_notify_error("no video or audio was written");
         } else {
-            int ret = av_write_trailer(ffmpeg_ctx->av_format_ctx);
+            int ret = av_write_trailer(ffmpeg->format_ctx);
             if (ret < 0) {
                 eprintf("Error: Failed to write video trailer: %s\n", av_err2str(ret));
                 incomplete = true;
@@ -471,9 +471,8 @@ capture_video_finish(struct scran_output *output)
             }
         }
 
-        capture_video_destroy_audio_writer(output);
+        capture_video_destroy_writers(output);
         capture->audio_active = false;
-        capture_video_destroy_video_writer(output);
     }
 
     selection_surface_set_border_color(output, output->capture.pre_capture_border_color);
