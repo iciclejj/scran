@@ -97,8 +97,7 @@ typedef bool capture_video_write_packet_fn(
     AVPacket *pkt
 );
 bool capture_video_init_writers(struct scran_output *st_output, const BLPointI dimensions);
- void capture_video_destroy_video_writer(struct scran_output *st_output);
- void capture_video_destroy_audio_writer(struct scran_output *st_output);
+void capture_video_destroy_writers(struct scran_output *st_output);
 
 bool capture_video_drain_codec(struct scran_output *st_output, AVCodecContext *codec_ctx, AVPacket *packet, capture_video_write_packet_fn write_packet_fn, const char *stream_name);
 bool capture_video_drain_write_queue(struct ffmpeg_context *ffmpeg_ctx);

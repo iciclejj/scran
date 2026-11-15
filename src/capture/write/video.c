@@ -15,42 +15,27 @@
 
 
 // Safely handles NULL pointers, and ensures they're all NULL when done.
-static bool
-destroy_ffmpeg_audio(struct scran_output *st_output)
+static void
+destroy_ffmpeg_audio(struct ffmpeg_audio_context *audio)
 {
-    struct ffmpeg_context *ffmpeg_ctx = &st_output->capture.ffmpeg_ctx;
-
-    avcodec_free_context(&ffmpeg_ctx->audio.codec_ctx);
-    av_frame_free(&ffmpeg_ctx->audio.frame);
-    av_audio_fifo_free(ffmpeg_ctx->audio.fifo);
-    ffmpeg_ctx->audio.fifo = NULL;
-    av_packet_free(&ffmpeg_ctx->audio.packet);
-
-    return true;
+    avcodec_free_context(&audio->codec_ctx);
+    av_frame_free(&audio->frame);
+    av_audio_fifo_free(audio->fifo);
+    audio->fifo = NULL;
+    av_packet_free(&audio->packet);
 }
 
 // Safely handles NULL pointers, and ensures they're all NULL when done.
 static void
-destroy_ffmpeg_video(struct scran_output *st_output)
+destroy_ffmpeg_video(struct ffmpeg_video_context *video)
 {
-    struct ffmpeg_context *ffmpeg_ctx = &st_output->capture.ffmpeg_ctx;
-
-    if (ffmpeg_ctx->format_ctx) {
-        int ret = avio_closep(&ffmpeg_ctx->format_ctx->pb);
-        if (ret < 0) {
-            eprintf("Error: Failed to close video output: %s\n", av_err2str(ret));
-        }
-    }
-    av_packet_free(&ffmpeg_ctx->video.packet);
-    avcodec_free_context(&ffmpeg_ctx->video.codec_ctx);
-    // Freeing the format context frees the linked stream for us.
-    avformat_free_context(ffmpeg_ctx->format_ctx);
-    ffmpeg_ctx->format_ctx = NULL;
-    av_frame_free(&ffmpeg_ctx->video.frame);
-    av_buffer_pool_uninit(&ffmpeg_ctx->video.frame_buffer_pool);
+    av_packet_free(&video->packet);
+    avcodec_free_context(&video->codec_ctx);
+    av_frame_free(&video->frame);
+    av_buffer_pool_uninit(&video->frame_buffer_pool);
 }
 
-// Does not create the audio AVStream; see init_ffmpeg().
+// Does not create the audio AVStream; see capture_video_init_writers().
 // Cleans up after itself on failure.
 static bool
 init_ffmpeg_audio(struct scran_output *st_output)
@@ -138,7 +123,7 @@ init_ffmpeg_audio(struct scran_output *st_output)
 
 fail:
     scran_pipewire_detach(st_output);
-    destroy_ffmpeg_audio(st_output);
+    destroy_ffmpeg_audio(&ffmpeg_ctx->audio);
     return false;
 }
 
@@ -150,13 +135,13 @@ fail:
 //
 //  - Don't pass scran_output. Just width/height etc.
 //
-static bool
-init_ffmpeg(struct scran_output *st_output, const BLPointI dimensions)
+bool
+capture_video_init_writers(struct scran_output *st_output, const BLPointI dimensions)
 {
     struct scran_output_capture *capture    = &st_output->capture;
     struct ffmpeg_context       *ffmpeg_ctx = &capture->ffmpeg_ctx;
 
-    assert(!capture->audio_active); // Determines whether to clean up audio
+    assert(!capture->audio_active);
     const char *output_filepath = NULL;
     int ret;
 
@@ -423,10 +408,9 @@ fail:
     }
     if (capture->audio_active) {
         scran_pipewire_detach(st_output);
-        destroy_ffmpeg_audio(st_output);
         capture->audio_active = false;
     }
-    destroy_ffmpeg_video(st_output);
+    capture_video_destroy_writers(st_output);
     return false;
 }
 
@@ -485,22 +469,25 @@ capture_video_drain_codec(
 }
 
 
-bool
-capture_video_init_writers(struct scran_output *st_output, BLPointI dimensions)
-{
-    return init_ffmpeg(st_output, dimensions);
-}
-
+// Safely handles partially initialized writers, and ensures all pointers are
+// NULL when done.
 void
-capture_video_destroy_video_writer(struct scran_output *st_output)
+capture_video_destroy_writers(struct scran_output *st_output)
 {
-    destroy_ffmpeg_video(st_output);
-}
+    struct ffmpeg_context *ffmpeg_ctx = &st_output->capture.ffmpeg_ctx;
 
-void
-capture_video_destroy_audio_writer(struct scran_output *st_output)
-{
-    destroy_ffmpeg_audio(st_output);
+    destroy_ffmpeg_audio(&ffmpeg_ctx->audio);
+    destroy_ffmpeg_video(&ffmpeg_ctx->video);
+
+    if (ffmpeg_ctx->format_ctx) {
+        int ret = avio_closep(&ffmpeg_ctx->format_ctx->pb);
+        if (ret < 0) {
+            eprintf("Error: Failed to close video output: %s\n", av_err2str(ret));
+        }
+    }
+    // Freeing the format context frees the linked streams for us.
+    avformat_free_context(ffmpeg_ctx->format_ctx);
+    ffmpeg_ctx->format_ctx = NULL;
 }
 
 bool
@@ -572,7 +559,7 @@ capture_video_write_video_frame(
     // Crop and convert
     {
         // XXX NOTE: Zeroing out the last bit because x264 needs the dimensions to be divisible by 2.
-        // XXX TODO: Collect this bit zeroing logic somehow? (Duplicated in init_ffmpeg.)
+        // XXX TODO: Collect this bit zeroing logic somehow? (Duplicated in capture_video_init_writers.)
         const int area_w_px = blboxi_width_abs_unsafe(buffer_area_ctx->area_px) & ~0b1;
         const int area_h_px = blboxi_height_abs_unsafe(buffer_area_ctx->area_px) & ~0b1;
 

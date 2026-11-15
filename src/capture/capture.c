@@ -471,9 +471,8 @@ capture_video_finish(struct scran_output *output)
             }
         }
 
-        capture_video_destroy_audio_writer(output);
+        capture_video_destroy_writers(output);
         capture->audio_active = false;
-        capture_video_destroy_video_writer(output);
     }
 
     selection_surface_set_border_color(output, output->capture.pre_capture_border_color);
