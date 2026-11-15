@@ -395,7 +395,7 @@ stream_has_frames(
     const struct ffmpeg_context *ffmpeg_ctx,
     enum capture_av_format_stream_index stream_index
 ) {
-    const AVFormatContext *fmt = ffmpeg_ctx->av_format_ctx;
+    const AVFormatContext *fmt = ffmpeg_ctx->format_ctx;
     return
         stream_index < fmt->nb_streams
         && fmt->streams[stream_index]->nb_frames > 0;
@@ -417,16 +417,16 @@ capture_video_finish(struct scran_output *output)
             scran_pipewire_detach(output);
             incomplete |= !capture_video_drain_codec(
                 output,
-                ffmpeg_ctx->av_codec_ctx_audio,
-                ffmpeg_ctx->av_packet_audio,
+                ffmpeg_ctx->audio.codec_ctx,
+                ffmpeg_ctx->audio.packet,
                 capture_video_write_audio_packet,
                 "audio"
             );
         }
         incomplete |= !capture_video_drain_codec(
             output,
-            ffmpeg_ctx->av_codec_ctx,
-            ffmpeg_ctx->av_packet,
+            ffmpeg_ctx->video.codec_ctx,
+            ffmpeg_ctx->video.packet,
             capture_video_write_video_packet,
             "video"
         );
@@ -443,7 +443,7 @@ capture_video_finish(struct scran_output *output)
 
         // NOTE: Avoid using g_state.options.video_path, since it is shared
         // across all outputs' captures!
-        const char *saved_filepath = g_state.options.output_to_stdout ? NULL : ffmpeg_ctx->av_format_ctx->url;
+        const char *saved_filepath = g_state.options.output_to_stdout ? NULL : ffmpeg_ctx->format_ctx->url;
 
         if (!have_frames) {
             eprintf("Error: No video or audio frames were written.\n");
@@ -453,7 +453,7 @@ capture_video_finish(struct scran_output *output)
             }
             scran_notify_error("no video or audio was written");
         } else {
-            int ret = av_write_trailer(ffmpeg_ctx->av_format_ctx);
+            int ret = av_write_trailer(ffmpeg_ctx->format_ctx);
             if (ret < 0) {
                 eprintf("Error: Failed to write video trailer: %s\n", av_err2str(ret));
                 incomplete = true;

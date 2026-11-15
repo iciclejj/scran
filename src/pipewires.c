@@ -127,8 +127,8 @@ on_process(void *data)
         }
 
         // NOTE: n_samples_leftover must be adjusted if moved to after av_audio_fifo_write()
-        int n_samples_leftover = av_audio_fifo_size(ffmpeg_ctx->av_audio_fifo);
-        int ret = av_audio_fifo_write(ffmpeg_ctx->av_audio_fifo, (void **)planes_copy.samples, n_samples);
+        int n_samples_leftover = av_audio_fifo_size(ffmpeg_ctx->audio.fifo);
+        int ret = av_audio_fifo_write(ffmpeg_ctx->audio.fifo, (void **)planes_copy.samples, n_samples);
         if (ret < 0) {
             eprintf("Error: av_audio_fifo_write: %s\n", av_err2str(ret));
             goto output_err_audio_stream;
@@ -136,15 +136,15 @@ on_process(void *data)
 
         int64_t pts_fifo_start =
             pts - pts_video_start - av_rescale(n_samples_leftover, NSEC_PER_SEC, SCRAN_PIPEWIRE_SAMPLE_RATE);
-        int frame_size = ffmpeg_ctx->av_codec_ctx_audio->frame_size;
+        int frame_size = ffmpeg_ctx->audio.codec_ctx->frame_size;
 
-        assert(frame_size == ffmpeg_ctx->av_frame_captured_audio->nb_samples);
+        assert(frame_size == ffmpeg_ctx->audio.frame->nb_samples);
 
         int64_t pts_curr = pts_fifo_start;
-        while (av_audio_fifo_size(ffmpeg_ctx->av_audio_fifo) >= frame_size) {
+        while (av_audio_fifo_size(ffmpeg_ctx->audio.fifo) >= frame_size) {
             ret = av_audio_fifo_read(
-                ffmpeg_ctx->av_audio_fifo,
-                (void **)ffmpeg_ctx->av_frame_captured_audio->data,
+                ffmpeg_ctx->audio.fifo,
+                (void **)ffmpeg_ctx->audio.frame->data,
                 frame_size
             );
             if (ret < 0) {
@@ -153,23 +153,23 @@ on_process(void *data)
             }
             assert(ret == frame_size);
 
-            ffmpeg_ctx->av_frame_captured_audio->pts = pts_curr;
+            ffmpeg_ctx->audio.frame->pts = pts_curr;
 
-            int ret_enc = avcodec_send_frame(ffmpeg_ctx->av_codec_ctx_audio, ffmpeg_ctx->av_frame_captured_audio);
+            int ret_enc = avcodec_send_frame(ffmpeg_ctx->audio.codec_ctx, ffmpeg_ctx->audio.frame);
             if (ret_enc < 0) {
                 eprintf("Error: avcodec_send_frame: %s\n", av_err2str(ret_enc));
                 goto output_err_audio_stream;
             }
 
             while (ret_enc >= 0) {
-                ret_enc = avcodec_receive_packet(ffmpeg_ctx->av_codec_ctx_audio, ffmpeg_ctx->av_packet_audio);
+                ret_enc = avcodec_receive_packet(ffmpeg_ctx->audio.codec_ctx, ffmpeg_ctx->audio.packet);
                 if (ret_enc == AVERROR_EOF || ret_enc == AVERROR(EAGAIN)) {
                     break;
                 } else if (ret_enc < 0) {
                     eprintf("Error: avcodec_receive_packet: %s\n", av_err2str(ret_enc));
                     goto output_err_audio_stream;
                 }
-                if (!capture_video_write_audio_packet(output, ffmpeg_ctx->av_packet_audio)) {
+                if (!capture_video_write_audio_packet(output, ffmpeg_ctx->audio.packet)) {
                     goto output_err;
                 }
             }
@@ -187,7 +187,7 @@ output_err:
         capture_video_request_stop(output);
 output_done:
         // functions called above make their own reference if necessary
-        av_packet_unref(ffmpeg_ctx->av_packet_audio);
+        av_packet_unref(ffmpeg_ctx->audio.packet);
     }
 
 done:

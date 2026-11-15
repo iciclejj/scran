@@ -464,18 +464,21 @@ enum scran_video_failure {
 } SCRAN_PACKED;
 
 struct ffmpeg_context {
-    // Video
-    AVFormatContext *av_format_ctx;
-    AVCodecContext  *av_codec_ctx;
-    AVFrame         *av_frame_to_encode;
-    AVBufferPool    *av_buffer_pool_to_encode;
-    AVPacket        *av_packet; // encoded frame
+    AVFormatContext *format_ctx;
 
-    // Audio
-    AVCodecContext  *av_codec_ctx_audio;
-    AVFrame         *av_frame_captured_audio;
-    AVPacket        *av_packet_audio;
-    AVAudioFifo     *av_audio_fifo;
+    struct ffmpeg_video_context {
+        AVCodecContext *codec_ctx;
+        AVFrame        *frame;
+        AVBufferPool   *frame_buffer_pool;
+        AVPacket       *packet; // encoded frame
+    } video;
+
+    struct ffmpeg_audio_context {
+        AVCodecContext *codec_ctx;
+        AVFrame        *frame;
+        AVPacket       *packet;
+        AVAudioFifo    *fifo;
+    } audio;
 
     enum scran_video_failure failure_mask;
 };
