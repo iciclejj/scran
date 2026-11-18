@@ -19,6 +19,9 @@
 #include "util/lib-interop.h"
 
 
+#define SCRAN_PIPEWIRE_AV_SAMPLE_FORMAT AV_SAMPLE_FMT_FLTP
+
+
 static struct {
     struct pw_loop       *loop;
     struct pw_stream     *stream;
@@ -280,6 +283,7 @@ static bool
 scran_pipewire_start(enum spa_audio_format format)
 {
     if (m_state.started) {
+        assert(m_state.format == format);
         return true;
     }
 
@@ -381,19 +385,37 @@ fail:
     return false;
 }
 
+// supported_formats == NULL means any format is accepted.
+// supported_formats is terminated by AV_SAMPLE_FMT_NONE
+//     See avcodec_get_supported_config()
 bool
 scran_pipewire_attach(
     struct scran_output *output,
-    enum spa_audio_format format
+    const enum AVSampleFormat *supported_formats,
+    enum AVSampleFormat *selected_format
 ) {
-    // XXX[1/2]: We'll be adding more formats soon, so leave it like this.
-    assert(format == ffmpeg_sample_format_to_pipewire(SCRAN_AUDIO_SAMPLE_FORMAT_FFMPEG));
+    *selected_format = AV_SAMPLE_FMT_NONE;
 
-    if (!scran_pipewire_start(format)) {
+    // TODO: Add more supported formats.
+    if (!supported_formats) {
+        *selected_format = SCRAN_PIPEWIRE_AV_SAMPLE_FORMAT;
+    } else {
+        for (const enum AVSampleFormat *fmt = supported_formats; *fmt != AV_SAMPLE_FMT_NONE; ++fmt) {
+            if (*fmt == SCRAN_PIPEWIRE_AV_SAMPLE_FORMAT) {
+                *selected_format = SCRAN_PIPEWIRE_AV_SAMPLE_FORMAT;
+                break;
+            }
+        }
+    }
+
+    if (*selected_format == AV_SAMPLE_FMT_NONE) {
+        eprintf("Error: scran_pipewire: Unsupported sample format.\n");
         return false;
     }
-    // XXX[2/2]:
-    assert(m_state.format == format);
+
+    if (!scran_pipewire_start(ffmpeg_sample_format_to_pipewire(*selected_format))) {
+        return false;
+    }
 
     uint64_t output_mask = get_output_mask(output);
 
