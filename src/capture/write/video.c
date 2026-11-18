@@ -82,31 +82,12 @@ init_ffmpeg_audio(struct scran_output *st_output, uint32_t audio_encoders)
 {
     struct ffmpeg_context *ffmpeg = &st_output->capture.ffmpeg_ctx;
 
-    // Float planar should be guaranteed supported for pipewire(?)
-    // TODO: Retrieve the sample_fmt using avcodec_get_supported_config() if we
-    // implement user-provided settings. FLTP/F32P is supported for AAC.
-    static const enum AVSampleFormat sample_fmt     = SCRAN_AUDIO_SAMPLE_FORMAT_FFMPEG;
-    static const AVChannelLayout     channel_layout = AV_CHANNEL_LAYOUT_STEREO;
-    static const int                 sample_rate    = SCRAN_PIPEWIRE_SAMPLE_RATE;
-    static const AVRational          time_base      = { 1, NSEC_PER_SEC };
+    int ret;
+    static const AVChannelLayout channel_layout = AV_CHANNEL_LAYOUT_STEREO;
+    static const int             sample_rate    = SCRAN_PIPEWIRE_SAMPLE_RATE;
+    static const AVRational      time_base      = { 1, NSEC_PER_SEC };
 
     assert(channel_layout.nb_channels == SCRAN_PIPEWIRE_N_CHANNELS);
-
-    if (!scran_pipewire_attach(st_output, ffmpeg_sample_format_to_pipewire(sample_fmt))) {
-        return false;
-    }
-
-    int ret;
-
-    // AVFrame (captured)
-    ffmpeg->audio.frame              = av_frame_alloc();
-    if (!ffmpeg->audio.frame) {
-        eprintf("Error: Failed to allocate audio frame.\n");
-        goto fail;
-    }
-    ffmpeg->audio.frame->format      = sample_fmt;
-    ffmpeg->audio.frame->sample_rate = sample_rate;
-    ffmpeg->audio.frame->ch_layout   = channel_layout;
 
     // AVCodec
     const AVCodec *codec = NULL;
@@ -120,8 +101,32 @@ init_ffmpeg_audio(struct scran_output *st_output, uint32_t audio_encoders)
     }
     if (!codec) {
         eprintf("Error: No usable audio encoder found.\n");
-        goto fail;
+        return false;
     }
+
+    const enum AVSampleFormat *supported_sample_fmts;
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(61,13,100)
+    ret = avcodec_get_supported_config(
+        NULL, codec, AV_CODEC_CONFIG_SAMPLE_FORMAT, 0,
+        (const void **)&supported_sample_fmts, NULL
+    );
+    if (ret < 0) {
+        eprintf("Error: Failed to get supported audio sample formats: %s\n", av_err2str(ret));
+        return false;
+    }
+#else
+    supported_sample_fmts = codec->sample_fmts;
+#endif /* LIBAVCODEC_VERSION_INT */
+    if (supported_sample_fmts && supported_sample_fmts[0] == AV_SAMPLE_FMT_NONE) {
+        eprintf("Error: No supported audio sample formats found.\n");
+        return false;
+    }
+
+    enum AVSampleFormat sample_fmt;
+    if (!scran_pipewire_attach(st_output, supported_sample_fmts, &sample_fmt)) {
+        return false;
+    }
+    assert(sample_fmt != AV_SAMPLE_FMT_NONE);
 
     // AVCodecContext
     ffmpeg->audio.codec_ctx              = avcodec_alloc_context3(codec);
@@ -141,6 +146,16 @@ init_ffmpeg_audio(struct scran_output *st_output, uint32_t audio_encoders)
         eprintf("Error: Failed to open audio encoder: %s\n", av_err2str(ret));
         goto fail;
     }
+
+    // AVFrame (captured)
+    ffmpeg->audio.frame              = av_frame_alloc();
+    if (!ffmpeg->audio.frame) {
+        eprintf("Error: Failed to allocate audio frame.\n");
+        goto fail;
+    }
+    ffmpeg->audio.frame->format      = sample_fmt;
+    ffmpeg->audio.frame->sample_rate = sample_rate;
+    ffmpeg->audio.frame->ch_layout   = channel_layout;
 
     // AVFrame (captured, cont.)
     ffmpeg->audio.frame->nb_samples  = ffmpeg->audio.codec_ctx->frame_size;

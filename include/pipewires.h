@@ -15,7 +15,7 @@
 
 
 void scran_pipewire_prepare(int epoll_fd);
-bool scran_pipewire_attach(struct scran_output *output, enum spa_audio_format format);
+bool scran_pipewire_attach(struct scran_output *output, const enum AVSampleFormat *supported_formats, enum AVSampleFormat *selected_format);
 void scran_pipewire_detach(struct scran_output *output);
 void scran_pipewire_destroy(void);
 
