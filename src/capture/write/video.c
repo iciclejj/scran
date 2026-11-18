@@ -5,8 +5,54 @@
 #include "util/lib-interop.h"
 #include "util/util.h"
 
+#include <limits.h>
 #include <libavutil/opt.h>
 
+
+// In order of priority
+enum video_encoder_index {
+    // Requires GPL ffmpeg build
+    VIDEO_ENCODER_LIBX264,
+    // TODO: Why does it have such bad performance (high cpu usage, stutters) compared to libx264?
+    VIDEO_ENCODER_LIBOPENH264,
+    VIDEO_ENCODER_LIBSVTAV1,
+};
+static const char *const video_encoder_names[] = {
+    [VIDEO_ENCODER_LIBX264]     = "libx264",
+    [VIDEO_ENCODER_LIBOPENH264] = "libopenh264",
+    [VIDEO_ENCODER_LIBSVTAV1]   = "libsvtav1",
+};
+
+enum audio_encoder_index {
+    AUDIO_ENCODER_AAC,
+};
+static const char *const audio_encoder_names[] = {
+    [AUDIO_ENCODER_AAC] = "aac",
+};
+
+enum format_index {
+    VIDEO_FORMAT_MP4,
+};
+static const char *const video_format_names[] = {
+    [VIDEO_FORMAT_MP4] = "mp4",
+};
+
+// TODO: reference this in the docs for viewing defaults.
+// TODO: Take codec opts
+static const struct video_config {
+    enum format_index format;
+    uint32_t video_encoders;
+    uint32_t audio_encoders;
+} m_default_video_config = {
+    .format         = VIDEO_FORMAT_MP4,
+    // Default to trying all our encoders
+    .video_encoders = UINT32_MAX >> (32 - ARRAY_LEN(video_encoder_names)),
+    .audio_encoders = UINT32_MAX >> (32 - ARRAY_LEN(audio_encoder_names)),
+};
+_Static_assert(ARRAY_LEN(video_encoder_names) <= sizeof(m_default_video_config.video_encoders) * CHAR_BIT,
+               "video encoder mask too small");
+_Static_assert(ARRAY_LEN(audio_encoder_names) <= sizeof(m_default_video_config.audio_encoders) * CHAR_BIT,
+               "audio encoder mask too small");
 
 // Safely handles NULL pointers, and ensures they're all NULL when done.
 static void
@@ -32,7 +78,7 @@ destroy_ffmpeg_video(struct ffmpeg_video_context *video)
 // Does not create the audio AVStream; see capture_video_init_writers().
 // Cleans up after itself on failure.
 static bool
-init_ffmpeg_audio(struct scran_output *st_output)
+init_ffmpeg_audio(struct scran_output *st_output, uint32_t audio_encoders)
 {
     struct ffmpeg_context *ffmpeg = &st_output->capture.ffmpeg_ctx;
 
@@ -40,7 +86,6 @@ init_ffmpeg_audio(struct scran_output *st_output)
     // TODO: Retrieve the sample_fmt using avcodec_get_supported_config() if we
     // implement user-provided settings. FLTP/F32P is supported for AAC.
     static const enum AVSampleFormat sample_fmt     = SCRAN_AUDIO_SAMPLE_FORMAT_FFMPEG;
-    static const enum AVCodecID      codec_id       = AV_CODEC_ID_AAC;
     static const AVChannelLayout     channel_layout = AV_CHANNEL_LAYOUT_STEREO;
     static const int                 sample_rate    = SCRAN_PIPEWIRE_SAMPLE_RATE;
     static const AVRational          time_base      = { 1, NSEC_PER_SEC };
@@ -64,9 +109,17 @@ init_ffmpeg_audio(struct scran_output *st_output)
     ffmpeg->audio.frame->ch_layout   = channel_layout;
 
     // AVCodec
-    const AVCodec *codec = avcodec_find_encoder(codec_id);
+    const AVCodec *codec = NULL;
+    for (enum audio_encoder_index i = 0; i < ARRAY_LEN(audio_encoder_names); ++i) {
+        if (audio_encoders & (1U << i)) {
+            codec = avcodec_find_encoder_by_name(audio_encoder_names[i]);
+            if (codec) {
+                break;
+            }
+        }
+    }
     if (!codec) {
-        eprintf("Error: No %s encoder found.\n", avcodec_get_name(codec_id));
+        eprintf("Error: No usable audio encoder found.\n");
         goto fail;
     }
 
@@ -135,6 +188,8 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
     struct scran_output_capture *capture = &st_output->capture;
     struct ffmpeg_context       *ffmpeg  = &capture->ffmpeg_ctx;
 
+    struct video_config config = m_default_video_config;
+
     assert(!capture->audio_active);
     const char *output_filepath = NULL;
     int ret;
@@ -156,6 +211,8 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
     ffmpeg->video.frame->height          = frame_height;
     // NOTE: Some pixel formats (and some file formats), e.g. YUV420P, require
     // even-numbered (or some other multiplier) height and/or width.
+    // TODO: Support other pixel formats. We currently only need (planar) yuv420
+    // due to using scranrot.
     ffmpeg->video.frame->format          = AV_PIX_FMT_YUV420P;
     // scranrot outputs full-range BT.709 Y'CbCr. The capture source is desktop
     // RGB, so we use BT.709 video metadata for broad playback compatibility.
@@ -179,19 +236,12 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
 
 
     // AVFormat
-    enum format_index {
-        VIDEO_FORMAT_MP4,
-    };
-    static const char *const format_names[] = {
-        [VIDEO_FORMAT_MP4] = "mp4",
-    };
-    const enum format_index i_format = VIDEO_FORMAT_MP4;
-    ret = avformat_alloc_output_context2(&ffmpeg->format_ctx, NULL, format_names[i_format], NULL);
+    ret = avformat_alloc_output_context2(&ffmpeg->format_ctx, NULL, video_format_names[config.format], NULL);
     if (ret < 0) {
         eprintf("Error: Failed to allocate output format context: %s\n", av_err2str(ret));
         goto fail;
     }
-    switch (i_format) {
+    switch (config.format) {
     case VIDEO_FORMAT_MP4:
 #if !defined LIBAVFORMAT_VERSION_INT || (LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(61,4,100))
         // Best we can do for seeking/playback-duration compatibility without remuxing or custom
@@ -225,20 +275,11 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
     // AVCodecContext (encoder)
     //
     // In preference order.
-    enum encoder_index {
-        // Requires GPL ffmpeg build
-        VIDEO_ENCODER_LIBX264,
-        // TODO: Why does it have such bad performance (high cpu usage, stutters) compared to libx264?
-        VIDEO_ENCODER_LIBOPENH264,
-        VIDEO_ENCODER_LIBSVTAV1,
-    };
-    static const char *const encoder_names[] = {
-        [VIDEO_ENCODER_LIBX264]     = "libx264",
-        [VIDEO_ENCODER_LIBOPENH264] = "libopenh264",
-        [VIDEO_ENCODER_LIBSVTAV1]   = "libsvtav1",
-    };
-    for (enum encoder_index i = 0; i < ARRAY_LEN(encoder_names); ++i) {
-        const struct AVCodec *codec = avcodec_find_encoder_by_name(encoder_names[i]);
+    for (enum video_encoder_index i = 0; i < ARRAY_LEN(video_encoder_names); ++i) {
+        if (!(config.video_encoders & (1U << i))) {
+            continue;
+        }
+        const struct AVCodec *codec = avcodec_find_encoder_by_name(video_encoder_names[i]);
         if (!codec) {
             continue;
         }
@@ -317,8 +358,10 @@ next_encoder:
         eprintf("Error: No usable encoder found. All encoders failed to initialize or"
                 " were missing from the linked version of libavcodec."
                 " Supported codecs:");
-        for (size_t i = 0; i < ARRAY_LEN(encoder_names); ++i) {
-            eprintf(" %s", encoder_names[i]);
+        for (size_t i = 0; i < ARRAY_LEN(video_encoder_names); ++i) {
+            if (config.video_encoders & (1U << i)) {
+                eprintf(" %s", video_encoder_names[i]);
+            }
         }
         eprintf(".\n");
         goto fail;
@@ -356,7 +399,7 @@ next_encoder:
 
 
     if (!g_state.options.disable_audio_capture && !capture->audio_disable_modifier_active) {
-        if (init_ffmpeg_audio(st_output)) {
+        if (init_ffmpeg_audio(st_output, config.audio_encoders)) {
             capture->audio_active = true;
         } else {
             eprintf("WARNING: Failed to init audio capture.\n");
