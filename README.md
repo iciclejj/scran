@@ -304,7 +304,7 @@ See `scran -h` for more details
                           to change. Please use -f, -d and SCRAN_OUTPUT_DIR if you
                           need stable commands for keybindings or scripts.
 
-  -f   <filename_pattern>
+  -f, --filename <filename_pattern>
          Name of the file that will be placed in the output directory
          Ignored if `output_directory` is - (stdout)
          Expanded patterns:
@@ -314,27 +314,41 @@ See `scran -h` for more details
                                        %U  Microsecond  (000000-999999)
            %E  File extension (e.g. .png or .mp4)
            %%  A literal '%' character
-  -d   set an existing directory as output directory
-  -p   press-only mouse buttons (presses toggle pressed/released state)
-  -e   automatically capture and exit immediately after initial selection
-  -A   disable audio capture (during video capture)
+  -d, --directory <directory>
+         set an existing directory as output directory
+  -p, --press-only
+         press-only mouse buttons (presses toggle pressed/released state)
+  -e, --capture-and-exit
+         automatically capture and exit immediately after initial selection
+  -A, --no-audio
+         disable audio capture (during video capture)
          Note: audio capture requires PipeWire.
-  -C   disable cursor capture
-  -c   capture all cursors, including scran's cursor and tooltip
+  -C, --no-cursors
+         disable cursor capture
+  -c, --capture-all-cursors
+         capture all cursors, including scran's cursor and tooltip
          By default, capture cursors only while scran has no pointer focus.
          If both -c and -C are given, the last one takes effect.
-  -B   do not keep background process alive
-  -z   automatically freeze the display at startup
-  -s   slurp: send selection as geometry string to standard output
+  -B, --no-keepalive
+         do not keep background process alive
+  -z, --freeze-at-startup
+         automatically freeze the display at startup
+  -s, --slurp
+         slurp: send selection as geometry string to standard output
          Equivalent to slurp's default output.
          See https://wayland.emersion.fr/slurp/.
-  -g   "<x>,<y> <width>x<height>"
+  -g, --geometry "<x>,<y> <width>x<height>"
          Pre-initialize selection using slurp-style geometry string
-  -N   disable notifications
-  -U   hide UI (partial)
-  -UU  hide UI (full)
-  -v   show version and exit
-  -h   show help message and exit
+  -N, --no-notifications
+         disable notifications
+  -U,  --hide-ui=partial
+         hide UI (partial)
+  -UU, --hide-ui=full
+         hide UI (full)
+  -v, --version
+         show version and exit
+  -h, --help
+         show help message and exit
 ```
 
 ### Signals
