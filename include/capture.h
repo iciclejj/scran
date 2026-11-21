@@ -94,6 +94,9 @@ typedef bool capture_video_write_packet_fn(
     struct scran_output *,
     AVPacket *pkt
 );
+bool capture_video_set_video_encoder(const char *name);
+bool capture_video_set_audio_encoder(const char *name);
+bool capture_video_set_format(const char *name);
 bool capture_video_init_writers(struct scran_output *st_output, const BLPointI dimensions);
 void capture_video_destroy_writers(struct scran_output *st_output);
 
