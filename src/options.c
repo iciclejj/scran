@@ -577,6 +577,12 @@ static const char help_string[] =
     // TODO:
     // "  -ee  like -e, but ensure the scran process exits fully\n"
     // "         Equivalent to -Be"
+    "  --video-format <format>\n"
+    "         video container format (e.g. mp4)\n"
+    "  --video-encoder <codec_or_encoder>\n"
+    "         video codec (e.g. h264) or specific encoder (e.g. libx264)\n"
+    "  --audio-encoder <codec_or_encoder>\n"
+    "         audio codec (e.g. aac) or specific encoder (e.g. aac)\n"
     "  -A, --no-audio\n"
     "         disable audio capture (during video capture)\n"
     "         Note: audio capture requires PipeWire.\n"
@@ -648,6 +654,9 @@ scran_handle_args(int argc, char *const *argv)
     enum {
         _LAST_SHORT_OPT = UCHAR_MAX,
         OPT_HIDE_UI,
+        OPT_VIDEO_FORMAT,
+        OPT_VIDEO_ENCODER,
+        OPT_AUDIO_ENCODER,
     };
 
     static const struct option long_options[] = {
@@ -666,6 +675,9 @@ scran_handle_args(int argc, char *const *argv)
         { "geometry",            required_argument, NULL, 'g' },
         { "no-notifications",    no_argument,       NULL, 'N' },
         { "hide-ui",             required_argument, NULL, OPT_HIDE_UI },
+        { "video-format",        required_argument, NULL, OPT_VIDEO_FORMAT },
+        { "video-encoder",       required_argument, NULL, OPT_VIDEO_ENCODER },
+        { "audio-encoder",       required_argument, NULL, OPT_AUDIO_ENCODER },
         { "version",             no_argument,       NULL, 'v' },
         { "help",                no_argument,       NULL, 'h' },
         { }
@@ -710,6 +722,21 @@ scran_handle_args(int argc, char *const *argv)
             }
             break;
         case 'N': options->no_notifications                      = true;   break;
+        case OPT_VIDEO_FORMAT:
+            if (!capture_video_set_format(optarg)) {
+                return false;
+            }
+            break;
+        case OPT_VIDEO_ENCODER:
+            if (!capture_video_set_video_encoder(optarg)) {
+                return false;
+            }
+            break;
+        case OPT_AUDIO_ENCODER:
+            if (!capture_video_set_audio_encoder(optarg)) {
+                return false;
+            }
+            break;
         case OPT_HIDE_UI:
             if (!strcmp(optarg, "partial")) {
                 options->hide_ui_level = SCRAN_OPT_HIDE_UI_ITEMS;

@@ -9,6 +9,11 @@
 #include <libavutil/opt.h>
 
 
+struct encoder_info {
+    const char *encoder;
+    const char *codec;
+};
+
 // In order of priority
 enum video_encoder_index {
     // Requires GPL ffmpeg build
@@ -17,17 +22,17 @@ enum video_encoder_index {
     VIDEO_ENCODER_LIBOPENH264,
     VIDEO_ENCODER_LIBSVTAV1,
 };
-static const char *const video_encoder_names[] = {
-    [VIDEO_ENCODER_LIBX264]     = "libx264",
-    [VIDEO_ENCODER_LIBOPENH264] = "libopenh264",
-    [VIDEO_ENCODER_LIBSVTAV1]   = "libsvtav1",
+static const struct encoder_info video_encoders[] = {
+    [VIDEO_ENCODER_LIBX264]     = { .encoder = "libx264",     .codec = "h264" },
+    [VIDEO_ENCODER_LIBOPENH264] = { .encoder = "libopenh264", .codec = "h264" },
+    [VIDEO_ENCODER_LIBSVTAV1]   = { .encoder = "libsvtav1",   .codec = "av1" },
 };
 
 enum audio_encoder_index {
     AUDIO_ENCODER_AAC,
 };
-static const char *const audio_encoder_names[] = {
-    [AUDIO_ENCODER_AAC] = "aac",
+static const struct encoder_info audio_encoders[] = {
+    [AUDIO_ENCODER_AAC] = { .encoder = "aac", .codec = "aac" },
 };
 
 enum format_index {
@@ -39,20 +44,83 @@ static const char *const video_format_names[] = {
 
 // TODO: reference this in the docs for viewing defaults.
 // TODO: Take codec opts
-static const struct video_config {
+static struct video_config {
     enum format_index format;
     uint32_t video_encoders;
     uint32_t audio_encoders;
-} m_default_video_config = {
+} m_video_config = {
     .format         = VIDEO_FORMAT_MP4,
     // Default to trying all our encoders
-    .video_encoders = UINT32_MAX >> (32 - ARRAY_LEN(video_encoder_names)),
-    .audio_encoders = UINT32_MAX >> (32 - ARRAY_LEN(audio_encoder_names)),
+    .video_encoders = UINT32_MAX >> (32 - ARRAY_LEN(video_encoders)),
+    .audio_encoders = UINT32_MAX >> (32 - ARRAY_LEN(audio_encoders)),
 };
-_Static_assert(ARRAY_LEN(video_encoder_names) <= sizeof(m_default_video_config.video_encoders) * CHAR_BIT,
+_Static_assert(ARRAY_LEN(video_encoders) <= sizeof(m_video_config.video_encoders) * CHAR_BIT,
                "video encoder mask too small");
-_Static_assert(ARRAY_LEN(audio_encoder_names) <= sizeof(m_default_video_config.audio_encoders) * CHAR_BIT,
+_Static_assert(ARRAY_LEN(audio_encoders) <= sizeof(m_video_config.audio_encoders) * CHAR_BIT,
                "audio encoder mask too small");
+
+bool
+capture_video_set_format(const char *name)
+{
+    for (size_t i = 0; i < ARRAY_LEN(video_format_names); ++i) {
+        if (!strcmp(name, video_format_names[i])) {
+            m_video_config.format = i;
+            return true;
+        }
+    }
+    eprintf("Error: Unknown video format '%s'. Available formats:", name);
+    for (size_t i = 0; i < ARRAY_LEN(video_format_names); ++i) {
+        eprintf("%s%s", i ? ", " : " ", video_format_names[i]);
+    }
+    eprintf(".\n");
+    return false;
+}
+
+static bool
+set_encoder_mask(uint32_t *mask, const struct encoder_info *encoders, size_t count, const char *name, const char *stream_name)
+{
+    uint32_t selected = 0;
+
+    // Prioritize codec, since names can overlap, e.g. aac/aac
+    for (size_t i = 0; i < count; ++i) {
+        if (!strcmp(name, encoders[i].codec)) {
+            selected |= 1U << i;
+        }
+    }
+    if (!selected) {
+        for (size_t i = 0; i < count; ++i) {
+            if (!strcmp(name, encoders[i].encoder)) {
+                selected = 1U << i;
+                break;
+            }
+        }
+    }
+
+    if (!selected) {
+        eprintf("Error: Unknown %s codec or encoder '%s'. Available encoders (codec):", stream_name, name);
+        for (size_t i = 0; i < count; ++i) {
+            eprintf("%s%s (%s)", i ? ", " : " ", encoders[i].encoder, encoders[i].codec);
+        }
+        eprintf(".\n");
+        return false;
+    }
+
+    *mask = selected;
+    return true;
+}
+
+bool
+capture_video_set_video_encoder(const char *name)
+{
+    return set_encoder_mask(&m_video_config.video_encoders, video_encoders, ARRAY_LEN(video_encoders), name, "video");
+}
+
+bool
+capture_video_set_audio_encoder(const char *name)
+{
+    return set_encoder_mask(&m_video_config.audio_encoders, audio_encoders, ARRAY_LEN(audio_encoders), name, "audio");
+}
+
 
 // Safely handles NULL pointers, and ensures they're all NULL when done.
 static void
@@ -78,7 +146,7 @@ destroy_ffmpeg_video(struct ffmpeg_video_context *video)
 // Does not create the audio AVStream; see capture_video_init_writers().
 // Cleans up after itself on failure.
 static bool
-init_ffmpeg_audio(struct scran_output *st_output, uint32_t audio_encoders)
+init_ffmpeg_audio(struct scran_output *st_output, uint32_t audio_encoder_mask)
 {
     struct ffmpeg_context *ffmpeg = &st_output->capture.ffmpeg_ctx;
 
@@ -91,9 +159,9 @@ init_ffmpeg_audio(struct scran_output *st_output, uint32_t audio_encoders)
 
     // AVCodec
     const AVCodec *codec = NULL;
-    for (enum audio_encoder_index i = 0; i < ARRAY_LEN(audio_encoder_names); ++i) {
-        if (audio_encoders & (1U << i)) {
-            codec = avcodec_find_encoder_by_name(audio_encoder_names[i]);
+    for (enum audio_encoder_index i = 0; i < ARRAY_LEN(audio_encoders); ++i) {
+        if (audio_encoder_mask & (1U << i)) {
+            codec = avcodec_find_encoder_by_name(audio_encoders[i].encoder);
             if (codec) {
                 break;
             }
@@ -203,7 +271,7 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
     struct scran_output_capture *capture = &st_output->capture;
     struct ffmpeg_context       *ffmpeg  = &capture->ffmpeg_ctx;
 
-    struct video_config config = m_default_video_config;
+    struct video_config config = m_video_config;
 
     assert(!capture->audio_active);
     const char *output_filepath = NULL;
@@ -290,11 +358,11 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
     // AVCodecContext (encoder)
     //
     // In preference order.
-    for (enum video_encoder_index i = 0; i < ARRAY_LEN(video_encoder_names); ++i) {
+    for (enum video_encoder_index i = 0; i < ARRAY_LEN(video_encoders); ++i) {
         if (!(config.video_encoders & (1U << i))) {
             continue;
         }
-        const struct AVCodec *codec = avcodec_find_encoder_by_name(video_encoder_names[i]);
+        const struct AVCodec *codec = avcodec_find_encoder_by_name(video_encoders[i].encoder);
         if (!codec) {
             continue;
         }
@@ -372,10 +440,10 @@ next_encoder:
     if (!ffmpeg->video.codec_ctx) {
         eprintf("Error: No usable encoder found. All encoders failed to initialize or"
                 " were missing from the linked version of libavcodec."
-                " Supported codecs:");
-        for (size_t i = 0; i < ARRAY_LEN(video_encoder_names); ++i) {
+                " Attempted encoders:");
+        for (size_t i = 0; i < ARRAY_LEN(video_encoders); ++i) {
             if (config.video_encoders & (1U << i)) {
-                eprintf(" %s", video_encoder_names[i]);
+                eprintf(" %s", video_encoders[i].encoder);
             }
         }
         eprintf(".\n");
