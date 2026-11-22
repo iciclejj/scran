@@ -311,6 +311,9 @@ get_video_config(struct video_config *config)
         return false;
     }
 
+    // TODO: figure out a consistent responsibility split between what parts of the init sends dbus
+    // notifications vs just stderr prints etc.
+
     drop_encoders_unsupported_by_format(&config->video_encoders, video_encoders, ARRAY_LEN(video_encoders), config->oformat);
     if (!config->video_encoders) {
         eprintf("Error: No provided video encoders are supported by the provided format (%s).\n", video_formats[config->format].muxer_name);
