@@ -29,6 +29,7 @@ static const struct encoder_info video_encoders[] = {
     [VIDEO_ENCODER_LIBSVTAV1]   = { .encoder = "libsvtav1",   .codec = "av1" },
 };
 
+// In order of priority
 enum audio_encoder_index {
     AUDIO_ENCODER_AAC,
 };
@@ -123,6 +124,18 @@ capture_video_set_audio_encoder(const char *name)
 }
 
 
+static void
+print_unusable_encoders(const char *stream_name, const struct encoder_info *encoders, size_t count, uint32_t mask)
+{
+    eprintf("Error: No usable %s encoder found. Attempted encoders:", stream_name);
+    for (size_t i = 0; i < count; ++i) {
+        if (mask & (1U << i)) {
+            eprintf(" %s", encoders[i].encoder);
+        }
+    }
+    eprintf(".\n");
+}
+
 // Safely handles NULL pointers, and ensures they're all NULL when done.
 static void
 destroy_ffmpeg_audio(struct ffmpeg_audio_context *audio)
@@ -158,88 +171,91 @@ init_ffmpeg_audio(struct scran_output *st_output, uint32_t audio_encoder_mask)
 
     assert(channel_layout.nb_channels == SCRAN_PIPEWIRE_N_CHANNELS);
 
-    // AVCodec
-    const AVCodec *codec = NULL;
     for (enum audio_encoder_index i = 0; i < ARRAY_LEN(audio_encoders); ++i) {
-        if (audio_encoder_mask & (1U << i)) {
-            codec = avcodec_find_encoder_by_name(audio_encoders[i].encoder);
-            if (codec) {
-                break;
-            }
+        if (!(audio_encoder_mask & (1U << i))) {
+            continue;
         }
-    }
-    if (!codec) {
-        eprintf("Error: No usable audio encoder found.\n");
-        return false;
-    }
 
-    const enum AVSampleFormat *supported_sample_fmts;
+        // AVCodec
+        const AVCodec *codec = avcodec_find_encoder_by_name(audio_encoders[i].encoder);
+        if (!codec) {
+            continue;
+        }
+
+        const enum AVSampleFormat *supported_sample_fmts;
 #if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(61,13,100)
-    ret = avcodec_get_supported_config(
-        NULL, codec, AV_CODEC_CONFIG_SAMPLE_FORMAT, 0,
-        (const void **)&supported_sample_fmts, NULL
-    );
-    if (ret < 0) {
-        eprintf("Error: Failed to get supported audio sample formats: %s\n", av_err2str(ret));
-        return false;
-    }
+        ret = avcodec_get_supported_config(
+            NULL, codec, AV_CODEC_CONFIG_SAMPLE_FORMAT, 0,
+            (const void **)&supported_sample_fmts, NULL
+        );
+        if (ret < 0) {
+            eprintf("WARNING: Failed to get supported sample formats of audio encoder '%s': %s\n", codec->name, av_err2str(ret));
+            continue;
+        }
 #else
-    supported_sample_fmts = codec->sample_fmts;
+        supported_sample_fmts = codec->sample_fmts;
 #endif /* LIBAVCODEC_VERSION_INT */
-    if (supported_sample_fmts && supported_sample_fmts[0] == AV_SAMPLE_FMT_NONE) {
-        eprintf("Error: No supported audio sample formats found.\n");
-        return false;
-    }
+        if (supported_sample_fmts && supported_sample_fmts[0] == AV_SAMPLE_FMT_NONE) {
+            eprintf("WARNING: No supported sample formats found for audio encoder '%s'.\n", codec->name);
+            continue;
+        }
 
-    const enum AVSampleFormat sample_fmt = scran_pipewire_select_sample_format(supported_sample_fmts);
-    if (sample_fmt == AV_SAMPLE_FMT_NONE) {
-        eprintf("Error: No capturable sample format for audio encoder '%s'.\n", codec->name);
-        return false;
-    }
-    if (!scran_pipewire_attach(st_output, sample_fmt)) {
-        return false;
-    }
+        const enum AVSampleFormat sample_fmt = scran_pipewire_select_sample_format(supported_sample_fmts);
+        if (sample_fmt == AV_SAMPLE_FMT_NONE) {
+            eprintf("WARNING: No capturable sample format for audio encoder '%s'.\n", codec->name);
+            continue;
+        }
 
-    // AVCodecContext
-    ffmpeg->audio.codec_ctx              = avcodec_alloc_context3(codec);
+        // AVCodecContext
+        ffmpeg->audio.codec_ctx              = avcodec_alloc_context3(codec);
+        if (!ffmpeg->audio.codec_ctx) {
+            eprintf("WARNING: Failed to allocate audio encoder context.\n");
+            continue;
+        }
+        if (ffmpeg->format_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
+            ffmpeg->audio.codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+        }
+        ffmpeg->audio.codec_ctx->sample_rate = sample_rate;
+        ffmpeg->audio.codec_ctx->sample_fmt  = sample_fmt;
+        ffmpeg->audio.codec_ctx->time_base   = time_base;
+        ffmpeg->audio.codec_ctx->ch_layout   = channel_layout;
+        ret = avcodec_open2(ffmpeg->audio.codec_ctx, codec, NULL);
+        if (ret < 0) {
+            eprintf("WARNING: Failed to open audio encoder '%s': %s\n", codec->name, av_err2str(ret));
+            goto next_encoder;
+        }
+
+        // AVFrame (captured)
+        ffmpeg->audio.frame              = av_frame_alloc();
+        if (!ffmpeg->audio.frame) {
+            eprintf("WARNING: Failed to allocate audio frame.\n");
+            goto next_encoder;
+        }
+        ffmpeg->audio.frame->format      = sample_fmt;
+        ffmpeg->audio.frame->sample_rate = sample_rate;
+        ffmpeg->audio.frame->ch_layout   = channel_layout;
+        ffmpeg->audio.frame->nb_samples  = ffmpeg->audio.codec_ctx->frame_size;
+        ret = av_frame_get_buffer(ffmpeg->audio.frame, 0);
+        if (ret < 0) {
+            eprintf("WARNING: Failed to allocate audio frame buffer for encoder '%s': %s\n", codec->name, av_err2str(ret));
+            goto next_encoder;
+        }
+
+        eprintf("Using audio codec: %s\n", codec->name);
+
+        break;
+
+next_encoder:
+        destroy_ffmpeg_audio(&ffmpeg->audio);
+    }
     if (!ffmpeg->audio.codec_ctx) {
-        eprintf("Error: Failed to allocate audio encoder context.\n");
-        goto fail;
-    }
-    if (ffmpeg->format_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
-        ffmpeg->audio.codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-    }
-    ffmpeg->audio.codec_ctx->sample_rate = sample_rate;
-    ffmpeg->audio.codec_ctx->sample_fmt  = sample_fmt;
-    ffmpeg->audio.codec_ctx->time_base   = time_base;
-    ffmpeg->audio.codec_ctx->ch_layout   = channel_layout;
-    ret = avcodec_open2(ffmpeg->audio.codec_ctx, codec, NULL);
-    if (ret < 0) {
-        eprintf("Error: Failed to open audio encoder: %s\n", av_err2str(ret));
-        goto fail;
-    }
-
-    // AVFrame (captured)
-    ffmpeg->audio.frame              = av_frame_alloc();
-    if (!ffmpeg->audio.frame) {
-        eprintf("Error: Failed to allocate audio frame.\n");
-        goto fail;
-    }
-    ffmpeg->audio.frame->format      = sample_fmt;
-    ffmpeg->audio.frame->sample_rate = sample_rate;
-    ffmpeg->audio.frame->ch_layout   = channel_layout;
-
-    // AVFrame (captured, cont.)
-    ffmpeg->audio.frame->nb_samples  = ffmpeg->audio.codec_ctx->frame_size;
-    ret = av_frame_get_buffer(ffmpeg->audio.frame, 0);
-    if (ret < 0) {
-        eprintf("Error: Failed to allocate audio frame buffer: %s\n", av_err2str(ret));
-        goto fail;
+        print_unusable_encoders("audio", audio_encoders, ARRAY_LEN(audio_encoders), audio_encoder_mask);
+        return false;
     }
 
     // AVAudioFifo
     ffmpeg->audio.fifo = av_audio_fifo_alloc(
-        sample_fmt, channel_layout.nb_channels, ffmpeg->audio.codec_ctx->frame_size
+        ffmpeg->audio.codec_ctx->sample_fmt, channel_layout.nb_channels, ffmpeg->audio.codec_ctx->frame_size
     );
     if (!ffmpeg->audio.fifo) {
         eprintf("Error: Failed to allocate audio FIFO.\n");
@@ -253,10 +269,13 @@ init_ffmpeg_audio(struct scran_output *st_output, uint32_t audio_encoder_mask)
         goto fail;
     }
 
+    if (!scran_pipewire_attach(st_output, ffmpeg->audio.codec_ctx->sample_fmt)) {
+        goto fail;
+    }
+
     return true;
 
 fail:
-    scran_pipewire_detach(st_output);
     destroy_ffmpeg_audio(&ffmpeg->audio);
     return false;
 }
@@ -476,22 +495,14 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
             goto next_encoder;
         }
 
-        eprintf("Using codec: %s\n", codec->name);
+        eprintf("Using video codec: %s\n", codec->name);
         break;
 
 next_encoder:
         avcodec_free_context(&ffmpeg->video.codec_ctx);
     }
     if (!ffmpeg->video.codec_ctx) {
-        eprintf("Error: No usable encoder found. All encoders failed to initialize or"
-                " were missing from the linked version of libavcodec."
-                " Attempted encoders:");
-        for (size_t i = 0; i < ARRAY_LEN(video_encoders); ++i) {
-            if (config.video_encoders & (1U << i)) {
-                eprintf(" %s", video_encoders[i].encoder);
-            }
-        }
-        eprintf(".\n");
+        print_unusable_encoders("video", video_encoders, ARRAY_LEN(video_encoders), config.video_encoders);
         goto fail;
     }
 
