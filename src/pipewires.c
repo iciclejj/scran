@@ -388,32 +388,35 @@ fail:
 // supported_formats == NULL means any format is accepted.
 // supported_formats is terminated by AV_SAMPLE_FMT_NONE
 //     See avcodec_get_supported_config()
-bool
-scran_pipewire_attach(
-    struct scran_output *output,
-    const enum AVSampleFormat *supported_formats,
-    enum AVSampleFormat *selected_format
-) {
-    *selected_format = AV_SAMPLE_FMT_NONE;
+//
+// Returns AV_SAMPLE_FMT_NONE if none of supported_formats can be captured.
+enum AVSampleFormat
+scran_pipewire_select_sample_format(const enum AVSampleFormat *supported_formats)
+{
+    enum AVSampleFormat selected_format = AV_SAMPLE_FMT_NONE;
 
     // TODO: Add more supported formats.
     if (!supported_formats) {
-        *selected_format = SCRAN_PIPEWIRE_AV_SAMPLE_FORMAT;
+        selected_format = SCRAN_PIPEWIRE_AV_SAMPLE_FORMAT;
     } else {
         for (const enum AVSampleFormat *fmt = supported_formats; *fmt != AV_SAMPLE_FMT_NONE; ++fmt) {
             if (*fmt == SCRAN_PIPEWIRE_AV_SAMPLE_FORMAT) {
-                *selected_format = SCRAN_PIPEWIRE_AV_SAMPLE_FORMAT;
+                selected_format = SCRAN_PIPEWIRE_AV_SAMPLE_FORMAT;
                 break;
             }
         }
     }
 
-    if (*selected_format == AV_SAMPLE_FMT_NONE) {
-        eprintf("Error: scran_pipewire: Unsupported sample format.\n");
-        return false;
-    }
+    return selected_format;
+}
 
-    if (!scran_pipewire_start(ffmpeg_sample_format_to_pipewire(*selected_format))) {
+// sample_format must come from scran_pipewire_select_sample_format().
+bool
+scran_pipewire_attach(struct scran_output *output, enum AVSampleFormat sample_format)
+{
+    assert(sample_format != AV_SAMPLE_FMT_NONE);
+
+    if (!scran_pipewire_start(ffmpeg_sample_format_to_pipewire(sample_format))) {
         return false;
     }
 
