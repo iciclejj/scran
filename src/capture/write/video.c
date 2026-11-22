@@ -191,11 +191,14 @@ init_ffmpeg_audio(struct scran_output *st_output, uint32_t audio_encoder_mask)
         return false;
     }
 
-    enum AVSampleFormat sample_fmt;
-    if (!scran_pipewire_attach(st_output, supported_sample_fmts, &sample_fmt)) {
+    const enum AVSampleFormat sample_fmt = scran_pipewire_select_sample_format(supported_sample_fmts);
+    if (sample_fmt == AV_SAMPLE_FMT_NONE) {
+        eprintf("Error: No capturable sample format for audio encoder '%s'.\n", codec->name);
         return false;
     }
-    assert(sample_fmt != AV_SAMPLE_FMT_NONE);
+    if (!scran_pipewire_attach(st_output, sample_fmt)) {
+        return false;
+    }
 
     // AVCodecContext
     ffmpeg->audio.codec_ctx              = avcodec_alloc_context3(codec);
