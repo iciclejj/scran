@@ -52,6 +52,7 @@ static const struct format_info video_formats[] = {
 // TODO: Take codec opts
 static struct video_config {
     enum format_index format;
+    const AVOutputFormat *oformat;
     uint32_t video_encoders;
     uint32_t audio_encoders;
 } m_video_config = {
@@ -303,20 +304,20 @@ get_video_config(struct video_config *config)
 {
     *config = m_video_config;
 
-    const AVOutputFormat *oformat = av_guess_format(video_formats[config->format].muxer_name, NULL, NULL);
-    if (!oformat) {
+    config->oformat = av_guess_format(video_formats[config->format].muxer_name, NULL, NULL);
+    if (!config->oformat) {
         eprintf("Error: av_guess_format('%s') failed.\n", video_formats[config->format].muxer_name);
         scran_notify_error("provided video format is not available");
         return false;
     }
 
-    drop_encoders_unsupported_by_format(&config->video_encoders, video_encoders, ARRAY_LEN(video_encoders), oformat);
+    drop_encoders_unsupported_by_format(&config->video_encoders, video_encoders, ARRAY_LEN(video_encoders), config->oformat);
     if (!config->video_encoders) {
         eprintf("Error: No provided video encoders are supported by the provided format (%s).\n", video_formats[config->format].muxer_name);
         scran_notify_error("video encoder not supported by format");
         return false;
     }
-    drop_encoders_unsupported_by_format(&config->audio_encoders, audio_encoders, ARRAY_LEN(audio_encoders), oformat);
+    drop_encoders_unsupported_by_format(&config->audio_encoders, audio_encoders, ARRAY_LEN(audio_encoders), config->oformat);
 
     return true;
 }
@@ -387,7 +388,7 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
 
 
     // AVFormat
-    ret = avformat_alloc_output_context2(&ffmpeg->format_ctx, NULL, video_formats[config.format].muxer_name, NULL);
+    ret = avformat_alloc_output_context2(&ffmpeg->format_ctx, config.oformat, NULL, NULL);
     if (ret < 0) {
         eprintf("Error: Failed to allocate output format context: %s\n", av_err2str(ret));
         goto fail;
