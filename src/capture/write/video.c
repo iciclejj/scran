@@ -37,11 +37,15 @@ static const struct encoder_info audio_encoders[] = {
     [AUDIO_ENCODER_AAC] = { .encoder = "aac", .codec = "aac" },
 };
 
+struct format_info {
+    const char *muxer_name;
+    const char *alias;
+};
 enum format_index {
     VIDEO_FORMAT_MP4,
 };
-static const char *const video_format_names[] = {
-    [VIDEO_FORMAT_MP4] = "mp4",
+static const struct format_info video_formats[] = {
+    [VIDEO_FORMAT_MP4] = { .muxer_name = "mp4", .alias = "mp4" },
 };
 
 // TODO: reference this in the docs for viewing defaults.
@@ -64,15 +68,15 @@ _Static_assert(ARRAY_LEN(audio_encoders) <= sizeof(m_video_config.audio_encoders
 bool
 capture_video_set_format(const char *name)
 {
-    for (size_t i = 0; i < ARRAY_LEN(video_format_names); ++i) {
-        if (!strcmp(name, video_format_names[i])) {
+    for (size_t i = 0; i < ARRAY_LEN(video_formats); ++i) {
+        if (!strcmp(name, video_formats[i].alias) || !strcmp(name, video_formats[i].muxer_name)) {
             m_video_config.format = i;
             return true;
         }
     }
     eprintf("Error: Unknown video format '%s'. Available formats:", name);
-    for (size_t i = 0; i < ARRAY_LEN(video_format_names); ++i) {
-        eprintf("%s%s", i ? ", " : " ", video_format_names[i]);
+    for (size_t i = 0; i < ARRAY_LEN(video_formats); ++i) {
+        eprintf("%s%s (%s)", i ? ", " : " ", video_formats[i].alias, video_formats[i].muxer_name);
     }
     eprintf(".\n");
     return false;
@@ -299,16 +303,16 @@ get_video_config(struct video_config *config)
 {
     *config = m_video_config;
 
-    const AVOutputFormat *oformat = av_guess_format(video_format_names[config->format], NULL, NULL);
+    const AVOutputFormat *oformat = av_guess_format(video_formats[config->format].muxer_name, NULL, NULL);
     if (!oformat) {
-        eprintf("Error: av_guess_format('%s') failed.\n", video_format_names[config->format]);
+        eprintf("Error: av_guess_format('%s') failed.\n", video_formats[config->format].muxer_name);
         scran_notify_error("provided video format is not available");
         return false;
     }
 
     drop_encoders_unsupported_by_format(&config->video_encoders, video_encoders, ARRAY_LEN(video_encoders), oformat);
     if (!config->video_encoders) {
-        eprintf("Error: No provided video encoders are supported by the provided format (%s).\n", video_format_names[config->format]);
+        eprintf("Error: No provided video encoders are supported by the provided format (%s).\n", video_formats[config->format].muxer_name);
         scran_notify_error("video encoder not supported by format");
         return false;
     }
@@ -383,7 +387,7 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
 
 
     // AVFormat
-    ret = avformat_alloc_output_context2(&ffmpeg->format_ctx, NULL, video_format_names[config.format], NULL);
+    ret = avformat_alloc_output_context2(&ffmpeg->format_ctx, NULL, video_formats[config.format].muxer_name, NULL);
     if (ret < 0) {
         eprintf("Error: Failed to allocate output format context: %s\n", av_err2str(ret));
         goto fail;
