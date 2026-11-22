@@ -1,4 +1,5 @@
 #include "capture.h"
+#include "dbus.h"
 #include "options.h"
 #include "pipewires.h"
 #include "state-util.h"
@@ -257,6 +258,43 @@ fail:
     return false;
 }
 
+static void
+drop_encoders_unsupported_by_format(uint32_t *mask, const struct encoder_info *encoders, size_t count, const AVOutputFormat *oformat)
+{
+    for (size_t i = 0; i < count; ++i) {
+        uint32_t mask_bit = 1U << i;
+        if (*mask & mask_bit) {
+            const AVCodecDescriptor *codec = avcodec_descriptor_get_by_name(encoders[i].codec);
+            if (!codec || !avformat_query_codec(oformat, codec->id, FF_COMPLIANCE_NORMAL)) {
+                *mask &= ~mask_bit;
+            }
+        }
+    }
+}
+
+static bool
+get_video_config(struct video_config *config)
+{
+    *config = m_video_config;
+
+    const AVOutputFormat *oformat = av_guess_format(video_format_names[config->format], NULL, NULL);
+    if (!oformat) {
+        eprintf("Error: av_guess_format('%s') failed.\n", video_format_names[config->format]);
+        scran_notify_error("provided video format is not available");
+        return false;
+    }
+
+    drop_encoders_unsupported_by_format(&config->video_encoders, video_encoders, ARRAY_LEN(video_encoders), oformat);
+    if (!config->video_encoders) {
+        eprintf("Error: No provided video encoders are supported by the provided format (%s).\n", video_format_names[config->format]);
+        scran_notify_error("video encoder not supported by format");
+        return false;
+    }
+    drop_encoders_unsupported_by_format(&config->audio_encoders, audio_encoders, ARRAY_LEN(audio_encoders), oformat);
+
+    return true;
+}
+
 // TODO:
 //  - Encoding parameters:
 //      - Let user override the encoding parameters
@@ -271,7 +309,11 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
     struct scran_output_capture *capture = &st_output->capture;
     struct ffmpeg_context       *ffmpeg  = &capture->ffmpeg_ctx;
 
-    struct video_config config = m_video_config;
+    // TODO: Cache the result?
+    struct video_config config;
+    if (!get_video_config(&config)) {
+        return false;
+    }
 
     assert(!capture->audio_active);
     const char *output_filepath = NULL;
