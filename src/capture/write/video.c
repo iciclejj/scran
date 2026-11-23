@@ -43,9 +43,11 @@ struct format_info {
 };
 enum format_index {
     VIDEO_FORMAT_MP4,
+    VIDEO_FORMAT_MKV,
 };
 static const struct format_info video_formats[] = {
-    [VIDEO_FORMAT_MP4] = { .muxer_name = "mp4", .alias = "mp4" },
+    [VIDEO_FORMAT_MP4] = { .muxer_name = "mp4",      .alias = "mp4" },
+    [VIDEO_FORMAT_MKV] = { .muxer_name = "matroska", .alias = "mkv" },
 };
 
 // TODO: reference this in the docs for viewing defaults.
@@ -325,6 +327,8 @@ get_video_config(struct video_config *config)
     return true;
 }
 
+#define GOP_SIZE 120
+
 // TODO:
 //  - Encoding parameters:
 //      - Let user override the encoding parameters
@@ -389,7 +393,6 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
         goto fail;
     }
 
-
     // AVFormat
     ret = avformat_alloc_output_context2(&ffmpeg->format_ctx, config.oformat, NULL, NULL);
     if (ret < 0) {
@@ -423,6 +426,15 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
             goto fail;
         }
 #endif
+        break;
+    case VIDEO_FORMAT_MKV:
+        ;
+        // MKV is stored fragmented by default (Clusters).
+        _Static_assert(
+            GOP_SIZE >= 120,
+           "gop_size effectively caps cluster_time_limit. set it explicitly, or update the assert if"
+           " the new gop_size is still an acceptable limit."
+        );
         break;
     }
 
@@ -468,7 +480,7 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
         // -- Values to be tweaked (may depend on encoder/format) --
         // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
         ffmpeg->video.codec_ctx->max_b_frames    = 2;
-        ffmpeg->video.codec_ctx->gop_size        = 120;
+        ffmpeg->video.codec_ctx->gop_size        = GOP_SIZE;
         switch (i) {
         case VIDEO_ENCODER_LIBX264:
             ret = av_opt_set(ffmpeg->video.codec_ctx->priv_data, "crf", "20", 0);
