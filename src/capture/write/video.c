@@ -43,9 +43,11 @@ struct format_info {
 };
 enum format_index {
     VIDEO_FORMAT_MP4,
+    VIDEO_FORMAT_MKV,
 };
 static const struct format_info video_formats[] = {
-    [VIDEO_FORMAT_MP4] = { .muxer_name = "mp4", .alias = "mp4" },
+    [VIDEO_FORMAT_MP4] = { .muxer_name = "mp4",      .alias = "mp4" },
+    [VIDEO_FORMAT_MKV] = { .muxer_name = "matroska", .alias = "mkv" },
 };
 
 // TODO: reference this in the docs for viewing defaults.
@@ -389,6 +391,7 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
         goto fail;
     }
 
+    static const int gop_size = 120;
 
     // AVFormat
     ret = avformat_alloc_output_context2(&ffmpeg->format_ctx, config.oformat, NULL, NULL);
@@ -423,6 +426,15 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
             goto fail;
         }
 #endif
+        break;
+    case VIDEO_FORMAT_MKV:
+        ;
+        // MKV is stored fragmented by default (Clusters).
+        _Static_assert(
+            gop_size >= 120,
+           "gop_size effectively caps cluster_time_limit. set it explicitly, or update the assert if"
+           " the new gop_size is still an acceptable limit."
+        );
         break;
     }
 
