@@ -21,11 +21,13 @@ enum video_encoder_index {
     VIDEO_ENCODER_LIBX264,
     // TODO: Why does it have such bad performance (high cpu usage, stutters) compared to libx264?
     VIDEO_ENCODER_LIBOPENH264,
+    VIDEO_ENCODER_LIBVPX_VP9,
     VIDEO_ENCODER_LIBSVTAV1,
 };
 static const struct encoder_info video_encoders[] = {
     [VIDEO_ENCODER_LIBX264]     = { .encoder = "libx264",     .codec = "h264" },
     [VIDEO_ENCODER_LIBOPENH264] = { .encoder = "libopenh264", .codec = "h264" },
+    [VIDEO_ENCODER_LIBVPX_VP9]  = { .encoder = "libvpx-vp9",  .codec = "vp9" },
     [VIDEO_ENCODER_LIBSVTAV1]   = { .encoder = "libsvtav1",   .codec = "av1" },
 };
 
@@ -495,6 +497,29 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
             }
             break;
         case VIDEO_ENCODER_LIBOPENH264:
+            break;
+        case VIDEO_ENCODER_LIBVPX_VP9:
+            ffmpeg->video.codec_ctx->bit_rate = 0;
+            ret = av_opt_set(ffmpeg->video.codec_ctx->priv_data, "crf", "30", 0);
+            if (ret < 0) {
+                eprintf("WARNING: Failed to set libvpx-vp9 crf: %s\n", av_err2str(ret));
+                goto next_encoder;
+            }
+            ret = av_opt_set(ffmpeg->video.codec_ctx->priv_data, "deadline", "realtime", 0);
+            if (ret < 0) {
+                eprintf("WARNING: Failed to set libvpx-vp9 deadline: %s\n", av_err2str(ret));
+                goto next_encoder;
+            }
+            ret = av_opt_set(ffmpeg->video.codec_ctx->priv_data, "row-mt", "1", 0);
+            if (ret < 0) {
+                eprintf("WARNING: Failed to set libvpx-vp9 row-mt: %s\n", av_err2str(ret));
+                goto next_encoder;
+            }
+            ret = av_opt_set(ffmpeg->video.codec_ctx->priv_data, "cpu-used", "8", 0);
+            if (ret < 0) {
+                eprintf("WARNING: Failed to set libvpx-vp9 cpu-used: %s\n", av_err2str(ret));
+                goto next_encoder;
+            }
             break;
         case VIDEO_ENCODER_LIBSVTAV1:
             ret = av_opt_set(ffmpeg->video.codec_ctx->priv_data, "crf", "30", 0);
