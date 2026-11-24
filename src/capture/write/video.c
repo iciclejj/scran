@@ -34,9 +34,11 @@ static const struct encoder_info video_encoders[] = {
 // In order of priority
 enum audio_encoder_index {
     AUDIO_ENCODER_AAC,
+    AUDIO_ENCODER_LIBOPUS,
 };
 static const struct encoder_info audio_encoders[] = {
-    [AUDIO_ENCODER_AAC] = { .encoder = "aac", .codec = "aac" },
+    [AUDIO_ENCODER_AAC]     = { .encoder = "aac",     .codec = "aac" },
+    [AUDIO_ENCODER_LIBOPUS] = { .encoder = "libopus", .codec = "opus" },
 };
 
 struct format_info {
