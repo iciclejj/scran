@@ -11,12 +11,21 @@
 #include <libavutil/audio_fifo.h>
 #include <libavutil/mathematics.h>
 
+#include "spa/param/audio/raw.h"
 #include "state-util.h"
 #include "state.h"
 #include "pipewires.h"
 #include "capture.h"
 #include "print.h"
 #include "util/lib-interop.h"
+
+
+static const enum AVSampleFormat m_supported_formats[] = {
+    [0] = AV_SAMPLE_FMT_FLTP, // Default if the encoder accepts any format
+    AV_SAMPLE_FMT_FLT,
+
+    AV_SAMPLE_FMT_NONE,
+};
 
 
 static struct {
@@ -37,6 +46,7 @@ static struct {
 } m_state = {
     .epoll_fd = -1,
     .loop_fd = -1,
+    .format = SPA_AUDIO_FORMAT_UNKNOWN,
 };
 
 
@@ -58,22 +68,30 @@ on_process(void *data)
     struct spa_meta_header *meta_header = spa_buffer_find_meta_data(spa_buf, SPA_META_Header, sizeof(*meta_header));
 
     // XXX: Cast overflows at ~292 years uptime.
-    const int64_t pts_incoming = (meta_header != NULL) ? meta_header->pts : (int64_t)pw_buf->time;
+    const int64_t  pts_incoming                  = (meta_header != NULL) ? meta_header->pts : (int64_t)pw_buf->time;
+    const uint32_t spa_buf_chunk_size            = spa_buf->datas[0].chunk->size;
+    uint32_t       spa_buf_n_samples_per_channel = 0;
 
-    // XXX TODO: We obviously don't need this exact f32 format for sizeof(float)
-    // to be appropriate. Improve this assert once we don't hardcode the format
-    // anymore.
-    assert(m_state.format == SPA_AUDIO_FORMAT_F32P);
-    uint32_t       bytes_per_sample  = sizeof(float);
-    const uint32_t spa_buf_n_samples = spa_buf->datas[0].chunk->size / bytes_per_sample;
+    switch (m_state.format) {
+    case SPA_AUDIO_FORMAT_F32:
+        assert(spa_buf->n_datas == 1);
+        spa_buf_n_samples_per_channel = spa_buf_chunk_size / (sizeof(float) * SCRAN_PIPEWIRE_N_CHANNELS);
+        break;
+    case SPA_AUDIO_FORMAT_F32P:
+        assert(spa_buf->n_datas == SCRAN_PIPEWIRE_N_CHANNELS);
+        spa_buf_n_samples_per_channel = spa_buf_chunk_size / sizeof(float);
+        break;
+    default:
+        assert(false && "unsupported format");
+    }
 
     struct _planes {
         // XXX TODO: FR/FL should be mapped to 0/1 dynamically.
         const float *samples[SCRAN_PIPEWIRE_N_CHANNELS];
     };
-
     struct _planes spa_buf_planes;
-    for (int i = 0; i < SCRAN_PIPEWIRE_N_CHANNELS; ++i) {
+
+    for (uint32_t i = 0; i < spa_buf->n_datas; ++i) {
         float *samples = spa_buf->datas[i].data;
         if (!samples) {
             goto done;
@@ -96,11 +114,11 @@ on_process(void *data)
             continue;
         }
 
-        int64_t        pts_video_start = capture->video_presentation_time_nsec_start;
-        int64_t        pts             = pts_incoming;
-        int64_t        n_samples       = spa_buf_n_samples;
+        int64_t        pts_video_start       = capture->video_presentation_time_nsec_start;
+        int64_t        pts                   = pts_incoming;
+        int64_t        n_samples_per_channel = spa_buf_n_samples_per_channel;
         // NOTE: Keep this a (shallow) copy, since we will be mutating the sample pointers!
-        struct _planes planes_copy     = spa_buf_planes;
+        struct _planes planes_copy           = spa_buf_planes;
 
         // Discard samples that were presented before video capture started.
         // This should always be a no-op after the initial sample chunk(s).
@@ -111,24 +129,34 @@ on_process(void *data)
             const int64_t pts_delta = pts - pts_video_start;
             if (pts_delta < 0) {
                 int64_t nsec_to_skip = -pts_delta;
-                const int64_t samples_to_skip = av_rescale_rnd(nsec_to_skip, SCRAN_PIPEWIRE_SAMPLE_RATE, NSEC_PER_SEC, AV_ROUND_UP);
-                nsec_to_skip = av_rescale(samples_to_skip, NSEC_PER_SEC, SCRAN_PIPEWIRE_SAMPLE_RATE);
+                const int64_t n_samples_to_skip_per_channel = av_rescale_rnd(nsec_to_skip, SCRAN_PIPEWIRE_SAMPLE_RATE, NSEC_PER_SEC, AV_ROUND_UP);
+                nsec_to_skip = av_rescale(n_samples_to_skip_per_channel, NSEC_PER_SEC, SCRAN_PIPEWIRE_SAMPLE_RATE);
 
-                n_samples -= samples_to_skip;
                 pts += nsec_to_skip;
-                if (n_samples < 0) { // Entire chunk is before video start
-                    continue;
+                n_samples_per_channel -= n_samples_to_skip_per_channel;
+
+                switch (m_state.format) {
+                case SPA_AUDIO_FORMAT_F32:
+                    planes_copy.samples[0] += n_samples_to_skip_per_channel * SCRAN_PIPEWIRE_N_CHANNELS;
+                    break;
+                case SPA_AUDIO_FORMAT_F32P:
+                    for (uint32_t i = 0; i < SCRAN_PIPEWIRE_N_CHANNELS; ++i) {
+                        planes_copy.samples[i] += n_samples_to_skip_per_channel;
+                    }
+                    break;
+                default:
+                    assert(false && "unsupported format");
                 }
 
-                for (int i = 0; i < SCRAN_PIPEWIRE_N_CHANNELS; ++i) {
-                    planes_copy.samples[i] += samples_to_skip;
+                if (n_samples_per_channel < 0) { // Entire chunk is before video start
+                    continue;
                 }
             }
         }
 
         // NOTE: n_samples_leftover must be adjusted if moved to after av_audio_fifo_write()
         int n_samples_leftover = av_audio_fifo_size(ffmpeg->audio.fifo);
-        int ret = av_audio_fifo_write(ffmpeg->audio.fifo, (void **)planes_copy.samples, n_samples);
+        int ret = av_audio_fifo_write(ffmpeg->audio.fifo, (void **)planes_copy.samples, n_samples_per_channel);
         if (ret < 0) {
             eprintf("Error: av_audio_fifo_write: %s\n", av_err2str(ret));
             goto output_err_audio_stream;
@@ -280,6 +308,9 @@ static bool
 scran_pipewire_start(enum spa_audio_format format)
 {
     if (m_state.started) {
+        if (m_state.format != format) {
+            eprintf("Error: scran_pipewire_start() got different format than the previous call\n");
+        }
         return true;
     }
 
@@ -381,19 +412,36 @@ fail:
     return false;
 }
 
-bool
-scran_pipewire_attach(
-    struct scran_output *output,
-    enum spa_audio_format format
-) {
-    // XXX[1/2]: We'll be adding more formats soon, so leave it like this.
-    assert(format == ffmpeg_sample_format_to_pipewire(SCRAN_AUDIO_SAMPLE_FORMAT_FFMPEG));
+// encoder_formats == NULL means any format is accepted.
+// encoder_formats is terminated by AV_SAMPLE_FMT_NONE
+//     See avcodec_get_supported_config()
+//
+// Returns AV_SAMPLE_FMT_NONE if none of encoder_formats can be captured.
+enum AVSampleFormat
+scran_pipewire_select_sample_format(const enum AVSampleFormat *encoder_formats)
+{
+    if (!encoder_formats) {
+        return m_supported_formats[0];
+    }
 
-    if (!scran_pipewire_start(format)) {
+    for (const enum AVSampleFormat *enc_fmt = encoder_formats; *enc_fmt != AV_SAMPLE_FMT_NONE; ++enc_fmt) {
+        for (size_t i = 0; i < ARRAY_LEN(m_supported_formats); ++i) {
+            if (*enc_fmt == m_supported_formats[i]) {
+                return *enc_fmt;
+            }
+        }
+    }
+
+    return AV_SAMPLE_FMT_NONE;
+}
+
+// sample_format must come from scran_pipewire_select_sample_format().
+bool
+scran_pipewire_attach(struct scran_output *output, enum AVSampleFormat sample_format)
+{
+    if (!scran_pipewire_start(ffmpeg_sample_format_to_pipewire(sample_format))) {
         return false;
     }
-    // XXX[2/2]:
-    assert(m_state.format == format);
 
     uint64_t output_mask = get_output_mask(output);
 

@@ -24,9 +24,7 @@
 // TODO: Rename these
 #define IMAGE_CAPTURE_OUTPUT_BLFORMAT_DEFAULT BL_FORMAT_PRGB32
 #define IMAGE_CAPTURE_OUTPUT_BLIMAGECODEC_NAME_DEFAULT "PNG"
-#define IMAGE_CAPTURE_OUTPUT_FILE_EXTENSION_DEFAULT ".png"
-
-#define SCRAN_AUDIO_SAMPLE_FORMAT_FFMPEG AV_SAMPLE_FMT_FLTP
+#define IMAGE_CAPTURE_OUTPUT_FILE_EXTENSION_DEFAULT "png"
 
 
 enum capture_av_format_stream_index {
@@ -96,6 +94,9 @@ typedef bool capture_video_write_packet_fn(
     struct scran_output *,
     AVPacket *pkt
 );
+bool capture_video_set_video_encoder(const char *name);
+bool capture_video_set_audio_encoder(const char *name);
+bool capture_video_set_format(const char *name);
 bool capture_video_init_writers(struct scran_output *st_output, const BLPointI dimensions);
 void capture_video_destroy_writers(struct scran_output *st_output);
 

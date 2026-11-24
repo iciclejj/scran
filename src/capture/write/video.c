@@ -1,18 +1,157 @@
 #include "capture.h"
+#include "dbus.h"
 #include "options.h"
 #include "pipewires.h"
 #include "state-util.h"
 #include "util/lib-interop.h"
 #include "util/util.h"
 
+#include <limits.h>
 #include <libavutil/opt.h>
 
 
-// XXX: Seems like the underlying FFOutputFormat structs aren't exposed in the
-// public API (e.g. ff_mp4_muxer etc.), so we must let libavformat run its
-// "guessing"/scoring algorithm using a format-name string.
-#define FFMPEG_FORMAT_MP4_NAME "mp4"
+// Wayland's frame::presentation_time() has nanosecond precision.
+#define NATIVE_VIDEO_CAPTURE_TIME_BASE ((AVRational){1, NSEC_PER_SEC})
 
+
+struct encoder_info {
+    const char *encoder;
+    const char *codec;
+};
+
+// In order of priority
+enum video_encoder_index {
+    // Requires GPL ffmpeg build
+    VIDEO_ENCODER_LIBX264,
+    // TODO: Why does it have such bad performance (high cpu usage, stutters) compared to libx264?
+    VIDEO_ENCODER_LIBOPENH264,
+    VIDEO_ENCODER_LIBVPX_VP9,
+    VIDEO_ENCODER_LIBSVTAV1,
+};
+static const struct encoder_info video_encoders[] = {
+    [VIDEO_ENCODER_LIBX264]     = { .encoder = "libx264",     .codec = "h264" },
+    [VIDEO_ENCODER_LIBOPENH264] = { .encoder = "libopenh264", .codec = "h264" },
+    [VIDEO_ENCODER_LIBVPX_VP9]  = { .encoder = "libvpx-vp9",  .codec = "vp9" },
+    [VIDEO_ENCODER_LIBSVTAV1]   = { .encoder = "libsvtav1",   .codec = "av1" },
+};
+
+// In order of priority
+enum audio_encoder_index {
+    AUDIO_ENCODER_AAC,
+    AUDIO_ENCODER_LIBOPUS,
+};
+static const struct encoder_info audio_encoders[] = {
+    [AUDIO_ENCODER_AAC]     = { .encoder = "aac",     .codec = "aac" },
+    [AUDIO_ENCODER_LIBOPUS] = { .encoder = "libopus", .codec = "opus" },
+};
+
+struct format_info {
+    const char *muxer_name;
+    const char *alias;
+};
+enum format_index {
+    VIDEO_FORMAT_MP4,
+    VIDEO_FORMAT_MKV,
+    VIDEO_FORMAT_WEBM,
+};
+static const struct format_info video_formats[] = {
+    [VIDEO_FORMAT_MP4]  = { .muxer_name = "mp4",      .alias = "mp4" },
+    [VIDEO_FORMAT_MKV]  = { .muxer_name = "matroska", .alias = "mkv" },
+    [VIDEO_FORMAT_WEBM] = { .muxer_name = "webm",     .alias = "webm" },
+};
+
+// TODO: reference this in the docs for viewing defaults.
+// TODO: Take codec opts
+static struct video_config {
+    enum format_index format;
+    const AVOutputFormat *oformat;
+    uint32_t video_encoders;
+    uint32_t audio_encoders;
+} m_video_config = {
+    .format         = VIDEO_FORMAT_MP4,
+    // Default to trying all our encoders
+    .video_encoders = UINT32_MAX >> (32 - ARRAY_LEN(video_encoders)),
+    .audio_encoders = UINT32_MAX >> (32 - ARRAY_LEN(audio_encoders)),
+};
+_Static_assert(ARRAY_LEN(video_encoders) <= sizeof(m_video_config.video_encoders) * CHAR_BIT,
+               "video encoder mask too small");
+_Static_assert(ARRAY_LEN(audio_encoders) <= sizeof(m_video_config.audio_encoders) * CHAR_BIT,
+               "audio encoder mask too small");
+
+bool
+capture_video_set_format(const char *name)
+{
+    for (size_t i = 0; i < ARRAY_LEN(video_formats); ++i) {
+        if (!strcmp(name, video_formats[i].alias) || !strcmp(name, video_formats[i].muxer_name)) {
+            m_video_config.format = i;
+            return true;
+        }
+    }
+    eprintf("Error: Unknown video format '%s'. Available formats:", name);
+    for (size_t i = 0; i < ARRAY_LEN(video_formats); ++i) {
+        eprintf("%s%s (%s)", i ? ", " : " ", video_formats[i].alias, video_formats[i].muxer_name);
+    }
+    eprintf(".\n");
+    return false;
+}
+
+static bool
+set_encoder_mask(uint32_t *mask, const struct encoder_info *encoders, size_t count, const char *name, const char *stream_name)
+{
+    uint32_t selected = 0;
+
+    // Prioritize codec, since names can overlap, e.g. aac/aac
+    for (size_t i = 0; i < count; ++i) {
+        if (!strcmp(name, encoders[i].codec)) {
+            selected |= 1U << i;
+        }
+    }
+    if (!selected) {
+        for (size_t i = 0; i < count; ++i) {
+            if (!strcmp(name, encoders[i].encoder)) {
+                selected = 1U << i;
+                break;
+            }
+        }
+    }
+
+    if (!selected) {
+        eprintf("Error: Unknown %s codec or encoder '%s'. Available encoders (codec):", stream_name, name);
+        for (size_t i = 0; i < count; ++i) {
+            eprintf("%s%s (%s)", i ? ", " : " ", encoders[i].encoder, encoders[i].codec);
+        }
+        eprintf(".\n");
+        return false;
+    }
+
+    *mask = selected;
+    return true;
+}
+
+bool
+capture_video_set_video_encoder(const char *name)
+{
+    return set_encoder_mask(&m_video_config.video_encoders, video_encoders, ARRAY_LEN(video_encoders), name, "video");
+}
+
+bool
+capture_video_set_audio_encoder(const char *name)
+{
+    return set_encoder_mask(&m_video_config.audio_encoders, audio_encoders, ARRAY_LEN(audio_encoders), name, "audio");
+}
+
+
+static void
+print_unusable_encoders(const char *stream_name, const struct encoder_info *encoders, size_t count, uint32_t mask)
+{
+    eprintf("Error: No usable %s encoder found. Attempted encoders:", stream_name);
+    for (size_t i = 0; i < count; ++i) {
+        if (mask & (1U << i)) {
+            eprintf(" %s", encoders[i].encoder);
+        }
+    }
+    eprintf(".\n");
+}
 
 // Safely handles NULL pointers, and ensures they're all NULL when done.
 static void
@@ -38,74 +177,102 @@ destroy_ffmpeg_video(struct ffmpeg_video_context *video)
 // Does not create the audio AVStream; see capture_video_init_writers().
 // Cleans up after itself on failure.
 static bool
-init_ffmpeg_audio(struct scran_output *st_output)
+init_ffmpeg_audio(struct scran_output *st_output, uint32_t audio_encoder_mask)
 {
     struct ffmpeg_context *ffmpeg = &st_output->capture.ffmpeg_ctx;
 
-    // Float planar should be guaranteed supported for pipewire(?)
-    // TODO: Retrieve the sample_fmt using avcodec_get_supported_config() if we
-    // implement user-provided settings. FLTP/F32P is supported for AAC.
-    static const enum AVSampleFormat sample_fmt     = SCRAN_AUDIO_SAMPLE_FORMAT_FFMPEG;
-    static const enum AVCodecID      codec_id       = AV_CODEC_ID_AAC;
-    static const AVChannelLayout     channel_layout = AV_CHANNEL_LAYOUT_STEREO;
-    static const int                 sample_rate    = SCRAN_PIPEWIRE_SAMPLE_RATE;
-    static const AVRational          time_base      = { 1, NSEC_PER_SEC };
+    int ret;
+    static const AVChannelLayout channel_layout = AV_CHANNEL_LAYOUT_STEREO;
+    static const int             sample_rate    = SCRAN_PIPEWIRE_SAMPLE_RATE;
+    static const AVRational      time_base      = { 1, NSEC_PER_SEC };
 
     assert(channel_layout.nb_channels == SCRAN_PIPEWIRE_N_CHANNELS);
 
-    if (!scran_pipewire_attach(st_output, ffmpeg_sample_format_to_pipewire(sample_fmt))) {
-        return false;
+    for (enum audio_encoder_index i = 0; i < ARRAY_LEN(audio_encoders); ++i) {
+        if (!(audio_encoder_mask & (1U << i))) {
+            continue;
+        }
+
+        // AVCodec
+        const AVCodec *codec = avcodec_find_encoder_by_name(audio_encoders[i].encoder);
+        if (!codec) {
+            continue;
+        }
+
+        const enum AVSampleFormat *supported_sample_fmts;
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(61,13,100)
+        ret = avcodec_get_supported_config(
+            NULL, codec, AV_CODEC_CONFIG_SAMPLE_FORMAT, 0,
+            (const void **)&supported_sample_fmts, NULL
+        );
+        if (ret < 0) {
+            eprintf("WARNING: Failed to get supported sample formats of audio encoder '%s': %s\n", codec->name, av_err2str(ret));
+            continue;
+        }
+#else
+        supported_sample_fmts = codec->sample_fmts;
+#endif /* LIBAVCODEC_VERSION_INT */
+        if (supported_sample_fmts && supported_sample_fmts[0] == AV_SAMPLE_FMT_NONE) {
+            eprintf("WARNING: No supported sample formats found for audio encoder '%s'.\n", codec->name);
+            continue;
+        }
+
+        const enum AVSampleFormat sample_fmt = scran_pipewire_select_sample_format(supported_sample_fmts);
+        if (sample_fmt == AV_SAMPLE_FMT_NONE) {
+            eprintf("WARNING: No capturable sample format for audio encoder '%s'.\n", codec->name);
+            continue;
+        }
+
+        // AVCodecContext
+        ffmpeg->audio.codec_ctx              = avcodec_alloc_context3(codec);
+        if (!ffmpeg->audio.codec_ctx) {
+            eprintf("WARNING: Failed to allocate audio encoder context.\n");
+            continue;
+        }
+        if (ffmpeg->format_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
+            ffmpeg->audio.codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+        }
+        ffmpeg->audio.codec_ctx->sample_rate = sample_rate;
+        ffmpeg->audio.codec_ctx->sample_fmt  = sample_fmt;
+        ffmpeg->audio.codec_ctx->time_base   = time_base;
+        ffmpeg->audio.codec_ctx->ch_layout   = channel_layout;
+        ret = avcodec_open2(ffmpeg->audio.codec_ctx, codec, NULL);
+        if (ret < 0) {
+            eprintf("WARNING: Failed to open audio encoder '%s': %s\n", codec->name, av_err2str(ret));
+            goto next_encoder;
+        }
+
+        // AVFrame (captured)
+        ffmpeg->audio.frame              = av_frame_alloc();
+        if (!ffmpeg->audio.frame) {
+            eprintf("WARNING: Failed to allocate audio frame.\n");
+            goto next_encoder;
+        }
+        ffmpeg->audio.frame->format      = sample_fmt;
+        ffmpeg->audio.frame->sample_rate = sample_rate;
+        ffmpeg->audio.frame->ch_layout   = channel_layout;
+        ffmpeg->audio.frame->nb_samples  = ffmpeg->audio.codec_ctx->frame_size;
+        ret = av_frame_get_buffer(ffmpeg->audio.frame, 0);
+        if (ret < 0) {
+            eprintf("WARNING: Failed to allocate audio frame buffer for encoder '%s': %s\n", codec->name, av_err2str(ret));
+            goto next_encoder;
+        }
+
+        eprintf("Using audio codec: %s\n", codec->name);
+
+        break;
+
+next_encoder:
+        destroy_ffmpeg_audio(&ffmpeg->audio);
     }
-
-    int ret;
-
-    // AVFrame (captured)
-    ffmpeg->audio.frame              = av_frame_alloc();
-    if (!ffmpeg->audio.frame) {
-        eprintf("Error: Failed to allocate audio frame.\n");
-        goto fail;
-    }
-    ffmpeg->audio.frame->format      = sample_fmt;
-    ffmpeg->audio.frame->sample_rate = sample_rate;
-    ffmpeg->audio.frame->ch_layout   = channel_layout;
-
-    // AVCodec
-    const AVCodec *codec = avcodec_find_encoder(codec_id);
-    if (!codec) {
-        eprintf("Error: No %s encoder found.\n", avcodec_get_name(codec_id));
-        goto fail;
-    }
-
-    // AVCodecContext
-    ffmpeg->audio.codec_ctx              = avcodec_alloc_context3(codec);
     if (!ffmpeg->audio.codec_ctx) {
-        eprintf("Error: Failed to allocate audio encoder context.\n");
-        goto fail;
-    }
-    if (ffmpeg->format_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
-        ffmpeg->audio.codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-    }
-    ffmpeg->audio.codec_ctx->sample_rate = sample_rate;
-    ffmpeg->audio.codec_ctx->sample_fmt  = sample_fmt;
-    ffmpeg->audio.codec_ctx->time_base   = time_base;
-    ffmpeg->audio.codec_ctx->ch_layout   = channel_layout;
-    ret = avcodec_open2(ffmpeg->audio.codec_ctx, codec, NULL);
-    if (ret < 0) {
-        eprintf("Error: Failed to open audio encoder: %s\n", av_err2str(ret));
-        goto fail;
-    }
-
-    // AVFrame (captured, cont.)
-    ffmpeg->audio.frame->nb_samples  = ffmpeg->audio.codec_ctx->frame_size;
-    ret = av_frame_get_buffer(ffmpeg->audio.frame, 0);
-    if (ret < 0) {
-        eprintf("Error: Failed to allocate audio frame buffer: %s\n", av_err2str(ret));
-        goto fail;
+        print_unusable_encoders("audio", audio_encoders, ARRAY_LEN(audio_encoders), audio_encoder_mask);
+        return false;
     }
 
     // AVAudioFifo
     ffmpeg->audio.fifo = av_audio_fifo_alloc(
-        sample_fmt, channel_layout.nb_channels, ffmpeg->audio.codec_ctx->frame_size
+        ffmpeg->audio.codec_ctx->sample_fmt, channel_layout.nb_channels, ffmpeg->audio.codec_ctx->frame_size
     );
     if (!ffmpeg->audio.fifo) {
         eprintf("Error: Failed to allocate audio FIFO.\n");
@@ -119,12 +286,55 @@ init_ffmpeg_audio(struct scran_output *st_output)
         goto fail;
     }
 
+    if (!scran_pipewire_attach(st_output, ffmpeg->audio.codec_ctx->sample_fmt)) {
+        goto fail;
+    }
+
     return true;
 
 fail:
-    scran_pipewire_detach(st_output);
     destroy_ffmpeg_audio(&ffmpeg->audio);
     return false;
+}
+
+static void
+drop_encoders_unsupported_by_format(uint32_t *mask, const struct encoder_info *encoders, size_t count, const AVOutputFormat *oformat)
+{
+    for (size_t i = 0; i < count; ++i) {
+        uint32_t mask_bit = 1U << i;
+        if (*mask & mask_bit) {
+            const AVCodecDescriptor *codec = avcodec_descriptor_get_by_name(encoders[i].codec);
+            if (!codec || !avformat_query_codec(oformat, codec->id, FF_COMPLIANCE_NORMAL)) {
+                *mask &= ~mask_bit;
+            }
+        }
+    }
+}
+
+static bool
+get_video_config(struct video_config *config)
+{
+    *config = m_video_config;
+
+    config->oformat = av_guess_format(video_formats[config->format].muxer_name, NULL, NULL);
+    if (!config->oformat) {
+        eprintf("Error: av_guess_format('%s') failed.\n", video_formats[config->format].muxer_name);
+        scran_notify_error("provided video format is not available");
+        return false;
+    }
+
+    // TODO: figure out a consistent responsibility split between what parts of the init sends dbus
+    // notifications vs just stderr prints etc.
+
+    drop_encoders_unsupported_by_format(&config->video_encoders, video_encoders, ARRAY_LEN(video_encoders), config->oformat);
+    if (!config->video_encoders) {
+        eprintf("Error: No provided video encoders are supported by the provided format (%s).\n", video_formats[config->format].muxer_name);
+        scran_notify_error("video encoder not supported by format");
+        return false;
+    }
+    drop_encoders_unsupported_by_format(&config->audio_encoders, audio_encoders, ARRAY_LEN(audio_encoders), config->oformat);
+
+    return true;
 }
 
 // TODO:
@@ -140,6 +350,12 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
 {
     struct scran_output_capture *capture = &st_output->capture;
     struct ffmpeg_context       *ffmpeg  = &capture->ffmpeg_ctx;
+
+    // TODO: Cache the result?
+    struct video_config config;
+    if (!get_video_config(&config)) {
+        return false;
+    }
 
     assert(!capture->audio_active);
     const char *output_filepath = NULL;
@@ -162,6 +378,8 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
     ffmpeg->video.frame->height          = frame_height;
     // NOTE: Some pixel formats (and some file formats), e.g. YUV420P, require
     // even-numbered (or some other multiplier) height and/or width.
+    // TODO: Support other pixel formats. We currently only need (planar) yuv420
+    // due to using scranrot.
     ffmpeg->video.frame->format          = AV_PIX_FMT_YUV420P;
     // scranrot outputs full-range BT.709 Y'CbCr. The capture source is desktop
     // RGB, so we use BT.709 video metadata for broad playback compatibility.
@@ -183,66 +401,65 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
         goto fail;
     }
 
+    AVRational time_base      = NATIVE_VIDEO_CAPTURE_TIME_BASE;
+    static const int gop_size = 120;
 
     // AVFormat
-    if (g_state.options.output_to_stdout) {
-        assert(scran_stdout_check_reservation(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO));
-        output_filepath = "pipe:1";
-    } else {
-        static const char mp4_file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] = ".mp4";
-        output_filepath = scran_prepare_video_output_path(&g_state.options, mp4_file_extension);
-        if (!output_filepath) {
-            goto fail;
-        }
-    }
-    ret = avformat_alloc_output_context2(&ffmpeg->format_ctx, NULL, FFMPEG_FORMAT_MP4_NAME, output_filepath);
+    ret = avformat_alloc_output_context2(&ffmpeg->format_ctx, config.oformat, NULL, NULL);
     if (ret < 0) {
         eprintf("Error: Failed to allocate output format context: %s\n", av_err2str(ret));
         goto fail;
     }
+    switch (config.format) {
+    case VIDEO_FORMAT_MP4:
 #if !defined LIBAVFORMAT_VERSION_INT || (LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(61,4,100))
-    // Best we can do for seeking/playback-duration compatibility without remuxing or custom
-    // "hybrid mp4" implementation, if hybrid_fragmented is unavailable.
-    ret = av_opt_set(ffmpeg->format_ctx->priv_data, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
+        // Best we can do for seeking/playback-duration compatibility without remuxing or custom
+        // "hybrid mp4" implementation, if hybrid_fragmented is unavailable.
+        ret = av_opt_set(ffmpeg->format_ctx->priv_data, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
 #else
-    ret = av_opt_set(ffmpeg->format_ctx->priv_data, "movflags", "hybrid_fragmented", 0);
+        ret = av_opt_set(ffmpeg->format_ctx->priv_data, "movflags", "hybrid_fragmented", 0);
 #endif /* LIBAVFORMAT_VERSION_INT */
-    if (ret < 0) {
-        eprintf("Error: Failed to set video muxer movflags: %s\n", av_err2str(ret));
-        goto fail;
-    }
-    // Earlier versions were not implemented correctly for hybrid_fragmented
-    // (ffmpeg commit 920071355dd82a74ab9bfd879d42401702b83a5e)
+        if (ret < 0) {
+            eprintf("Error: Failed to set video muxer movflags: %s\n", av_err2str(ret));
+            goto fail;
+        }
+        // Earlier versions were not implemented correctly for hybrid_fragmented
+        // (ffmpeg commit 920071355dd82a74ab9bfd879d42401702b83a5e)
 #if LIBAVFORMAT_VERSION_MAJOR >= 62
-    // Our mp4 muxer may shift the PTS/DTS timelines forwards to ensure that the
-    // first DTS is non-negative. Some players/programs need an explicit
-    // "editlist" in the moov, which specifies the timestamp at which the actual
-    // playback is supposed to start. For example Adobe Premiere refuses to open
-    // the file otherwise.
-    ret = av_opt_set(ffmpeg->format_ctx->priv_data, "use_editlist", "1", 0);
-    if (ret < 0) {
-        eprintf("Error: Failed to set video muxer use_editlist: %s\n", av_err2str(ret));
-        goto fail;
-    }
+        // Our mp4 muxer may shift the PTS/DTS timelines forwards to ensure that the
+        // first DTS is non-negative. Some players/programs need an explicit
+        // "editlist" in the moov, which specifies the timestamp at which the actual
+        // playback is supposed to start. For example Adobe Premiere refuses to open
+        // the file otherwise.
+        ret = av_opt_set(ffmpeg->format_ctx->priv_data, "use_editlist", "1", 0);
+        if (ret < 0) {
+            eprintf("Error: Failed to set video muxer use_editlist: %s\n", av_err2str(ret));
+            goto fail;
+        }
 #endif
+        break;
+    case VIDEO_FORMAT_MKV:
+    case VIDEO_FORMAT_WEBM:
+        ;
+        time_base = (AVRational){1, 1000000};
+        // Matroska and WebM are stored in clusters by default.
+        _Static_assert(
+            gop_size >= 120,
+           "gop_size effectively caps cluster_time_limit. set it explicitly, or update the assert if"
+           " the new gop_size is still an acceptable limit."
+        );
+        break;
+    }
+
 
     // AVCodecContext (encoder)
     //
     // In preference order.
-    enum encoder_index {
-        // Requires GPL ffmpeg build
-        VIDEO_ENCODER_LIBX264,
-        // TODO: Why does it have such bad performance (high cpu usage, stutters) compared to libx264?
-        VIDEO_ENCODER_LIBOPENH264,
-        VIDEO_ENCODER_LIBSVTAV1,
-    };
-    static const char *const encoder_names[] = {
-        [VIDEO_ENCODER_LIBX264]     = "libx264",
-        [VIDEO_ENCODER_LIBOPENH264] = "libopenh264",
-        [VIDEO_ENCODER_LIBSVTAV1]   = "libsvtav1",
-    };
-    for (enum encoder_index i = 0; i < ARRAY_LEN(encoder_names); ++i) {
-        const struct AVCodec *codec = avcodec_find_encoder_by_name(encoder_names[i]);
+    for (enum video_encoder_index i = 0; i < ARRAY_LEN(video_encoders); ++i) {
+        if (!(config.video_encoders & (1U << i))) {
+            continue;
+        }
+        const struct AVCodec *codec = avcodec_find_encoder_by_name(video_encoders[i].encoder);
         if (!codec) {
             continue;
         }
@@ -271,8 +488,7 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
                 : 60 * MILLIHZ_PER_HZ,
             MILLIHZ_PER_HZ
         };
-        // Wayland's frame::presentation_time() has nanosecond precision.
-        ffmpeg->video.codec_ctx->time_base       = (AVRational){ 1, NSEC_PER_SEC };
+        ffmpeg->video.codec_ctx->time_base       = time_base;
         // -- Values to be tweaked (may depend on encoder/format) --
         // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
         ffmpeg->video.codec_ctx->max_b_frames    = 2;
@@ -291,6 +507,35 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
             }
             break;
         case VIDEO_ENCODER_LIBOPENH264:
+            break;
+        case VIDEO_ENCODER_LIBVPX_VP9:
+            // libvpx has 100ns resolution internally, and prints warnings on
+            // every packet if the timestamp isn't converted cleanly.
+            //   TODO: maybe use VP9 res instead (1/90000), to not rely on internals?
+            if ((int64_t)time_base.num * 10000000 % time_base.den != 0) {
+                ffmpeg->video.codec_ctx->time_base = (AVRational){ 1, 10000000 };
+            }
+            ffmpeg->video.codec_ctx->bit_rate = 0;
+            ret = av_opt_set(ffmpeg->video.codec_ctx->priv_data, "crf", "30", 0);
+            if (ret < 0) {
+                eprintf("WARNING: Failed to set libvpx-vp9 crf: %s\n", av_err2str(ret));
+                goto next_encoder;
+            }
+            ret = av_opt_set(ffmpeg->video.codec_ctx->priv_data, "deadline", "realtime", 0);
+            if (ret < 0) {
+                eprintf("WARNING: Failed to set libvpx-vp9 deadline: %s\n", av_err2str(ret));
+                goto next_encoder;
+            }
+            ret = av_opt_set(ffmpeg->video.codec_ctx->priv_data, "row-mt", "1", 0);
+            if (ret < 0) {
+                eprintf("WARNING: Failed to set libvpx-vp9 row-mt: %s\n", av_err2str(ret));
+                goto next_encoder;
+            }
+            ret = av_opt_set(ffmpeg->video.codec_ctx->priv_data, "cpu-used", "8", 0);
+            if (ret < 0) {
+                eprintf("WARNING: Failed to set libvpx-vp9 cpu-used: %s\n", av_err2str(ret));
+                goto next_encoder;
+            }
             break;
         case VIDEO_ENCODER_LIBSVTAV1:
             ret = av_opt_set(ffmpeg->video.codec_ctx->priv_data, "crf", "30", 0);
@@ -311,20 +556,14 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
             goto next_encoder;
         }
 
-        eprintf("Using codec: %s\n", codec->name);
+        eprintf("Using video codec: %s\n", codec->name);
         break;
 
 next_encoder:
         avcodec_free_context(&ffmpeg->video.codec_ctx);
     }
     if (!ffmpeg->video.codec_ctx) {
-        eprintf("Error: No usable encoder found. All encoders failed to initialize or"
-                " were missing from the linked version of libavcodec."
-                " Supported codecs:");
-        for (size_t i = 0; i < ARRAY_LEN(encoder_names); ++i) {
-            eprintf(" %s", encoder_names[i]);
-        }
-        eprintf(".\n");
+        print_unusable_encoders("video", video_encoders, ARRAY_LEN(video_encoders), config.video_encoders);
         goto fail;
     }
 
@@ -360,12 +599,13 @@ next_encoder:
 
 
     if (!g_state.options.disable_audio_capture && !capture->audio_disable_modifier_active) {
-        if (init_ffmpeg_audio(st_output)) {
+        if (init_ffmpeg_audio(st_output, config.audio_encoders)) {
             capture->audio_active = true;
         } else {
             eprintf("WARNING: Failed to init audio capture.\n");
         }
     }
+
 
     // AVStream (audio)
     //   Not created in init_ffmpeg_audio(), since freeing a stream requires
@@ -386,7 +626,41 @@ next_encoder:
     }
 
 
-    // AVFormat (cont.)
+    // Finalize AVFormat and initialize the output file
+
+    if (g_state.options.output_to_stdout) {
+        assert(scran_stdout_check_reservation(&st_output->capture.stdout_reservation, SCRAN_STDOUT_RESERVATION_PURPOSE_VIDEO));
+        output_filepath = "pipe:1";
+    } else {
+        char file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX];
+        {
+            const char *extensions = ffmpeg->format_ctx->oformat->extensions;
+            if (!extensions || extensions[0] == '\0') {
+                eprintf("Error: File extension not found.\n");
+                goto fail;
+            }
+
+            size_t extension_len = strcspn(extensions, ",");
+            if (extension_len >= sizeof(file_extension)) {
+                eprintf("Error: File extension too long.\n");
+                goto fail;
+            }
+            memcpy(file_extension, extensions, extension_len);
+            file_extension[extension_len] = '\0';
+        }
+
+        output_filepath = scran_prepare_video_output_path(&g_state.options, file_extension);
+        if (!output_filepath) {
+            goto fail;
+        }
+    }
+
+    ffmpeg->format_ctx->url = av_strdup(output_filepath);
+    if (!ffmpeg->format_ctx->url) {
+        eprintf("Error: Failed to allocate URL.\n");
+        goto fail;
+    }
+
     assert(!((ffmpeg->format_ctx)->oformat->flags & AVFMT_NOFILE));
     ret = avio_open(&(ffmpeg->format_ctx)->pb, output_filepath, AVIO_FLAG_WRITE);
     if (ret < 0) {
@@ -604,7 +878,11 @@ capture_video_write_video_frame(
             av_buffer_unref(&frame->buf[0]);
             goto err_video_stream;
         }
-        frame->pts = view.frame_ctx->presentation_time_nsec - output->capture.video_presentation_time_nsec_start;
+        frame->pts = av_rescale_q(
+            view.frame_ctx->presentation_time_nsec - output->capture.video_presentation_time_nsec_start,
+            NATIVE_VIDEO_CAPTURE_TIME_BASE,
+            ffmpeg->video.codec_ctx->time_base
+        );
     }
 
     // Encode

@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <libgen.h>
+#include <limits.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -26,10 +27,12 @@ advance_filename_file_extension(
     char *restrict fn,
     ssize_t *i_fn
 ) {
-    assert(*i_fn < SCRAN_OUTPUT_FILENAME_SIZE_MAX - SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX);
+    assert(*i_fn <= SCRAN_OUTPUT_FILENAME_STRLEN_MAX - SCRAN_OUTPUT_DOTTED_FILE_EXTENSION_STRLEN_MAX);
+    assert(ext[0] != '\0' && ext[0] != '.');
+    fn[(*i_fn)++] = '.';
 
     ssize_t i_ext = 0;
-    while (i_ext < SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX && ext[i_ext] != '\0') {
+    while (i_ext < SCRAN_OUTPUT_FILE_EXTENSION_STRLEN_MAX && ext[i_ext] != '\0') {
         fn[(*i_fn)++] = ext[i_ext++];
     }
 }
@@ -42,9 +45,9 @@ create_filename(
     const struct tm *tm,
     char filename_out[static restrict SCRAN_OUTPUT_FILENAME_SIZE_MAX]
 ) {
-    static const ssize_t format_max         = SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX;
-    static const ssize_t file_extension_max = SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX;
-    static const ssize_t filename_strlen_max   = SCRAN_OUTPUT_FILENAME_STRLEN_MAX;
+    static const ssize_t format_max          = SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX;
+    static const ssize_t file_extension_max  = SCRAN_OUTPUT_DOTTED_FILE_EXTENSION_STRLEN_MAX;
+    static const ssize_t filename_strlen_max = SCRAN_OUTPUT_FILENAME_STRLEN_MAX;
 
     ssize_t i_out = 0;
     ssize_t i_fmt = 0;
@@ -133,7 +136,7 @@ create_filename_mock_time(
     const char format[static restrict SCRAN_OUTPUT_FILENAME_FORMATSTRING_SIZE_MAX]
 ) {
     char _tmp[SCRAN_OUTPUT_FILENAME_SIZE_MAX];
-    static const char _file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] = ".test";
+    static const char _file_extension[SCRAN_OUTPUT_FILE_EXTENSION_SIZE_MAX] = "test";
     static const struct timespec _ts = {
         .tv_sec = 52582958239532, .tv_nsec = NSEC_PER_SEC - 1
     };
@@ -551,7 +554,7 @@ static const char help_string[] =
     "                          to change. Please use -f, -d and SCRAN_OUTPUT_DIR if you\n"
     "                          need stable commands for keybindings or scripts.\n"
     "\n"
-    "  -f   <filename_pattern>\n"
+    "  -f, --filename <filename_pattern>\n"
     "         Name of the file that will be placed in the output directory\n"
     "         Ignored if `output_directory` is - (stdout)\n"
     "         Expanded patterns:\n"
@@ -562,45 +565,65 @@ static const char help_string[] =
     "           %E  File extension (e.g. .png or .mp4)\n"
     "           %%  A literal '%' character\n"
     "         Default: "SCRAN_OUTPUT_FILENAME_FORMATSTRING_DEFAULT"\n"
-    "  -d   set an existing directory as output directory\n"
+    "  -d, --directory <directory>\n"
+    "         set an existing directory as output directory\n"
     "         If a directory does not exist, scran will exit with an error.\n"
     "         See the 'Output directories' section below for defaults.\n"
-    "  -p   press-only mouse buttons (presses toggle pressed/released state)\n"
-    "  -e   automatically capture and exit immediately after initial selection\n"
+    "  -p, --press-only\n"
+    "         press-only mouse buttons (presses toggle pressed/released state)\n"
+    "  -e, --capture-and-exit\n"
+    "         automatically capture and exit immediately after initial selection\n"
     "         Note: does not make -B redundant.\n"
     // TODO:
     // "  -ee  like -e, but ensure the scran process exits fully\n"
     // "         Equivalent to -Be"
-    "  -A   disable audio capture (during video capture)\n"
+    "  --video-format <format>\n"
+    "         video container format (e.g. mp4)\n"
+    "  --video-encoder <codec_or_encoder>\n"
+    "         video codec (e.g. h264) or specific encoder (e.g. libx264)\n"
+    "  --audio-encoder <codec_or_encoder>\n"
+    "         audio codec (e.g. aac) or specific encoder (e.g. aac)\n"
+    "  -A, --no-audio\n"
+    "         disable audio capture (during video capture)\n"
     "         Note: audio capture requires PipeWire.\n"
-    "  -C   disable cursor capture\n"
-    "  -c   capture all cursors, including scran's cursor and tooltip\n"
+    "  -C, --no-cursors\n"
+    "         disable cursor capture\n"
+    "  -c, --capture-all-cursors\n"
+    "         capture all cursors, including scran's cursor and tooltip\n"
     "         By default, capture cursors only while scran has no pointer focus.\n"
     "         If both -c and -C are given, the last one takes effect.\n"
-    "  -B   do not keep background process alive\n"
+    "  -B, --no-keepalive\n"
+    "         do not keep background process alive\n"
     "         Example: 'scran -B - | satty -f -'\n"
     "          By default, scran stays alive after exit to manage the clipboard\n"
     "         (until another process takes over, e.g. you copied some text in a web\n"
     "         browser). Useful if you want to pipe scran's output to an application\n"
     "         that is waiting for scran to fully exit.\n"
     "         NOTE: This also disables notification interaction\n"
-    "  -z   automatically freeze the display at startup\n"
-    "  -s   slurp: send selection as geometry string to standard output\n"
+    "  -z, --freeze-at-startup\n"
+    "         automatically freeze the display at startup\n"
+    "  -s, --slurp\n"
+    "         slurp: send selection as geometry string to standard output\n"
     "         Replaces/disables image capture.\n"
     "         Format: '<x>,<y> <width>x<height>'\n"
     "           x and y are coordinates in the global compositor space.\n"
     "         Equivalent to slurp's default output format\n"
     "           See https://wayland.emersion.fr/slurp/.\n"
     "           'scran -se' effectively emulates slurp's ui behavior\n"
-    "  -g   \"<x>,<y> <width>x<height>\"\n"
+    "  -g, --geometry \"<x>,<y> <width>x<height>\"\n"
     "         Pre-initialize selection using slurp-style geometry string\n"
     "         The area is clamped to the output containing the top-left corner.\n"
     "           Subject to change if/when scran will support cross-output capture.\n"
-    "  -N   disable notifications\n"
-    "  -U   hide UI (partial)\n"
-    "  -UU  hide UI (full)\n"
-    "  -v   show version and exit\n"
-    "  -h   show this help message and exit\n"
+    "  -N, --no-notifications\n"
+    "         disable notifications\n"
+    "  -U,  --hide-ui=partial\n"
+    "         hide UI (partial)\n"
+    "  -UU, --hide-ui=full\n"
+    "         hide UI (full)\n"
+    "  -v, --version\n"
+    "         show version and exit\n"
+    "  -h, --help\n"
+    "         show this help message and exit\n"
     "\n"
     "Output directories, in order of priority:\n"
     "  1. Images and videos: -d <directory> or output_directory\n"
@@ -628,12 +651,44 @@ scran_handle_args(int argc, char *const *argv)
     char *opt_filename         = NULL;
     char *opt_output_directory = NULL;
 
+    enum {
+        _LAST_SHORT_OPT = UCHAR_MAX,
+        OPT_HIDE_UI,
+        OPT_VIDEO_FORMAT,
+        OPT_VIDEO_ENCODER,
+        OPT_AUDIO_ENCODER,
+    };
+
+    static const struct option long_options[] = {
+        { "filename",            required_argument, NULL, 'f' },
+        { "directory",           required_argument, NULL, 'd' },
+        { "press-only",          no_argument,       NULL, 'p' },
+        { "capture-and-exit",    no_argument,       NULL, 'e' },
+        { "no-audio",            no_argument,       NULL, 'A' },
+        { "no-cursors",          no_argument,       NULL, 'C' },
+        { "capture-all-cursors", no_argument,       NULL, 'c' },
+        // XXX TODO: --no-background?
+        { "no-keepalive",        no_argument,       NULL, 'B' },
+        // XXX TODO: --freeze?
+        { "freeze-at-startup",   no_argument,       NULL, 'z' },
+        { "slurp",               no_argument,       NULL, 's' },
+        { "geometry",            required_argument, NULL, 'g' },
+        { "no-notifications",    no_argument,       NULL, 'N' },
+        { "hide-ui",             required_argument, NULL, OPT_HIDE_UI },
+        { "video-format",        required_argument, NULL, OPT_VIDEO_FORMAT },
+        { "video-encoder",       required_argument, NULL, OPT_VIDEO_ENCODER },
+        { "audio-encoder",       required_argument, NULL, OPT_AUDIO_ENCODER },
+        { "version",             no_argument,       NULL, 'v' },
+        { "help",                no_argument,       NULL, 'h' },
+        { }
+    };
+
     int opt;
-    while ((opt = getopt(argc, argv, "f:d:peACcBzsg:NvhU")) != -1) {
+    while ((opt = getopt_long(argc, argv, "f:d:peACcBzsg:NvhU", long_options, NULL)) != -1) {
         switch (opt) {
-        case 'f': opt_filename                                          = optarg; break;
-        case 'd': opt_output_directory                                  = optarg; break;
-        case 'p': g_state.seat.pointer_ctx.use_presses_only             = true;   break;
+        case 'f': opt_filename                                   = optarg; break;
+        case 'd': opt_output_directory                           = optarg; break;
+        case 'p': g_state.seat.pointer_ctx.use_presses_only      = true;   break;
         case 'e': options->capture_and_exit_after_selection_init = true;   break;
         case 'A': options->disable_audio_capture                 = true;   break;
         case 'B': options->no_keepalive                          = true;   break;
@@ -667,6 +722,31 @@ scran_handle_args(int argc, char *const *argv)
             }
             break;
         case 'N': options->no_notifications                      = true;   break;
+        case OPT_VIDEO_FORMAT:
+            if (!capture_video_set_format(optarg)) {
+                return false;
+            }
+            break;
+        case OPT_VIDEO_ENCODER:
+            if (!capture_video_set_video_encoder(optarg)) {
+                return false;
+            }
+            break;
+        case OPT_AUDIO_ENCODER:
+            if (!capture_video_set_audio_encoder(optarg)) {
+                return false;
+            }
+            break;
+        case OPT_HIDE_UI:
+            if (!strcmp(optarg, "partial")) {
+                options->hide_ui_level = SCRAN_OPT_HIDE_UI_ITEMS;
+            } else if (!strcmp(optarg, "full")) {
+                options->hide_ui_level = SCRAN_OPT_HIDE_UI_EVERYTHING;
+            } else {
+                eprintf("Error: Invalid --hide-ui value '%s'; expected 'partial' or 'full'.\n", optarg);
+                return false;
+            }
+            break;
         case 'v':
             printf("%s\n", SCRAN_VERSION_STRING);
             exit(EXIT_SUCCESS);
