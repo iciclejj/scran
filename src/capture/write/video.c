@@ -10,6 +10,10 @@
 #include <libavutil/opt.h>
 
 
+// Wayland's frame::presentation_time() has nanosecond precision.
+#define NATIVE_VIDEO_CAPTURE_TIME_BASE ((AVRational){1, NSEC_PER_SEC})
+
+
 struct encoder_info {
     const char *encoder;
     const char *codec;
@@ -399,6 +403,8 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
         goto fail;
     }
 
+    AVRational time_base = NATIVE_VIDEO_CAPTURE_TIME_BASE;
+
     // AVFormat
     ret = avformat_alloc_output_context2(&ffmpeg->format_ctx, config.oformat, NULL, NULL);
     if (ret < 0) {
@@ -436,6 +442,7 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
     case VIDEO_FORMAT_MKV:
     case VIDEO_FORMAT_WEBM:
         ;
+        time_base = (AVRational){1, 1000000};
         // Matroska and WebM are stored in clusters by default.
         _Static_assert(
             GOP_SIZE >= 120,
@@ -482,8 +489,7 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
                 : 60 * MILLIHZ_PER_HZ,
             MILLIHZ_PER_HZ
         };
-        // Wayland's frame::presentation_time() has nanosecond precision.
-        ffmpeg->video.codec_ctx->time_base       = (AVRational){ 1, NSEC_PER_SEC };
+        ffmpeg->video.codec_ctx->time_base       = time_base;
         // -- Values to be tweaked (may depend on encoder/format) --
         // NOTE: B-frames not be supported by all codecs (e.g. libopenh264?)
         ffmpeg->video.codec_ctx->max_b_frames    = 2;
@@ -504,6 +510,12 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
         case VIDEO_ENCODER_LIBOPENH264:
             break;
         case VIDEO_ENCODER_LIBVPX_VP9:
+            // libvpx has 100ns resolution internally, and prints warnings on
+            // every packet if the timestamp isn't converted cleanly.
+            //   TODO: maybe use VP9 res instead (1/90000), to not rely on internals?
+            if ((int64_t)time_base.num * 10000000 % time_base.den != 0) {
+                ffmpeg->video.codec_ctx->time_base = (AVRational){ 1, 10000000 };
+            }
             ffmpeg->video.codec_ctx->bit_rate = 0;
             ret = av_opt_set(ffmpeg->video.codec_ctx->priv_data, "crf", "30", 0);
             if (ret < 0) {
@@ -867,7 +879,11 @@ capture_video_write_video_frame(
             av_buffer_unref(&frame->buf[0]);
             goto err_video_stream;
         }
-        frame->pts = view.frame_ctx->presentation_time_nsec - output->capture.video_presentation_time_nsec_start;
+        frame->pts = av_rescale_q(
+            view.frame_ctx->presentation_time_nsec - output->capture.video_presentation_time_nsec_start,
+            NATIVE_VIDEO_CAPTURE_TIME_BASE,
+            ffmpeg->video.codec_ctx->time_base
+        );
     }
 
     // Encode
