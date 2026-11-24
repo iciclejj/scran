@@ -48,10 +48,12 @@ struct format_info {
 enum format_index {
     VIDEO_FORMAT_MP4,
     VIDEO_FORMAT_MKV,
+    VIDEO_FORMAT_WEBM,
 };
 static const struct format_info video_formats[] = {
-    [VIDEO_FORMAT_MP4] = { .muxer_name = "mp4",      .alias = "mp4" },
-    [VIDEO_FORMAT_MKV] = { .muxer_name = "matroska", .alias = "mkv" },
+    [VIDEO_FORMAT_MP4]  = { .muxer_name = "mp4",      .alias = "mp4" },
+    [VIDEO_FORMAT_MKV]  = { .muxer_name = "matroska", .alias = "mkv" },
+    [VIDEO_FORMAT_WEBM] = { .muxer_name = "webm",     .alias = "webm" },
 };
 
 // TODO: reference this in the docs for viewing defaults.
@@ -432,8 +434,9 @@ capture_video_init_writers(struct scran_output *st_output, const BLPointI dimens
 #endif
         break;
     case VIDEO_FORMAT_MKV:
+    case VIDEO_FORMAT_WEBM:
         ;
-        // MKV is stored fragmented by default (Clusters).
+        // Matroska and WebM are stored in clusters by default.
         _Static_assert(
             GOP_SIZE >= 120,
            "gop_size effectively caps cluster_time_limit. set it explicitly, or update the assert if"
